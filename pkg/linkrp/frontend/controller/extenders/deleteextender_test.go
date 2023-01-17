@@ -15,29 +15,28 @@ import (
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager, *deployment.MockDeploymentProcessor) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
-		msm := statusmanager.NewMockStatusManager(mctrl)
 		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, mds, msm, mDeploymentProcessor
+		}, mds, mDeploymentProcessor
 	}
 
 	t.Parallel()
 
 	t.Run("delete non-existing resource", func(t *testing.T) {
-		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
+		teardownTest, mds, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
@@ -50,12 +49,11 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := frontend_ctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mds,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewDeleteExtender(opts)
@@ -93,7 +91,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range existingResourceDeleteTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
+			teardownTest, mds, mDeploymentProcessor := setupTest(t)
 			defer teardownTest(t)
 			w := httptest.NewRecorder()
 
@@ -123,12 +121,11 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mds,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewDeleteExtender(opts)

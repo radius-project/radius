@@ -13,10 +13,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
@@ -47,16 +47,15 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 }
 
 func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager, *deployment.MockDeploymentProcessor, renderers.RendererOutput, deployment.DeploymentOutput) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, renderers.RendererOutput, deployment.DeploymentOutput) {
 		mctrl := gomock.NewController(t)
 		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 		rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 		mds := store.NewMockStorageClient(mctrl)
-		msm := statusmanager.NewMockStatusManager(mctrl)
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput
+		}, mds, mDeploymentProcessor, rendererOutput, deploymentOutput
 	}
 	createNewResourceTestCases := []struct {
 		desc               string
@@ -74,7 +73,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
+			teardownTest, mds, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
@@ -110,12 +109,11 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mds,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateExtender(opts)
@@ -154,7 +152,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
+			teardownTest, mds, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
@@ -192,12 +190,11 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mds,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateExtender(opts)

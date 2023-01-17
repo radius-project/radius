@@ -198,7 +198,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, redisResource, renderers.RenderOptions{})
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
 	require.Equal(t, "invalid model conversion", err.Error())
 }

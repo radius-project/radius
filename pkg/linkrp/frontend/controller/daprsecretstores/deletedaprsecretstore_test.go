@@ -18,6 +18,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -45,11 +46,11 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := frontend_ctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mStorageClient,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewDeleteDaprSecretStore(opts)
@@ -115,11 +116,11 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mStorageClient,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewDeleteDaprSecretStore(opts)
@@ -166,11 +167,11 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			})
 		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
 
-		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := frontend_ctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mStorageClient,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewDeleteDaprSecretStore(opts)
