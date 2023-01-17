@@ -18,6 +18,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -82,9 +83,11 @@ func TestDeleteMongoDatabase_20220315PrivatePreview(t *testing.T) {
 					Times(1)
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mds,
+					StatusManager: msm,
+				},
 			}
 
 			ctl, err := NewDeleteMongoDatabase(opts)

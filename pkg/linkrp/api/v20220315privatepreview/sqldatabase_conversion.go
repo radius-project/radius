@@ -27,7 +27,8 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetSQLDatabaseProperties().ProvisioningState),
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
@@ -35,7 +36,6 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 				Environment: to.String(src.Properties.GetSQLDatabaseProperties().Environment),
 				Application: to.String(src.Properties.GetSQLDatabaseProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetSQLDatabaseProperties().ProvisioningState),
 		},
 	}
 
@@ -90,7 +90,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 			},
 			Mode:              &mode,
-			ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(sql.Properties.Environment),
 			Application:       to.StringPtr(sql.Properties.Application),
 			Resource:          to.StringPtr(sql.Properties.Resource),
@@ -104,7 +104,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 			},
 			Mode:              &mode,
-			ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(sql.Properties.Environment),
 			Application:       to.StringPtr(sql.Properties.Application),
 			Database:          to.StringPtr(sql.Properties.Database),
@@ -119,7 +119,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 			},
 			Mode:              &mode,
-			ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(sql.Properties.Environment),
 			Application:       to.StringPtr(sql.Properties.Application),
 			Recipe:            recipe,

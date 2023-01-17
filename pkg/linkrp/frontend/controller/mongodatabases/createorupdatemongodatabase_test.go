@@ -16,6 +16,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -84,11 +85,11 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mStorageClient,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateMongoDatabase(opts)
@@ -163,11 +164,11 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mStorageClient,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateMongoDatabase(opts)

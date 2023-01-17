@@ -16,6 +16,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -168,12 +169,12 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				kubeClient = radiustesting.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mStorageClient,
+					KubeClient:    kubeClient,
 				},
-				KubeClient: kubeClient,
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateDaprPubSubBroker(opts)
@@ -273,12 +274,12 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				kubeClient = radiustesting.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := frontend_ctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mStorageClient,
+					KubeClient:    kubeClient,
 				},
-				KubeClient: kubeClient,
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateDaprPubSubBroker(opts)

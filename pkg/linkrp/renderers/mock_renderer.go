@@ -36,7 +36,7 @@ func (m *MockRenderer) EXPECT() *MockRendererMockRecorder {
 }
 
 // Render mocks base method.
-func (m *MockRenderer) Render(arg0 context.Context, arg1 v1.DataModelInterface, arg2 RenderOptions) (RendererOutput, error) {
+func (m *MockRenderer) Render(arg0 context.Context, arg1 v1.ResourceDataModel, arg2 RenderOptions) (RendererOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
 	ret0, _ := ret[0].(RendererOutput)

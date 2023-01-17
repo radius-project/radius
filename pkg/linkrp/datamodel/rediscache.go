@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // RedisCache represents RedisCache link resource.
@@ -21,12 +22,27 @@ type RedisCache struct {
 	LinkMetadata
 }
 
-func (redis RedisCache) ResourceTypeName() string {
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (r *RedisCache) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	r.Properties.Status.OutputResources = do.DeployedOutputResources
+}
+
+// OutputResources returns the output resources array.
+func (r *RedisCache) OutputResources() []outputresource.OutputResource {
+	return r.Properties.Status.OutputResources
+}
+
+// ResourceMetadata returns the application resource metadata.
+func (r *RedisCache) ResourceMetadata() *rp.BasicResourceProperties {
+	return &r.Properties.BasicResourceProperties
+}
+
+func (redis *RedisCache) ResourceTypeName() string {
 	return "Applications.Link/redisCaches"
 }
 
-func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
-	return redisSecrets == RedisCacheSecrets{}
+func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
+	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
 }
 
 type RedisValuesProperties struct {
@@ -47,9 +63,8 @@ type RedisCacheProperties struct {
 	RedisValuesProperties
 	RedisResourceProperties
 	RedisRecipeProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Secrets           RedisCacheSecrets    `json:"secrets,omitempty"`
-	Mode              LinkMode             `json:"mode"`
+	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
+	Mode    LinkMode          `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource

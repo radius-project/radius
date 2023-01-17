@@ -14,6 +14,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -22,37 +24,44 @@ var _ ctrl.Controller = (*DeleteDaprSecretStore)(nil)
 
 // DeleteDaprSecretStore is the controller implementation to delete daprSecretStore link resource.
 type DeleteDaprSecretStore struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.DaprSecretStore, datamodel.DaprSecretStore]
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteDaprSecretStore creates a new instance DeleteDaprSecretStore.
-func NewDeleteDaprSecretStore(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteDaprSecretStore{ctrl.NewBaseController(opts)}, nil
+func NewDeleteDaprSecretStore(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+	return &DeleteDaprSecretStore{
+		Operation: ctrl.NewOperation(opts.Options,
+			ctrl.ResourceOptions[datamodel.DaprSecretStore]{
+				RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
+				ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
+			}),
+		dp: opts.DeployProcessor,
+	}, nil
 }
 
 func (daprSecretStore *DeleteDaprSecretStore) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	// Read resource metadata from the storage
-	existingResource := &datamodel.DaprSecretStore{}
-	etag, err := daprSecretStore.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	old, etag, err := daprSecretStore.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
-		}
 		return nil, err
+	}
+
+	if old == nil {
+		return rest.NewNoContentResponse(), nil
 	}
 
 	if etag == "" {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+	r, err := daprSecretStore.PrepareResource(ctx, req, nil, old, etag)
+	if r != nil || err != nil {
+		return r, err
 	}
 
-	err = daprSecretStore.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: existingResource, OutputResources: existingResource.Properties.Status.OutputResources, ComputedValues: existingResource.ComputedValues, SecretValues: existingResource.SecretValues, RecipeData: existingResource.RecipeData})
+	err = daprSecretStore.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
 	if err != nil {
 		return nil, err
 	}

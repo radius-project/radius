@@ -97,10 +97,9 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 			// TODO: These fields are not used in UCP. We'd like to unify these
 			// options types eventually, but that will take some time.
-			SecretClient:           nil,
-			KubeClient:             nil,
-			GetDeploymentProcessor: nil,
-			StatusManager:          nil,
+			SecretClient:  nil,
+			KubeClient:    nil,
+			StatusManager: nil,
 		},
 	}
 

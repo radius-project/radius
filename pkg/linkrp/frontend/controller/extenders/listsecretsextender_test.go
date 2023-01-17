@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 
@@ -55,12 +56,12 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := frontend_ctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mds,
+				StatusManager: msm,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)
@@ -91,12 +92,12 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := frontend_ctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mds,
+				StatusManager: msm,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)
@@ -128,12 +129,12 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := frontend_ctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mds,
+				StatusManager: msm,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)

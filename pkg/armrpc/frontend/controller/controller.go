@@ -13,7 +13,6 @@ import (
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -37,9 +36,6 @@ type Options struct {
 
 	// ResourceType is the string that represents the resource type.
 	ResourceType string
-
-	// GetDeploymentProcessor is the factory function to create DeploymentProcessor instance.
-	GetDeploymentProcessor func() deployment.DeploymentProcessor
 
 	// StatusManager
 	StatusManager sm.StatusManager
@@ -102,11 +98,6 @@ func (b *BaseController) KubeClient() runtimeclient.Client {
 // ResourceType gets the resource type for this controller.
 func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
-}
-
-// DeploymentProcessor gets the deployment processor for this controller.
-func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
-	return b.options.GetDeploymentProcessor()
 }
 
 // DeploymentProcessor gets the deployment processor for this controller.

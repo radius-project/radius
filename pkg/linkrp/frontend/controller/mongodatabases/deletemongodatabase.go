@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 )
 
 var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
@@ -24,26 +25,26 @@ var (
 	AsyncDeleteMongoDatabaseOperationTimeout = time.Duration(300) * time.Second
 )
 
-// DeleteMongoDatabase is the controller implementation to delete mongodatabase link resource.
+// DeleteMongoDatabase is the controller implementation to delete mongoDatabase link resource.
 type DeleteMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
 }
 
 // NewDeleteMongoDatabase creates a new instance DeleteMongoDatabase.
-func NewDeleteMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteMongoDatabase(opts frontend_ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteMongoDatabase{
-		ctrl.NewOperation(opts, ctrl.ResourceOptions[datamodel.MongoDatabase]{
-			RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
-			ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
-		}),
+		Operation: ctrl.NewOperation(opts.Options,
+			ctrl.ResourceOptions[datamodel.MongoDatabase]{
+				RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
+				ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
+			}),
 	}, nil
 }
 
-func (mongo *DeleteMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (mongoDatabase *DeleteMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	// Read resource metadata from the storage
-	old, etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := mongoDatabase.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +57,14 @@ func (mongo *DeleteMongoDatabase) Run(ctx context.Context, w http.ResponseWriter
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if r, err := mongo.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+	r, err := mongoDatabase.PrepareResource(ctx, req, nil, old, etag)
+	if r != nil || err != nil {
 		return r, err
 	}
 
-	if r, err := mongo.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteMongoDatabaseOperationTimeout, &etag); r != nil || err != nil {
+	if r, err := mongoDatabase.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteMongoDatabaseOperationTimeout, &etag); r != nil || err != nil {
 		return r, err
 	}
 
-	return mongo.ConstructAsyncResponse(ctx, req.Method, etag, old)
-
+	return mongoDatabase.ConstructAsyncResponse(ctx, req.Method, etag, old)
 }

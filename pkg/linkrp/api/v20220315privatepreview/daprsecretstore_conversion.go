@@ -27,7 +27,8 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprSecretStoreProperties().ProvisioningState),
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -35,7 +36,6 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 				Environment: to.String(src.Properties.GetDaprSecretStoreProperties().Environment),
 				Application: to.String(src.Properties.GetDaprSecretStoreProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprSecretStoreProperties().ProvisioningState),
 		},
 	}
 	switch v := src.Properties.(type) {
@@ -82,7 +82,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
 			Application:       to.StringPtr(daprSecretStore.Properties.Application),
 			Mode:              &mode,
@@ -99,7 +99,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
 			Application:       to.StringPtr(daprSecretStore.Properties.Application),
 			Mode:              &mode,

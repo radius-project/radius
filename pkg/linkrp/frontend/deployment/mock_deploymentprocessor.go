@@ -82,7 +82,7 @@ func (mr *MockDeploymentProcessorMockRecorder) FetchSecrets(arg0, arg1 interface
 }
 
 // Render mocks base method.
-func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.DataModelInterface) (renderers.RendererOutput, error) {
+func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.ResourceDataModel) (renderers.RendererOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
 	ret0, _ := ret[0].(renderers.RendererOutput)
