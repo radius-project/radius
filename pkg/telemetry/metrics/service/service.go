@@ -65,6 +65,7 @@ func (s *Service) Run(ctx context.Context) error {
 	recordMetrics()
 
 	mux := http.NewServeMux()
+	// TODO: otelhttp.NewHandler...
 	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
 	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
 	server := &http.Server{

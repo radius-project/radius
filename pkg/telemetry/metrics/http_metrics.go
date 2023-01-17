@@ -30,6 +30,8 @@ func NewHTTPMetrics(providerName string) *httpMetrics {
 
 	meter := pme.MeterProvider.Meter("radius")
 
+	// TODO: Change the way we do the metrics. Not with promauto.
+	// metric.Must(meter).NewInt64Counter("ex...")
 	requestCounter := promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "radius",
 		Subsystem: strings.Replace(strings.ToLower(providerName), ".", "_", -1),

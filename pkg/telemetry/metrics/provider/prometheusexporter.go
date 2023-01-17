@@ -69,6 +69,8 @@ func NewPrometheusExporter() (*PrometheusExporter, error) {
 	global.SetMeterProvider(provider)
 	fmt.Println("global meter provider set")
 
+	// TODO: Handler should be otelhttp.NewHandler...
+
 	return &PrometheusExporter{
 		MeterProvider: global.MeterProvider(),
 		Handler:       promhttp.Handler(),
