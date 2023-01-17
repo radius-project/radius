@@ -16,12 +16,12 @@ import (
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "configure",
 		Short: "Add or update cloud provider configuration for a Radius installation.",
 		Long:  "Add or update cloud provider configuration for a Radius installation." + common.LongDescriptionBlurb,
 		Example: `
 # Add or update cloud provider configuration for Azure with service principal authentication
-rad provider create azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>		
+rad provider configure azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>		
 `,
 	}
 

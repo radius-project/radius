@@ -162,7 +162,7 @@ type CloudProviderManagementClient interface {
 	// replaced in the future.
 	Get(ctx context.Context, name string) (CloudProviderResource, error)
 	List(ctx context.Context) ([]CloudProviderResource, error)
-	Put(ctx context.Context, provider AzureCloudProviderResource) error
+	Put(ctx context.Context, provider CloudProviderConfiguration) error
 	Delete(ctx context.Context, name string) (bool, error)
 }
 
@@ -178,17 +178,25 @@ type CloudProviderResource struct {
 	Enabled bool
 }
 
-type AzureCloudProviderResource struct {
+type CloudProviderConfiguration struct {
 	CloudProviderResource
 
-	// Credentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	Credentials *ServicePrincipalCredentials
+	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
+	AzureCredentials *ServicePrincipalCredentials
+
+	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
+	AWSCredentials *IAMCredentials
 }
 
 type ServicePrincipalCredentials struct {
 	ClientID     string
 	ClientSecret string
 	TenantID     string
+}
+
+type IAMCredentials struct {
+	AccessKeyID     string
+	SecretAccessKey string
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

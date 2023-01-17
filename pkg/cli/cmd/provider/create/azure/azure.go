@@ -167,12 +167,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	provider := clients.AzureCloudProviderResource{
+	provider := clients.CloudProviderConfiguration{
 		CloudProviderResource: clients.CloudProviderResource{
 			Name:    "azure",
 			Enabled: true,
 		},
-		Credentials: &clients.ServicePrincipalCredentials{
+		AzureCredentials: &clients.ServicePrincipalCredentials{
 			ClientID:     r.ClientID,
 			ClientSecret: r.ClientSecret,
 			TenantID:     r.TenantID,

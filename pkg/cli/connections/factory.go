@@ -7,7 +7,6 @@ package connections
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -192,7 +191,23 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 
 //nolint:all
 func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
-	return nil, errors.New("this feature is currently not supported")
+	connection, err := workspace.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	switch c := connection.(type) {
+	case *workspaces.KubernetesConnection:
+		baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(c.Context, c.Overrides.UCP)
+		if err != nil {
+			return nil, err
+		}
+		return &ucp.UCPCloudProviderManagementClient{
+			ClientOptions: GetClientOptions(baseURL, transporter),
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
+	}
 }
 
 var _ autorest.Sender = (*sender)(nil)

@@ -197,12 +197,12 @@ func Test_Run(t *testing.T) {
 			config := radcli.LoadConfig(t, string(yamlData))
 			config.SetConfigFile(configPath)
 
-			expectedPut := clients.AzureCloudProviderResource{
+			expectedPut := clients.CloudProviderConfiguration{
 				CloudProviderResource: clients.CloudProviderResource{
 					Name:    "azure",
 					Enabled: true,
 				},
-				Credentials: &clients.ServicePrincipalCredentials{
+				AzureCredentials: &clients.ServicePrincipalCredentials{
 					ClientID:     "cool-client-id",
 					ClientSecret: "cool-client-secret",
 					TenantID:     "cool-tenant-id",
