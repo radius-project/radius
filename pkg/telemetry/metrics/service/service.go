@@ -11,12 +11,30 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"go.opentelemetry.io/otel/metric/global"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+var (
+	opsProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "radius_processed_ops_total",
+		Help: "The total number of processed events",
+	})
+)
+
+func recordMetrics() {
+	go func() {
+		for {
+			opsProcessed.Inc()
+			time.Sleep(2 * time.Second)
+		}
+	}()
+}
 
 type Service struct {
 	Options hostoptions.HostOptions
@@ -38,12 +56,13 @@ func (s *Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	pme, err := provider.NewPrometheusExporter()
+	pme, err := provider.GetPrometheusExporter()
 	if err != nil {
 		logger.Error(err, "Failed to configure prometheus metrics client")
 		panic(err)
 	}
-	global.SetMeterProvider(pme.MeterProvider)
+
+	recordMetrics()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
@@ -72,6 +91,17 @@ func (s *Service) Run(ctx context.Context) error {
 	} else if err != nil {
 		return err
 	}
+
+	// meter := pme.MeterProvider.Meter("radius")
+	// attrs := []attribute.KeyValue{
+	// 	attribute.Key("A").String("B"),
+	// 	attribute.Key("C").String("D"),
+	// }
+	// counter, err := meter.SyncFloat64().Counter("foo", instrument.WithDescription("a simple counter"))
+	// if err != nil {
+	// 	fmt.Println("SyncFloat64 error: ", err)
+	// }
+	// counter.Add(ctx, 5, attrs...)
 
 	logger.Info("Server stopped...")
 	return nil
