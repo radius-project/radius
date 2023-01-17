@@ -147,7 +147,7 @@ func (c *KubernetesConnectionConfig) GetKind() string {
 
 func (c *KubernetesConnectionConfig) Connect() (sdk.Connection, error) {
 	if c.Overrides.UCP != "" {
-		return sdk.NewDirectConnection(c.Overrides.UCP)
+		return sdk.NewDirectConnection(c.Overrides.UCP + "/apis/api.ucp.dev/v1alpha3")
 	}
 
 	config, err := kubernetes.GetConfig(c.Context)
