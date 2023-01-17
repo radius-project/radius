@@ -207,7 +207,7 @@ func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID stri
 }
 
 // handleParameterConflict handles conflicts in parameters set by operator and developer
-// In case of conflict the developer parameter takes precidence
+// In case of conflict the developer parameter takes precedence
 func handleParameterConflict(devParams, operatorParams map[string]any) map[string]any {
 	for k, v := range operatorParams {
 		if _, ok := devParams[k]; !ok {
