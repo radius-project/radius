@@ -8,6 +8,8 @@ package resource_test
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -91,5 +93,56 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 	})
 	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
+	test.Test(t)
+}
+
+func Test_DaprStateStore_Recipe(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-statestore-recipe.bicep"
+	name := "corerp-resources-daprstatestore-recipe"
+	appNamespace := "corerp-resources-daprstatestore-recipe-app"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-recipes-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "corerp-resources-daprstatestore-recipe",
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "ts-sts-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "ts-sts-recipe",
+						Type: validation.DaprStateStoresResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDDaprStateStoreAzureStorage,
+							},
+						},
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ts-sts-ctnr"),
+					},
+				},
+			},
+		},
+	})
+
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 	test.Test(t)
 }
