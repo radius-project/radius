@@ -36,7 +36,7 @@ type RecipeData struct {
 
 // RecipeProperties represents the information needed to deploy a recipe
 type RecipeProperties struct {
-	LinkRecipe                   // LinkRecipe is the recipe defined by the developer
+	LinkRecipe                   // LinkRecipe is the recipe of the resource to be deployed
 	LinkType      string         // LinkType represent the type of the link
 	TemplatePath  string         // TemplatePath represent the recipe location
 	EnvParameters map[string]any // EnvParameters represents the parameters set by the operator while linking the recipe to an environment
