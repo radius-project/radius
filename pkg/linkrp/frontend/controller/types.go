@@ -14,6 +14,6 @@ import (
 type Options struct {
 	ctrl.Options
 
-	// DeployProcessor is the deployment process for LinkRP
+	// DeployProcessor is the deployment processor for LinkRP
 	DeployProcessor deployment.DeploymentProcessor
 }
