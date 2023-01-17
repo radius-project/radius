@@ -6,7 +6,7 @@
 package azure
 
 import (
-	"strings"
+	"github.com/project-radius/radius/pkg/kubernetes"
 )
 
 const (
@@ -27,5 +27,5 @@ func MakeResourceName(prefix, name, separator string) string {
 	if prefix != "" {
 		prefix += separator
 	}
-	return strings.ToLower(prefix + name)
+	return kubernetes.NormalizeResourceName(prefix + name)
 }

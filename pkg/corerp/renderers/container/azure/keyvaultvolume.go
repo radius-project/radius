@@ -107,7 +107,7 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 			APIVersion: "secrets-store.csi.x-k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      kubernetes.NormalizeResourceName(name),
 			Namespace: envOpt.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type),
 			Annotations: map[string]string{

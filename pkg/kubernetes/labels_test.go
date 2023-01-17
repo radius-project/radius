@@ -65,26 +65,32 @@ func TestConvertLabelToResourceType(t *testing.T) {
 
 func TestNormalizeResoureName(t *testing.T) {
 	nameTests := []struct {
-		in  string
-		out string
+		in    string
+		out   string
+		panic bool
 	}{
 		{
-			"resource",
-			"resource",
+			in:  "resource",
+			out: "resource",
 		},
 		{
-			"Resource",
-			"resource",
+			in:  "Resource",
+			out: "resource",
 		},
 		{
-			"",
-			"panic",
+			in:    "panic_",
+			out:   "",
+			panic: true,
+		},
+		{
+			in:  "",
+			out: "",
 		},
 	}
 
 	for _, tt := range nameTests {
 		t.Run(tt.in, func(t *testing.T) {
-			if tt.in == "" {
+			if tt.panic {
 				require.Panics(t, func() {
 					NormalizeResourceName(tt.in)
 				})
