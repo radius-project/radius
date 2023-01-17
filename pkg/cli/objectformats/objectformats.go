@@ -122,8 +122,8 @@ func GetCloudProviderTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
-				Heading:  "KIND",
-				JSONPath: "{ .Kind }",
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
 			},
 			{
 				Heading:  "Status",

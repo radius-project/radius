@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -68,14 +69,14 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			providers := []clients.CloudProviderResource{
+			providers := []cli_credential.ProviderCredentialResource{
 				{
 					Name:    "azure",
 					Enabled: true,
 				},
 			}
 
-			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client := clients.NewMockProviderCredentialManagementClient(ctrl)
 			client.EXPECT().
 				List(gomock.Any()).
 				Return(providers, nil).

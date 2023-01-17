@@ -10,10 +10,10 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -167,12 +167,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	provider := clients.AzureCloudProviderResource{
-		CloudProviderResource: clients.CloudProviderResource{
+	provider := cli_credential.ProviderCredentialConfiguration{
+		ProviderCredentialResource: cli_credential.ProviderCredentialResource{
 			Name:    "azure",
 			Enabled: true,
 		},
-		Credentials: &clients.ServicePrincipalCredentials{
+		AzureCredentials: &cli_credential.ServicePrincipalCredentials{
 			ClientID:     r.ClientID,
 			ClientSecret: r.ClientSecret,
 			TenantID:     r.TenantID,

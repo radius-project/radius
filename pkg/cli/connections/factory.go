@@ -15,12 +15,14 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/sdk"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -32,7 +34,7 @@ type Factory interface {
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
-	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error)
+	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CredentialManagementClient, error)
 }
 
 var _ Factory = (*impl)(nil)
@@ -172,6 +174,35 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 }
 
 //nolint:all
-func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
-	return nil, errors.New("this feature is currently not supported")
+func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CredentialManagementClient, error) {
+	connection, err := workspace.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	err = sdk.TestConnection(ctx, connection)
+	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
+		return nil, &cli.FriendlyError{Message: err.Error()}
+	} else if err != nil {
+		return nil, err
+	}
+
+	clientOptions := sdk.NewClientOptions(connection)
+
+	azureCredentialClient, err := v20220901privatepreview.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	awsCredentialClient, err := v20220901privatepreview.NewAWSCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ucp.UCPCredentialManagementClient{
+		CredentialInterface: &cli_credential.Impl{
+			AzureCredentialClient: *azureCredentialClient,
+			AWSCredentialClient:   *awsCredentialClient,
+		},
+	}, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -197,19 +198,19 @@ func Test_Run(t *testing.T) {
 			config := radcli.LoadConfig(t, string(yamlData))
 			config.SetConfigFile(configPath)
 
-			expectedPut := clients.AzureCloudProviderResource{
-				CloudProviderResource: clients.CloudProviderResource{
+			expectedPut := cli_credential.ProviderCredentialConfiguration{
+				ProviderCredentialResource: cli_credential.ProviderCredentialResource{
 					Name:    "azure",
 					Enabled: true,
 				},
-				Credentials: &clients.ServicePrincipalCredentials{
+				AzureCredentials: &cli_credential.ServicePrincipalCredentials{
 					ClientID:     "cool-client-id",
 					ClientSecret: "cool-client-secret",
 					TenantID:     "cool-tenant-id",
 				},
 			}
 
-			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client := clients.NewMockProviderCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Put(gomock.Any(), expectedPut).
 				Return(nil).

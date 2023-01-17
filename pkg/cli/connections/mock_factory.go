@@ -16,7 +16,7 @@ var _ Factory = (*MockFactory)(nil)
 
 type MockFactory struct {
 	ApplicationsManagementClient  clients.ApplicationsManagementClient
-	CloudProviderManagementClient clients.CloudProviderManagementClient
+	CloudProviderManagementClient clients.CredentialManagementClient
 	// TODO support other client types when needed.
 }
 
@@ -32,6 +32,6 @@ func (f *MockFactory) CreateApplicationsManagementClient(ctx context.Context, wo
 	return f.ApplicationsManagementClient, nil
 }
 
-func (f *MockFactory) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
+func (f *MockFactory) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CredentialManagementClient, error) {
 	return f.CloudProviderManagementClient, nil
 }
