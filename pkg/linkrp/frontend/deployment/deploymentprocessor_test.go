@@ -413,7 +413,7 @@ func Test_Render(t *testing.T) {
 		env, _ := resources.ParseResource(testResource.Properties.Environment)
 		envName := env.Name()
 		testRendererOutput.RecipeContext = datamodel.RecipeContext{
-			Link: datamodel.Link{
+			Resource: datamodel.Resource{
 				ID:   mongoLinkResourceID.String(),
 				Name: mongoLinkResourceID.Name(),
 				Type: mongoLinkResourceID.Type(),
@@ -443,7 +443,7 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
 		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
-		require.Equal(t, testRendererOutput.RecipeContext.Link, rendererOutput.RecipeContext.Link)
+		require.Equal(t, testRendererOutput.RecipeContext.Resource, rendererOutput.RecipeContext.Resource)
 		require.Equal(t, testRendererOutput.RecipeContext.Application, rendererOutput.RecipeContext.Application)
 		require.Equal(t, testRendererOutput.RecipeContext.Environment, rendererOutput.RecipeContext.Environment)
 		require.Equal(t, testRendererOutput.RecipeContext.Runtime, rendererOutput.RecipeContext.Runtime)
@@ -1128,7 +1128,7 @@ func Test_ContextParameter(t *testing.T) {
 		ApplicationNamespace: "radius-test-app",
 	}
 	expectedLinkContext := datamodel.RecipeContext{
-		Link: datamodel.Link{
+		Resource: datamodel.Resource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 			Name: "mongo0",
 			Type: "applications.link/mongodatabases",

@@ -62,12 +62,14 @@ const (
 // Recipe template authors can leverage the RecipeContext parameter to access properties to help them name/configure their infrastructure
 // This allows the recipe template to generate names & properties that are unique and repeatable for the Link calling the recipe
 type RecipeContext struct {
-	Link        Link         `json:"link,omitempty"`
+	Resource    Resource     `json:"resource,omitempty"`
 	Application ResourceInfo `json:"application,omitempty"`
 	Environment ResourceInfo `json:"environment,omitempty"`
 	Runtime     Runtime      `json:"runtime,omitempty"`
 }
-type Link struct {
+
+// Resource contains the information about the  resource that is deployed using recipe
+type Resource struct {
 	Name string `json:"name,omitempty"`
 	ID   string `json:"id,omitempty"`
 	Type string `json:"type,omitempty"`

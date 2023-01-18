@@ -491,9 +491,9 @@ func createContextParameter(contextMeta *RecipeContextMetadata) (*datamodel.Reci
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse LinkID : %q while building the context parameter", contextMeta.ApplicationID)
 	}
-	linkContext.Link.ID = contextMeta.LinkID
-	linkContext.Link.Name = parsedLink.Name()
-	linkContext.Link.Type = parsedLink.Type()
+	linkContext.Resource.ID = contextMeta.LinkID
+	linkContext.Resource.Name = parsedLink.Name()
+	linkContext.Resource.Type = parsedLink.Type()
 	if contextMeta.ApplicationID != "" {
 		parsedApp, err := resources.ParseResource(contextMeta.ApplicationID)
 		if err != nil {
