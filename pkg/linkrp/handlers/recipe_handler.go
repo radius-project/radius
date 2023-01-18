@@ -98,6 +98,9 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 			"value": recipeContext,
 		}
 	}
+	// get the parameters after resolving the conflict
+	parameters = handleParameterConflict(recipe.Parameters, recipe.EnvParameters, parameters)
+
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
 	client, err := clientv2.NewDeploymentsClient(subscriptionID, &handler.arm.ClientOptions)
 	if err != nil {
@@ -209,4 +212,20 @@ func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID stri
 		return "", "", v1.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy link recipes to Azure")
 	}
 	return
+}
+
+// handleParameterConflict handles conflicts in parameters set by operator and developer
+// In case of conflict the developer parameter takes precedence
+func handleParameterConflict(devParams, operatorParams map[string]any, parameters map[string]any) map[string]any {
+	for k, v := range operatorParams {
+		if _, ok := devParams[k]; !ok {
+			devParams[k] = v
+		}
+	}
+	for k, v := range devParams {
+		parameters[k] = map[string]any{
+			"value": v,
+		}
+	}
+	return parameters
 }

@@ -88,6 +88,7 @@ type EnvironmentMetadata struct {
 	Namespace          string
 	RecipeLinkType     string
 	RecipeTemplatePath string
+	RecipeParameters   map[string]any
 	Providers          coreDatamodel.Providers
 }
 
@@ -143,9 +144,10 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
 		Namespace: kubeNamespace,
 		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe:   recipe,
-			LinkType:     envMetadata.RecipeLinkType,
-			TemplatePath: envMetadata.RecipeTemplatePath,
+			LinkRecipe:    recipe,
+			LinkType:      envMetadata.RecipeLinkType,
+			TemplatePath:  envMetadata.RecipeTemplatePath,
+			EnvParameters: envMetadata.RecipeParameters,
 		},
 		EnvironmentProviders: envMetadata.Providers,
 	})
@@ -473,6 +475,7 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	if ok {
 		envMetadata.RecipeLinkType = recipe.LinkType
 		envMetadata.RecipeTemplatePath = recipe.TemplatePath
+		envMetadata.RecipeParameters = recipe.Parameters
 	} else if recipeName != "" {
 		return envMetadata, fmt.Errorf("recipe with name %q does not exist in the environment %s", recipeName, environmentID)
 	}
