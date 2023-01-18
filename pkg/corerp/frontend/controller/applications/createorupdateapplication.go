@@ -7,6 +7,7 @@ package applications
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -73,6 +74,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 	if ext != nil {
 		// Override environment namespace.
 		kubeNamespace = ext.KubernetesNamespace.Namespace
+		logger.Info(fmt.Sprintf("Extension: %q", ext.KubernetesMetadata))
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
@@ -119,6 +121,9 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 	}
 
 	if old != nil {
+		oldr, _ := json.Marshal(old)
+		logger.Info(fmt.Sprintf("old: %s", oldr))
+
 		c := old.Properties.Status.Compute
 		if c != nil && c.Kind == rp.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
 			return rest.NewBadRequestResponse(fmt.Sprintf("Updating an application's Kubernetes namespace from '%s' to '%s' requires the application to be deleted and redeployed. Please delete your application and try again.", c.KubernetesCompute.Namespace, kubeNamespace)), nil

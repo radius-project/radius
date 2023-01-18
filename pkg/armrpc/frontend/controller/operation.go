@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -64,10 +65,13 @@ func (b *Operation[P, T]) StatusManager() sm.StatusManager {
 
 // GetResourceFromRequest extracts and deserializes from HTTP request body to datamodel.
 func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.Request) (*T, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	content, err := ReadJSONBody(req)
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Info(fmt.Sprintf("INCOMING: %s %s, body: %s", req.Method, req.URL.Path, content))
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
