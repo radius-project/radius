@@ -235,7 +235,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "app-ctnr",
+						Name: "mcp-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -247,12 +247,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosAccount,
-								Identity: "account-developer-parameter",
+								Identity: "account-developer-parameters",
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
-								Identity: "mongodb-developer-parameter",
+								Identity: "mongodb-developer-parameters",
 							},
 						},
 					},
@@ -261,7 +261,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "app-ctnr"),
+						validation.NewK8sPodForResource(name, "mcp-app-ctnr"),
 					},
 				},
 			},
