@@ -27,6 +27,11 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: '16'
+      - name: Install cadl compiler
+        run: |
+          pushd cadl
+          npm ci
+          popd
       - name: Install autorest
         run: npm install -g autorest@3.6.1
       - name: Install oav
