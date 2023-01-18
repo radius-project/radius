@@ -216,3 +216,63 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 
 	test.Test(t)
 }
+
+// Test_MongoDB_Recipe validates:
+// the creation of a mongoDB from recipe
+// container using the mongoDB link to connect to the mongoDB resource
+func Test_MongoDB_Recipe_Parameters(t *testing.T) {
+	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
+	name := "corerp-resources-mongodb-recipe-parameters"
+	appNamespace := "corerp-resources-mongodb-recipe-param-app"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-recipes-parameters-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "corerp-resources-mongodb-recipe-parameters",
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "mcp-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "mongo-recipe-param-db",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+								Identity: "account-developer-parameters",
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+								Identity: "mongodb-developer-parameters",
+							},
+						},
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "mcp-app-ctnr"),
+					},
+				},
+			},
+		},
+	})
+
+	test.VerifyRecipeResource = true
+	test.Test(t)
+}
