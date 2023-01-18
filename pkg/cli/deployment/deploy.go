@@ -298,7 +298,7 @@ func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name str
 
 	resourceId = ucpresources.MakeUCPID(scopes, types)
 
-	ops, err := dc.OperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, nil)
+	ops, err := dc.OperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, clientv2.DeploymentOperationsClientAPIVersion, nil)
 	if err != nil {
 		return nil, err
 	}

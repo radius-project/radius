@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
@@ -151,7 +150,7 @@ func (client *ResourceDeploymentsClient) createOrUpdateCreateRequest(ctx context
 		return nil, errors.New("resourceID cannot be empty")
 	}
 
-	urlPath := runtime.JoinPaths(client.baseURI, url.PathEscape(strings.TrimPrefix(resourceID, "/")))
+	urlPath := runtime.JoinPaths(client.baseURI, strings.TrimPrefix(resourceID, "/"))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, urlPath)
 	if err != nil {
 		return nil, err
