@@ -272,7 +272,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	return ResourceData{
 		ID:              getTestResourceID(testResource.ID),
 		OutputResources: outputResources,
-		Resource:        testResource,
+		Resource:        &testResource,
 		ComputedValues:  computedValues,
 		SecretValues:    secretValues,
 		RecipeData:      testResource.RecipeData}

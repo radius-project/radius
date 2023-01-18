@@ -70,11 +70,11 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
-	containerName := "containera"
+	containerName := "containerA"
 	//spacing in output will change based on resource names
 	showSpacing := ""
 	if strings.EqualFold(appName, "kubernetes-cli-json") {
-		containerName = "containera-json"
+		containerName = "containerA-json"
 		showSpacing = "     "
 	}
 
@@ -92,11 +92,11 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 
 		// Resource ordering can vary so we don't assert exact output.
 		if strings.EqualFold(appName, "kubernetes-cli") {
-			require.Regexp(t, `containera`, output)
-			require.Regexp(t, `containerb`, output)
+			require.Regexp(t, `containerA`, output)
+			require.Regexp(t, `containerB`, output)
 		} else {
-			require.Regexp(t, `containera-json`, output)
-			require.Regexp(t, `containerb-json`, output)
+			require.Regexp(t, `containerA-json`, output)
+			require.Regexp(t, `containerB-json`, output)
 		}
 	})
 
@@ -352,12 +352,12 @@ func Test_CLI(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "containera",
+						Name: "containerA",
 						Type: validation.ContainersResource,
 						App:  "kubernetes-cli",
 					},
 					{
-						Name: "containerb",
+						Name: "containerB",
 						Type: validation.ContainersResource,
 						App:  "kubernetes-cli",
 					},
@@ -392,12 +392,12 @@ func Test_CLI_JSON(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "containera-json",
+						Name: "containerA-json",
 						Type: validation.ContainersResource,
 						App:  "kubernetes-cli-json",
 					},
 					{
-						Name: "containerb-json",
+						Name: "containerB-json",
 						Type: validation.ContainersResource,
 						App:  "kubernetes-cli-json",
 					},
@@ -524,12 +524,12 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "containerc",
+						Name: "containerC",
 						Type: validation.ContainersResource,
 						App:  "kubernetes-cli-params",
 					},
 					{
-						Name: "containerd",
+						Name: "containerD",
 						Type: validation.ContainersResource,
 						App:  "kubernetes-cli-params",
 					},

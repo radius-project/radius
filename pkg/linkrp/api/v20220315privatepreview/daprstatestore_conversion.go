@@ -17,7 +17,6 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		},
-		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
 	}
 
 	trackedResource := v1.TrackedResource{
@@ -28,7 +27,8 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		Tags:     to.StringMap(src.Tags),
 	}
 	internalMetadata := v1.InternalMetadata{
-		UpdatedAPIVersion: Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
 	}
 	converted := &datamodel.DaprStateStore{}
 	converted.TrackedResource = trackedResource
@@ -88,7 +88,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
@@ -104,7 +104,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
@@ -118,7 +118,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),

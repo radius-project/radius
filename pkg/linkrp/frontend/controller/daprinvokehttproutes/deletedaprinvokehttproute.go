@@ -14,6 +14,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -22,37 +24,44 @@ var _ ctrl.Controller = (*DeleteDaprInvokeHttpRoute)(nil)
 
 // DeleteDaprInvokeHttpRoute is the controller implementation to delete daprInvokeHttpRoute link resource.
 type DeleteDaprInvokeHttpRoute struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.DaprInvokeHttpRoute, datamodel.DaprInvokeHttpRoute]
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteDaprInvokeHttpRoute creates a new instance DeleteDaprInvokeHttpRoute.
-func NewDeleteDaprInvokeHttpRoute(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteDaprInvokeHttpRoute{ctrl.NewBaseController(opts)}, nil
+func NewDeleteDaprInvokeHttpRoute(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+	return &DeleteDaprInvokeHttpRoute{
+		Operation: ctrl.NewOperation(opts.Options,
+			ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
+				RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
+				ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
+			}),
+		dp: opts.DeployProcessor,
+	}, nil
 }
 
 func (daprHttpRoute *DeleteDaprInvokeHttpRoute) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	// Read resource metadata from the storage
-	existingResource := &datamodel.DaprInvokeHttpRoute{}
-	etag, err := daprHttpRoute.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	old, etag, err := daprHttpRoute.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
-		}
 		return nil, err
+	}
+
+	if old == nil {
+		return rest.NewNoContentResponse(), nil
 	}
 
 	if etag == "" {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+	r, err := daprHttpRoute.PrepareResource(ctx, req, nil, old, etag)
+	if r != nil || err != nil {
+		return r, err
 	}
 
-	err = daprHttpRoute.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: existingResource, OutputResources: existingResource.Properties.Status.OutputResources, ComputedValues: existingResource.ComputedValues, SecretValues: existingResource.SecretValues, RecipeData: existingResource.RecipeData})
+	err = daprHttpRoute.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
 	if err != nil {
 		return nil, err
 	}
