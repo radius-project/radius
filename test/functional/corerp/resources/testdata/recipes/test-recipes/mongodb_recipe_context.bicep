@@ -2,7 +2,7 @@ param context object
 param location string = resourceGroup().location
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'account-${context.link.name}'
+  name: 'account-${context.resource.name}'
   location: location
   kind: 'MongoDB'
   tags: {
@@ -23,10 +23,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   }
 
   resource dbinner 'mongodbDatabases' = {
-    name: 'mongodb-${context.link.name}'
+    name: 'mongodb-${context.resource.name}'
     properties: {
       resource: {
-        id: 'mongodb-${context.link.name}'
+        id: 'mongodb-${context.resource.name}'
       }
       options: { 
         throughput: 400

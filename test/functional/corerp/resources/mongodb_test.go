@@ -235,7 +235,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongodb-recipe-context-app-ctnr",
+						Name: "mrc-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -261,7 +261,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-recipe-context-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mrc-app-ctnr"),
 					},
 				},
 			},
