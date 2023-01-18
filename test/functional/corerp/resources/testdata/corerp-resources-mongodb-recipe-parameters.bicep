@@ -37,14 +37,14 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-mongodb-recipe-parameters-app'
+          namespace: 'corerp-resources-mongodb-recipe-param-app'
       }
     ]
   }
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mongodb-recipe-parameters-app-ctnr'
+  name: 'app-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -68,7 +68,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongo-recipe-parameters-db'
+  name: 'mongo-recipe-param-db'
   location: 'global'
   properties: {
     application: app.id
@@ -77,8 +77,8 @@ resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' =
     recipe: {
       name: 'mongodb'
       parameters: {
-        documentdbName:'account-developer-parameters'
-        mongodbName:'mongodb-developer-parameters'
+        documentdbName:'account-developer-parameter'
+        mongodbName:'mongodb-developer-parameter'
       }
     }
   }

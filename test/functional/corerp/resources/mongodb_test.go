@@ -218,7 +218,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
-	appNamespace := "corerp-resources-mongodb-recipe-parameters-app"
+	appNamespace := "corerp-resources-mongodb-recipe-param-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -235,24 +235,24 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongodb-recipe-parameters-app-ctnr",
+						Name: "app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mongo-recipe-parameters-db",
+						Name: "mongo-recipe-param-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosAccount,
-								Identity: "account-developer-parameters",
+								Identity: "account-developer-parameter",
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
-								Identity: "mongodb-developer-parameters",
+								Identity: "mongodb-developer-parameter",
 							},
 						},
 					},
@@ -261,7 +261,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-recipe-parameters-app-ctnr"),
+						validation.NewK8sPodForResource(name, "app-ctnr"),
 					},
 				},
 			},
