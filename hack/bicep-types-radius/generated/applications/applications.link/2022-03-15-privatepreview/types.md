@@ -7,7 +7,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprInvokeHttpRouteProperties](#daprinvokehttprouteproperties) (Required): DaprInvokeHttpRoute link properties
+* **properties**: [DaprInvokeHttpRouteProperties](#daprinvokehttprouteproperties): DaprInvokeHttpRoute link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprInvokeHttpRoutes' (ReadOnly, DeployTimeConstant): The resource type
@@ -19,7 +19,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprPubSubBrokerProperties](#daprpubsubbrokerproperties) (Required): DaprPubSubBroker link properties
+* **properties**: [DaprPubSubBrokerProperties](#daprpubsubbrokerproperties): DaprPubSubBroker link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprPubSubBrokers' (ReadOnly, DeployTimeConstant): The resource type
@@ -31,7 +31,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties) (Required): DaprSecretStore link properties
+* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties): DaprSecretStore link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprSecretStores' (ReadOnly, DeployTimeConstant): The resource type
@@ -43,7 +43,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprStateStoreProperties](#daprstatestoreproperties) (Required): DaprStateStore link properties
+* **properties**: [DaprStateStoreProperties](#daprstatestoreproperties): DaprStateStore link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprStateStores' (ReadOnly, DeployTimeConstant): The resource type
@@ -67,7 +67,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): Mongo database link properties
+* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties): MongoDatabase link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
@@ -79,7 +79,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [RabbitMQMessageQueueProperties](#rabbitmqmessagequeueproperties) (Required): RabbitMQMessageQueue link response properties
+* **properties**: [RabbitMQMessageQueueProperties](#rabbitmqmessagequeueproperties): RabbitMQMessageQueue link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/rabbitMQMessageQueues' (ReadOnly, DeployTimeConstant): The resource type
@@ -91,7 +91,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [RedisCacheProperties](#rediscacheproperties) (Required): Redis cache link properties
+* **properties**: [RedisCacheProperties](#rediscacheproperties): RedisCache link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/redisCaches' (ReadOnly, DeployTimeConstant): The resource type
@@ -103,7 +103,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [SQLDatabaseProperties](#sqldatabaseproperties) (Required): SQLDatabase link properties
+* **properties**: [SqlDatabaseProperties](#sqldatabaseproperties): SqlDatabase properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/sqlDatabases' (ReadOnly, DeployTimeConstant): The resource type
@@ -111,17 +111,17 @@
 ## Function listSecrets (Applications.Link/mongoDatabases@2022-03-15-privatepreview)
 * **Resource**: Applications.Link/mongoDatabases
 * **ApiVersion**: 2022-03-15-privatepreview
-* **Output**: [MongoDatabaseSecrets](#mongodatabasesecrets)
-
-## Function listSecrets (Applications.Link/redisCaches@2022-03-15-privatepreview)
-* **Resource**: Applications.Link/redisCaches
-* **ApiVersion**: 2022-03-15-privatepreview
-* **Output**: [RedisCacheSecrets](#rediscachesecrets)
+* **Output**: [MongoDatabaseListSecretsResult](#mongodatabaselistsecretsresult)
 
 ## Function listSecrets (Applications.Link/rabbitMQMessageQueues@2022-03-15-privatepreview)
 * **Resource**: Applications.Link/rabbitMQMessageQueues
 * **ApiVersion**: 2022-03-15-privatepreview
-* **Output**: [RabbitMQSecrets](#rabbitmqsecrets)
+* **Output**: [RabbitMQListSecretsResult](#rabbitmqlistsecretsresult)
+
+## Function listSecrets (Applications.Link/redisCaches@2022-03-15-privatepreview)
+* **Resource**: Applications.Link/redisCaches
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [RedisCacheListSecretsResult](#rediscachelistsecretsresult)
 
 ## Function listSecrets (Applications.Link/extenders@2022-03-15-privatepreview)
 * **Resource**: Applications.Link/extenders
@@ -144,7 +144,7 @@
 
 ## ResourceStatus
 ### Properties
-* **outputResources**: any[]: Array of AnyObject
+* **outputResources**: any[]: Properties of an output resource
 
 ## SystemData
 ### Properties
@@ -173,7 +173,7 @@
 ### RecipeDaprPubSubProperties
 #### Properties
 * **metadata**: any: Any object
-* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): Discriminator property for DaprPubSubBrokerProperties.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string: Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
@@ -181,7 +181,7 @@
 ### ResourceDaprPubSubProperties
 #### Properties
 * **metadata**: any: Any object
-* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'resource' (Required): Discriminator property for DaprPubSubBrokerProperties.
 * **resource**: string (Required): PubSub resource
 * **type**: string: Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
@@ -189,7 +189,7 @@
 ### ValuesDaprPubSubProperties
 #### Properties
 * **metadata**: any (Required): Any object
-* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): Discriminator property for DaprPubSubBrokerProperties.
 * **type**: string (Required): Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string (Required): Dapr component version
 
@@ -211,7 +211,7 @@
 ### RecipeDaprSecretStoreProperties
 #### Properties
 * **metadata**: any: Any object
-* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): Discriminator property for DaprSecretStoreProperties.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string: Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string: Dapr component version
@@ -219,7 +219,7 @@
 ### ValuesDaprSecretStoreProperties
 #### Properties
 * **metadata**: any (Required): Any object
-* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): Discriminator property for DaprSecretStoreProperties.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string (Required): Dapr component version
 
@@ -241,23 +241,23 @@
 ### RecipeDaprStateStoreProperties
 #### Properties
 * **metadata**: any: Any object
-* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): Discriminator property for DaprStateStoreProperties.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
 
-### ResourceDaprStateStoreResourceProperties
+### ResourceDaprStateStoreProperties
 #### Properties
 * **metadata**: any: Any object
-* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'resource' (Required): Discriminator property for DaprStateStoreProperties.
 * **resource**: string (Required): The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
 * **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
 
-### ValuesDaprStateStoreResourceProperties
+### ValuesDaprStateStoreProperties
 #### Properties
 * **metadata**: any (Required): Any object
-* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): Discriminator property for DaprStateStoreProperties.
 * **type**: string (Required): Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string (Required): Dapr component version
 
@@ -294,13 +294,13 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given Mongo database resource
+* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### RecipeMongoDatabaseProperties
 #### Properties
 * **database**: string (ReadOnly): Database name of the target Mongo database
 * **host**: string: Host name of the target Mongo database
-* **mode**: 'recipe' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): Discriminator property for MongoDatabaseProperties.
 * **port**: int: Port value of the target Mongo database
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 
@@ -308,7 +308,7 @@
 #### Properties
 * **database**: string (ReadOnly): Database name of the target Mongo database
 * **host**: string: Host name of the target Mongo database
-* **mode**: 'resource' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'resource' (Required): Discriminator property for MongoDatabaseProperties.
 * **port**: int: Port value of the target Mongo database
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with Mongo API to use for this link
 
@@ -316,7 +316,7 @@
 #### Properties
 * **database**: string (ReadOnly): Database name of the target Mongo database
 * **host**: string (Required): Host name of the target Mongo database
-* **mode**: 'values' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): Discriminator property for MongoDatabaseProperties.
 * **port**: int (Required): Port value of the target Mongo database
 
 
@@ -342,13 +342,13 @@
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### RecipeRabbitMQMessageQueueProperties
 #### Properties
-* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): Discriminator property for RabbitMQMessageQueueProperties.
 * **queue**: string: The name of the queue
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 
 ### ValuesRabbitMQMessageQueueProperties
 #### Properties
-* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): Discriminator property for RabbitMQMessageQueueProperties.
 * **queue**: string (Required): The name of the queue
 
 
@@ -368,12 +368,12 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given Redis cache resource
+* **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### RecipeRedisCacheProperties
 #### Properties
 * **host**: string: The host name of the target Redis cache
-* **mode**: 'recipe' (Required): How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): Discriminator property for RedisCacheProperties.
 * **port**: int: The port value of the target Redis cache
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **username**: string (ReadOnly): The username for Redis cache
@@ -381,7 +381,7 @@
 ### ResourceRedisCacheProperties
 #### Properties
 * **host**: string: The host name of the target Redis cache
-* **mode**: 'resource' (Required): How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'resource' (Required): Discriminator property for RedisCacheProperties.
 * **port**: int: The port value of the target Redis cache
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with Redis API to use for this link
 * **username**: string (ReadOnly): The username for Redis cache
@@ -389,7 +389,7 @@
 ### ValuesRedisCacheProperties
 #### Properties
 * **host**: string (Required): The host name of the target Redis cache
-* **mode**: 'values' (Required): How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): Discriminator property for RedisCacheProperties.
 * **port**: int (Required): The port value of the target Redis cache
 * **username**: string (ReadOnly): The username for Redis cache
 
@@ -404,7 +404,7 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
-## SQLDatabaseProperties
+## SqlDatabaseProperties
 * **Discriminator**: mode
 
 ### Base Properties
@@ -412,25 +412,25 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeSQLDatabaseProperties
+### RecipeSqlDatabaseProperties
 #### Properties
-* **database**: string: The name of the SQL database.
-* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **database**: string: The name of the Sql database.
+* **mode**: 'recipe' (Required): Discriminator property for SqlDatabaseProperties.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **server**: string: The fully qualified domain name of the SQL database.
+* **server**: string: The fully qualified domain name of the Sql database.
 
-### ResourceSQLDatabaseProperties
+### ResourceSqlDatabaseProperties
 #### Properties
-* **database**: string: The name of the SQL database.
-* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
-* **resource**: string (Required): Fully qualified resource ID of a supported resource with SQL API to use for this link
-* **server**: string: The fully qualified domain name of the SQL database.
+* **database**: string: The name of the Sql database.
+* **mode**: 'resource' (Required): Discriminator property for SqlDatabaseProperties.
+* **resource**: string (Required): Fully qualified resource ID of a supported resource with Sql API to use for this link
+* **server**: string: The fully qualified domain name of the Sql database.
 
-### ValuesSQLDatabaseProperties
+### ValuesSqlDatabaseProperties
 #### Properties
-* **database**: string (Required): The name of the SQL database.
-* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
-* **server**: string (Required): The fully qualified domain name of the SQL database.
+* **database**: string (Required): The name of the Sql database.
+* **mode**: 'values' (Required): Discriminator property for SqlDatabaseProperties.
+* **server**: string (Required): The fully qualified domain name of the Sql database.
 
 
 ## TrackedResourceTags
@@ -438,20 +438,20 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
-## MongoDatabaseSecrets
+## MongoDatabaseListSecretsResult
 ### Properties
-* **connectionString**: string: Connection string used to connect to the target Mongo database
-* **password**: string: Password to use when connecting to the target Mongo database
-* **username**: string: Username to use when connecting to the target Mongo database
+* **connectionString**: string (ReadOnly): Connection string used to connect to the target Mongo database
+* **password**: string (ReadOnly): Password to use when connecting to the target Mongo database
+* **username**: string (ReadOnly): Username to use when connecting to the target Mongo database
 
-## RedisCacheSecrets
+## RabbitMQListSecretsResult
 ### Properties
-* **connectionString**: string: The connection string used to connect to the Redis cache
-* **password**: string: The password for this Redis cache instance
+* **connectionString**: string (ReadOnly): The connection string used to connect to this RabbitMQ instance
 
-## RabbitMQSecrets
+## RedisCacheListSecretsResult
 ### Properties
-* **connectionString**: string: The connection string used to connect to this RabbitMQ instance
+* **connectionString**: string (ReadOnly): The connection string used to connect to the Redis cache
+* **password**: string (ReadOnly): The password for this Redis cache instance
 
 ## ExtenderSecrets
 ### Properties

@@ -2402,16 +2402,17 @@
       "properties": {
         "host": {
           "type": "string",
-          "description": "The host name of the target redis cache"
+          "description": "The host name of the target Redis cache"
         },
         "port": {
           "type": "integer",
           "format": "int32",
-          "description": "The port value of the target redis cache"
+          "description": "The port value of the target Redis cache"
         },
         "username": {
           "type": "string",
-          "description": "The username for redis"
+          "description": "The username for Redis cache",
+          "readOnly": true
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -2461,11 +2462,11 @@
       "properties": {
         "connectionString": {
           "type": "string",
-          "description": "The connection string used to connect to the redis cache"
+          "description": "The connection string used to connect to the Redis cache"
         },
         "password": {
           "type": "string",
-          "description": "The password for this Redis instance"
+          "description": "The password for this Redis cache instance"
         }
       },
       "description": "The secret values for the given RedisCache resource"
@@ -2546,11 +2547,11 @@
       "properties": {
         "connectionString": {
           "type": "string",
-          "description": "The connection string used to connect to the redis cache"
+          "description": "The connection string used to connect to the Redis cache"
         },
         "password": {
           "type": "string",
-          "description": "The password for this Redis instance"
+          "description": "The password for this Redis cache instance"
         }
       },
       "description": "The secret values for the given RedisCache resource"
@@ -2659,16 +2660,17 @@
         },
         "host": {
           "type": "string",
-          "description": "The host name of the target redis cache"
+          "description": "The host name of the target Redis cache"
         },
         "port": {
           "type": "integer",
           "format": "int32",
-          "description": "The port value of the target redis cache"
+          "description": "The port value of the target Redis cache"
         },
         "username": {
           "type": "string",
-          "description": "The username for redis"
+          "description": "The username for Redis cache",
+          "readOnly": true
         }
       },
       "description": "RedisCache Properties for Mode Resource",
@@ -2932,16 +2934,17 @@
       "properties": {
         "host": {
           "type": "string",
-          "description": "The host name of the target redis cache"
+          "description": "The host name of the target Redis cache"
         },
         "port": {
           "type": "integer",
           "format": "int32",
-          "description": "The port value of the target redis cache"
+          "description": "The port value of the target Redis cache"
         },
         "username": {
           "type": "string",
-          "description": "The username for redis"
+          "description": "The username for Redis cache",
+          "readOnly": true
         }
       },
       "description": "RedisCache Properties for Mode Values",
