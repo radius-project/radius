@@ -14,6 +14,21 @@ type AWSCredentialClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// AWSCredentialClientDeleteOptions contains the optional parameters for the AWSCredentialClient.Delete method.
+type AWSCredentialClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AWSCredentialClientGetOptions contains the optional parameters for the AWSCredentialClient.Get method.
+type AWSCredentialClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AWSCredentialClientListOptions contains the optional parameters for the AWSCredentialClient.List method.
+type AWSCredentialClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
 type AWSCredentialProperties struct {
 	// REQUIRED; Access key ID for AWS identity
 	AccessKeyID *string `json:"accessKeyId,omitempty"`
@@ -36,39 +51,24 @@ func (a *AWSCredentialProperties) GetCredentialResourceProperties() *CredentialR
 	}
 }
 
-// AWSCredentialsClientDeleteOptions contains the optional parameters for the AWSCredentialsClient.Delete method.
-type AWSCredentialsClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AWSCredentialsClientGetOptions contains the optional parameters for the AWSCredentialsClient.Get method.
-type AWSCredentialsClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AWSCredentialsClientListOptions contains the optional parameters for the AWSCredentialsClient.List method.
-type AWSCredentialsClientListOptions struct {
-	// placeholder for future optional parameters
-}
-
 // AzureCredentialClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialClient.CreateOrUpdate
 // method.
 type AzureCredentialClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureCredentialsClientDeleteOptions contains the optional parameters for the AzureCredentialsClient.Delete method.
-type AzureCredentialsClientDeleteOptions struct {
+// AzureCredentialClientDeleteOptions contains the optional parameters for the AzureCredentialClient.Delete method.
+type AzureCredentialClientDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureCredentialsClientGetOptions contains the optional parameters for the AzureCredentialsClient.Get method.
-type AzureCredentialsClientGetOptions struct {
+// AzureCredentialClientGetOptions contains the optional parameters for the AzureCredentialClient.Get method.
+type AzureCredentialClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureCredentialsClientListOptions contains the optional parameters for the AzureCredentialsClient.List method.
-type AzureCredentialsClientListOptions struct {
+// AzureCredentialClientListOptions contains the optional parameters for the AzureCredentialClient.List method.
+type AzureCredentialClientListOptions struct {
 	// placeholder for future optional parameters
 }
 

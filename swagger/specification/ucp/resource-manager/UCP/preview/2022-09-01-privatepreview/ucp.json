@@ -379,18 +379,18 @@
     },
     "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}": {
       "get": {
-        "description": "Get name of the secret that is holding credentials for the plane instance",
-        "operationId": "AzureCredentials_Get",
+        "description": "Get name of the secret that is holding credential for the plane instance",
+        "operationId": "AzureCredential_Get",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "CredentialsGet": {
-            "$ref": "./examples/AzureCredentialsGet.json"
+          "CredentialGet": {
+            "$ref": "./examples/AzureCredentialGet.json"
           }
         },
         "tags": [
-          "Azure Credentials"
+          "Azure Credential"
         ],
         "parameters": [
           {
@@ -430,11 +430,11 @@
         ],
         "x-ms-examples": {
           "CredentialPut": {
-            "$ref": "./examples/AzureCredentialsPut.json"
+            "$ref": "./examples/AzureCredentialPut.json"
           }
         },
         "tags": [
-          "Azure Credentials"
+          "Azure Credential"
         ],
         "parameters": [
           {
@@ -482,17 +482,17 @@
       },
       "delete": {
         "description": "Delete credential resource for this plane instance",
-        "operationId": "AzureCredentials_Delete",
+        "operationId": "AzureCredential_Delete",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "CredentialsGet": {
-            "$ref": "./examples/AzureCredentialsDelete.json"
+          "CredentialDelete": {
+            "$ref": "./examples/AzureCredentialDelete.json"
           }
         },
         "tags": [
-          "Azure Credentials"
+          "Azure Credential"
         ],
         "parameters": [
           {
@@ -528,17 +528,17 @@
     "/planes/{planeType}/{planeName}/providers/System.Azure/credentials": {
       "get": {
         "description": "List the credentials for this plane instance",
-        "operationId": "AzureCredentials_List",
+        "operationId": "AzureCredential_List",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "CredentialsGet": {
-            "$ref": "./examples/AzureCredentialsList.json"
+          "CredentialGet": {
+            "$ref": "./examples/AzureCredentialList.json"
           }
         },
         "tags": [
-          "Azure Credentials"
+          "Azure Credential"
         ],
         "parameters": [
           {
@@ -553,7 +553,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Credentials list.",
+            "description": "Credential list.",
             "schema": {
               "$ref": "#/definitions/CredentialResourceList"
             }
@@ -571,17 +571,17 @@
     "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}": {
       "get": {
         "description": "Get name of the secret that is holding credentials for the plane instance",
-        "operationId": "AWSCredentials_Get",
+        "operationId": "AWSCredential_Get",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
           "CredentialsGet": {
-            "$ref": "./examples/AWSCredentialsGet.json"
+            "$ref": "./examples/AWSCredentialGet.json"
           }
         },
         "tags": [
-          "AWS Credentials"
+          "AWS Credential"
         ],
         "parameters": [
           {
@@ -621,11 +621,11 @@
         ],
         "x-ms-examples": {
           "CredentialPut": {
-            "$ref": "./examples/AWSCredentialsPut.json"
+            "$ref": "./examples/AWSCredentialPut.json"
           }
         },
         "tags": [
-          "AWS Credentials"
+          "AWS Credential"
         ],
         "parameters": [
           {
@@ -673,17 +673,17 @@
       },
       "delete": {
         "description": "Delete credential resource for this plane instance",
-        "operationId": "AWSCredentials_Delete",
+        "operationId": "AWSCredential_Delete",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "CredentialsGet": {
-            "$ref": "./examples/AWSCredentialsDelete.json"
+          "CredentialDelete": {
+            "$ref": "./examples/AWSCredentialDelete.json"
           }
         },
         "tags": [
-          "AWS Credentials"
+          "AWS Credential"
         ],
         "parameters": [
           {
@@ -719,17 +719,17 @@
     "/planes/{planeType}/{planeName}/providers/System.AWS/credentials": {
       "get": {
         "description": "List the credentials for this plane instance",
-        "operationId": "AWSCredentials_List",
+        "operationId": "AWSCredential_List",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "CredentialsGet": {
-            "$ref": "./examples/AWSCredentialsList.json"
+          "CredentialList": {
+            "$ref": "./examples/AWSCredentialList.json"
           }
         },
         "tags": [
-          "AWS Credentials"
+          "AWS Credential"
         ],
         "parameters": [
           {
