@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package list
+package show
 
 import (
 	"context"
@@ -28,8 +28,8 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Valid List Command",
-			Input:         []string{},
+			Name:          "Valid Show Command",
+			Input:         []string{"azure"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -37,8 +37,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with fallback workspace",
-			Input:         []string{},
+			Name:          "Show Command with fallback workspace",
+			Input:         []string{"Azure"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -46,8 +46,26 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with too many args",
-			Input:         []string{"azure"},
+			Name:          "Show Command with unsupported provider type",
+			Input:         []string{"invalidProviderType"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command with insufficient args",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command with too many args",
+			Input:         []string{"azure", "a", "b"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -64,21 +82,19 @@ func Test_Run(t *testing.T) {
 		"context": "my-context",
 	}
 
-	t.Run("List", func(t *testing.T) {
-		t.Run("Success", func(t *testing.T) {
+	t.Run("Show azure provider", func(t *testing.T) {
+		t.Run("Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			providers := []clients.CloudProviderResource{
-				{
-					Name:    "azure",
-					Enabled: true,
-				},
+			provider := clients.CloudProviderResource{
+				Name:    "azure",
+				Enabled: true,
 			}
 
 			client := clients.NewMockCloudProviderManagementClient(ctrl)
 			client.EXPECT().
-				List(gomock.Any()).
-				Return(providers, nil).
+				Get(gomock.Any(), "azure").
+				Return(provider, nil).
 				Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -87,6 +103,7 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Connection: connection},
+				Kind:              "azure",
 				Format:            "table",
 			}
 
@@ -95,16 +112,39 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
-					Format: "Listing all cloud providers for Radius installation %q...",
-					Params: []any{"Kubernetes (context=my-context)"},
+					Format: "Showing credential for cloud provider %q for Radius installation %q...",
+					Params: []any{"azure", "Kubernetes (context=my-context)"},
 				},
 				output.FormattedOutput{
 					Format:  "table",
-					Obj:     providers,
+					Obj:     provider,
 					Options: objectformats.GetCloudProviderTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
+		})
+		t.Run("Not Found", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client.EXPECT().
+				Get(gomock.Any(), "azure").
+				Return(clients.CloudProviderResource{}, radcli.Create404Error()).
+				Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Connection: connection},
+				Kind:              "azure",
+				Format:            "table",
+			}
+
+			err := runner.Run(context.Background())
+			require.Error(t, err)
+			require.Equal(t, "Cloud provider \"azure\" could not be found.", err.Error())
 		})
 	})
 }

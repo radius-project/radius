@@ -10,7 +10,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -25,11 +25,11 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List configured cloud providers",
-		Long:  "List configured cloud providers." + common.LongDescriptionBlurb,
+		Short: "List configured cloud provider credentials",
+		Long:  "List configured cloud providers credentials." + common.LongDescriptionBlurb,
 		Example: `
-# List configured cloud providers
-rad provider list
+# List configured cloud provider credentials
+rad credential list
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -83,7 +83,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad provider list` command.
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Listing all cloud providers for Radius installation %q...", r.Workspace.FmtConnection())
+	r.Output.LogInfo("Listing credential for all cloud providers for Radius installation %q...", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err

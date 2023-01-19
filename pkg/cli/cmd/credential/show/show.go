@@ -3,32 +3,38 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package delete
+package show
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad provider delete` command.
+// NewCommand creates an instance of the command and runner for the `rad provider show` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Deletes a configured cloud provider from the Radius installation",
-		Long:  "Deletes a configured cloud provider from the Radius installation." + common.LongDescriptionBlurb,
+		Use:   "show [name]",
+		Short: "Show details of a configured cloud provider credential",
+		Long:  "Show details of a configured cloud provider credential." + common.LongDescriptionBlurb,
 		Example: `
-# Delete Azure cloud provider configuration
-rad provider delete azure
+# Show cloud providers details for Azure
+rad credential show azure
+
+# Show cloud providers details for AWS
+rad credential show aws
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -40,7 +46,7 @@ rad provider delete azure
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad provider delete` command.
+// Runner is the runner implementation for the `rad provider show` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -50,7 +56,7 @@ type Runner struct {
 	Kind              string
 }
 
-// NewRunner creates a new instance of the `rad provider delete` runner.
+// NewRunner creates a new instance of the `rad provider show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -59,9 +65,8 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad provider delete` command.
+// Validate runs validation for the `rad provider show` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
@@ -88,23 +93,24 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad provider delete` command.
+// Run runs the `rad provider show` command.
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Deleting cloud provider %q for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
+	r.Output.LogInfo("Showing credential for cloud provider %q for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	deleted, err := client.Delete(ctx, r.Kind)
-	if err != nil {
+	providers, err := client.Get(ctx, r.Kind)
+	if clients.Is404Error(err) {
+		return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider %q could not be found.", r.Kind)}
+	} else if err != nil {
 		return err
 	}
 
-	if deleted {
-		r.Output.LogInfo("Cloud provider deleted.")
-	} else {
-		r.Output.LogInfo("Cloud provider %q was not found or has been already deleted.", r.Kind)
+	err = r.Output.WriteFormatted(r.Format, providers, objectformats.GetCloudProviderTableFormat())
+	if err != nil {
+		return err
 	}
 
 	return nil
