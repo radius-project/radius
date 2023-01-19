@@ -251,8 +251,12 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	azureAsyncOpHeader := r.getAsyncLocationPath(req, "operationStatuses")
 
 	// Write Headers
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info("Original referer header: " + req.Header.Get(v1.RefererHeader))
 	w.Header().Add("Content-Type", "application/json")
+	logger.Info("Configured Location header: " + locationHeader)
 	w.Header().Add("Location", locationHeader)
+	logger.Info("Configured AsyncOperation header: " + azureAsyncOpHeader)
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
 
