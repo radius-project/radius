@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 )
 
 var _ ctrl.Controller = (*DeleteDaprStateStore)(nil)
@@ -30,9 +31,9 @@ type DeleteDaprStateStore struct {
 }
 
 // NewDeleteDaprStateStore creates a new instance DeleteDaprStateStore.
-func NewDeleteDaprStateStore(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteDaprStateStore(opts frontend_ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteDaprStateStore{
-		ctrl.NewOperation(opts, ctrl.ResourceOptions[datamodel.DaprStateStore]{
+		Operation: ctrl.NewOperation(opts.Options, ctrl.ResourceOptions[datamodel.DaprStateStore]{
 			RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 			ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 		}),

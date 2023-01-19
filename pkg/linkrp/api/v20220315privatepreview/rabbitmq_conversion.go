@@ -27,7 +27,8 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetRabbitMQMessageQueueProperties().ProvisioningState),
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
@@ -35,7 +36,6 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 				Environment: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Environment),
 				Application: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetRabbitMQMessageQueueProperties().ProvisioningState),
 		},
 	}
 	switch v := src.Properties.(type) {
@@ -83,7 +83,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(rabbitmq.Properties.Environment),
 			Application:       to.StringPtr(rabbitmq.Properties.Application),
 			Mode:              &mode,
@@ -97,7 +97,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(rabbitmq.Properties.Environment),
 			Application:       to.StringPtr(rabbitmq.Properties.Application),
 			Mode:              &mode,

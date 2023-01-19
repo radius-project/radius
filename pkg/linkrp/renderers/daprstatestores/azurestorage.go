@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (rendererOutput renderers.RendererOutput, err error) {
+func GetDaprStateStoreAzureStorage(resource *datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (rendererOutput renderers.RendererOutput, err error) {
 	properties := resource.Properties
 	if properties.Resource == "" {
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())

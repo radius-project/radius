@@ -40,7 +40,7 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/linkrp/frontend/deployment github.com/project-radius/radius/pkg/linkrp/frontend/deployment DeploymentProcessor
 
 type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
+	Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
 	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
@@ -68,7 +68,7 @@ type DeploymentOutput struct {
 
 type ResourceData struct {
 	ID              resources.ID
-	Resource        v1.DataModelInterface
+	Resource        v1.ResourceDataModel
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
@@ -79,10 +79,11 @@ type EnvironmentMetadata struct {
 	Namespace          string
 	RecipeLinkType     string
 	RecipeTemplatePath string
+	RecipeParameters   map[string]any
 	Providers          coreDatamodel.Providers
 }
 
-func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
 
@@ -91,13 +92,13 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	// fetch the environment ID and recipe name from the resource
+	// fetch the environment ID and recipe name from the link resource
 	basicResource, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	// Fetch the environment namespace, recipe link type and recipe template path by doing a db lookup
+	// Fetch the environment namespace, recipe's linkType, templatePath and parameters by doing a db lookup
 	envMetadata, err := dp.getEnvironmentMetadata(ctx, basicResource.Environment, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -119,9 +120,10 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
 		Namespace: kubeNamespace,
 		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe:   recipe,
-			LinkType:     envMetadata.RecipeLinkType,
-			TemplatePath: envMetadata.RecipeTemplatePath,
+			LinkRecipe:    recipe,
+			LinkType:      envMetadata.RecipeLinkType,
+			TemplatePath:  envMetadata.RecipeTemplatePath,
+			EnvParameters: envMetadata.RecipeParameters,
 		},
 		EnvironmentProviders: envMetadata.Providers,
 	})
@@ -448,6 +450,7 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	if ok {
 		envMetadata.RecipeLinkType = recipe.LinkType
 		envMetadata.RecipeTemplatePath = recipe.TemplatePath
+		envMetadata.RecipeParameters = recipe.Parameters
 	} else if recipeName != "" {
 		return envMetadata, fmt.Errorf("recipe with name %q does not exist in the environment %s", recipeName, environmentID)
 	}

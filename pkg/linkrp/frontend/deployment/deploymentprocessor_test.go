@@ -202,6 +202,9 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 					Parameters: recipeParams,
 				},
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				EnvParameters: map[string]any{
+					"name": "account-mongo-db",
+				},
 			},
 			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 			Provider:   resourcemodel.ProviderAzure,
@@ -984,9 +987,10 @@ func Test_FetchSecretsWithValues(t *testing.T) {
 	computedValues := map[string]any{
 		renderers.DatabaseNameValue: mongoLinkName,
 	}
+	res := buildInputResourceMongo(modeValues)
 	resourceData := ResourceData{
 		ID:              mongoLinkResourceID,
-		Resource:        buildInputResourceMongo(modeValues),
+		Resource:        &res,
 		OutputResources: rendererOutput.Resources,
 		SecretValues:    rendererOutput.SecretValues,
 		ComputedValues:  computedValues,
@@ -1014,7 +1018,7 @@ func Test_FetchSecretsWithResource(t *testing.T) {
 
 	resourceData := ResourceData{
 		ID:              mongoLinkResourceID,
-		Resource:        resource,
+		Resource:        &resource,
 		OutputResources: rendererOutput.Resources,
 		SecretValues:    rendererOutput.SecretValues,
 		ComputedValues:  computedValues,
@@ -1044,7 +1048,7 @@ func Test_FetchSecretsWithRecipe(t *testing.T) {
 
 	resourceData := ResourceData{
 		ID:              mongoLinkResourceID,
-		Resource:        resource,
+		Resource:        &resource,
 		OutputResources: rendererOutput.Resources,
 		SecretValues:    rendererOutput.SecretValues,
 		ComputedValues:  computedValues,

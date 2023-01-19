@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
-func GetDaprStateStoreGeneric(resource datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func GetDaprStateStoreGeneric(resource *datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := resource.Properties
 
 	daprGeneric := dapr.DaprGeneric{
@@ -31,12 +31,12 @@ func GetDaprStateStoreGeneric(resource datamodel.DaprStateStore, applicationName
 	}, err
 }
 
-func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm v1.DataModelInterface, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
+func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm v1.ResourceDataModel, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
 	}
-	resource, ok := dm.(datamodel.DaprStateStore)
+	resource, ok := dm.(*datamodel.DaprStateStore)
 	if !ok {
 		return nil, v1.ErrInvalidModelConversion
 	}
