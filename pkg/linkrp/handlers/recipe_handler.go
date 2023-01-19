@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
+	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
@@ -66,7 +67,11 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 	)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 
-	registryRepo, tag := strings.Split(recipe.TemplatePath, ":")[0], strings.Split(recipe.TemplatePath, ":")[1]
+	registryRepo, tag, err := parseTemplatePath(recipe.TemplatePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the acr templatePath %s", err.Error())
+	}
+
 	// get the recipe from ACR
 	// client to the ACR repository in the templatePath
 	repo, err := remote.NewRepository(registryRepo)
@@ -221,4 +226,12 @@ func handleParameterConflict(devParams, operatorParams map[string]any) map[strin
 		}
 	}
 	return parameters
+}
+
+func parseTemplatePath(templatePath string) (string, string, error) {
+	reference, err := dockerParser.Parse(templatePath)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse the acr templatePath  %s", err.Error())
+	}
+	return reference.Repository(), reference.Tag(), nil
 }
