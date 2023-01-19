@@ -231,7 +231,7 @@ func handleParameterConflict(devParams, operatorParams map[string]any) map[strin
 func parseTemplatePath(templatePath string) (string, string, error) {
 	reference, err := dockerParser.Parse(templatePath)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to parse the acr templatePath  %s", err.Error())
+		return "", "", err
 	}
 	return reference.Repository(), reference.Tag(), nil
 }

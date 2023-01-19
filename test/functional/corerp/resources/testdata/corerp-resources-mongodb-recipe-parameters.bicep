@@ -13,7 +13,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-recipe-parametesr-env'
+      namespace: 'corerp-resources-environment-recipe-parameters-env'
     }
     providers: {
       azure: {
