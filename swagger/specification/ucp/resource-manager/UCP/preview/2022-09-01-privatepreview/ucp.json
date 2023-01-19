@@ -488,7 +488,7 @@
         ],
         "x-ms-examples": {
           "CredentialDelete": {
-            "$ref": "./examples/AzureCredentialsDelete.json"
+            "$ref": "./examples/AzureCredentialDelete.json"
           }
         },
         "tags": [
