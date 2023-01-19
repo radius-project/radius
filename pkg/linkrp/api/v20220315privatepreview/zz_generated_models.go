@@ -296,14 +296,15 @@ type DaprSecretStoreResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// DaprStateStoreClientBeginDeleteOptions contains the optional parameters for the DaprStateStoreClient.BeginDelete method.
+type DaprStateStoreClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // DaprStateStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoreClient.CreateOrUpdate
 // method.
 type DaprStateStoreClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprStateStoreClientDeleteOptions contains the optional parameters for the DaprStateStoreClient.Delete method.
-type DaprStateStoreClientDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -630,14 +631,15 @@ type MongoDatabaseSecrets struct {
 	Username *string `json:"username,omitempty"`
 }
 
+// MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete method.
+type MongoDatabasesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // MongoDatabasesClientCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.CreateOrUpdate
 // method.
 type MongoDatabasesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesClientDeleteOptions contains the optional parameters for the MongoDatabasesClient.Delete method.
-type MongoDatabasesClientDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 

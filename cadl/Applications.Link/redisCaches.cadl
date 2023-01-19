@@ -133,7 +133,7 @@ op RedisCaches_listSecrets(
 
 @armResourceOperations
 interface RedisCaches
-  extends Radius.RootScopeResourceOperations<
+  extends Radius.ResourceOperationWithSyncDelete<
       RedisCacheResource,
       RedisCacheProperties,
       RootScopeParam

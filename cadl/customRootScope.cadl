@@ -71,6 +71,20 @@ interface ResourceDelete<TResource extends ArmResource, TRootParams> {
     | ErrorResponse;
 }
 
+interface ResourceDeleteAsync<TResource extends ArmResource, TRootParams> {
+  @autoRoute
+  @doc("Deletes an existing {name}", TResource)
+  @extension("x-ms-long-running-operation", true)
+  @asyncOperationOptions("azure-async-operation")
+  @armResourceDelete(TResource)
+  @delete
+  Delete(...TRootParams):
+    | ArmDeletedResponse
+    | ArmDeleteAcceptedResponse
+    | ArmDeletedNoContentResponse
+    | ErrorResponse;
+}
+
 interface ResourceListByParent<TResource extends ArmResource, TRootParams> {
   @get
   //@pageable
@@ -93,8 +107,23 @@ interface RootScopeResourceOperations<TResource extends ArmResource, TProperties
       TResource,
       RootScopeResourceInstanceParameters<TResource, TRootParams>
     >,
-    ResourceDelete<
+    ResourceListByParent<TResource, TRootParams> {}
+
+// ResourceOperationWithSyncDelete, ResourceOperationWithAsyncDelete intersfaces will be moved into RootScopeResourceOperations when we have async delete support for all link resources.
+interface ResourceOperationWithSyncDelete<TResource extends ArmResource, TProperties extends object, TRootParams>
+  extends RootScopeResourceOperations<
+  TResource, TProperties, TRootParams
+  >,
+  ResourceDelete<
       TResource,
       RootScopeResourceInstanceParameters<TResource, TRootParams>
-    >,
-    ResourceListByParent<TResource, TRootParams> {}
+    >{}
+
+interface ResourceOperationWithAsyncDelete<TResource extends ArmResource, TProperties extends object, TRootParams>
+  extends RootScopeResourceOperations<
+  TResource, TProperties, TRootParams
+  >,
+  ResourceDeleteAsync<
+      TResource,
+      RootScopeResourceInstanceParameters<TResource, TRootParams>
+    >{}

@@ -107,7 +107,7 @@ op RabbitMQMessageQueues_listSecrets(
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCase"
 @armResourceOperations
 interface RabbitMQMessageQueues
-  extends Radius.RootScopeResourceOperations<
+  extends Radius.ResourceOperationWithSyncDelete<
       RabbitMQMessageQueueResource,
       RabbitMQMessageQueueProperties,
       RootScopeParam

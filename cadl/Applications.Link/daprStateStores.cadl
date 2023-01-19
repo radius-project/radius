@@ -102,7 +102,7 @@ model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
 
 @armResourceOperations
 interface DaprStateStore
-  extends Radius.RootScopeResourceOperations<
+  extends Radius.ResourceOperationWithAsyncDelete<
       DaprStateStoreResource,
       DaprStateStoreProperties,
       RootScopeParam

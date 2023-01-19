@@ -114,28 +114,46 @@ func (client *DaprStateStoreClient) createOrUpdateHandleResponse(resp *http.Resp
 	return result, nil
 }
 
-// Delete - Deletes an existing DaprStateStoreResource
+// BeginDelete - Deletes an existing DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprStateStoreName - DaprStateStore name
-// options - DaprStateStoreClientDeleteOptions contains the optional parameters for the DaprStateStoreClient.Delete method.
-func (client *DaprStateStoreClient) Delete(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientDeleteOptions) (DaprStateStoreClientDeleteResponse, error) {
+// options - DaprStateStoreClientBeginDeleteOptions contains the optional parameters for the DaprStateStoreClient.BeginDelete
+// method.
+func (client *DaprStateStoreClient) BeginDelete(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientBeginDeleteOptions) (*runtime.Poller[DaprStateStoreClientDeleteResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.deleteOperation(ctx, daprStateStoreName, options)
+		if err != nil {
+			return nil, err
+		}
+		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[DaprStateStoreClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+	} else {
+		return runtime.NewPollerFromResumeToken[DaprStateStoreClientDeleteResponse](options.ResumeToken, client.pl, nil)
+	}
+}
+
+// Delete - Deletes an existing DaprStateStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+func (client *DaprStateStoreClient) deleteOperation(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, daprStateStoreName, options)
 	if err != nil {
-		return DaprStateStoreClientDeleteResponse{}, err
+		return nil, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprStateStoreClientDeleteResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return DaprStateStoreClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return nil, runtime.NewResponseError(resp)
 	}
-	return client.deleteHandleResponse(resp)
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprStateStoreClient) deleteCreateRequest(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientDeleteOptions) (*policy.Request, error) {
+func (client *DaprStateStoreClient) deleteCreateRequest(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
@@ -151,20 +169,6 @@ func (client *DaprStateStoreClient) deleteCreateRequest(ctx context.Context, dap
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
-}
-
-// deleteHandleResponse handles the Delete response.
-func (client *DaprStateStoreClient) deleteHandleResponse(resp *http.Response) (DaprStateStoreClientDeleteResponse, error) {
-	result := DaprStateStoreClientDeleteResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return DaprStateStoreClientDeleteResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	return result, nil
 }
 
 // Get - Retrieves information about a DaprStateStoreResource
