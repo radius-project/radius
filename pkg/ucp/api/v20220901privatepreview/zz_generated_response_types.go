@@ -14,18 +14,18 @@ type AWSCredentialClientCreateOrUpdateResponse struct {
 	CredentialResource
 }
 
-// AWSCredentialsClientDeleteResponse contains the response from method AWSCredentialsClient.Delete.
-type AWSCredentialsClientDeleteResponse struct {
+// AWSCredentialClientDeleteResponse contains the response from method AWSCredentialClient.Delete.
+type AWSCredentialClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
-// AWSCredentialsClientGetResponse contains the response from method AWSCredentialsClient.Get.
-type AWSCredentialsClientGetResponse struct {
+// AWSCredentialClientGetResponse contains the response from method AWSCredentialClient.Get.
+type AWSCredentialClientGetResponse struct {
 	CredentialResource
 }
 
-// AWSCredentialsClientListResponse contains the response from method AWSCredentialsClient.List.
-type AWSCredentialsClientListResponse struct {
+// AWSCredentialClientListResponse contains the response from method AWSCredentialClient.List.
+type AWSCredentialClientListResponse struct {
 	CredentialResourceList
 }
 
@@ -34,18 +34,18 @@ type AzureCredentialClientCreateOrUpdateResponse struct {
 	CredentialResource
 }
 
-// AzureCredentialsClientDeleteResponse contains the response from method AzureCredentialsClient.Delete.
-type AzureCredentialsClientDeleteResponse struct {
+// AzureCredentialClientDeleteResponse contains the response from method AzureCredentialClient.Delete.
+type AzureCredentialClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
-// AzureCredentialsClientGetResponse contains the response from method AzureCredentialsClient.Get.
-type AzureCredentialsClientGetResponse struct {
+// AzureCredentialClientGetResponse contains the response from method AzureCredentialClient.Get.
+type AzureCredentialClientGetResponse struct {
 	CredentialResource
 }
 
-// AzureCredentialsClientListResponse contains the response from method AzureCredentialsClient.List.
-type AzureCredentialsClientListResponse struct {
+// AzureCredentialClientListResponse contains the response from method AzureCredentialClient.List.
+type AzureCredentialClientListResponse struct {
 	CredentialResourceList
 }
 
