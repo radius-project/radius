@@ -48,10 +48,10 @@ model RedisCacheListSecretsResult is RedisCacheSecrets;
 
 @doc("The secret values for the given RedisCache resource")
 model RedisCacheSecrets {
-  @doc("The connection string used to connect to the redis cache")
+  @doc("The connection string used to connect to the Redis cache")
   connectionString?: string;
 
-  @doc("The password for this Redis instance")
+  @doc("The password for this Redis cache instance")
   password?: string;
 }
 
@@ -63,13 +63,14 @@ model ResourceRedisCacheProperties extends RedisCacheProperties {
   @doc("Fully qualified resource ID of a supported resource with Redis API to use for this link")
   resource: string;
 
-  @doc("The host name of the target redis cache")
+  @doc("The host name of the target Redis cache")
   host?: string;
 
-  @doc("The port value of the target redis cache")
+  @doc("The port value of the target Redis cache")
   port?: int32;
 
-  @doc("The username for redis")
+  @doc("The username for Redis cache")
+  @visibility("read")
   username?: string;
 }
 @doc("RedisCache Properties for Mode Values")
@@ -77,13 +78,14 @@ model ValuesRedisCacheProperties extends RedisCacheProperties {
   @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "values";
 
-  @doc("The host name of the target redis cache")
+  @doc("The host name of the target Redis cache")
   host: string;
 
-  @doc("The port value of the target redis cache")
+  @doc("The port value of the target Redis cache")
   port: int32;
 
-  @doc("The username for redis")
+  @doc("The username for Redis cache")
+  @visibility("read")
   username?: string;
 }
 @doc("RedisCache Properties for Mode Recipe")
@@ -91,13 +93,14 @@ model RecipeRedisCacheProperties extends RedisCacheProperties {
   @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "recipe";
 
-  @doc("The host name of the target redis cache")
+  @doc("The host name of the target Redis cache")
   host?: string;
 
-  @doc("The port value of the target redis cache")
+  @doc("The port value of the target Redis cache")
   port?: int32;
 
-  @doc("The username for redis")
+  @doc("The username for Redis cache")
+  @visibility("read")
   username?: string;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the rediscaches link")
@@ -126,7 +129,7 @@ op RedisCaches_listSecrets(
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
   @extension("x-ms-parameter-location", "method")
-  @path redisCacheName: string): ArmResponse<RedisCacheListSecretsResult> | ErrorResponse;
+  redisCacheName: string): ArmResponse<RedisCacheListSecretsResult> | ErrorResponse;
 
 @armResourceOperations
 interface RedisCaches
