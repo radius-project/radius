@@ -302,9 +302,9 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 			}
 		} else if resourceData.RecipeData.Name != "" {
 			// If the resource is not Radius managed for a link tied to a recipe, then this is a bug in the output resource initialization in renderer
+			logger.Info("Underlying resource lifecycle is not managed by Radius, skipping deletion")
 			return fmt.Errorf("resources deployed through recipe must be Radius managed")
 		}
-		logger.Info("Underlying resource lifecycle is not managed by Radius, skipping deletion")
 	}
 
 	return nil
