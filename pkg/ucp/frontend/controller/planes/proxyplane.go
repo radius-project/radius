@@ -183,12 +183,12 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		RawQuery: uri.RawQuery,
 	}
 	req.Header.Set(v1.RefererHeader, refererURL.String())
-	fmt.Printf("###### Referer in UCP : %s", refererURL.String())
+	logger = logr.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("###### Referer in UCP : %s", refererURL.String()))
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
-	logger = logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
 	// The upstream response has already been sent at this point. Therefore, return nil response here
