@@ -372,32 +372,32 @@
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### RecipeRedisCacheProperties
 #### Properties
-* **host**: string: The host name of the target redis cache
+* **host**: string: The host name of the target Redis cache
 * **mode**: 'recipe' (Required): Discriminator property for RedisCacheProperties.
-* **port**: int: The port value of the target redis cache
+* **port**: int: The port value of the target Redis cache
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **username**: string: The username for redis
+* **username**: string (ReadOnly): The username for Redis cache
 
 ### ResourceRedisCacheProperties
 #### Properties
-* **host**: string: The host name of the target redis cache
+* **host**: string: The host name of the target Redis cache
 * **mode**: 'resource' (Required): Discriminator property for RedisCacheProperties.
-* **port**: int: The port value of the target redis cache
+* **port**: int: The port value of the target Redis cache
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with Redis API to use for this link
-* **username**: string: The username for redis
+* **username**: string (ReadOnly): The username for Redis cache
 
 ### ValuesRedisCacheProperties
 #### Properties
-* **host**: string (Required): The host name of the target redis cache
+* **host**: string (Required): The host name of the target Redis cache
 * **mode**: 'values' (Required): Discriminator property for RedisCacheProperties.
-* **port**: int (Required): The port value of the target redis cache
-* **username**: string: The username for redis
+* **port**: int (Required): The port value of the target Redis cache
+* **username**: string (ReadOnly): The username for Redis cache
 
 
 ## RedisCacheSecrets
 ### Properties
-* **connectionString**: string: The connection string used to connect to the redis cache
-* **password**: string: The password for this Redis instance
+* **connectionString**: string: The connection string used to connect to the Redis cache
+* **password**: string: The password for this Redis cache instance
 
 ## TrackedResourceTags
 ### Properties
@@ -450,8 +450,8 @@
 
 ## RedisCacheListSecretsResult
 ### Properties
-* **connectionString**: string (ReadOnly): The connection string used to connect to the redis cache
-* **password**: string (ReadOnly): The password for this Redis instance
+* **connectionString**: string (ReadOnly): The connection string used to connect to the Redis cache
+* **password**: string (ReadOnly): The password for this Redis cache instance
 
 ## ExtenderSecrets
 ### Properties

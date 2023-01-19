@@ -559,7 +559,7 @@ type EnvironmentRecipeProperties struct {
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string `json:"templatePath,omitempty"`
 
-	// Key/value parameters to pass into the recipe template at deployment
+	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
