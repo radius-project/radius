@@ -1,12 +1,10 @@
 import radius as radius
 
-param magpieimage string
-
 param rg string = resourceGroup().name
 
 param sub string = subscription().subscriptionId
 
-param location string = resourceGroup().location
+param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-environment-recipes-env'
@@ -32,22 +30,23 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-daprstatestore-recipe'
-  location: location
+  name: 'corerp-resources-dss-recipe'
+  location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-daprstatestores-recipe-app'
+          namespace: 'corerp-resources-dss-recipe-app'
       }
     ]
   }
 }
 
-resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'ts-sts-ctnr'
-  location: location
+
+resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'dss-recipe-app-ctnr'
+  location: 'global'
   properties: {
     application: app.id
     connections: {
@@ -74,11 +73,11 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'ts-sts-recipe'
-  location: location
+  name: 'dss-recipe'
+  location: 'global'
   properties: {
-    environment: env.id
     application: app.id
+    environment: env.id
     mode: 'recipe'
     recipe: {
       name: 'daprstatestores'

@@ -98,8 +98,8 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 
 func Test_DaprStateStore_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-statestore-recipe.bicep"
-	name := "corerp-resources-daprstatestore-recipe"
-	appNamespace := "corerp-resources-daprstatestore-recipe-app"
+	name := "corerp-resources-dss-recipe"
+	appNamespace := "corerp-resources-dss-recipe-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -111,17 +111,17 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-daprstatestore-recipe",
+						Name: "corerp-resources-dss-recipe",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "ts-sts-ctnr",
+						Name: "dss-recipe-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "ts-sts-recipe",
+						Name: "dss-recipe",
 						Type: validation.DaprStateStoresResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
@@ -136,13 +136,12 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ts-sts-ctnr"),
+						validation.NewK8sPodForResource(name, "dss-recipe-app-ctnr"),
 					},
 				},
 			},
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 	test.Test(t)
 }
