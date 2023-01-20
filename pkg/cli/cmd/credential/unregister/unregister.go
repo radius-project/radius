@@ -24,13 +24,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "unregister",
-		Short: "Deletes a configured cloud provider credential from the Radius installation",
-		Long:  "Deletes a configured cloud provider credential from the Radius installation." + common.LongDescriptionBlurb,
+		Short: "Unregisters a configured cloud provider credential from the Radius installation",
+		Long:  "Unregisters a configured cloud provider credential from the Radius installation." + common.LongDescriptionBlurb,
 		Example: `
-# Delete Azure cloud provider credential
+# Unregister Azure cloud provider credential
 rad credential unregister azure
 
-# Delete AWS cloud provider credential
+# Unregister AWS cloud provider credential
 rad credential unregister aws
 `,
 		Args: cobra.ExactArgs(1),
@@ -93,7 +93,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad provider delete` command.
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Deleting credential for cloud provider %q for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
+	r.Output.LogInfo("Unregistering %q cloud provider credential for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
