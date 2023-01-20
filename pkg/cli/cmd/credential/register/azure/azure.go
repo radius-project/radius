@@ -12,7 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -27,8 +27,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "azure",
-		Short: "Add or update Azure cloud provider configuration for a Radius installation.",
-		Long: `Add or update Azure cloud provider configuration for a Radius installation.
+		Short: "Register (Add or update) Azure cloud provider credential for a Radius installation.",
+		Long: `Register (Add or update) Azure cloud provider credential for a Radius installation..
 
 This command is intended for scripting or advanced use-cases. See 'rad init' for a user-friendly way
 to configure these settings.
@@ -42,8 +42,8 @@ in order to create or manage resources contained in the group. The resource grou
 calling 'rad provider create azure'.
 ` + common.LongDescriptionBlurb,
 		Example: `
-# Add or update cloud provider configuration for Azure with service principal authentication
-rad provider create azure --client-id <client id/app id> --client-secret <client secret/password> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>		
+# Register (Add or update) cloud provider credential for Azure with service principal authentication
+rad credential register azure --client-id <client id/app id> --client-secret <client secret/password> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>		
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -161,7 +161,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// 1) Update server-side to add/change credentials
 	// 2) Update local config (all matching workspaces) to remove the scope
 
-	r.Output.LogInfo("Setting cloud provider %q for Radius installation %q...", "azure", r.Workspace.FmtConnection())
+	r.Output.LogInfo("Configuring credential for cloud provider %q for Radius installation %q...", "azure", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err

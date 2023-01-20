@@ -95,7 +95,7 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
-					Format: "Listing all cloud providers for Radius installation %q...",
+					Format: "Listing credentials for all cloud providers for Radius installation %q...",
 					Params: []any{"Kubernetes (context=my-context)"},
 				},
 				output.FormattedOutput{

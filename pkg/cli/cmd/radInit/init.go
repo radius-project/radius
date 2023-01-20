@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
