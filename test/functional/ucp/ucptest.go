@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -62,19 +61,9 @@ func (ucptest UCPTest) Test(t *testing.T) {
 		}
 	})
 
-	config, err := kubernetes.GetConfig("")
-	require.NoError(t, err, "failed to read kubeconfig")
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "")
+	require.NoError(t, err, "")
 
-	connection, err := sdk.NewKubernetesConnectionFromConfig(config)
-	require.NoError(t, err, "failed to create kubernetes connection")
-
-	// Transport will be nil for some default cases as http.Client does not require it to be set.
-	// Since the tests call the transport directly then just pass in the default.
-	transport := connection.Client().Transport
-	if transport == nil {
-		transport = http.DefaultTransport
-	}
-
-	ucptest.RunMethod(t, connection.Endpoint(), transport)
+	ucptest.RunMethod(t, url, roundTripper)
 
 }

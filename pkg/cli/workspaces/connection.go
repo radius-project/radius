@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/sdk"
 )
 
 const KindKubernetes string = "kubernetes"
@@ -29,15 +27,14 @@ func MakeFallbackWorkspace() *Workspace {
 	}
 }
 
-type ConnectionConfig interface {
+type Connection interface {
 	fmt.Stringer
 	GetKind() string
-	Connect() (sdk.Connection, error)
 }
 
 // FmtConnection can safely format connection info for display to users.
 func (ws Workspace) FmtConnection() string {
-	c, err := ws.ConnectionConfig()
+	c, err := ws.Connect()
 	if err != nil {
 		return fmt.Sprintf("err: %s", err)
 	}
@@ -45,7 +42,7 @@ func (ws Workspace) FmtConnection() string {
 	return c.String()
 }
 
-func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
+func (ws Workspace) Connect() (Connection, error) {
 	obj, ok := ws.Connection["kind"]
 	if !ok {
 		return nil, fmt.Errorf("workspace is missing required field '$.connection.kind'")
@@ -58,36 +55,29 @@ func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
 
 	switch kind {
 	case KindKubernetes:
-		config := &KubernetesConnectionConfig{}
-		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{ErrorUnused: true, Result: config})
+		connection := &KubernetesConnection{}
+		config := &mapstructure.DecoderConfig{ErrorUnused: true, Result: connection}
+		decoder, err := mapstructure.NewDecoder(config)
 		if err != nil {
 			return nil, err
 		}
-
 		err = decoder.Decode(ws.Connection)
 		if err != nil {
 			return nil, err
 		}
 
-		return config, nil
+		return connection, nil
+
 	default:
 		return nil, fmt.Errorf("unsupported connection kind '%s'", kind)
 	}
+
 }
 
-func (ws Workspace) Connect() (sdk.Connection, error) {
-	connectionConfig, err := ws.ConnectionConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	return connectionConfig.Connect()
-}
-
-func (ws Workspace) ConnectionConfigEquals(other ConnectionConfig) bool {
+func (ws Workspace) ConnectionEquals(other Connection) bool {
 	switch other.GetKind() {
 	case KindKubernetes:
-		kc, ok := other.(*KubernetesConnectionConfig)
+		kc, ok := other.(*KubernetesConnection)
 		if !ok {
 			return false
 		}
@@ -120,10 +110,10 @@ func (ws Workspace) IsSameKubernetesContext(kubeContext string) bool {
 	return ws.Connection["context"] == kubeContext
 }
 
-var _ ConnectionConfig = (*KubernetesConnectionConfig)(nil)
+var _ Connection = (*KubernetesConnection)(nil)
 
-type KubernetesConnectionConfig struct {
-	// Kind specifies the kind of connection. For KubernetesConnectionConfig this is always 'kubernetes'.
+type KubernetesConnection struct {
+	// Kind specifies the kind of connection. For KubernetesConnection this is always 'kubernetes'.
 	Kind string `json:"kind" mapstructure:"kind" yaml:"kind"`
 
 	// Context is the kubernetes kubeconfig context used to connect. The empty string is allowed as it
@@ -139,11 +129,11 @@ type KubernetesConnectionOverrides struct {
 	UCP string `json:"ucp" mapstructure:"ucp" yaml:"ucp"`
 }
 
-func (c *KubernetesConnectionConfig) String() string {
+func (c *KubernetesConnection) String() string {
 	return fmt.Sprintf("Kubernetes (context=%s)", c.Context)
 }
 
-func (c *KubernetesConnectionConfig) GetKind() string {
+func (c *KubernetesConnection) GetKind() string {
 	return KindKubernetes
 }
 
