@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
+// Render DaprStateStore Azure recipe
 func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	if options.RecipeProperties.LinkType != resource.ResourceTypeName() {
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("link type %q of provided recipe %q is incompatible with %q resource type. Recipe link type must match link resource type.",
