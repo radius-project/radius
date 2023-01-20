@@ -287,6 +287,8 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	}
 
 	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
+	logger := logr.FromContextOrDiscard(req.Context())
+	logger.Info("Referer host: " + referer.Host)
 	if err != nil {
 		return "", err
 	}
@@ -295,6 +297,7 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		baseIndex = getBaseIndex(referer.Path)
 	}
 	base := referer.Path[:baseIndex]
+	logger.Info("Referer base path: " + base)
 
 	dest := url.URL{
 		Host:   referer.Host,
