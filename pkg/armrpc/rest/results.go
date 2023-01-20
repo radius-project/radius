@@ -260,12 +260,12 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 	// Write Headers
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info("Original referer header: " + req.Header.Get(v1.RefererHeader))
+	logger.Info(fmt.Sprintf("Original referer header: %s", req.Header.Get(v1.RefererHeader)))
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", locationHeader)
-	logger.Info("Configured Location header: " + locationHeader)
+	logger.Info(fmt.Sprintf("Configured Location header: %s", locationHeader))
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
-	logger.Info("Configured AsyncOperation header: " + azureAsyncOpHeader)
+	logger.Info(fmt.Sprintf("Configured AsyncOperation header: %s", azureAsyncOpHeader))
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
 	w.Header().Add("Referer", req.Header.Get(v1.RefererHeader))
 
