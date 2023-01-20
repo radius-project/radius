@@ -18,7 +18,7 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
