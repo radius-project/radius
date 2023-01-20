@@ -83,7 +83,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad provider list` command.
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Listing credential for all cloud providers for Radius installation %q...", r.Workspace.FmtConnection())
+	r.Output.LogInfo("Listing credentials for all cloud providers for Radius installation %q...", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
