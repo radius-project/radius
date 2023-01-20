@@ -78,10 +78,6 @@ type CoreRPTest struct {
 	// RequiredFeatures specifies the optional features that are required
 	// for this test to run.
 	RequiredFeatures []RequiredFeature
-
-	// VerifyRecipeResource specifies to validate the azure resource from the output response to have
-	// the recipe param values
-	VerifyRecipeResource bool
 }
 
 type TestOptions struct {

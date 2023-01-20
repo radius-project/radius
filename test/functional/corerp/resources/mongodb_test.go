@@ -270,6 +270,5 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 		},
 	})
 
-	test.VerifyRecipeResource = true
 	test.Test(t)
 }
