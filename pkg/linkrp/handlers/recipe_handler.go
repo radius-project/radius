@@ -228,10 +228,12 @@ func handleParameterConflict(devParams, operatorParams map[string]any) map[strin
 	return parameters
 }
 
-func parseTemplatePath(templatePath string) (string, string, error) {
+func parseTemplatePath(templatePath string) (repository string, tag string, err error) {
 	reference, err := dockerParser.Parse(templatePath)
 	if err != nil {
 		return "", "", err
 	}
-	return reference.Repository(), reference.Tag(), nil
+	repository = reference.Repository()
+	tag = reference.Tag()
+	return
 }

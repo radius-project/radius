@@ -214,7 +214,8 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 
 // Test_MongoDB_Recipe_Parameters validates:
 // the creation of a mongoDB from recipe with parameters passed by operator while linking recipe
-// and developer while creating the mongoDatabase link. The developer parameters are applied in to resolve conflicts.
+// and developer while creating the mongoDatabase link.
+// If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.
 // Container uses the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
@@ -236,7 +237,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mep-app-ctnr",
+						Name: "mdb-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -246,14 +247,14 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  outputresource.LocalIDAzureCosmosAccount,
-								Identity: "account-developer-parameters",
+								Provider:           resourcemodel.ProviderAzure,
+								LocalID:            outputresource.LocalIDAzureCosmosAccount,
+								OutputResourceName: "mongodb-developer-parameters",
 							},
 							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
-								Identity: "mongodb-operator-parameters",
+								Provider:           resourcemodel.ProviderAzure,
+								LocalID:            outputresource.LocalIDAzureCosmosDBMongo,
+								OutputResourceName: "mongodb-operator-parameters",
 							},
 						},
 					},
@@ -262,7 +263,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mep-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
 					},
 				},
 			},
