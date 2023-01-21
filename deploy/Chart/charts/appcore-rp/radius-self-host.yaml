@@ -30,3 +30,5 @@ server:
 workerServer:
   maxOperationConcurrency: 3
   maxOperationRetryCount: 2
+ucp:
+  kind: kubernetes
