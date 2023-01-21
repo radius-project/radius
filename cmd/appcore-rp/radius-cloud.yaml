@@ -35,3 +35,5 @@ metricsProvider:
     port: 2222
 featureFlags:
   - "PLACEHOLDER"
+ucp:
+  kind: kubernetes
