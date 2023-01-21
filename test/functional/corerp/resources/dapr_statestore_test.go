@@ -107,7 +107,7 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-recipes-env",
+						Name: "corerp-environment-recipes-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
