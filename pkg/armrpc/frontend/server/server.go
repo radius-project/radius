@@ -62,7 +62,9 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 
 	// setup metrics object
 	httpMetrics := metrics.NewHTTPMetrics(options.ProviderNamespace)
-	r.Use(httpMetrics.HTTPMiddleware())
+	if httpMetrics != nil {
+		r.Use(httpMetrics.HTTPMiddleware())
+	}
 
 	server := &http.Server{
 		Addr:    options.Address,

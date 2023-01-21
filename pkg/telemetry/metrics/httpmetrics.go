@@ -8,11 +8,9 @@ package metrics
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -27,21 +25,10 @@ func NewHTTPMetrics(providerName string) *httpMetrics {
 	if err != nil {
 		panic(err)
 	}
-
 	meter := pme.MeterProvider.Meter("radius")
 
-	// TODO: Change the way we do the metrics. Not with promauto.
-	// metric.Must(meter).NewInt64Counter("ex...")
-	requestCounter := promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "radius",
-		Subsystem: strings.Replace(strings.ToLower(providerName), ".", "_", -1),
-		Name:      "request_count_total",
-		Help:      "The total number of requests received by " + providerName,
-	})
-
 	return &httpMetrics{
-		requestCounter: requestCounter,
-		meter:          meter,
+		meter: meter,
 	}
 }
 

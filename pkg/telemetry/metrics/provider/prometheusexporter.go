@@ -8,11 +8,12 @@ package provider
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
@@ -24,9 +25,6 @@ import (
 type PrometheusExporter struct {
 	// MeterProvider is used in the creation and coordination of Meters
 	MeterProvider otelmetric.MeterProvider
-
-	// Handler is the HTTP handler with basic metrics
-	Handler http.Handler
 }
 
 var prometheusExporter *PrometheusExporter
@@ -51,6 +49,7 @@ func GetPrometheusExporter() (*PrometheusExporter, error) {
 func NewPrometheusExporter() (*PrometheusExporter, error) {
 	registry := prometheus.NewRegistry()
 	exporter, err := otelprom.New(otelprom.WithRegisterer(registry))
+
 	if err != nil {
 		return nil, err
 	}
@@ -69,10 +68,14 @@ func NewPrometheusExporter() (*PrometheusExporter, error) {
 	global.SetMeterProvider(provider)
 	fmt.Println("global meter provider set")
 
-	// TODO: Handler should be otelhttp.NewHandler...
+	helloHandler := func(w http.ResponseWriter, req *http.Request) {
+		_, _ = io.WriteString(w, "Test Metrics\n")
+	}
+
+	otelHandler := otelhttp.NewHandler(http.HandlerFunc(helloHandler), "Hello")
+	http.Handle("/hello", otelHandler)
 
 	return &PrometheusExporter{
 		MeterProvider: global.MeterProvider(),
-		Handler:       promhttp.Handler(),
 	}, nil
 }

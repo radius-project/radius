@@ -11,33 +11,16 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
-
-var (
-	opsProcessed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "radius_processed_ops_total",
-		Help: "The total number of processed events",
-	})
-)
-
-func recordMetrics() {
-	go func() {
-		for {
-			opsProcessed.Inc()
-			time.Sleep(2 * time.Second)
-		}
-	}()
-}
 
 type Service struct {
 	Options hostoptions.HostOptions
+	Handler http.Handler
 }
 
 // NewService of metrics package returns a new Service with the configs needed
@@ -62,10 +45,12 @@ func (s *Service) Run(ctx context.Context) error {
 		panic(err)
 	}
 
-	recordMetrics()
-
 	mux := http.NewServeMux()
-	// TODO: otelhttp.NewHandler...
+
+	//new Handler change TODO!
+	otelHandler := otelhttp.NewHandler(http.HandlerFunc(helloHandler), "Hello")
+	http.Handle("/hello", otelHandler)
+
 	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
 	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
 	server := &http.Server{
@@ -92,17 +77,6 @@ func (s *Service) Run(ctx context.Context) error {
 	} else if err != nil {
 		return err
 	}
-
-	// meter := pme.MeterProvider.Meter("radius")
-	// attrs := []attribute.KeyValue{
-	// 	attribute.Key("A").String("B"),
-	// 	attribute.Key("C").String("D"),
-	// }
-	// counter, err := meter.SyncFloat64().Counter("foo", instrument.WithDescription("a simple counter"))
-	// if err != nil {
-	// 	fmt.Println("SyncFloat64 error: ", err)
-	// }
-	// counter.Add(ctx, 5, attrs...)
 
 	logger.Info("Server stopped...")
 	return nil

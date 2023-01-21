@@ -14,7 +14,7 @@ import (
 
 // MetricsRecorder is the middleware which collects metrics for incoming server requests.
 
-func WithRouteTag(route string, h http.Handler) http.Handler {
+func MetricsRecorder(route string, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		span := trace.SpanFromContext(r.Context())
 		span.SetAttributes(semconv.HTTPRouteKey.String(route))
