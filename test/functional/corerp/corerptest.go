@@ -235,7 +235,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateCoreRPResources(ctx, t, step.CoreRPResources, ct.VerifyRecipeResource, ct.Options.ManagementClient)
+				validation.ValidateCoreRPResources(ctx, t, step.CoreRPResources, ct.Options.ManagementClient)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 

@@ -93,7 +93,7 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 	return nil
 }
 
-func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, verifyRecipeResource bool, client clients.ApplicationsManagementClient) {
+func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {
 			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
