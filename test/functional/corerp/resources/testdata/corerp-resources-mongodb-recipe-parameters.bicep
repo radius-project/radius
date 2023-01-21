@@ -77,8 +77,8 @@ resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' =
     recipe: {
       name: 'mongodb'
       parameters: {
-        documentdbName: 'account-developer-parameters'
-        mongodbName: 'mongodb-developer-parameters'
+        documentdbName: 'account-developer-parameters-${rg}'
+        mongodbName: 'mongodb-developer-parameters-${rg}'
       }
     }
   }
