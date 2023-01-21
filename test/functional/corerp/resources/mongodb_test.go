@@ -6,7 +6,6 @@
 package resource_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -223,14 +222,10 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
 	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
 	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
-	// for running locally
-	t.Logf("The resource group is %s", rg)
+	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
 	if rg == "" {
 		t.Skip()
 	}
-	documentdbName := "account-developer-parameters-" + rg
-	mongodbName := "mongodb-developer-parameters-" + rg
-	fmt.Println("documentdbName - ", documentdbName)
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -259,12 +254,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosAccount,
-								Identity: documentdbName,
+								Identity: "account-developer-parameters-" + rg,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
-								Identity: mongodbName,
+								Identity: "mongodb-developer-parameters-" + rg,
 							},
 						},
 					},
