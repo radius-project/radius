@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
+	secqprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
 // ProviderConfig includes the resource provider configuration.
@@ -16,6 +17,7 @@ type ProviderConfig struct {
 	Env             EnvironmentOptions                  `yaml:"environment"`
 	Identity        IdentityOptions                     `yaml:"identity"`
 	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
+	SecretProvider  secqprovider.SecretProviderOptions  `yaml:"secretProvider"`
 	QueueProvider   qprovider.QueueProviderOptions      `yaml:"queueProvider"`
 	Server          *ServerOptions                      `yaml:"server,omitempty"`
 	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`

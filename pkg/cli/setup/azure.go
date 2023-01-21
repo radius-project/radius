@@ -54,7 +54,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 		return nil, nil
 	}
 
-	armConfig, err := armauth.GetArmConfig()
+	armConfig, err := armauth.NewArmConfig(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		return nil, err
 	}
 
-	armConfig, err := armauth.GetArmConfig()
+	armConfig, err := armauth.NewArmConfig(nil)
 	if err != nil {
 		return nil, err
 	}

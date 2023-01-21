@@ -17,14 +17,14 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-func NewSecretValueClient(arm armauth.ArmConfig) SecretValueClient {
+func NewSecretValueClient(arm *armauth.ArmConfig) SecretValueClient {
 	return &client{ARM: arm}
 }
 
 var _ SecretValueClient = (*client)(nil)
 
 type client struct {
-	ARM armauth.ArmConfig
+	ARM *armauth.ArmConfig
 }
 
 func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (any, error) {

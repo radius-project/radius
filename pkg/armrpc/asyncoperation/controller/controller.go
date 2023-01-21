@@ -10,7 +10,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	link_dp "github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
@@ -24,9 +23,6 @@ type Options struct {
 
 	// DataProvider is the data storage provider.
 	DataProvider dataprovider.DataStorageProvider
-
-	// SecretClient is the client to fetch secrets.
-	SecretClient rp.SecretValueClient
 
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
@@ -68,11 +64,6 @@ func (b *BaseController) StorageClient() store.StorageClient {
 // DataProvider gets data storage provider for this controller.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
-}
-
-// SecretClient gets secret client for this controller.
-func (b *BaseController) SecretClient() rp.SecretValueClient {
-	return b.options.SecretClient
 }
 
 // KubeClient gets Kubernetes client for this controller.

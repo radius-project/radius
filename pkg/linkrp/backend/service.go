@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
+	"github.com/project-radius/radius/pkg/rp"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
@@ -55,12 +56,13 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
+	secretClient := rp.NewSecretValueClient(s.Options.Arm)
+
 	opts := ctrl.Options{
 		DataProvider: s.StorageProvider,
-		SecretClient: s.SecretClient,
 		KubeClient:   s.KubeClient,
 		GetLinkDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
+			return deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, secretClient, s.KubeClient)
 		},
 	}
 

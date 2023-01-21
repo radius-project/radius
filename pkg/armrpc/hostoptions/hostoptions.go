@@ -12,7 +12,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
@@ -38,11 +37,6 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	arm, err := getArm()
-	if err != nil {
-		return HostOptions{}, err
-	}
-
 	k8s, err := getKubernetes()
 	if err != nil {
 		return HostOptions{}, err
@@ -50,7 +44,6 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 
 	return HostOptions{
 		Config:    conf,
-		Arm:       arm,
 		K8sConfig: k8s,
 	}, nil
 }
@@ -92,24 +85,6 @@ func FromContext(ctx context.Context) *ProviderConfig {
 // WithContext injects ProviderConfig into the given http context.
 func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
-}
-
-func getArm() (*armauth.ArmConfig, error) {
-	skipARM, ok := os.LookupEnv("SKIP_ARM")
-	if ok && strings.EqualFold(skipARM, "true") {
-		return nil, nil
-	}
-
-	arm, err := armauth.GetArmConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build ARM config: %w", err)
-	}
-
-	if arm != nil {
-		fmt.Println("Initializing RP with the provided ARM credentials")
-	}
-
-	return arm, nil
 }
 
 func getKubernetes() (*rest.Config, error) {

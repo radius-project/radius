@@ -12,14 +12,17 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	secqprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -30,6 +33,10 @@ import (
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
 	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
 )
+
+func newSecretProvider(opts *hostoptions.HostOptions) *secqprovider.SecretProvider {
+	return secqprovider.NewSecretProvider(opts.Config.SecretProvider)
+}
 
 func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
 	hostings := []hosting.Service{}
@@ -43,6 +50,28 @@ func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service,
 	}
 
 	return hostings, &options
+}
+
+func newArmConfig(opts *hostoptions.HostOptions) (*armauth.ArmConfig, error) {
+	skipARM, ok := os.LookupEnv("SKIP_ARM")
+	if ok && strings.EqualFold(skipARM, "true") {
+		return nil, nil
+	}
+
+	option := &armauth.Options{
+		SecretProvider: secqprovider.NewSecretProvider(opts.Config.SecretProvider),
+	}
+
+	arm, err := armauth.NewArmConfig(option)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build ARM config: %w", err)
+	}
+
+	if arm != nil {
+		fmt.Println("Initializing RP with the provided ARM credentials")
+	}
+
+	return arm, nil
 }
 
 func main() {
@@ -70,6 +99,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
 	logger, flush, err := ucplog.NewLogger("applications.core")
@@ -102,10 +132,24 @@ func main() {
 		logger.Info("Enabled in-memory etcd")
 		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
+		options.Config.SecretProvider.ETCD.Client = client
 		if linkOpts != nil {
 			linkOpts.Config.StorageProvider.ETCD.Client = client
+			linkOpts.Config.SecretProvider.ETCD.Client = client
 		}
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
+	}
+
+	options.Arm, err = newArmConfig(&options)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if linkOpts != nil {
+		linkOpts.Arm, err = newArmConfig(linkOpts)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	loggerValues := []any{}

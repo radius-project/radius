@@ -14,10 +14,12 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
+	ucpsecretp "github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
 // Authentication methods
 const (
+	UCPCredentialsAuth   = "UCPCredentialAuth"
 	ServicePrincipalAuth = "ServicePrincipal"
 	ManagedIdentityAuth  = "ManagedIdentity"
 	CliAuth              = "CLI"
@@ -33,15 +35,25 @@ type ArmConfig struct {
 	ClientOptions clientv2.Options
 }
 
-// GetArmConfig gets the configuration we use for managing ARM resources
-func GetArmConfig() (*ArmConfig, error) {
+// Options represents the options of ArmConfig.
+type Options struct {
+	// SecretProvider is the provider to get the secret client.
+	SecretProvider *ucpsecretp.SecretProvider
+}
+
+// NewArmConfig gets the configuration we use for managing ARM resources
+func NewArmConfig(opt *Options) (*ArmConfig, error) {
+	if opt == nil {
+		opt = &Options{}
+	}
+
 	auth, err := GetArmAuthorizer()
 	if err != nil {
 		return &ArmConfig{}, err
 	}
 
 	// Create Client v2 Credential object.
-	cred, err := NewARMCredential()
+	cred, err := NewARMCredential(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -74,17 +86,20 @@ func GetArmAuthorizerFromValues(clientID string, clientSecret string, tenantID s
 }
 
 // NewARMCredential returns new azure client credential
-func NewARMCredential() (azcore.TokenCredential, error) {
+func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	authMethod := GetAuthMethod()
 
-	if authMethod == ServicePrincipalAuth {
+	switch authMethod {
+	case UCPCredentialsAuth:
+		return NewUCPCredential(opt)
+	case ServicePrincipalAuth:
 		return azidentity.NewClientSecretCredential(
 			os.Getenv("AZURE_TENANT_ID"),
 			os.Getenv("AZURE_CLIENT_ID"),
 			os.Getenv("AZURE_CLIENT_SECRET"), nil)
-	} else if authMethod == ManagedIdentityAuth {
+	case ManagedIdentityAuth:
 		return azidentity.NewManagedIdentityCredential(nil)
-	} else {
+	default:
 		return azidentity.NewAzureCLICredential(nil)
 	}
 }
