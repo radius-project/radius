@@ -237,10 +237,7 @@ func buildOutputResourcesDapr(mode string) []outputresource.OutputResource {
 				handlers.ApplicationName:         "testApplication",
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
-
-				handlers.ResourceIDKey:         azureTableStorageID,
-				handlers.StorageAccountNameKey: "test-account",
-				handlers.ResourceName:          daprLinkName,
+				handlers.ResourceName:            daprLinkName,
 			},
 			RadiusManaged: &radiusManaged,
 		},
@@ -881,6 +878,7 @@ func Test_Delete(t *testing.T) {
 			ID:              mongoLinkResourceID,
 			OutputResources: outputResources,
 		}
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 		err := dp.Delete(ctx, resourceData)
 		require.NoError(t, err)
 	})

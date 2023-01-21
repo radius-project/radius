@@ -30,7 +30,7 @@ func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName
 	recipeData := datamodel.RecipeData{
 		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
-		APIVersion:       clientv2.AccountsClientAPIVersion,
+		APIVersion:       clientv2.StateStoreClientAPIVersion,
 	}
 
 	outputResources := []outputresource.OutputResource{

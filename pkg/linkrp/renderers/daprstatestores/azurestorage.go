@@ -6,8 +6,8 @@
 package daprstatestores
 
 import (
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -31,27 +31,26 @@ func GetDaprStateStoreAzureStorage(resource *datamodel.DaprStateStore, applicati
 	if err != nil {
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to a Storage Table")
 	}
+
+	daprStateStoreOutputResource := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDDaprStateStoreAzureStorage,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprStateStoreAzureStorage,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		Resource: map[string]string{
+			handlers.KubernetesNameKey:       resource.Name,
+			handlers.KubernetesNamespaceKey:  options.Namespace,
+			handlers.ApplicationName:         applicationName,
+			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+			handlers.KubernetesKindKey:       "Component",
+			handlers.ResourceName:            resource.Name,
+		},
+	}
+	daprStateStoreOutputResource.Identity = resourcemodel.NewARMIdentity(&daprStateStoreOutputResource.ResourceType, azuretableStorageID.String(), clientv2.StateStoreClientAPIVersion)
 	// generate data we can use to connect to a Storage Account
 	outputResources := []outputresource.OutputResource{
-		{
-			LocalID: outputresource.LocalIDDaprStateStoreAzureStorage,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreAzureStorage,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Resource: map[string]string{
-				handlers.KubernetesNameKey:       resource.Name,
-				handlers.KubernetesNamespaceKey:  options.Namespace,
-				handlers.ApplicationName:         applicationName,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-
-				handlers.ResourceIDKey:         azuretableStorageID.String(),
-				handlers.StorageAccountNameKey: azuretableStorageID.TypeSegments()[0].Name,
-				handlers.ResourceName:          resource.Name,
-			},
-			RadiusManaged: to.BoolPtr(true),
-		},
+		daprStateStoreOutputResource,
 	}
 	rendererOutput = renderers.RendererOutput{
 		Resources: outputResources,

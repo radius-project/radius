@@ -11,12 +11,14 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
@@ -70,8 +72,6 @@ func Test_Render_Success(t *testing.T) {
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
 		handlers.ApplicationName:         applicationName,
-		handlers.ResourceIDKey:           "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
-		handlers.StorageAccountNameKey:   "test-account",
 		handlers.ResourceName:            "test-state-store",
 	}
 	require.Equal(t, expected, output.Resource)
@@ -385,6 +385,9 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, output.LocalID)
 	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, output.ResourceType.Type)
+	require.Equal(t, true, *output.RadiusManaged)
+	require.Equal(t, resourcemodel.ProviderAzure, output.ResourceType.Provider)
+	require.Equal(t, azresources.StorageStorageAccounts, output.ProviderResourceType)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 	expected := map[string]string{
 		handlers.KubernetesNameKey:       "test-state-store",
@@ -396,8 +399,9 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 	require.Equal(t, expected, output.Resource)
 	require.Equal(t, resource.Properties.Recipe.Name, result.RecipeData.Name)
-	require.Equal(t, clientv2.AccountsClientAPIVersion, result.RecipeData.APIVersion)
+	require.Equal(t, clientv2.StateStoreClientAPIVersion, result.RecipeData.APIVersion)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/daprstatestores:v1", result.RecipeData.TemplatePath)
+
 }
 
 func Test_Render_Recipe_InvalidLinkType(t *testing.T) {

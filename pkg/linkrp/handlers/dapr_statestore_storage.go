@@ -24,8 +24,6 @@ import (
 )
 
 const (
-	StorageAccountNameKey      = "storageaccount"
-	ResourceIDKey              = "resourceid"
 	DaprStateStoreResourceType = "Applications.Link/daprStateStores"
 )
 
@@ -51,12 +49,9 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
 	}
 
-	id, ok := properties[ResourceIDKey]
-	if !ok {
-		id, _, err = resource.Identity.RequireARM()
-		if err != nil {
-			return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required property %s for the resource", ResourceIDKey)
-		}
+	id, _, err := resource.Identity.RequireARM()
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required property %s for the resource", id)
 	}
 
 	parsedID, err := resources.ParseResource(id)
@@ -64,10 +59,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
 
-	storageAccountNameKey, ok := properties[StorageAccountNameKey]
-	if !ok {
-		storageAccountNameKey = parsedID.TypeSegments()[0].Name
-	}
+	storageAccountNameKey := parsedID.TypeSegments()[0].Name
 
 	client, err := clientv2.NewAccountsClient(parsedID.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOptions)
 	if err != nil {
@@ -82,7 +74,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
 
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clientv2.AccountsClientAPIVersion)
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clientv2.StateStoreClientAPIVersion)
 
 	key, err := handler.findStorageKey(ctx, *account.ID)
 	if err != nil {
@@ -203,11 +195,13 @@ func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx conte
 			},
 		},
 	}
+
 	armHandler := NewARMHandler(handler.arm)
 	err := armHandler.Delete(ctx, resource)
 	if err != nil {
-		return fmt.Errorf("failed to delete Azure table storage account")
+		return fmt.Errorf("failed to delete Azure table storage account: %w", err)
 	}
+
 	err = client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 	if err != nil {
 		return fmt.Errorf("failed to delete Dapr state store: %w", err)

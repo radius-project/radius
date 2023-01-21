@@ -25,10 +25,12 @@ func GetDaprStateStoreGeneric(resource *datamodel.DaprStateStore, applicationNam
 	}
 
 	outputResources, err := getDaprGeneric(daprGeneric, resource, applicationName, options.Namespace)
-
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	return renderers.RendererOutput{
 		Resources: outputResources,
-	}, err
+	}, nil
 }
 
 func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm v1.ResourceDataModel, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
