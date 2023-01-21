@@ -224,10 +224,8 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
 	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
 	if rg == "" {
-		t.Skip()
+		t.Skip("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
 	}
-
-	t.Skip("This test is flaky, see issue: https://github.com/project-radius/radius/issues/4992")
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
