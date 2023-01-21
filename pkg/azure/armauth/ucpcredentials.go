@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/sdk"
 	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpsecretp "github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
@@ -37,14 +38,14 @@ type UCPCredential struct {
 	identityClient   azcore.TokenCredential
 	ucpClient        *ucpapi.AzureCredentialClient
 	clientMu         sync.RWMutex
-	lastClientUpdate time.Time
+	secretExpireTime time.Time
 
 	secretProvider *ucpsecretp.SecretProvider
 }
 
 // NewUCPCredential creates a UCPCredential. Pass nil to accept default options.
 func NewUCPCredential(options *Options) (*UCPCredential, error) {
-	cli, err := ucpapi.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, nil)
+	cli, err := ucpapi.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.UCPConnection))
 	if err != nil {
 		return nil, err
 	}
@@ -52,13 +53,13 @@ func NewUCPCredential(options *Options) (*UCPCredential, error) {
 	return &UCPCredential{
 		ucpClient:        cli,
 		clientMu:         sync.RWMutex{},
-		lastClientUpdate: time.Time{},
+		secretExpireTime: time.Time{},
 		secretProvider:   options.SecretProvider,
 	}, nil
 }
 
 func (c *UCPCredential) isExpired() bool {
-	return c.lastClientUpdate.Add(credFetchPeriod).After(time.Now())
+	return c.secretExpireTime.Before(time.Now())
 }
 
 func (c *UCPCredential) refreshTokenClient(ctx context.Context) error {
@@ -79,7 +80,7 @@ func (c *UCPCredential) refreshTokenClient(ctx context.Context) error {
 		return err
 	}
 
-	c.lastClientUpdate = time.Now()
+	c.secretExpireTime = time.Now().Add(credFetchPeriod)
 	return nil
 }
 

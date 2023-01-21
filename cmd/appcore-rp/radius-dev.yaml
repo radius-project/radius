@@ -8,6 +8,8 @@ storageProvider:
     inmemory: true
 queueProvider:
   provider: inmemory
+secretProvider:
+  provider: kubernetes
 metricsProvider:
   prometheus:
     enabled: true

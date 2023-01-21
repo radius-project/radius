@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
+	"github.com/project-radius/radius/pkg/sdk"
 	ucpsecretp "github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
@@ -39,6 +40,9 @@ type ArmConfig struct {
 type Options struct {
 	// SecretProvider is the provider to get the secret client.
 	SecretProvider *ucpsecretp.SecretProvider
+
+	// UCPConnection is a connection to the UCP endpoint.
+	UCPConnection sdk.Connection
 }
 
 // NewArmConfig gets the configuration we use for managing ARM resources
@@ -110,7 +114,7 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 
 	var auth autorest.Authorizer
 	var err error
-	if authMethod == ServicePrincipalAuth {
+	if authMethod == ServicePrincipalAuth || authMethod == UCPCredentialsAuth {
 		auth, err = authServicePrincipal()
 	} else if authMethod == ManagedIdentityAuth {
 		auth, err = authMSI()

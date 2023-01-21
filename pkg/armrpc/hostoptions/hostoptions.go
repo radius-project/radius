@@ -13,11 +13,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/k8sauth"
 	"github.com/project-radius/radius/pkg/sdk"
+	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
@@ -41,6 +45,31 @@ type HostOptions struct {
 	UCPConnection sdk.Connection
 }
 
+func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConfig, error) {
+	skipARM, ok := os.LookupEnv("SKIP_ARM")
+	if ok && strings.EqualFold(skipARM, "true") {
+		return nil, nil
+	}
+
+	option := &armauth.Options{
+		SecretProvider: sprovider.NewSecretProvider(cfg.SecretProvider),
+		UCPConnection:  ucpconn,
+	}
+
+	arm, err := armauth.NewArmConfig(option)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build ARM config: %w", err)
+	}
+
+	// Try to fetch token to validate the secret is valid.
+	_, err = arm.ClientOptions.Cred.GetToken(context.Background(), policy.TokenRequestOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch token: %w", err)
+	}
+
+	return arm, nil
+}
+
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 	conf, err := loadConfig(configPath)
 	if err != nil {
@@ -57,9 +86,15 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
+	arm, err := getArmConfig(conf, ucp)
+	if err != nil {
+		return HostOptions{}, err
+	}
+
 	return HostOptions{
 		Config:        conf,
 		K8sConfig:     k8s,
+		Arm:           arm,
 		UCPConnection: ucp,
 	}, nil
 }
