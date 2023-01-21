@@ -31,7 +31,7 @@ import (
 	cmddeploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
-	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
+	credential "github.com/project-radius/radius/pkg/cli/cmd/credential"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
@@ -166,7 +166,7 @@ func initSubCommands() {
 	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
 	recipeCmd.AddCommand(unregisterRecipeCmd)
 
-	providerCmd := provider.NewCommand(framework)
+	providerCmd := credential.NewCommand(framework)
 	RootCmd.AddCommand(providerCmd)
 
 	groupCmd := group.NewCommand(framework)
