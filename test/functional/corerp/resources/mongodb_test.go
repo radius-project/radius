@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -220,8 +221,16 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
-	documentdbName := "account-developer-parameters" + os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
-	mongodbName := "mongodb-developer-parameters" + os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
+	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
+	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
+	// for running locally
+	t.Logf("The resource group is %s", rg)
+	if rg == "" {
+		t.Skip()
+	}
+	documentdbName := "account-developer-parameters-" + rg
+	mongodbName := "mongodb-developer-parameters-" + rg
+	fmt.Println("documentdbName - ", documentdbName)
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
