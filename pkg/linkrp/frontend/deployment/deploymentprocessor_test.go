@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/model"
@@ -86,7 +87,7 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 	if mode == modeResource {
 		testResource.Properties.Resource = cosmosMongoID
 	} else if mode == modeRecipe {
-		testResource.Properties.Recipe = datamodel.LinkRecipe{
+		testResource.Properties.Recipe = linkrp.LinkRecipe{
 			Name:       recipeName,
 			Parameters: recipeParams,
 		}
@@ -193,11 +194,11 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 		}
 	}
 
-	recipeData := datamodel.RecipeData{}
+	recipeData := linkrp.RecipeData{}
 	if mode == modeRecipe {
-		recipeData = datamodel.RecipeData{
-			RecipeProperties: datamodel.RecipeProperties{
-				LinkRecipe: datamodel.LinkRecipe{
+		recipeData = linkrp.RecipeData{
+			RecipeProperties: linkrp.RecipeProperties{
+				LinkRecipe: linkrp.LinkRecipe{
 					Name:       recipeName,
 					Parameters: recipeParams,
 				},
@@ -646,9 +647,9 @@ func Test_Deploy(t *testing.T) {
 
 		deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.NoError(t, err)
-		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.Resources))
-		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[0].Identity)
-		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[1].Identity)
+		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
+		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
+		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[1].Identity)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", renderers.Host: testRendererOutput.ComputedValues[renderers.Host].Value}, deploymentOutput.ComputedValues)
 	})
@@ -786,7 +787,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 		"test-key3": "jsonpointer-value",
 	}
 	require.Equal(t, expected, deploymentOutput.ComputedValues)
-	require.Equal(t, expectedCosmosAccountIdentity, deploymentOutput.Resources[0].Identity)
+	require.Equal(t, expectedCosmosAccountIdentity, deploymentOutput.DeployedOutputResources[0].Identity)
 }
 
 func Test_Deploy_InvalidComputedValues(t *testing.T) {

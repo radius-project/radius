@@ -25,6 +25,7 @@ var (
 	// We use this array to generate generic backend controller for each resource.
 	ResourceTypeNames = []string{
 		"Applications.Link/mongoDatabases",
+		"Applications.Link/redisCaches",
 	}
 )
 
@@ -70,6 +71,10 @@ func (s *Service) Run(ctx context.Context) error {
 		if err != nil {
 			panic(err)
 		}
+		// err = s.Controllers.Register(ctx, rt, v1.OperationPut, backend_ctrl.NewCreateOrUpdateResource, opts)
+		// if err != nil {
+		// 	panic(err)
+		// }
 	}
 	workerOpts := worker.Options{}
 	if s.Options.Config.WorkerServer != nil {

@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -45,10 +46,10 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 type DaprStateStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	Mode     LinkMode       `json:"mode,omitempty"`
-	Metadata map[string]any `json:"metadata,omitempty"`
-	Recipe   LinkRecipe     `json:"recipe,omitempty"`
-	Resource string         `json:"resource,omitempty"`
-	Type     string         `json:"type,omitempty"`
-	Version  string         `json:"version,omitempty"`
+	Mode     LinkMode          `json:"mode,omitempty"`
+	Metadata map[string]any    `json:"metadata,omitempty"`
+	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Resource string            `json:"resource,omitempty"`
+	Type     string            `json:"type,omitempty"`
+	Version  string            `json:"version,omitempty"`
 }

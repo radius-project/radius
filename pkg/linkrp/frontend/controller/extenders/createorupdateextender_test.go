@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rp.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
 		SecretValues: map[string]rp.SecretValueReference{
 			"secretname": {
@@ -39,15 +39,15 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{},
+	deploymentOutput := rp.DeploymentOutput{
+		DeployedOutputResources: []outputresource.OutputResource{},
 	}
 
 	return rendererOutput, deploymentOutput
 }
 
 func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, renderers.RendererOutput, deployment.DeploymentOutput) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, renderers.RendererOutput, rp.DeploymentOutput) {
 		mctrl := gomock.NewController(t)
 		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 		rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()

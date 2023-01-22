@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -44,9 +45,9 @@ func (sql *SqlDatabase) ResourceTypeName() string {
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
 	rp.BasicResourceProperties
-	Recipe   LinkRecipe `json:"recipe,omitempty"`
-	Resource string     `json:"resource,omitempty"`
-	Database string     `json:"database,omitempty"`
-	Server   string     `json:"server,omitempty"`
-	Mode     LinkMode   `json:"mode,omitempty"`
+	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Resource string            `json:"resource,omitempty"`
+	Database string            `json:"database,omitempty"`
+	Server   string            `json:"server,omitempty"`
+	Mode     LinkMode          `json:"mode,omitempty"`
 }

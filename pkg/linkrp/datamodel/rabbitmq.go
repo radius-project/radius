@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -44,10 +45,10 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
 type RabbitMQMessageQueueProperties struct {
 	rp.BasicResourceProperties
-	Queue   string          `json:"queue"`
-	Recipe  LinkRecipe      `json:"recipe,omitempty"`
-	Secrets RabbitMQSecrets `json:"secrets,omitempty"`
-	Mode    LinkMode        `json:"mode,omitempty"`
+	Queue   string            `json:"queue"`
+	Recipe  linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Secrets RabbitMQSecrets   `json:"secrets,omitempty"`
+	Mode    LinkMode          `json:"mode,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

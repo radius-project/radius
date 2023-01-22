@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rp.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{
 			{
@@ -50,8 +50,8 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+	deploymentOutput := rp.DeploymentOutput{
+		DeployedOutputResources: []outputresource.OutputResource{
 			{
 				LocalID: outputresource.LocalIDDaprComponent,
 				ResourceType: resourcemodel.ResourceType{

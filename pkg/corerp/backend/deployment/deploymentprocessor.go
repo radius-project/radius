@@ -16,6 +16,7 @@ import (
 	"github.com/go-logr/logr"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 
 	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -82,8 +83,8 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
-	AppID           *resources.ID      // Application ID for which the resource is created
-	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
+	AppID           *resources.ID     // Application ID for which the resource is created
+	RecipeData      linkrp.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
@@ -505,25 +506,25 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
 	case strings.ToLower(gateway.ResourceType):
 		obj := &corerp_dm.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
 	case strings.ToLower(volume.ResourceType):
 		obj := &corerp_dm.VolumeResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
 	case strings.ToLower(httproute.ResourceType):
 		obj := &corerp_dm.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := &link_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
@@ -553,7 +554,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := &link_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
@@ -583,7 +584,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData linkrp.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)

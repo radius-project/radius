@@ -19,6 +19,7 @@ import (
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rp.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {
@@ -36,8 +37,8 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{},
+	deploymentOutput := rp.DeploymentOutput{
+		DeployedOutputResources: []outputresource.OutputResource{},
 	}
 
 	return rendererOutput, deploymentOutput

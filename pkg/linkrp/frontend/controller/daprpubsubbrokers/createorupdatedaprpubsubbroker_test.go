@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rp.DeploymentOutput) {
 	output := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
@@ -73,8 +73,8 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		ComputedValues: values,
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+	deploymentOutput := rp.DeploymentOutput{
+		DeployedOutputResources: []outputresource.OutputResource{
 			{
 				LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 				ResourceType: resourcemodel.ResourceType{

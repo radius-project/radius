@@ -74,7 +74,7 @@ func (sqlDatabase *CreateOrUpdateSqlDatabase) Run(ctx context.Context, w http.Re
 		return nil, err
 	}
 
-	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if server, ok := deploymentOutput.ComputedValues["server"].(string); ok {

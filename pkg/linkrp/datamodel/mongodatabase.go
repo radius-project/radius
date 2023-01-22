@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -77,5 +78,5 @@ type MongoDatabaseResourceProperties struct {
 }
 
 type MongoDatabaseRecipeProperties struct {
-	Recipe LinkRecipe `json:"recipe,omitempty"`
+	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
 }

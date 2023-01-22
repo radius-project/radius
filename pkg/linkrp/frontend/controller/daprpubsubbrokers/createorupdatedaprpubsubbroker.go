@@ -85,7 +85,7 @@ func (daprPubSubBroker *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context,
 		return nil, err
 	}
 
-	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if topic, ok := deploymentOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].(string); ok {

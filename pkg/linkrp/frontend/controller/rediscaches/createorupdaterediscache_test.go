@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers.RendererOutput, rp.DeploymentOutput) {
 	var computedValues map[string]renderers.ComputedValueReference
 	var portValue any
 	if buildComputedValueReferences {
@@ -81,8 +81,8 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 		ComputedValues: computedValues,
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+	deploymentOutput := rp.DeploymentOutput{
+		DeployedOutputResources: []outputresource.OutputResource{
 			{
 				LocalID: outputresource.LocalIDAzureRedis,
 				ResourceType: resourcemodel.ResourceType{

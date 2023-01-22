@@ -77,7 +77,7 @@ func (redisCache *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.Resp
 		return nil, err
 	}
 
-	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if host, ok := deploymentOutput.ComputedValues[renderers.Host].(string); ok {

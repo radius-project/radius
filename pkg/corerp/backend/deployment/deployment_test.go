@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/linkrp"
 	dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_r "github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -184,9 +185,9 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 			Mode: dm.LinkModeRecipe,
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
-			RecipeData: linkrp_dm.RecipeData{
-				RecipeProperties: linkrp_dm.RecipeProperties{
-					LinkRecipe: linkrp_dm.LinkRecipe{
+			RecipeData: linkrp.RecipeData{
+				RecipeProperties: linkrp.RecipeProperties{
+					LinkRecipe: linkrp.LinkRecipe{
 						Name: "mongoDB",
 						Parameters: map[string]any{
 							"ResourceGroup": "testRG",

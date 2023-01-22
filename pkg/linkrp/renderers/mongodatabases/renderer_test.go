@@ -14,6 +14,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -349,7 +350,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			},
 			Mode: datamodel.LinkModeRecipe,
 			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
-				Recipe: datamodel.LinkRecipe{
+				Recipe: linkrp.LinkRecipe{
 					Name: "mongodb",
 					Parameters: map[string]any{
 						"throughput": 400,
@@ -389,8 +390,8 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 
 	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "mongodb",
 				Parameters: map[string]any{
 					"throughput": 400,
@@ -442,7 +443,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			},
 			Mode: datamodel.LinkModeRecipe,
 			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
-				Recipe: datamodel.LinkRecipe{
+				Recipe: linkrp.LinkRecipe{
 					Name: "mongodb",
 				},
 			},
@@ -450,8 +451,8 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 	}
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "mongodb",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",

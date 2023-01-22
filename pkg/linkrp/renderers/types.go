@@ -11,7 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -37,7 +37,7 @@ type Renderer interface {
 }
 type RenderOptions struct {
 	Namespace            string
-	RecipeProperties     datamodel.RecipeProperties
+	RecipeProperties     linkrp.RecipeProperties
 	EnvironmentProviders coreDatamodel.Providers
 }
 
@@ -45,7 +45,7 @@ type RendererOutput struct {
 	Resources            []outputresource.OutputResource
 	ComputedValues       map[string]ComputedValueReference
 	SecretValues         map[string]rp.SecretValueReference
-	RecipeData           datamodel.RecipeData
+	RecipeData           linkrp.RecipeData
 	EnvironmentProviders coreDatamodel.Providers // represents providers mapped to the linked environment needed to deploy the recipe
 }
 

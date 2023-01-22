@@ -15,6 +15,7 @@ import (
 	"github.com/go-openapi/jsonpointer"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -41,7 +42,7 @@ import (
 
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error)
 	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
 }
@@ -59,12 +60,12 @@ type deploymentProcessor struct {
 	k8s          client.Client
 }
 
-type DeploymentOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]any
-	SecretValues   map[string]rp.SecretValueReference
-	RecipeData     datamodel.RecipeData
-}
+// type DeploymentOutput struct {
+// 	DeployedOutputResources []outputresource.OutputResource
+// 	ComputedValues          map[string]any
+// 	SecretValues            map[string]rp.SecretValueReference
+// 	RecipeData              datamodel.RecipeData
+// }
 
 type ResourceData struct {
 	ID              resources.ID
@@ -72,7 +73,7 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
-	RecipeData      datamodel.RecipeData
+	RecipeData      linkrp.RecipeData
 }
 
 type EnvironmentMetadata struct {
@@ -119,7 +120,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
 		Namespace: kubeNamespace,
-		RecipeProperties: datamodel.RecipeProperties{
+		RecipeProperties: linkrp.RecipeProperties{
 			LinkRecipe:    recipe,
 			LinkType:      envMetadata.RecipeLinkType,
 			TemplatePath:  envMetadata.RecipeTemplatePath,
@@ -157,7 +158,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
-func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceID.String())
 	// Deploy
 	logger.Info("Deploying radius resource")
@@ -166,7 +167,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	if rendererOutput.RecipeData.Name != "" {
 		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders)
 		if err != nil {
-			return DeploymentOutput{}, err
+			return rp.DeploymentOutput{}, err
 		}
 		rendererOutput.RecipeData.Resources = deployedRecipeResourceIDs
 	}
@@ -174,7 +175,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		return DeploymentOutput{}, err
+		return rp.DeploymentOutput{}, err
 	}
 
 	// Recipe based links - Add deployed recipe resource IDs to output resource; Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
@@ -188,7 +189,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 			if rendererOutput.RecipeData.Provider == resourcemodel.ProviderAzure {
 				parsedID, err := resources.ParseResource(id)
 				if err != nil {
-					return DeploymentOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
+					return rp.DeploymentOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
 				}
 
 				if outputResource.ProviderResourceType == parsedID.Type() {
@@ -199,7 +200,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 
 		deployedComputedValues, err := dp.deployOutputResource(ctx, resourceID, &outputResource, rendererOutput)
 		if err != nil {
-			return DeploymentOutput{}, err
+			return rp.DeploymentOutput{}, err
 		}
 
 		updatedOutputResources = append(updatedOutputResources, outputResource)
@@ -218,11 +219,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		}
 	}
 
-	return DeploymentOutput{
-		Resources:      updatedOutputResources,
-		ComputedValues: computedValues,
-		SecretValues:   rendererOutput.SecretValues,
-		RecipeData:     rendererOutput.RecipeData,
+	return rp.DeploymentOutput{
+		DeployedOutputResources: updatedOutputResources,
+		ComputedValues:          computedValues,
+		SecretValues:            rendererOutput.SecretValues,
+		RecipeData:              rendererOutput.RecipeData,
 	}, nil
 }
 
@@ -339,7 +340,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData datamodel.RecipeData) (any, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData linkrp.RecipeData) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
@@ -361,7 +362,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rp.BasicResourceProperties, recipe linkrp.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
