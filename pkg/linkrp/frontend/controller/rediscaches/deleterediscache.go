@@ -61,7 +61,7 @@ func (redisCache *DeleteRedisCache) Run(ctx context.Context, w http.ResponseWrit
 		return r, err
 	}
 
-	err = redisCache.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
+	err = redisCache.dp.Delete(ctx, serviceCtx.ResourceID, old.Properties.Status.OutputResources)
 	if err != nil {
 		return nil, err
 	}

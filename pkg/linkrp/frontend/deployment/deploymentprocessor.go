@@ -43,7 +43,7 @@ import (
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error)
-	Delete(ctx context.Context, resource ResourceData) error
+	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
 }
 
@@ -279,10 +279,10 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return computedValues, nil
 }
 
-func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
-	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceData.ID)
+func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error {
+	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, id)
 
-	orderedOutputResources, err := outputresource.OrderOutputResources(resourceData.OutputResources)
+	orderedOutputResources, err := outputresource.OrderOutputResources(outputResources)
 	if err != nil {
 		return err
 	}
@@ -301,11 +301,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 			if err != nil {
 				return err
 			}
-		} else if resourceData.RecipeData.Name != "" {
-			// If the resource is not Radius managed for a link tied to a recipe, then this is a bug in the output resource initialization in renderer
-			return fmt.Errorf("resources deployed through recipe must be Radius managed")
 		}
-		logger.Info("Underlying resource lifecycle is not managed by Radius, skipping deletion")
 	}
 
 	return nil

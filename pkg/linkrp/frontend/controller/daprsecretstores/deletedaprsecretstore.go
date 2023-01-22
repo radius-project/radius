@@ -61,7 +61,7 @@ func (daprSecretStore *DeleteDaprSecretStore) Run(ctx context.Context, w http.Re
 		return r, err
 	}
 
-	err = daprSecretStore.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
+	err = daprSecretStore.dp.Delete(ctx, serviceCtx.ResourceID, old.Properties.Status.OutputResources)
 	if err != nil {
 		return nil, err
 	}

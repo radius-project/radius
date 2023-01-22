@@ -61,7 +61,7 @@ func (rabbitmq *DeleteRabbitMQMessageQueue) Run(ctx context.Context, w http.Resp
 		return r, err
 	}
 
-	err = rabbitmq.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
+	err = rabbitmq.dp.Delete(ctx, serviceCtx.ResourceID, old.Properties.Status.OutputResources)
 	if err != nil {
 		return nil, err
 	}

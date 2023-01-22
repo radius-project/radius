@@ -14,9 +14,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*DeleteResource)(nil)
@@ -43,11 +42,21 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	resourceData, err := getResourceData(id, obj)
+	dataModel, err := getDataModel(id)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	err = c.LinkDeploymentProcessor().Delete(ctx, resourceData)
+
+	if err = obj.As(dataModel); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	deploymentDataModel, ok := dataModel.(rp.DeploymentDataModel)
+	if !ok {
+		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
+	}
+
+	err = c.LinkDeploymentProcessor().Delete(ctx, id, deploymentDataModel.OutputResources())
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -60,16 +69,12 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	return ctrl.Result{}, err
 }
 
-func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceData, error) {
+func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceTypeName):
-		d := &datamodel.MongoDatabase{}
-		if err := obj.As(d); err != nil {
-			return deployment.ResourceData{}, err
-		}
-		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
+		return &datamodel.MongoDatabase{}, nil
 	default:
-		return deployment.ResourceData{}, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
+		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}
 }

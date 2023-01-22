@@ -871,32 +871,24 @@ func Test_Delete(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testOutputResources := buildOutputResourcesMongo(modeRecipe)
-	testResourceData := ResourceData{
-		ID:              mongoLinkResourceID,
-		OutputResources: testOutputResources,
-	}
 
 	t.Run("Verify skip resource deletion for resource based links", func(t *testing.T) {
 		outputResources := buildOutputResourcesMongo(modeResource)
-		resourceData := ResourceData{
-			ID:              mongoLinkResourceID,
-			OutputResources: outputResources,
-		}
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, outputResources)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete success with recipe resources", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, testOutputResources)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, testOutputResources)
 		require.Error(t, err)
 	})
 
@@ -922,12 +914,8 @@ func Test_Delete(t *testing.T) {
 				},
 			},
 		}
-		resourceData := ResourceData{
-			OutputResources: outputResources,
-			ID:              mongoLinkResourceID,
-		}
 
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, outputResources)
 		require.Error(t, err)
 		require.Equal(t, "missing localID for outputresource", err.Error())
 	})
@@ -942,11 +930,7 @@ func Test_Delete(t *testing.T) {
 				},
 			},
 		}
-		resourceData := ResourceData{
-			OutputResources: outputResources,
-			ID:              mongoLinkResourceID,
-		}
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, outputResources)
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
 	})
@@ -959,22 +943,18 @@ func Test_Delete_Dapr(t *testing.T) {
 
 	daprLinkResourceID := getResourceID(daprLinkID)
 	testOutputResources := buildOutputResourcesDapr(modeResource)
-	testResourceData := ResourceData{
-		ID:              daprLinkResourceID,
-		OutputResources: testOutputResources,
-	}
 
 	t.Run("Verify handler delete is invoked", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, daprLinkResourceID, testOutputResources)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, daprLinkResourceID, testOutputResources)
 		require.Error(t, err)
 	})
 }
