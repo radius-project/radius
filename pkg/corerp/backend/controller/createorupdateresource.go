@@ -101,8 +101,10 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 
 	oldOutputResources := deploymentDataModel.OutputResources()
 
-	deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
-
+	err = deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	if !isNewResource {
 		diff := outputresource.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
 		err = c.DeploymentProcessor().Delete(ctx, id, diff)

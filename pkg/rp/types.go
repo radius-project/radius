@@ -110,9 +110,9 @@ type DeploymentOutput struct {
 // DeploymentDataModel is the interface that wraps existing data models
 // and enables us to use in generic deployment backend controllers.
 type DeploymentDataModel interface {
-	v1.DataModelInterface
+	v1.ResourceDataModel
 
-	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput) error
 
 	OutputResources() []outputresource.OutputResource
 }
@@ -188,7 +188,7 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 type RadiusResourceModel interface {
 	v1.ResourceDataModel
 
-	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput) error
 	OutputResources() []outputresource.OutputResource
 
 	ResourceMetadata() *BasicResourceProperties

@@ -45,8 +45,9 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *MongoDatabase) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (r *MongoDatabase) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.

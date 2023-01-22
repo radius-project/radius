@@ -24,8 +24,9 @@ type SqlDatabase struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *SqlDatabase) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (r *SqlDatabase) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.

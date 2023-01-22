@@ -27,8 +27,9 @@ func (e *Application) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (c *Application) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (c *Application) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.

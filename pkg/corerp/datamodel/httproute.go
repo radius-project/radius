@@ -27,7 +27,7 @@ func (h *HTTPRoute) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 	if h.Properties != nil {
 		h.Properties.Status.OutputResources = do.DeployedOutputResources
 	}
@@ -47,6 +47,7 @@ func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	if url, ok := do.ComputedValues["url"].(string); ok {
 		h.Properties.URL = url
 	}
+	return nil
 }
 
 // OutputResources returns the output resources array.
