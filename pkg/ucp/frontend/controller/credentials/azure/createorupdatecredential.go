@@ -64,6 +64,10 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	newResource.ID = id.String()
+	newResource.Name = id.Name()
+	newResource.Type = id.Type()
+
 	logger := logr.FromContextOrDiscard(ctx)
 
 	// Check if the credential already exists in database

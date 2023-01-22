@@ -7,12 +7,13 @@ package credentials
 import (
 	"strings"
 
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // GetSecretName returns the secret name of credential storage.
 func GetSecretName(id resources.ID) string {
 	planeNamespace := id.PlaneNamespace()
-	planeNamespace = strings.ReplaceAll(planeNamespace, "/", "_")
-	return strings.ToLower(planeNamespace + "_" + id.Name())
+	planeNamespace = strings.ReplaceAll(planeNamespace, "/", "-")
+	return kubernetes.NormalizeResourceName(planeNamespace + "-" + id.Name())
 }
