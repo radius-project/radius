@@ -10,9 +10,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+// GetSecretName returns the secret name of credential storage.
 func GetSecretName(id resources.ID) string {
-	id.Name()
 	planeNamespace := id.PlaneNamespace()
 	planeNamespace = strings.ReplaceAll(planeNamespace, "/", "_")
-	return planeNamespace + "_" + id.Name()
+	return strings.ToLower(planeNamespace + "_" + id.Name())
 }
