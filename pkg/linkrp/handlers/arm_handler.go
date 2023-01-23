@@ -71,16 +71,6 @@ func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.
 		return err
 	}
 
-	resp, err := client.CheckExistenceByID(ctx, id, apiVersion, &armresources.ClientCheckExistenceByIDOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to check existence of resource %q: %w", id, err)
-	}
-
-	if !resp.Success {
-		logger.Info(fmt.Sprintf("Resource %s does not exist", id))
-		return nil
-	}
-
 	poller, err := client.BeginDeleteByID(ctx, id, apiVersion, &armresources.ClientBeginDeleteByIDOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete resource %q: %w", id, err)
