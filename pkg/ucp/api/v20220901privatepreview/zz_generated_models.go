@@ -100,33 +100,9 @@ type AzureCredentialClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-type AzureServicePrincipalProperties struct {
-	// REQUIRED; A client ID that represents the application.
-	ClientID *string `json:"clientId,omitempty"`
-
-	// REQUIRED; A secret string that the application uses to prove its identity when requesting a token.
-	ClientSecret *string `json:"clientSecret,omitempty"`
-
-	// REQUIRED; The kind of secret
-	Kind *string `json:"kind,omitempty"`
-
-	// REQUIRED; Credential storage properties
-	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
-
-	// REQUIRED; A tenant Id that the application is created.
-	TenantID *string `json:"tenantId,omitempty"`
-}
-
-// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AzureServicePrincipalProperties.
-func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
-	return &CredentialResourceProperties{
-		Kind: a.Kind,
-		Storage: a.Storage,
-	}
-}
-
-// CredentialResource - Credential to a plane instance
-type CredentialResource struct {
+// AzureCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
+// type.
+type AzureCredentialResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
