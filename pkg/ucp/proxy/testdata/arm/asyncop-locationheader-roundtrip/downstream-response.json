@@ -3,7 +3,7 @@
     "body": "{}",
     "headers": {
         "Location": [
-            "http://example.com/asyncresponseID"
+            "http://localhost:9443/planes/example/local/asyncresponseID"
         ]
     } 
 }
