@@ -35,19 +35,6 @@ import (
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	LegacyAPIServerBasePath  = "/apis/api.radius.dev/v1alpha3"
-	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
-	Location                 = "Location"
-	AzureAsyncOperation      = "Azure-AsyncOperation"
-	IngressServiceName       = "contour-envoy"
-	RadiusConfigName         = "radius-config"
-	RadiusSystemNamespace    = "radius-system"
-	UCPAPIServerBasePath     = "/apis/api.ucp.dev/v1alpha3"
-	UCPType                  = "api.ucp.dev"
-	BicepType                = "api.bicep.dev"
-)
-
 var (
 	Scheme = k8s_runtime.NewScheme()
 )

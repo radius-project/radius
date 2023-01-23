@@ -202,6 +202,9 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 					Parameters: recipeParams,
 				},
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				EnvParameters: map[string]any{
+					"name": "account-mongo-db",
+				},
 			},
 			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 			Provider:   resourcemodel.ProviderAzure,

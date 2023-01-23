@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -23,7 +24,7 @@ import (
 func Test_ResourceGroup_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Create resource groups
-		rgID := "/planes/radius/local/resourcegroups/test-rg"
+		rgID := "/planes/radius/local/resourcegroups/test-RG"
 		apiVersion := v20220901privatepreview.Version
 		rgURL := fmt.Sprintf("%s%s?api-version=%s", url, rgID, apiVersion)
 
@@ -39,11 +40,11 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		rgs := listResourceGroups(t, roundTripper, listRGsURL)
 		require.GreaterOrEqual(t, len(rgs.Value), 1)
 
-		// Get Resource Group
-		rg, statusCode := getResourceGroup(t, roundTripper, rgURL)
+		// Get Resource Group by calling lower case URL.
+		rg, statusCode := getResourceGroup(t, roundTripper, strings.ToLower(rgURL))
 		expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
 			ID:       to.Ptr(rgID),
-			Name:     to.Ptr("test-rg"),
+			Name:     to.Ptr("test-RG"),
 			Tags:     map[string]*string{},
 			Type:     to.Ptr("System.Resources/resourceGroups"),
 			Location: to.Ptr(v1.LocationGlobal),
