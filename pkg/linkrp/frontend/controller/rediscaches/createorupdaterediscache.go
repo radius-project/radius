@@ -7,9 +7,8 @@ package rediscaches
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strconv"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -18,12 +17,15 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateRedisCache)(nil)
+
+var (
+	// AsyncPutContainerOperationTimeout is the default timeout duration of async put redisCache operation.
+	AsyncPutContainerOperationTimeout = time.Duration(5) * time.Minute
+)
 
 // CreateOrUpdateRedisCache is the controller implementation to create or update RedisCache link resource.
 type CreateOrUpdateRedisCache struct {
@@ -67,57 +69,9 @@ func (redisCache *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.Resp
 		return r, err
 	}
 
-	rendererOutput, err := redisCache.dp.Render(ctx, serviceCtx.ResourceID, newResource)
-	if err != nil {
-		return nil, err
-	}
+	if r, err := redisCache.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, AsyncPutContainerOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 
-	deploymentOutput, err := redisCache.dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
-	if err != nil {
-		return nil, err
 	}
-
-	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
-	newResource.ComputedValues = deploymentOutput.ComputedValues
-	newResource.SecretValues = deploymentOutput.SecretValues
-	if host, ok := deploymentOutput.ComputedValues[renderers.Host].(string); ok {
-		newResource.Properties.Host = host
-	}
-	if port, ok := deploymentOutput.ComputedValues[renderers.Port]; ok {
-		if port != nil {
-			switch p := port.(type) {
-			case float64:
-				newResource.Properties.Port = int32(p)
-			case int32:
-				newResource.Properties.Port = p
-			case string:
-				converted, err := strconv.Atoi(p)
-				if err != nil {
-					return nil, err
-				}
-				newResource.Properties.Port = int32(converted)
-			default:
-				return nil, errors.New("unhandled type for the property port")
-			}
-		}
-	}
-	if username, ok := deploymentOutput.ComputedValues[renderers.UsernameStringValue].(string); ok {
-		newResource.Properties.Username = username
-	}
-
-	if old != nil {
-		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = redisCache.dp.Delete(ctx, serviceCtx.ResourceID, diff)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
-	newEtag, err := redisCache.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
-	if err != nil {
-		return nil, err
-	}
-
-	return redisCache.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
+	return redisCache.ConstructAsyncResponse(ctx, req.Method, etag, newResource)
 }

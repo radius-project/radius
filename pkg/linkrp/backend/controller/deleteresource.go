@@ -14,6 +14,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
+	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -69,11 +70,13 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	return ctrl.Result{}, err
 }
 
-func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
+func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceTypeName):
 		return &datamodel.MongoDatabase{}, nil
+	case strings.ToLower(rediscaches.ResourceTypeName):
+		return &datamodel.RedisCache{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}

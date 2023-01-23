@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -47,6 +48,11 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if database, ok := do.ComputedValues[renderers.DatabaseNameValue].(string); ok {
+		r.Properties.Database = database
+	}
 	return nil
 }
 
