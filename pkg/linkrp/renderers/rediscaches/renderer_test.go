@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -68,11 +69,11 @@ func Test_Render_Success(t *testing.T) {
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.Host: {
+		linkrp.Host: {
 			LocalID:     outputresource.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName",
 		},
-		renderers.Port: {
+		linkrp.Port: {
 			LocalID:     outputresource.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort",
 		},
@@ -136,10 +137,10 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 	require.Len(t, output.Resources, 0)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.Host: {
+		linkrp.Host: {
 			Value: "hello.com",
 		},
-		renderers.Port: {
+		linkrp.Port: {
 			Value: int32(1234),
 		},
 	}

@@ -10,12 +10,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-const (
-	ResourceType     = "Applications.Link/daprPubSubBrokers"
-	TopicNameKey     = "topic"
-	NamespaceNameKey = "namespace"
-	PubSubNameKey    = "pubSubName"
-)
+const ResourceType = "Applications.Link/daprPubSubBrokers"
 
 var NamespaceResourceType = resources.KnownType{
 	Types: []resources.TypeSegment{

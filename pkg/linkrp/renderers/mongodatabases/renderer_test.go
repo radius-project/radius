@@ -14,6 +14,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -93,7 +94,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
+		linkrp.DatabaseNameValue: {
 			Value: "test-database",
 		},
 	}
@@ -141,7 +142,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.Len(t, output.Resources, 0)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
+		linkrp.DatabaseNameValue: {
 			Value: mongoDBResource.Name,
 		},
 	}
@@ -149,7 +150,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 
 	expectedSecretValues := map[string]rp.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
-		renderers.UsernameStringValue:   {Value: userName},
+		linkrp.UsernameStringValue:      {Value: userName},
 		renderers.PasswordStringHolder:  {Value: password},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
@@ -360,7 +361,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
+		linkrp.DatabaseNameValue: {
 			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id",
 		},

@@ -14,6 +14,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -58,7 +59,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
-				renderers.DatabaseNameValue: {
+				linkrp.DatabaseNameValue: {
 					Value: resource.Name,
 				},
 			},
@@ -84,7 +85,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 	secretValues := buildSecretValueReferenceForAzure(resource.Properties)
 
 	computedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
+		linkrp.DatabaseNameValue: {
 			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
 		},
@@ -134,7 +135,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
+		linkrp.DatabaseNameValue: {
 			Value: cosmosMongoDBID.Name(),
 		},
 	}
@@ -180,7 +181,7 @@ func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[s
 	secretValues := map[string]rp.SecretValueReference{}
 	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Username != "" {
-			secretValues[renderers.UsernameStringValue] = rp.SecretValueReference{Value: properties.Secrets.Username}
+			secretValues[linkrp.UsernameStringValue] = rp.SecretValueReference{Value: properties.Secrets.Username}
 		}
 		if properties.Secrets.Password != "" {
 			secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{Value: properties.Secrets.Password}

@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -69,15 +70,15 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
-	if _, ok := computedValues[renderers.Host]; !ok {
-		computedValues[renderers.Host] = renderers.ComputedValueReference{
+	if _, ok := computedValues[linkrp.Host]; !ok {
+		computedValues[linkrp.Host] = renderers.ComputedValueReference{
 			LocalID:     outputresource.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
-	if _, ok := computedValues[renderers.Port]; !ok {
-		computedValues[renderers.Port] = renderers.ComputedValueReference{
+	if _, ok := computedValues[linkrp.Port]; !ok {
+		computedValues[linkrp.Port] = renderers.ComputedValueReference{
 			LocalID:     outputresource.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
@@ -137,10 +138,10 @@ func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[stri
 func getProvidedComputedValues(properties datamodel.RedisCacheProperties) map[string]renderers.ComputedValueReference {
 	computedValues := map[string]renderers.ComputedValueReference{}
 	if properties.Host != "" {
-		computedValues[renderers.Host] = renderers.ComputedValueReference{Value: properties.Host}
+		computedValues[linkrp.Host] = renderers.ComputedValueReference{Value: properties.Host}
 	}
 	if properties.Port != 0 {
-		computedValues[renderers.Port] = renderers.ComputedValueReference{Value: properties.Port}
+		computedValues[linkrp.Port] = renderers.ComputedValueReference{Value: properties.Port}
 	}
 
 	return computedValues

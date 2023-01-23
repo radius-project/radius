@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/linkrp"
 	dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_r "github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -218,7 +219,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	}
 
 	computedValues := map[string]any{
-		linkrp_r.DatabaseNameValue: "db",
+		linkrp.DatabaseNameValue: "db",
 	}
 
 	testResource.ComputedValues = computedValues

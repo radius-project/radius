@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -22,6 +23,21 @@ type DaprPubSubBroker struct {
 	LinkMetadata
 }
 
+func (r *DaprPubSubBroker) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
+	r.Properties.Status.OutputResources = outputResources
+	r.ComputedValues = computedValues
+	r.SecretValues = secretValues
+	if topic, ok := computedValues[linkrp.TopicNameKey].(string); ok {
+		r.Properties.Topic = topic
+	}
+
+	if componentName, ok := computedValues[linkrp.ComponentNameKey].(string); ok {
+		r.Properties.ComponentName = componentName
+	}
+
+	return nil
+}
+
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
@@ -35,6 +51,21 @@ func (r *DaprPubSubBroker) OutputResources() []outputresource.OutputResource {
 // ResourceMetadata returns the application resource metadata.
 func (r *DaprPubSubBroker) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
+}
+
+// ComputedValues returns the computed values on the link.
+func (r *DaprPubSubBroker) GetComputedValues() map[string]any {
+	return r.LinkMetadata.ComputedValues
+}
+
+// SecretValues returns the secret values for the link.
+func (r *DaprPubSubBroker) GetSecretValues() map[string]rp.SecretValueReference {
+	return r.LinkMetadata.SecretValues
+}
+
+// RecipeData returns the recipe data for the link.
+func (r *DaprPubSubBroker) GetRecipeData() RecipeData {
+	return r.LinkMetadata.RecipeData
 }
 
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {

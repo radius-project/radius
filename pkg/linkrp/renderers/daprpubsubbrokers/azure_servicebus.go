@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -66,18 +67,18 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 	}
 
 	values := map[string]renderers.ComputedValueReference{
-		NamespaceNameKey: {
+		linkrp.NamespaceNameKey: {
 			Value: serviceBusNamespaceName,
 		},
-		PubSubNameKey: {
+		linkrp.PubSubNameKey: {
 			Value:             kubernetes.NormalizeResourceName(resource.Name),
 			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ResourceName,
 		},
-		TopicNameKey: {
+		linkrp.TopicNameKey: {
 			Value: topicName,
 		},
-		renderers.ComponentNameKey: {
+		linkrp.ComponentNameKey: {
 			Value: kubernetes.NormalizeResourceName(resource.Name),
 		},
 	}

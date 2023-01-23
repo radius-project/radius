@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
@@ -68,7 +69,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
-			renderers.UsernameStringValue:   "testUser",
+			linkrp.UsernameStringValue:      "testUser",
 			renderers.PasswordStringHolder:  "testPassword",
 			renderers.ConnectionStringValue: "testConnectionString",
 		}
@@ -103,7 +104,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
-		require.Equal(t, expectedSecrets[renderers.UsernameStringValue], *actualOutput.Username)
+		require.Equal(t, expectedSecrets[linkrp.UsernameStringValue], *actualOutput.Username)
 		require.Equal(t, expectedSecrets[renderers.PasswordStringHolder], *actualOutput.Password)
 	})
 
@@ -112,7 +113,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
-			renderers.UsernameStringValue:   "testUser",
+			linkrp.UsernameStringValue:      "testUser",
 			renderers.ConnectionStringValue: "testConnectionString",
 		}
 
@@ -145,7 +146,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		actualOutput := &v20220315privatepreview.MongoDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		require.Equal(t, expectedSecrets[renderers.UsernameStringValue], *actualOutput.Username)
+		require.Equal(t, expectedSecrets[linkrp.UsernameStringValue], *actualOutput.Username)
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
 	})
 

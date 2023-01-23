@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // LinkMetadata represents internal DataModel properties common to all link types.
@@ -57,3 +58,12 @@ const (
 	LinkModeResource LinkMode = "resource"
 	LinkModeValues   LinkMode = "values"
 )
+
+type Link interface {
+	rp.RadiusResourceModel
+
+	Transform([]outputresource.OutputResource, map[string]any, map[string]rp.SecretValueReference) error
+	GetComputedValues() map[string]any
+	GetSecretValues() map[string]rp.SecretValueReference
+	GetRecipeData() RecipeData
+}

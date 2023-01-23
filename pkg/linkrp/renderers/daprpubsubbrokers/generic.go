@@ -7,6 +7,7 @@ package daprpubsubbrokers
 
 import (
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -37,18 +38,18 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 	}
 
 	values := map[string]renderers.ComputedValueReference{
-		NamespaceNameKey: {
+		linkrp.NamespaceNameKey: {
 			Value: namespace,
 		},
-		PubSubNameKey: {
+		linkrp.PubSubNameKey: {
 			Value:             kubernetes.NormalizeResourceName(resource.Name),
 			LocalID:           outputresource.LocalIDDaprComponent,
 			PropertyReference: handlers.ResourceName,
 		},
-		TopicNameKey: {
+		linkrp.TopicNameKey: {
 			Value: topicName,
 		},
-		renderers.ComponentNameKey: {
+		linkrp.ComponentNameKey: {
 			Value: kubernetes.NormalizeResourceName(resource.Name),
 		},
 	}

@@ -9,6 +9,7 @@ import (
 	"context"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
@@ -42,7 +43,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("queue name must be specified")
 	}
 	values := map[string]renderers.ComputedValueReference{
-		QueueNameKey: {
+		linkrp.QueueNameKey: {
 			Value: queueName,
 		},
 	}

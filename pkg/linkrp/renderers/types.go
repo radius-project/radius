@@ -18,13 +18,7 @@ import (
 
 const (
 	ConnectionStringValue = "connectionString"
-	DatabaseNameValue     = "database"
-	ServerNameValue       = "server"
-	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
-	Host                  = "host"
-	Port                  = "port"
-	ComponentNameKey      = "componentName"
 )
 
 var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")

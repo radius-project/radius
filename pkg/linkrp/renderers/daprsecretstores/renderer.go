@@ -12,6 +12,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
@@ -60,7 +61,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 	return renderers.RendererOutput{
 		Resources: resources,
 		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.ComponentNameKey: {
+			linkrp.ComponentNameKey: {
 				Value: kubernetes.NormalizeResourceName(resource.Name),
 			},
 		},

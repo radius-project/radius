@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 )
 
@@ -35,7 +35,7 @@ func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[str
 		return "", fmt.Errorf("failed to parse connection string as a URL: %w", err)
 	}
 
-	databaseName, ok := computedValues[renderers.DatabaseNameValue].(string)
+	databaseName, ok := computedValues[linkrp.DatabaseNameValue].(string)
 	if !ok {
 		return nil, errors.New("expected the databaseName to be a string")
 	}

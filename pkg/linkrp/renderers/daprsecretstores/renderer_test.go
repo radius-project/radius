@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -104,7 +105,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, outputresource.LocalIDDaprComponent, outputResource.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, outputResource.ResourceType.Type)
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.ComponentNameKey: {
+		linkrp.ComponentNameKey: {
 			Value: "test-secret-store",
 		},
 	}
@@ -279,5 +280,5 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 
 	rendererOutput, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
-	require.Equal(t, kubernetes.NormalizeResourceName("test-secret-store"), rendererOutput.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeResourceName("test-secret-store"), rendererOutput.ComputedValues[linkrp.ComponentNameKey].Value)
 }

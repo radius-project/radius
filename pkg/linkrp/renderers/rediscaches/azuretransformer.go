@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 )
 
@@ -27,12 +27,12 @@ func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[str
 		return nil, errors.New("expected the access key to be a string")
 	}
 
-	hostname, ok := computedValues[renderers.Host].(string)
+	hostname, ok := computedValues[linkrp.Host].(string)
 	if !ok {
 		return nil, errors.New("hostname is required to build Redis connection string")
 	}
 
-	port, ok := computedValues[renderers.Port]
+	port, ok := computedValues[linkrp.Port]
 	if !ok || port == nil {
 		return nil, errors.New("port is required to build Redis connection string")
 	}

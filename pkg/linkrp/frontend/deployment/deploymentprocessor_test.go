@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/model"
@@ -159,11 +160,11 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	secretValues := map[string]rp.SecretValueReference{}
 	if mode == modeResource || mode == modeRecipe {
 		computedValues = map[string]renderers.ComputedValueReference{
-			renderers.DatabaseNameValue: {
+			linkrp.DatabaseNameValue: {
 				LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
 				JSONPointer: "/properties/resource/id",
 			},
-			renderers.Host: {
+			linkrp.Host: {
 				Value: 8080,
 			},
 		}
@@ -181,13 +182,13 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 		}
 	} else if mode == modeValues {
 		computedValues = map[string]renderers.ComputedValueReference{
-			renderers.DatabaseNameValue: {
+			linkrp.DatabaseNameValue: {
 				Value: mongoLinkName,
 			},
 		}
 
 		secretValues = map[string]rp.SecretValueReference{
-			renderers.UsernameStringValue:   {Value: "testUser"},
+			linkrp.UsernameStringValue:      {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: cosmosConnectionString},
 		}
@@ -417,7 +418,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildEnvironmentResource("", nil), nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
-		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		rendererOutput, err := dp.render(ctx, mongoLinkResourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
@@ -433,7 +434,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
-		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		rendererOutput, err := dp.render(ctx, mongoLinkResourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.Resources, rendererOutput.Resources)
 		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
@@ -454,7 +455,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
-		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		rendererOutput, err := dp.render(ctx, mongoLinkResourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -475,7 +476,7 @@ func Test_Render(t *testing.T) {
 			},
 		}
 
-		_, err := dp.Render(ctx, mongoLinkResourceID, &resource)
+		_, err := dp.render(ctx, mongoLinkResourceID, &resource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "invalid-id is not a valid resource id for Applications.Core/environments.", err.(*v1.ErrClientRP).Message)
@@ -490,7 +491,7 @@ func Test_Render(t *testing.T) {
 
 		testResource := buildInputResourceMongo(modeResource)
 
-		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		_, err := dp.render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, "failed to render the resource", err.Error())
 	})
@@ -517,7 +518,7 @@ func Test_Render(t *testing.T) {
 			},
 		}
 
-		_, err := dp.Render(ctx, parsedID, &testInvalidResource)
+		_, err := dp.render(ctx, parsedID, &testInvalidResource)
 		require.Error(t, err)
 		require.Equal(t, "radius resource type 'Applications.foo/foo' is unsupported", err.Error())
 	})
@@ -538,7 +539,7 @@ func Test_Render(t *testing.T) {
 			},
 		}
 
-		_, err := dp.Render(ctx, mongoLinkResourceID, &resource)
+		_, err := dp.render(ctx, mongoLinkResourceID, &resource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "linked \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env\" has invalid Applications.Core/environments resource type.", err.(*v1.ErrClientRP).Message)
@@ -551,7 +552,7 @@ func Test_Render(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&store.Object{}, &store.ErrNotFound{})
 
-		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		_, err := dp.render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "linked resource /subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0 does not exist", err.(*v1.ErrClientRP).Message)
@@ -568,7 +569,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
-		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		_, err := dp.render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, "output resource \"AzureCosmosAccount\" does not have a provider specified", err.Error())
 	})
@@ -593,7 +594,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
-		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		_, err := dp.render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account", err.(*v1.ErrClientRP).Message)
@@ -627,7 +628,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
-		_, err := mockdp.Render(ctx, mongoLinkResourceID, &testResource)
+		_, err := mockdp.render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "provider azure is not configured. Cannot support resource type azure.cosmosdb.account", err.(*v1.ErrClientRP).Message)
@@ -644,13 +645,13 @@ func Test_Deploy(t *testing.T) {
 
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 
-		deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		deploymentOutput, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.Resources))
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[0].Identity)
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[1].Identity)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", renderers.Host: testRendererOutput.ComputedValues[renderers.Host].Value}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{linkrp.DatabaseNameValue: "test-database", linkrp.Host: testRendererOutput.ComputedValues[linkrp.Host].Value}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy success with recipe", func(t *testing.T) {
@@ -659,10 +660,10 @@ func Test_Deploy(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(2).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
-		deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		deploymentOutput, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{linkrp.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
 		require.Equal(t, resources, deploymentOutput.RecipeData.Resources)
 	})
 
@@ -671,7 +672,7 @@ func Test_Deploy(t *testing.T) {
 		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
-		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		_, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
 		require.Equal(t, "failed to deploy recipe - "+deploymentName, err.Error())
 	})
@@ -680,7 +681,7 @@ func Test_Deploy(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, errors.New("failed to deploy the resource"))
 
 		testRendererOutput := buildRendererOutputMongo(modeResource)
-		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		_, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
 		require.Equal(t, "failed to deploy the resource", err.Error())
 	})
@@ -689,7 +690,7 @@ func Test_Deploy(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, v1.NewClientErrInvalidRequest("failed to access connected Azure resource"))
 
 		testRendererOutput := buildRendererOutputMongo(modeResource)
-		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		_, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "failed to access connected Azure resource", err.(*v1.ErrClientRP).Message)
@@ -700,7 +701,7 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput.Resources[0].Dependencies = []outputresource.Dependency{
 			{LocalID: ""},
 		}
-		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		_, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
 		require.Equal(t, "missing localID for outputresource", err.Error())
 	})
@@ -708,7 +709,7 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Invalid output resource type", func(t *testing.T) {
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 		testRendererOutput.Resources[0].ResourceType.Type = "foo"
-		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		_, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
 	})
@@ -719,7 +720,7 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 		testRendererOutput.Resources[0].Identity = resourcemodel.ResourceIdentity{}
 		testRendererOutput.Resources[1].Identity = resourcemodel.ResourceIdentity{}
-		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		_, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
 		require.Equal(t, "output resource \"AzureCosmosAccount\" does not have an identity. This is a bug in the handler or renderer", err.Error())
 	})
@@ -730,7 +731,7 @@ func Test_Deploy(t *testing.T) {
 
 		expectedErr := v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources[0], mongoLinkResourceID))
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
-		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		_, err := dp.deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
 		require.Equal(t, expectedErr, err)
 	})
@@ -777,7 +778,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	properties := map[string]string{"property-key": "property-value"}
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(expectedCosmosAccountIdentity, properties, nil)
 
-	deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
+	deploymentOutput, err := dp.deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.NoError(t, err)
 
 	expected := map[string]any{
@@ -818,7 +819,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 	expectedErr := fmt.Sprintf("failed to parse JSON pointer \".ddkfkdk\" for computed value \"test-value\" for link \"%s\": JSON pointer must be empty or start with a \"/", mongoLinkResourceID)
-	_, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
+	_, err := dp.deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.Error(t, err)
 	require.Equal(t, expectedErr, err.Error())
 }
@@ -859,7 +860,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
-	_, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
+	_, err := dp.deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.Error(t, err)
 	require.Equal(t, expectedErr, err.Error())
 }
@@ -985,7 +986,7 @@ func Test_FetchSecretsWithValues(t *testing.T) {
 
 	rendererOutput := buildRendererOutputMongo(modeValues)
 	computedValues := map[string]any{
-		renderers.DatabaseNameValue: mongoLinkName,
+		linkrp.DatabaseNameValue: mongoLinkName,
 	}
 	res := buildInputResourceMongo(modeValues)
 	resourceData := ResourceData{
@@ -998,7 +999,7 @@ func Test_FetchSecretsWithValues(t *testing.T) {
 	secrets, err := dp.FetchSecrets(ctx, resourceData)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(secrets))
-	require.Equal(t, "testUser", secrets[renderers.UsernameStringValue])
+	require.Equal(t, "testUser", secrets[linkrp.UsernameStringValue])
 	require.Equal(t, "testPassword", secrets[renderers.PasswordStringHolder])
 	require.Equal(t, cosmosConnectionString, secrets[renderers.ConnectionStringValue])
 }
@@ -1011,7 +1012,7 @@ func Test_FetchSecretsWithResource(t *testing.T) {
 	resource := buildInputResourceMongo(modeResource)
 	rendererOutput := buildRendererOutputMongo(modeResource)
 	computedValues := map[string]any{
-		renderers.DatabaseNameValue: "test-database",
+		linkrp.DatabaseNameValue: "test-database",
 	}
 
 	mocks.secretsValueClient.EXPECT().FetchSecret(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(cosmosConnectionString, nil)
@@ -1041,7 +1042,7 @@ func Test_FetchSecretsWithRecipe(t *testing.T) {
 	resource := buildInputResourceMongo(modeRecipe)
 	rendererOutput := buildRendererOutputMongo(modeRecipe)
 	computedValues := map[string]any{
-		renderers.DatabaseNameValue: "test-database",
+		linkrp.DatabaseNameValue: "test-database",
 	}
 
 	mocks.secretsValueClient.EXPECT().FetchSecret(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(cosmosConnectionString, nil)
