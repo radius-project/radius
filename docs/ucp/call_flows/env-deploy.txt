@@ -1,0 +1,23 @@
+Deploying Radius environment resource
+
+participant CLI
+participant Bicep
+participant UCP
+participant DE
+participant Radius RP
+
+CLI->Bicep:rad app deploy
+Bicep->Bicep:JSON Template generation
+CLI->UCP:PUT /planes/deployments/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+UCP->DE: PUT /planes/deployments/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+note over DE: Deployment orchestration
+DE->UCP: PUT /planes/radius/local/resourcegroups/{rg}/providers/Applications.Core/environments/{name}
+DE-->DE:Poll operation completion
+UCP->Radius RP: PUT /planes/radius/local/resourcegroups/{rg}/providers/Applications.Core/environments/{name}
+Radius RP->Radius RP: Create environment resource
+Radius RP -->UCP:env created
+UCP-->DE:Success
+DE-->UCP: Deployment complete
+UCP-->CLI: Success
+
+
