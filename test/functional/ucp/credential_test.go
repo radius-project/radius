@@ -174,7 +174,7 @@ func getAWSCredentialObject() ucp.CredentialResource {
 			Kind:            to.Ptr("aws.com.iam"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("aws_awscloud_default"),
+				SecretName: to.Ptr("aws-awscloud-default"),
 			},
 		},
 	}

@@ -146,7 +146,7 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 					AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
 						Kind:       to.Ptr(CredentialStorageKindInternal),
-						SecretName: to.Ptr("aws_awscloud_default"),
+						SecretName: to.Ptr("aws-awscloud-default"),
 					},
 				},
 			},
