@@ -64,6 +64,10 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	newResource.ID = id.String()
+	newResource.Name = id.Name()
+	newResource.Type = id.Type()
+
 	logger := logr.FromContextOrDiscard(ctx)
 
 	// Check if the credential already exists in database
@@ -74,8 +78,8 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	secretName := credentials.GetSecretName(id)
-	if *newResource.Properties.Storage.Kind == datamodel.InternalStorageKind {
-		newResource.Properties.Storage.InternalCredential.SecretName = &secretName
+	if newResource.Properties.Storage.Kind == datamodel.InternalStorageKind {
+		newResource.Properties.Storage.InternalCredential.SecretName = secretName
 	}
 
 	// Save the credential secret
@@ -83,6 +87,9 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	if err != nil {
 		return nil, err
 	}
+
+	// Do not save the secret in metadata store.
+	newResource.Properties.AWSCredential.SecretAccessKey = ""
 
 	// Save the data model credential to the database
 	_, err = p.SaveResource(ctx, newResource.TrackedResource.ID, *newResource, etag)
