@@ -60,15 +60,6 @@ type deploymentProcessor struct {
 	k8s          client.Client
 }
 
-// RecipeContextMetadata is used to create the context for deploying the recipe
-type RecipeContextMetadata struct {
-	ApplicationID        string
-	EnvironmentID        string
-	LinkID               string
-	EnvironmentNamespace string
-	ApplicationNamespace string
-}
-
 type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]any
