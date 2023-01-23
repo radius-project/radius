@@ -73,19 +73,19 @@ type AzureCredentialClientListOptions struct {
 }
 
 type AzureServicePrincipalProperties struct {
-	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
+	// REQUIRED; A client ID that represents the application.
 	ClientID *string `json:"clientId,omitempty"`
+
+	// REQUIRED; A secret string that the application uses to prove its identity when requesting a token.
+	ClientSecret *string `json:"clientSecret,omitempty"`
 
 	// REQUIRED; The kind of secret
 	Kind *string `json:"kind,omitempty"`
 
-	// REQUIRED; secret when the CredentialKind is ServicePrincipal
-	Secret *string `json:"secret,omitempty"`
-
 	// REQUIRED; Credential storage properties
 	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
 
-	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
+	// REQUIRED; A tenant Id that the application is created.
 	TenantID *string `json:"tenantId,omitempty"`
 }
 

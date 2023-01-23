@@ -16,5 +16,5 @@ func Test_Credential(t *testing.T) {
 	id, err := resources.Parse("/planes/azure/azurecloud/providers/System.Azure/credentials/default")
 	require.NoError(t, err)
 	secretName := GetSecretName(id)
-	assert.Equal(t, secretName, "azure_azurecloud_default")
+	assert.Equal(t, secretName, "azure-azurecloud-default")
 }

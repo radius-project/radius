@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	SecretName = "test_secret_name"
+	SecretName = "test-secret-name"
 )
 
 func Test_Save(t *testing.T) {
