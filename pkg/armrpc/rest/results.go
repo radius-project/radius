@@ -288,7 +288,7 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 
 	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
 	logger := logr.FromContextOrDiscard(req.Context())
-	logger.Info("og referer header from request: " + req.Header.Get(v1.RefererHeader))
+	// logger.Info("og referer header from request: " + req.Header.Get(v1.RefererHeader))
 	logger.Info("Referer host: " + referer.Host)
 	if err != nil {
 		return "", err
