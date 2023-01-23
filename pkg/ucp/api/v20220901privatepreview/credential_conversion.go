@@ -68,7 +68,7 @@ func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.Cre
 	case nil:
 		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
 	default:
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())}
 	}
 
 	switch p := cr.Properties.(type) {
