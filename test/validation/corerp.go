@@ -153,7 +153,7 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 								identity := actualOutputResource.Identity.(map[string]interface{})
 								actualID := identity["id"].(string)
 								actualResource, err := resources.ParseResource(actualID)
-								if err != nil || expectedOutputResource.Identity != actualResource.Name() {
+								if err != nil || expectedOutputResource.OutputResourceName != actualResource.Name() {
 									found = false
 									break
 								}
