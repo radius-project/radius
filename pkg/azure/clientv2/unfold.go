@@ -9,7 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -150,4 +153,50 @@ func extractString(o any) *string {
 		return sp
 	}
 	return to.Ptr(fmt.Sprintf("%v", o))
+}
+
+// TryUnfoldResponseError unfolds an azcore.ResponseError.
+func TryUnfoldResponseError(err error) *v1.ErrorDetails {
+	respErr, ok := err.(*azcore.ResponseError)
+	if !ok {
+		return nil
+	}
+	return unfoldResponseError(respErr)
+}
+
+func unfoldResponseError(in *azcore.ResponseError) *v1.ErrorDetails {
+	if in == nil {
+		return nil
+	}
+
+	body, err := readResponseBody(in.RawResponse)
+	if err != nil {
+		return nil
+	}
+
+	raw := struct {
+		Error v1.ErrorDetails `json:"error"`
+	}{}
+
+	err = json.Unmarshal(body, &raw)
+	if err != nil {
+		return nil
+	}
+
+	return &raw.Error
+}
+
+func readResponseBody(resp *http.Response) ([]byte, error) {
+	if resp.Body == nil {
+		// FIXME: Should we return an error here?
+		return []byte{}, nil
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	return data, nil
 }
