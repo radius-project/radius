@@ -90,19 +90,10 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, err
 	}
 
-	// if the recipe template has the context parameter defined then add it to the parameter for deployment
-	parameters := map[string]any{}
-
-	// get the parameters after resolving the conflict
-	parameters = handleParameterConflict(recipe.Parameters, recipe.EnvParameters)
-
-	// set the context parameter if defined in recipe
+	// get the parameters after resolving the conflict between developer and operator parameters
+	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	_, isContextParameterDefined := recipeData["parameters"].(map[string]interface{})[datamodel.RecipeContextParameter]
-	if isContextParameterDefined {
-		parameters["context"] = map[string]interface{}{
-			"value": recipeContext,
-		}
-	}
+	parameters := createRecipeParameters(recipe.Parameters, recipe.EnvParameters, isContextParameterDefined, &recipeContext)
 
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
 	client, err := clientv2.NewDeploymentsClient(subscriptionID, &handler.arm.ClientOptions)

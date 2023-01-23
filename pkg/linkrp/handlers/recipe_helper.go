@@ -45,9 +45,9 @@ func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespac
 	return &linkContext, nil
 }
 
-// handleParameterConflict handles conflicts in parameters set by operator and developer
-// In case of conflict the developer parameter takes precedence
-func handleParameterConflict(devParams, operatorParams map[string]any) map[string]any {
+// createRecipeParameters creates the parameters to be passed for recipe deployment after handling conflicts in parameters set by operator and developer
+// in case of conflict the developer parameter takes precedence. If recipe has context parameter defined adds the context information to the parameters list
+func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *datamodel.RecipeContext) map[string]any {
 	parameters := map[string]any{}
 	for k, v := range operatorParams {
 		if _, ok := devParams[k]; !ok {
@@ -57,6 +57,11 @@ func handleParameterConflict(devParams, operatorParams map[string]any) map[strin
 	for k, v := range devParams {
 		parameters[k] = map[string]any{
 			"value": v,
+		}
+	}
+	if isCxtSet {
+		parameters["context"] = map[string]interface{}{
+			"value": *recipeContext,
 		}
 	}
 	return parameters
