@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package delete
+package show
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/test/radcli"
@@ -27,7 +28,7 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Valid Delete Command",
+			Name:          "Valid Show Command",
 			Input:         []string{"azure"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -36,7 +37,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command with fallback workspace",
+			Name:          "Show Command with fallback workspace",
 			Input:         []string{"Azure"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -45,7 +46,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command with unsupported provider type",
+			Name:          "Show Command with unsupported provider type",
 			Input:         []string{"invalidProviderType"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -54,7 +55,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command with insufficient args",
+			Name:          "Show Command with insufficient args",
 			Input:         []string{},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -63,7 +64,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command with too many args",
+			Name:          "Show Command with too many args",
 			Input:         []string{"azure", "a", "b"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -81,14 +82,19 @@ func Test_Run(t *testing.T) {
 		"context": "my-context",
 	}
 
-	t.Run("Delete azure provider", func(t *testing.T) {
+	t.Run("Show azure provider", func(t *testing.T) {
 		t.Run("Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
+			provider := clients.CloudProviderResource{
+				Name:    "azure",
+				Enabled: true,
+			}
+
 			client := clients.NewMockCloudProviderManagementClient(ctrl)
 			client.EXPECT().
-				Delete(gomock.Any(), "azure").
-				Return(true, nil).
+				Get(gomock.Any(), "azure").
+				Return(provider, nil).
 				Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -106,11 +112,13 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
-					Format: "Deleting cloud provider %q for Radius installation %q...",
+					Format: "Showing credential for cloud provider %q for Radius installation %q...",
 					Params: []any{"azure", "Kubernetes (context=my-context)"},
 				},
-				output.LogOutput{
-					Format: "Cloud provider deleted.",
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     provider,
+					Options: objectformats.GetCloudProviderTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -120,8 +128,8 @@ func Test_Run(t *testing.T) {
 
 			client := clients.NewMockCloudProviderManagementClient(ctrl)
 			client.EXPECT().
-				Delete(gomock.Any(), "azure").
-				Return(false, nil).
+				Get(gomock.Any(), "azure").
+				Return(clients.CloudProviderResource{}, radcli.Create404Error()).
 				Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -135,19 +143,8 @@ func Test_Run(t *testing.T) {
 			}
 
 			err := runner.Run(context.Background())
-			require.NoError(t, err)
-
-			expected := []any{
-				output.LogOutput{
-					Format: "Deleting cloud provider %q for Radius installation %q...",
-					Params: []any{"azure", "Kubernetes (context=my-context)"},
-				},
-				output.LogOutput{
-					Format: "Cloud provider %q was not found or has been already deleted.",
-					Params: []any{"azure"},
-				},
-			}
-			require.Equal(t, expected, outputSink.Writes)
+			require.Error(t, err)
+			require.Equal(t, "Cloud provider \"azure\" could not be found.", err.Error())
 		})
 	})
 }

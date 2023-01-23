@@ -219,6 +219,8 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
 
+	t.Skip("This test is flaky, see issue: https://github.com/project-radius/radius/issues/4992")
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),

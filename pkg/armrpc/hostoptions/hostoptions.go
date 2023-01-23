@@ -10,6 +10,7 @@ package hostoptions
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/k8sauth"
+	"github.com/project-radius/radius/pkg/sdk"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
@@ -27,9 +29,17 @@ import (
 // HostOptions defines all of the settings that our RP's execution environment provides.
 type HostOptions struct {
 	// Config is the bootstrap configuration loaded from config file.
-	Config    *ProviderConfig
-	Arm       *armauth.ArmConfig
+	Config *ProviderConfig
+
+	// Arm is the ARM authorization configuration.
+	Arm *armauth.ArmConfig
+
+	// K8sConfig is the Kubernetes configuration for communicating with the local
+	// cluster.
 	K8sConfig *rest.Config
+
+	// UCPConnection is a connection to the UCP endpoint.
+	UCPConnection sdk.Connection
 }
 
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
@@ -48,10 +58,16 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
+	ucp, err := getUCPConnection(conf, k8s)
+	if err != nil {
+		return HostOptions{}, err
+	}
+
 	return HostOptions{
-		Config:    conf,
-		Arm:       arm,
-		K8sConfig: k8s,
+		Config:        conf,
+		Arm:           arm,
+		K8sConfig:     k8s,
+		UCPConnection: ucp,
 	}, nil
 }
 
@@ -132,4 +148,16 @@ func getKubernetes() (*rest.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func getUCPConnection(config *ProviderConfig, k8sConfig *rest.Config) (sdk.Connection, error) {
+	if config.UCP.Kind == UCPConnectionKindDirect {
+		if config.UCP.Direct == nil || config.UCP.Direct.Endpoint == "" {
+			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
+		}
+
+		return sdk.NewDirectConnection(config.UCP.Direct.Endpoint)
+	}
+
+	return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 }
