@@ -7,226 +7,170 @@ package mongodatabases
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+func TestCreateOrUpdateMongoDatabaseRun_20220315PrivatePreview(t *testing.T) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
-	ctx := context.Background()
-
-	createNewResourceTestCases := []struct {
-		desc               string
-		headerKey          string
-		headerValue        string
-		resourceETag       string
-		expectedStatusCode int
-		shouldFail         bool
-	}{
-		{"create-new-resource-no-if-match", "If-Match", "", "", http.StatusOK, false},
-		{"create-new-resource-*-if-match", "If-Match", "*", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-etag-if-match", "If-Match", "random-etag", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", http.StatusOK, false},
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
 	}
 
-	for _, testcase := range createNewResourceTestCases {
-		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
-			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
+	/*
+		Creating a MongoDatabase resource in an async way has multiple operations with branching:
+		1. Get Resource
+		2. [Conditional] If resource exists, check if there is an ongoing operation on it
+		3. Save Resource
+		4. Queue Resource
+		5. [Conditional] If Queue has an error then Rollback changes
+		6. [Conditional] Update the record state to Failed
+	*/
+	createCases := []struct {
+		desc    string
+		getErr  error
+		saveErr error
+		qErr    error
+		rbErr   error
+		rCode   int
+		rErr    error
+	}{
+		{
+			"async-create-new-mongodatabase-success",
+			&store.ErrNotFound{},
+			nil,
+			nil,
+			nil,
+			http.StatusCreated,
+			nil,
+		},
+		{
+			"async-create-new-mongodatabase-concurrency-error",
+			&store.ErrConcurrency{},
+			nil,
+			nil,
+			nil,
+			http.StatusCreated,
+			&store.ErrConcurrency{},
+		},
+		{
+			"async-create-new-mongodatabase-enqueue-error",
+			&store.ErrNotFound{},
+			nil,
+			errors.New("enqueuer client is unset"),
+			nil,
+			http.StatusInternalServerError,
+			errors.New("enqueuer client is unset"),
+		},
+	}
+
+	for _, tt := range createCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
+
+			mongoInput, mongoDataModel, _ := getTestModels20220315privatepreview()
+
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
-			req.Header.Set(testcase.headerKey, testcase.headerValue)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, mongoInput)
+			require.NoError(t, err)
+
 			ctx := radiustesting.ARMTestContextFromRequest(req)
+			sCtx := v1.ARMRequestContextFromContext(ctx)
 
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{}
-				})
+			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
+				Return(&store.Object{}, tt.getErr).
+				Times(1)
 
-			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
-			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
-			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
+			if tt.getErr == nil || errors.Is(&store.ErrNotFound{}, tt.getErr) {
+				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(tt.saveErr).
+					Times(1)
 
-			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
-				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+				if tt.saveErr == nil {
+					msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(tt.qErr).
+						Times(1)
 
-				mStorageClient.
-					EXPECT().
-					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						// First time created objects should have the same lastModifiedAt and createdAt
-						dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
-						obj.ETag = "new-resource-etag"
-						obj.Data = dataModel
-						return nil
-					})
+					if tt.qErr != nil {
+						mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+							Return(tt.rbErr).
+							Times(1)
+					}
+				}
 			}
 
 			opts := frontend_ctrl.Options{
 				Options: ctrl.Options{
-					StorageClient: mStorageClient,
+					StorageClient: mds,
+					StatusManager: msm,
 				},
-				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateMongoDatabase(opts)
 			require.NoError(t, err)
+
 			resp, err := ctl.Run(ctx, w, req)
-			require.NoError(t, err)
-			_ = resp.Apply(ctx, w, req)
-			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
-			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.MongoDatabaseResource{}
-				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-				require.Equal(t, expectedOutput, actualOutput)
+			if tt.rErr != nil {
+				require.Error(t, tt.rErr)
+			} else {
+				require.NoError(t, err)
 
-				require.Equal(t, "new-resource-etag", w.Header().Get("ETag"))
-			}
-		})
-	}
+				_ = resp.Apply(ctx, w, req)
+				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-	updateExistingResourceTestCases := []struct {
-		desc               string
-		headerKey          string
-		headerValue        string
-		inputFile          string
-		resourceETag       string
-		expectedStatusCode int
-		shouldFail         bool
-	}{
-		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-with-diff-app", "If-Match", "", "20220315privatepreview_input_diff_app.json", "resource-etag", http.StatusBadRequest, true},
-		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", http.StatusOK, false},
-		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", http.StatusPreconditionFailed, true},
-		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", http.StatusPreconditionFailed, true},
-	}
+				locationHeader := getAsyncLocationPath(sCtx, mongoDataModel.TrackedResource.Location, "operationResults", req)
+				require.NotNil(t, w.Header().Get("Location"))
+				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-	for _, testcase := range updateExistingResourceTestCases {
-		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
-			if testcase.inputFile != "" {
-				input = &v20220315privatepreview.MongoDatabaseResource{}
-				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
-			}
-			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
-			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
-			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
-
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: testcase.resourceETag},
-						Data:     dataModel,
-					}, nil
-				})
-
-			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
-				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
-
-				mStorageClient.
-					EXPECT().
-					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						obj.ETag = "updated-resource-etag"
-						obj.Data = dataModel
-						return nil
-					})
-			}
-
-			opts := frontend_ctrl.Options{
-				Options: ctrl.Options{
-					StorageClient: mStorageClient,
-				},
-				DeployProcessor: mDeploymentProcessor,
-			}
-
-			ctl, err := NewCreateOrUpdateMongoDatabase(opts)
-			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, w, req)
-			_ = resp.Apply(ctx, w, req)
-			require.NoError(t, err)
-			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
-
-			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.MongoDatabaseResource{}
-				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-				require.Equal(t, expectedOutput, actualOutput)
-
-				require.Equal(t, "updated-resource-etag", w.Header().Get("ETag"))
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx, mongoDataModel.TrackedResource.Location, "operationStatuses", req)
+				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
+				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
 }
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, rp.DeploymentOutput) {
-	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureCosmosAccount,
-					Provider: resourcemodel.ProviderAzure,
-				},
-				Identity: resourcemodel.ResourceIdentity{},
-			},
-		},
-		SecretValues: map[string]rp.SecretValueReference{
-			renderers.UsernameStringValue:   {Value: "testUser"},
-			renderers.PasswordStringHolder:  {Value: "testPassword"},
-			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.DatabaseNameValue: {
-				Value: "db",
-			},
-		},
+func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
+	dest := url.URL{
+		Host:   req.Host,
+		Scheme: req.URL.Scheme,
+		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", sCtx.ResourceID.PlaneScope(),
+			sCtx.ResourceID.ProviderNamespace(), location, resourceType, sCtx.OperationID.String()),
 	}
 
-	deploymentOutput := rp.DeploymentOutput{
-		DeployedOutputResources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureCosmosAccount,
-					Provider: resourcemodel.ProviderAzure,
-				},
-			},
-		},
-		ComputedValues: map[string]any{
-			"database": rendererOutput.ComputedValues["database"].Value,
-		},
+	query := url.Values{}
+	query.Add("api-version", sCtx.APIVersion)
+	dest.RawQuery = query.Encode()
+
+	// In production this is the header we get from app service for the 'real' protocol
+	protocol := req.Header.Get("X-Forwarded-Proto")
+	if protocol != "" {
+		dest.Scheme = protocol
 	}
 
-	return rendererOutput, deploymentOutput
+	if dest.Scheme == "" {
+		dest.Scheme = "http"
+	}
+
+	return dest.String()
 }

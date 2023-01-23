@@ -32,8 +32,8 @@ func NewCreateOrUpdateResource(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (c *CreateOrUpdateResource) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
-	if err != nil {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+		return ctrl.Result{}, err
 	}
 
 	isNewResource := false

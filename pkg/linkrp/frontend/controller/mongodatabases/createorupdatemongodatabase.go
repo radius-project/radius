@@ -68,11 +68,6 @@ func (mongoDatabase *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w htt
 		return r, err
 	}
 
-	r, err = rp_frontend.PrepareRadiusResource(ctx, newResource, old, mongoDatabase.Options())
-	if r != nil || err != nil {
-		return r, err
-	}
-
 	if r, err := mongoDatabase.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, AsyncPutContainerOperationTimeout, &etag); r != nil || err != nil {
 		return r, err
 
