@@ -57,7 +57,7 @@ func (cpm *UCPCredentialManagementClient) Put(ctx context.Context, providerConfi
 			},
 			TenantID: &providerConfig.AzureCredentials.TenantID,
 			ClientID: &providerConfig.AzureCredentials.ClientID,
-			Secret:   &providerConfig.AzureCredentials.ClientSecret,
+			ClientSecret:   &providerConfig.AzureCredentials.ClientSecret,
 		}
 		err := cpm.CredentialInterface.CreateCredential(ctx, cli_credential.AzurePlaneType, AzurePlaneName, providerConfig.Name, credential)
 		return err
