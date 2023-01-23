@@ -41,23 +41,30 @@ const (
 )
 
 type CoreRPResource struct {
-	Type            string
-	Name            string
-	App             string
-	OutputResources []OutputResourceResponse
+	Type               string
+	Name               string
+	App                string
+	OutputResources    []OutputResourceResponse
+	OutputResourceName string // OutputResourceName is used when validating the output resourceID
 }
 
 // Output resource fields returned as a part of get/list response payload for Radius resources
 // https://github.com/project-radius/radius/blob/main/pkg/rp/types.go#L173
 type OutputResourceResponse struct {
-	LocalID  string
-	Provider string
-	Identity any
+	LocalID            string
+	Provider           string
+	Identity           any
+	OutputResourceName string // OutputResourceName is used when validating the output resourceID
 }
 
 type CoreRPResourceSet struct {
 	Resources []CoreRPResource
 }
+
+const (
+	ProviderAzure      = "azure"
+	ProviderKubernetes = "kubernetes"
+)
 
 func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource CoreRPResource) error {
 	if resource.Type == EnvironmentsResource {
@@ -140,16 +147,15 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 					for _, actualOutputResource := range outputResources {
 						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
 							found = true
-							if verifyRecipeResource {
+							// if the test has the OutputResourceName set then validate the resource name based on the provider.
+							// we might not need the provider check if we have UCP id for kubernetes resources.
+							if expectedOutputResource.OutputResourceName != "" && expectedOutputResource.Provider == ProviderAzure {
 								identity := actualOutputResource.Identity.(map[string]interface{})
 								actualID := identity["id"].(string)
 								actualResource, err := resources.ParseResource(actualID)
-								if err != nil {
+								if err != nil || expectedOutputResource.Identity != actualResource.Name() {
 									found = false
 									break
-								}
-								if expectedOutputResource.Identity != actualResource.Name() {
-									found = false
 								}
 							}
 							break

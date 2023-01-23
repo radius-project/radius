@@ -44,7 +44,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mrc-app-ctnr'
+  name: 'mdb-app-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -68,7 +68,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongo-recipe-context-db'
+  name: 'ctx-${rg}'
   location: 'global'
   properties: {
     application: app.id

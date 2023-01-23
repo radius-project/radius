@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
@@ -114,10 +115,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// create the context object to be passed to the recipe deployment
-	var contextMetadata RecipeContextMetadata
-	contextMetadata.LinkID = id.String()
-	contextMetadata.EnvironmentID = linkProperties.Environment
-	contextMetadata.EnvironmentNamespace = envMetadata.Namespace
+	var applicationNameSpace, applicationID string
 
 	kubeNamespace := envMetadata.Namespace
 	// Override environment-scope namespace with application-scope kubernetes namespace.
@@ -126,17 +124,16 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		if err := rp_util.FetchScopeResource(ctx, dp.sp, linkProperties.Application, app); err != nil {
 			return renderers.RendererOutput{}, err
 		}
-		// set the application info in the context object
-		contextMetadata.ApplicationID = linkProperties.Application
+		applicationID = linkProperties.Application
 		c := app.Properties.Status.Compute
 		if c != nil && c.Kind == rp.KubernetesComputeKind {
 			kubeNamespace = c.KubernetesCompute.Namespace
-			contextMetadata.ApplicationNamespace = kubeNamespace
+			applicationNameSpace = kubeNamespace
 		}
 	}
 
 	//create the context object
-	recipeContext, err := createContextParameter(&contextMetadata)
+	recipeContext, err := handlers.CreateRecipeContextParameter(id.String(), linkProperties.Environment, envMetadata.Namespace, applicationID, applicationNameSpace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -484,35 +481,4 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	envMetadata.Providers = env.Properties.Providers
 
 	return envMetadata, nil
-}
-
-// createContextParameter creates the context parameter for the recipe with the link, environment and application info
-func createContextParameter(contextMeta *RecipeContextMetadata) (*datamodel.RecipeContext, error) {
-	linkContext := datamodel.RecipeContext{}
-
-	parsedLink, err := resources.ParseResource(contextMeta.LinkID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse LinkID : %q while building the context parameter", contextMeta.ApplicationID)
-	}
-	linkContext.Resource.ID = contextMeta.LinkID
-	linkContext.Resource.Name = parsedLink.Name()
-	linkContext.Resource.Type = parsedLink.Type()
-	if contextMeta.ApplicationID != "" {
-		parsedApp, err := resources.ParseResource(contextMeta.ApplicationID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse ApplicationID : %q while building the context parameter", contextMeta.ApplicationID)
-		}
-		linkContext.Application.ID = contextMeta.ApplicationID
-		linkContext.Application.Name = parsedApp.Name()
-		linkContext.Runtime.Kubernetes.ApplicationNamespace = contextMeta.ApplicationNamespace
-	}
-	linkContext.Environment.ID = contextMeta.EnvironmentID
-	parsedEnv, err := resources.ParseResource(contextMeta.EnvironmentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse EnvironmentID : %q while building the context parameter", contextMeta.EnvironmentID)
-	}
-	linkContext.Environment.Name = parsedEnv.Name()
-	linkContext.Runtime.Kubernetes.EnvironmentNamespace = contextMeta.EnvironmentNamespace
-
-	return &linkContext, nil
 }

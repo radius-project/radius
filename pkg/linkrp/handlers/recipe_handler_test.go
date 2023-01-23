@@ -6,6 +6,7 @@
 package handlers
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -37,58 +38,46 @@ func Test_ParameterConflict(t *testing.T) {
 			"value": "us-east1",
 		},
 	}
-	parameters := map[string]any{}
-	actualParams := handleParameterConflict(devParams, operatorParams, parameters)
+
+	actualParams := handleParameterConflict(devParams, operatorParams)
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_DevParameterWithContextParameter(t *testing.T) {
-	devParams := map[string]any{
-		"throughput": 400,
-		"port":       2030,
-		"name":       "test-parameters",
-	}
-	recipeContext := datamodel.RecipeContext{
+func Test_ContextParameter(t *testing.T) {
+	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
+	expectedLinkContext := datamodel.RecipeContext{
 		Resource: datamodel.Resource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Link/mongoDatabases",
+			ResourceInfo: datamodel.ResourceInfo{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				Name: "mongo0",
+			},
+			Type: "applications.link/mongodatabases",
 		},
 		Application: datamodel.ResourceInfo{
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 		},
 		Environment: datamodel.ResourceInfo{
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		},
 		Runtime: datamodel.Runtime{
 			Kubernetes: datamodel.Kubernetes{
-				EnvironmentNamespace: "radius-test-env",
-				ApplicationNamespace: "radius-test-app",
+				Namespace: "radius-test-app",
 			},
 		},
 	}
-	contextParam := map[string]any{
-		"context": map[string]any{
-			"value": recipeContext,
-		},
-	}
 
-	expectedParams := map[string]any{
-		"throughput": map[string]any{
-			"value": 400,
-		},
-		"port": map[string]any{
-			"value": 2030,
-		},
-		"name": map[string]any{
-			"value": "test-parameters",
-		},
-		"context": map[string]any{
-			"value": recipeContext,
-		},
-	}
-	actualParams := handleParameterConflict(devParams, nil, contextParam)
-	require.Equal(t, expectedParams, actualParams)
+	linkContext, err := CreateRecipeContextParameter(linkID, "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0", "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
+	require.NoError(t, err)
+	require.Equal(t, expectedLinkContext, *linkContext)
+}
+
+func Test_ContextParameterError(t *testing.T) {
+	envID := "error-env"
+	linkContext, err := CreateRecipeContextParameter("/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0", envID, "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
+	require.Error(t, err)
+	errMsg := fmt.Sprintf("%s is not a valid resource id", "'error-env'")
+	require.Equal(t, fmt.Errorf("failed to parse environmentID : %q while building the context parameter %q", envID, errMsg), err)
+	require.Nil(t, linkContext)
 }

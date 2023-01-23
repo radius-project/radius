@@ -32,7 +32,7 @@ const deploymentPrefix = "recipe"
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/linkrp/handlers github.com/project-radius/radius/pkg/linkrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, contextMeta datamodel.RecipeContext) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, recipeContext datamodel.RecipeContext) ([]string, error)
 }
 
 func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
@@ -92,14 +92,17 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 
 	// if the recipe template has the context parameter defined then add it to the parameter for deployment
 	parameters := map[string]any{}
+
+	// get the parameters after resolving the conflict
+	parameters = handleParameterConflict(recipe.Parameters, recipe.EnvParameters)
+
+	// set the context parameter if defined in recipe
 	_, isContextParameterDefined := recipeData["parameters"].(map[string]interface{})[datamodel.RecipeContextParameter]
 	if isContextParameterDefined {
 		parameters["context"] = map[string]interface{}{
 			"value": recipeContext,
 		}
 	}
-	// get the parameters after resolving the conflict
-	parameters = handleParameterConflict(recipe.Parameters, recipe.EnvParameters, parameters)
 
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
 	client, err := clientv2.NewDeploymentsClient(subscriptionID, &handler.arm.ClientOptions)
@@ -212,20 +215,4 @@ func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID stri
 		return "", "", v1.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy link recipes to Azure")
 	}
 	return
-}
-
-// handleParameterConflict handles conflicts in parameters set by operator and developer
-// In case of conflict the developer parameter takes precedence
-func handleParameterConflict(devParams, operatorParams map[string]any, parameters map[string]any) map[string]any {
-	for k, v := range operatorParams {
-		if _, ok := devParams[k]; !ok {
-			devParams[k] = v
-		}
-	}
-	for k, v := range devParams {
-		parameters[k] = map[string]any{
-			"value": v,
-		}
-	}
-	return parameters
 }

@@ -50,7 +50,7 @@ type LinkRecipe struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
-// LinkMode specifies the mode used to deploy a link
+// LinkMode Specifies how to build the state store resource. Options are to build automatically via ‘recipe’ or ‘resource’, or build manually via ‘values’. Selection determines which set of fields to additionally require.
 type LinkMode string
 
 const (
@@ -72,14 +72,13 @@ type RecipeContext struct {
 
 // Resource contains the information about the  resource that is deployed using recipe
 type Resource struct {
-	Name string `json:"name,omitempty"`
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type,omitempty"`
+	ResourceInfo
+	Type string `json:"type"`
 }
 
 type ResourceInfo struct {
-	Name string `json:"name,omitempty"`
-	ID   string `json:"id,omitempty"`
+	Name string `json:"name"`
+	ID   string `json:"id"`
 }
 
 type Runtime struct {
@@ -87,6 +86,5 @@ type Runtime struct {
 }
 
 type Kubernetes struct {
-	ApplicationNamespace string `json:"applicationNamespace,omitempty"`
-	EnvironmentNamespace string `json:"EnvironmentNamespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"` // This is set to the applicationNamespace when the Link is application-scoped, and set to the environmentNamespace when the Link is environment scoped
 }
