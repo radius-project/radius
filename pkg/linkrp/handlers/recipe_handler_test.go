@@ -63,7 +63,8 @@ func Test_ContextParameter(t *testing.T) {
 		},
 		Runtime: datamodel.Runtime{
 			Kubernetes: datamodel.Kubernetes{
-				Namespace: "radius-test-app",
+				Namespace:            "radius-test-app",
+				EnvironmentNamespace: "radius-test-env",
 			},
 		},
 	}

@@ -221,10 +221,10 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
 	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
-	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
+	// Error the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
 	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
 	if rg == "" {
-		t.Skip("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
+		t.Error("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
 	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
@@ -286,10 +286,10 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 	name := "corerp-resources-mongodb-recipe-context"
 	appNamespace := "corerp-resources-mongodb-recipe-context-app"
 	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
-	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
+	// Error the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
 	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
 	if rg == "" {
-		t.Skip("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
+		t.Error("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
 	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
@@ -312,7 +312,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongo-recipe-context-db",
+						Name: "ctx-" + rg,
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
