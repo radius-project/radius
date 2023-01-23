@@ -22,6 +22,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/planes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdatePlane)(nil)
@@ -37,27 +39,42 @@ func NewCreateOrUpdatePlane(opts ctrl.Options) (armrpc_controller.Controller, er
 }
 
 func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	var spanAttrKey attribute.Key
+	tr := otel.Tracer("planes")
+	ctx, span := tr.Start(ctx, "createOrUpdatePlane")
+	defer span.End()
+	req = req.WithContext(ctx)
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
+	spanAttrKey = attribute.Key(middleware.UCP_REQ_URI)
+	span.SetAttributes(spanAttrKey.String(path))
 
 	body, err := controller.ReadRequestBody(req)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 
 	apiVersion := ctrl.GetAPIVersion(req)
+
+	spanAttrKey = attribute.Key(middleware.UCP_API)
+	span.SetAttributes(spanAttrKey.String(apiVersion))
+
 	newResource, err := converter.PlaneDataModelFromVersioned(body, apiVersion)
 	if err != nil {
+		span.RecordError(err)
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	_, err = resources.Parse(path)
 	// cannot parse ID something wrong with request
 	if err != nil {
+		span.RecordError(err)
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
 	if err != nil {
+		span.RecordError(err)
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
@@ -74,6 +91,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
 	logger := logr.FromContextOrDiscard(ctx)
 	if err != nil {
+		span.RecordError(err)
 		if errors.Is(err, &store.ErrNotFound{}) {
 			planeExists = false
 			logger.Info(fmt.Sprintf("No existing plane %s found in db", newResource.TrackedResource.ID))
@@ -85,12 +103,14 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 	// Save the data model plane to the database
 	_, err = p.SaveResource(ctx, newResource.TrackedResource.ID, *newResource, etag)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 
 	// Return a versioned response of the plane
 	versioned, err := converter.PlaneDataModelToVersioned(newResource, apiVersion)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 

@@ -119,6 +119,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app := http.Handler(r)
 	app = middleware.UseLogValues(app, s.options.BasePath)
+	//app = middleware.HTTPTracingMiddleWare(app)
 	app = servicecontext.ARMRequestCtx(s.options.BasePath, "global")(app)
 
 	server := &http.Server{

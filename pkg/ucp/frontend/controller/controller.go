@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // Options represents controller options.
@@ -96,7 +97,11 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options)
 		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
 	} else {
 		// Path is used to proxy plane request irrespective of the http method
-		opts.ParentRouter.PathPrefix(opts.Path).HandlerFunc(fn).Name(ot.String())
+		var otelHandler http.Handler
+		otelHandler = otelhttp.NewHandler(http.HandlerFunc(fn), "span")
+		opts.ParentRouter.PathPrefix(opts.Path).Handler(otelHandler)
+
+		//opts.ParentRouter.PathPrefix(opts.Path).otelhttp.NewHandler(http.HandlerFunc(fn), "span").Name(ot.String())
 	}
 	return nil
 }

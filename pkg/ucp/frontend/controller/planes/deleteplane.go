@@ -18,6 +18,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var _ armrpc_controller.Controller = (*DeletePlane)(nil)
@@ -33,14 +35,24 @@ func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	tr := otel.Tracer("planes")
+	ctx, span := tr.Start(ctx, "deletePlane")
+	defer span.End()
+	req = req.WithContext(ctx)
+
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
+	spanAttrKey := attribute.Key(middleware.UCP_REQ_URI)
+	span.SetAttributes(spanAttrKey.String(path))
+
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
+		span.RecordError(err)
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 	existingPlane := datamodel.Plane{}
 	etag, err := p.GetResource(ctx, resourceId.String(), &existingPlane)
 	if err != nil {
+		span.RecordError(err)
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := armrpc_rest.NewNoContentResponse()
 			return restResponse, nil
@@ -50,6 +62,7 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 
 	err = p.DeleteResource(ctx, resourceId.String(), etag)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 	logger := logr.FromContextOrDiscard(ctx)

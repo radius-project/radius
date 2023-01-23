@@ -11,12 +11,15 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/pkg/version"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -59,16 +62,13 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
-	// setup metrics object
-	httpMetrics, err := metrics.NewHTTPMetrics(options.ProviderNamespace)
-	if err != nil {
-		return nil, err
-	}
-	r.Use(middleware.MetricsRecorder(httpMetrics))
+
+	// TODO: Check if the metrics are enabled.
 
 	server := &http.Server{
-		Addr:    options.Address,
-		Handler: middleware.LowercaseURLPath(r),
+		Addr: options.Address,
+		Handler: otelhttp.NewHandler(middleware.LowercaseURLPath(r), options.ProviderNamespace,
+			otelhttp.WithMeterProvider(global.MeterProvider())),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},

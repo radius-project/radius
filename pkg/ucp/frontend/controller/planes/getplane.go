@@ -20,6 +20,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"go.opentelemetry.io/otel"
 )
 
 var _ armrpc_controller.Controller = (*GetPlane)(nil)
@@ -35,16 +36,23 @@ func NewGetPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	tr := otel.Tracer("planes")
+	ctx, span := tr.Start(ctx, "getPlane")
+	defer span.End()
+	req = req.WithContext(ctx)
+
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
+		span.RecordError(err)
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 	logger.Info(fmt.Sprintf("Getting plane %s from db", resourceId))
 	plane := datamodel.Plane{}
 	_, err = p.GetResource(ctx, resourceId.String(), &plane)
 	if err != nil {
+		span.RecordError(err)
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := armrpc_rest.NewNotFoundResponse(resourceId)
 			logger.Info(fmt.Sprintf("Plane %s not found in db", resourceId))
@@ -56,6 +64,7 @@ func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Req
 	apiVersion := ctrl.GetAPIVersion(req)
 	versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
 	if err != nil {
+		span.RecordError(err)
 		return armrpc_rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
 			Error: v1.ErrorDetails{
 				Code:    v1.CodeInternal,

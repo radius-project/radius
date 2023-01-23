@@ -26,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -185,13 +186,13 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 	}
 
-	//If the user specifies a workspace name with -w and that workspace points to a different Kubernetes cluster, then --force is required
-	//If the user does not specify a workspace with -w and the current default workspace points to a different cluster, then create a new workspace
-	//If the user does not specify a workspace with -w and the current default workspace points to the same cluster, then update the existing workspace
+	// If the user specifies a workspace name with -w and that workspace points to a different Kubernetes cluster, then --force is required
+	// If the user does not specify a workspace with -w and the current default workspace points to a different cluster, then create a new workspace
+	// If the user does not specify a workspace with -w and the current default workspace points to the same cluster, then update the existing workspace
 
 	isSameConn := true
 	if foundExistingWorkspace {
-		isSameConn = workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName})
+		isSameConn = workspace.ConnectionConfigEquals(&workspaces.KubernetesConnectionConfig{Kind: workspaces.KindKubernetes, Context: contextName})
 	}
 
 	if foundExistingWorkspace {
@@ -243,14 +244,22 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
 	//
 	// We'll flesh this out more when we add explicit commands for managing resource groups.
-	var connection workspaces.Connection
+	var connection sdk.Connection
 	if workspace != nil {
 		connection, err = workspace.Connect()
 		if err != nil {
 			return err
 		}
 	} else {
-		connection = &workspaces.KubernetesConnection{Context: contextName}
+		config, err := kubernetes.GetConfig(contextName)
+		if err != nil {
+			return err
+		}
+
+		connection, err = sdk.NewKubernetesConnectionFromConfig(config)
+		if err != nil {
+			return err
+		}
 	}
 
 	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), connection, workspaceName)
@@ -341,9 +350,14 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 }
 
 func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName, namespace, subscriptionID, resourceGroup string) (string, error) {
-	baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(kubeCtxName, "")
+	config, err := kubernetes.GetConfig(kubeCtxName)
 	if err != nil {
-		return "", fmt.Errorf("failed to create environment client: %w", err)
+		return "", err
+	}
+
+	connection, err := sdk.NewKubernetesConnectionFromConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("failed to create connection: %w", err)
 	}
 
 	id := "self"
@@ -370,7 +384,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 
 	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
 
-	envClient, err := coreRpApps.NewEnvironmentsClient(rootScope, &aztoken.AnonymousCredential{}, connections.GetClientOptions(baseURL, transporter))
+	envClient, err := coreRpApps.NewEnvironmentsClient(rootScope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
 	if err != nil {
 		return "", fmt.Errorf("failed to create environment client: %w", err)
 	}

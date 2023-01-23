@@ -15,7 +15,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
 	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -50,14 +49,12 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	connection, err := w.Connect()
-	if err != nil {
-		return err
+	context, ok := w.KubernetesContext()
+	if !ok {
+		return &cli.FriendlyError{Message: "a Kubernetes connection is required"}
 	}
 
-	c := connection.(*workspaces.KubernetesConnection)
-
-	k8sClient, _, err := kubernetes.CreateTypedClient(c.Context)
+	k8sClient, _, err := kubernetes.CreateTypedClient(context)
 	if err != nil {
 		return err
 	}

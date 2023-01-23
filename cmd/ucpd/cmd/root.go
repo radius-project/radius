@@ -11,11 +11,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"context"
+
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/telemetry/traces"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var rootCmd = &cobra.Command{
@@ -36,6 +38,25 @@ var rootCmd = &cobra.Command{
 
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
+
+		options, err = server.NewServerOptionsFromEnvironment()
+		if err != nil {
+			return err
+		}
+
+		// TODO: ServerOptions should include traceprovider configs
+		// TODO: We should retrieve traceprovider properties such as exporter url etc from the options and supply that to InitTracer method.
+		url := "http://localhost:9411/api/v2/spans"
+		shutdown, err := traces.InitServerTracer(url, "ucp")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer func() {
+			if err := shutdown(ctx); err != nil {
+				log.Fatal("failed to shutdown TracerProvider: %w", err)
+			}
+
+		}()
 
 		host, err := server.NewServer(options)
 		if err != nil {

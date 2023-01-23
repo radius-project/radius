@@ -21,6 +21,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const PlanesPath = "/planes"
@@ -38,11 +40,19 @@ func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	var spanAttrKey attribute.Key
+	tr := otel.Tracer("planes")
 	logger := logr.FromContextOrDiscard(ctx)
 
 	logger.Info("starting proxy request")
+	ctx, span := tr.Start(ctx, "ProxyPlane")
+	req = req.WithContext(ctx)
+
 	for key, value := range req.Header {
 		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
+		spanAttrKey = attribute.Key(key)
+		span.SetAttributes(spanAttrKey.String(value[0]))
+
 	}
 
 	req.URL.Path = p.GetRelativePath(req.URL.Path)
@@ -65,6 +75,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	plane := rest.Plane{}
 	_, err = p.GetResource(ctx, planeID.String(), &plane)
 	if err != nil {
+		span.RecordError(err)
 		if errors.Is(err, &store.ErrNotFound{}) {
 			logger.Error(err, "plane %q does not exist", planeID.String())
 			return armrpc_rest.NewNotFoundResponse(planeID), nil
@@ -81,12 +92,14 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		rgPath := id.RootScope()
 		rgID, err := resources.ParseScope(rgPath)
 		if err != nil {
+			span.RecordError(err)
 			return nil, err
 		}
 
 		existingRG := datamodel.ResourceGroup{}
 		_, err = p.GetResource(ctx, rgID.String(), &existingRG)
 		if err != nil {
+			span.RecordError(err)
 			if errors.Is(err, &store.ErrNotFound{}) {
 				logger.Error(err, fmt.Sprintf("resource group %q does not exist", rgID.String()))
 				return armrpc_rest.NewNotFoundResponse(rgID), nil
@@ -134,6 +147,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	downstream, err := url.Parse(proxyURL)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 
@@ -164,8 +178,10 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	url, err := url.Parse(newURL.Path)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
+	span.AddEvent("Request validation completed")
 
 	// Preserving the query strings on the incoming url on the newly constructed url
 	url.RawQuery = newURL.Query().Encode()
@@ -176,8 +192,16 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
 	logger = logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
+	logger.Info(fmt.Sprintf("proxying request. target: %s", proxyURL))
+
+	span.AddEvent("Begin to proxy request to downstream")
+	spanAttrKey = attribute.Key("ProxyURL")
+	span.SetAttributes(spanAttrKey.String(proxyURL))
+
 	sender.ServeHTTP(w, req.WithContext(ctx))
+	span.AddEvent("Proxy response sent back to upstream")
+	span.End()
+
 	// The upstream response has already been sent at this point. Therefore, return nil response here
 	return nil, nil
 }

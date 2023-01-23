@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"go.opentelemetry.io/otel"
 )
 
 var _ armrpc_controller.Controller = (*ListPlanes)(nil)
@@ -33,6 +34,11 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	tr := otel.Tracer("planes")
+	ctx, span := tr.Start(ctx, "listPlane")
+	defer span.End()
+	req = req.WithContext(ctx)
+
 	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 
@@ -43,15 +49,17 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	logger.Info(fmt.Sprintf("Listing planes in scope %s", query.RootScope))
 	result, err := e.StorageClient().Query(ctx, query)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 	listOfPlanes, err := e.createResponse(ctx, req, result)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 	var ok = armrpc_rest.NewOKResponse(&v1.PaginatedList{
-			Value: listOfPlanes,
-		})
+		Value: listOfPlanes,
+	})
 	return ok, nil
 }
 
