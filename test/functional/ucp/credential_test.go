@@ -153,7 +153,7 @@ func getAzureCredentialObject() ucp.CredentialResource {
 			Kind:     to.Ptr("azure.com.serviceprincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure_azurecloud_default"),
+				SecretName: to.Ptr("azure-azurecloud-default"),
 			},
 		},
 	}
@@ -169,12 +169,11 @@ func getAWSCredentialObject() ucp.CredentialResource {
 			"env": to.Ptr("dev"),
 		},
 		Properties: &v20220901privatepreview.AWSCredentialProperties{
-			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
-			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:            to.Ptr("aws.com.iam"),
+			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:        to.Ptr("aws.com.iam"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("aws_awscloud_default"),
+				SecretName: to.Ptr("aws-awscloud-default"),
 			},
 		},
 	}
