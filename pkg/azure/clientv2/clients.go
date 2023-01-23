@@ -32,9 +32,8 @@ type Options struct {
 	// Cred represents a credential for OAuth token.
 	Cred azcore.TokenCredential
 
+	// BaseURI represents the base URI for the client.
 	BaseURI string
-
-	ARMClientOptions *arm.ClientOptions
 }
 
 // NewFederatedIdentityClient creates new federated identity client.

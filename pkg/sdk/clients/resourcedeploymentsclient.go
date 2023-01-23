@@ -90,12 +90,13 @@ type ResourceDeploymentsClient struct {
 }
 
 // NewDeploymentsClient creates an instance of the ResourceDeploymentClient.
-func NewResourceDeploymentsClient(subscriptionID string, options *Options) (*ResourceDeploymentsClient, error) {
+func NewResourceDeploymentsClient(options *Options) (*ResourceDeploymentsClient, error) {
 	if options.BaseURI == "" {
 		return nil, errors.New("baseURI cannot be empty")
 	}
 
-	client, err := armresources.NewClient(subscriptionID, options.Cred, options.ARMClientOptions)
+	// SubscriptionID will be empty for this type of client.
+	client, err := armresources.NewClient("", options.Cred, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +151,7 @@ func (client *ResourceDeploymentsClient) createOrUpdateCreateRequest(ctx context
 		return nil, errors.New("resourceID cannot be empty")
 	}
 
-	urlPath := runtime.JoinPaths(client.baseURI, strings.TrimPrefix(resourceID, "/"))
+	urlPath := DeploymentEngineURL(client.baseURI, resourceID)
 	req, err := runtime.NewRequest(ctx, http.MethodPut, urlPath)
 	if err != nil {
 		return nil, err

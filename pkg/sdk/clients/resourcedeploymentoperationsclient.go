@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -28,12 +27,13 @@ type ResourceDeploymentOperationsClient struct {
 }
 
 // NewResourceDeploymentOperationsClient creates an instance of the DeploymentsClient.
-func NewResourceDeploymentOperationsClient(subscriptionID string, options *Options) (*ResourceDeploymentOperationsClient, error) {
+func NewResourceDeploymentOperationsClient(options *Options) (*ResourceDeploymentOperationsClient, error) {
 	if options.BaseURI == "" {
 		return nil, errors.New("baseURI cannot be empty")
 	}
 
-	client, err := armresources.NewClient(subscriptionID, options.Cred, options.ARMClientOptions)
+	// SubscriptionID will be empty for this type of client.
+	client, err := armresources.NewClient("", options.Cred, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -110,13 +110,12 @@ func (client *ResourceDeploymentOperationsClient) listCreateRequest(ctx context.
 		return nil, errors.New("resourceID cannot be empty")
 	}
 
-	urlPath := runtime.JoinPaths(client.baseURI, strings.TrimPrefix(resourceID, "/"))
+	urlPath := DeploymentEngineURL(client.baseURI, resourceID)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, urlPath+"/operations")
 	if err != nil {
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	// TODO: Check Top cases.
 	if options != nil && options.Top != nil {
 		reqQP.Set("$top", strconv.FormatInt(int64(*options.Top), 10))
 	}

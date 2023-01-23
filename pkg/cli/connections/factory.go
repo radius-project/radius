@@ -54,7 +54,7 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 	}
 
 	armClientOptions := sdk.NewClientOptions(connection)
-	dc, err := sdkclients.NewResourceDeploymentsClient(workspace.ProviderConfig.Azure.SubscriptionID, &sdkclients.Options{
+	dc, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
 		BaseURI:          connection.Endpoint(),
 		ARMClientOptions: armClientOptions,
@@ -63,7 +63,7 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 		return nil, err
 	}
 
-	doc, err := sdkclients.NewResourceDeploymentOperationsClient(workspace.ProviderConfig.Azure.SubscriptionID, &sdkclients.Options{
+	doc, err := sdkclients.NewResourceDeploymentOperationsClient(&sdkclients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
 		BaseURI:          connection.Endpoint(),
 		ARMClientOptions: armClientOptions,
