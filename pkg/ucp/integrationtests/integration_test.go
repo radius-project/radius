@@ -117,10 +117,14 @@ var testResourceGroup = v20220901privatepreview.ResourceGroupResource{
 func Test_ProxyToRP(t *testing.T) {
 	body, err := json.Marshal(applicationList)
 	require.NoError(t, err)
+
+	router := mux.NewRouter()
+	ucp := httptest.NewServer(router)
+
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, testProxyRequestPath, r.URL.Path)
 		w.Header().Add("Content-Type", "application/json")
-		w.Header().Add("Location", "http://"+rpURL+testProxyRequestPath)
+		w.Header().Add("Location", ucp.URL+basePath+testProxyRequestPath)
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(body)
 	}))
@@ -140,8 +144,6 @@ func Test_ProxyToRP(t *testing.T) {
 		Return(db, nil).
 		AnyTimes()
 
-	router := mux.NewRouter()
-	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
 		DB:       db,
