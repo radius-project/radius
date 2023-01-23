@@ -7,7 +7,6 @@ package ucp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -22,13 +21,13 @@ import (
 const (
 	azureCredential      = "azure"
 	awsCredential        = "aws"
-	azurePlaneName       = "azurecloud"
-	awsPlaneName         = "awscloud"
+	AzurePlaneName       = "azurecloud"
+	AWSPlaneName         = "awscloud"
 	azureCredentialKind  = "azure.com.serviceprincipal"
 	awsCredentialKind    = "aws.com.iam"
 	azureCredentialID    = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
 	awsCredentialID      = "/planes/aws/awscloud/providers/System.AWS/credentials/%s"
-	validInfoTemplate    = "enter valid info for %s"
+	ValidInfoTemplate    = "enter valid info for %s"
 	infoRequiredTemplate = "required info %s"
 )
 
@@ -60,7 +59,7 @@ func (cpm *UCPCredentialManagementClient) Put(ctx context.Context, providerConfi
 			ClientID: &providerConfig.AzureCredentials.ClientID,
 			Secret:   &providerConfig.AzureCredentials.ClientSecret,
 		}
-		err := cpm.CredentialInterface.CreateCredential(ctx, cli_credential.AzurePlaneType, azurePlaneName, providerConfig.Name, credential)
+		err := cpm.CredentialInterface.CreateCredential(ctx, cli_credential.AzurePlaneType, AzurePlaneName, providerConfig.Name, credential)
 		return err
 	} else if strings.EqualFold(providerConfig.Name, awsCredential) {
 		credential.Type = to.Ptr(awsCredential)
@@ -73,7 +72,7 @@ func (cpm *UCPCredentialManagementClient) Put(ctx context.Context, providerConfi
 			AccessKeyID:     &providerConfig.AWSCredentials.AccessKeyID,
 			SecretAccessKey: &providerConfig.AWSCredentials.SecretAccessKey,
 		}
-		err := cpm.CredentialInterface.CreateCredential(ctx, cli_credential.AWSPlaneType, awsPlaneName, providerConfig.Name, credential)
+		err := cpm.CredentialInterface.CreateCredential(ctx, cli_credential.AWSPlaneType, AWSPlaneName, providerConfig.Name, credential)
 		return err
 	}
 	return &cli_credential.ErrUnsupportedCloudProvider{}
@@ -85,10 +84,10 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) 
 	var err error
 	if strings.EqualFold(name, azureCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		err = cpm.CredentialInterface.GetCredential(ctx, cli_credential.AzurePlaneType, azurePlaneName, name)
+		err = cpm.CredentialInterface.GetCredential(ctx, cli_credential.AzurePlaneType, AzurePlaneName, name)
 	} else if strings.EqualFold(name, awsCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		err = cpm.CredentialInterface.GetCredential(ctx, cli_credential.AWSPlaneType, awsPlaneName, name)
+		err = cpm.CredentialInterface.GetCredential(ctx, cli_credential.AWSPlaneType, AWSPlaneName, name)
 	} else {
 		return cli_credential.ProviderCredentialResource{}, &cli_credential.ErrUnsupportedCloudProvider{}
 	}
@@ -98,7 +97,7 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) 
 			return cli_credential.ProviderCredentialResource{
 				Name:    name,
 				Enabled: false,
-			}, err
+			}, nil
 		}
 		return cli_credential.ProviderCredentialResource{}, err
 	}
@@ -111,13 +110,13 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) 
 // List, lists the cloud providers within ucp azure plane
 func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]cli_credential.ProviderCredentialResource, error) {
 	// list azure credential
-	res, err := cpm.CredentialInterface.ListCredential(ctx, cli_credential.AzurePlaneType, azurePlaneName)
+	res, err := cpm.CredentialInterface.ListCredential(ctx, cli_credential.AzurePlaneType, AzurePlaneName)
 	if err != nil {
 		return nil, err
 	}
 
 	// list aws credential
-	awsList, err := cpm.CredentialInterface.ListCredential(ctx, cli_credential.AWSPlaneType, awsPlaneName)
+	awsList, err := cpm.CredentialInterface.ListCredential(ctx, cli_credential.AWSPlaneType, AWSPlaneName)
 	if err != nil {
 		return nil, err
 	}
@@ -129,43 +128,19 @@ func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]cli_crede
 func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
 	var err error
 	if strings.EqualFold(name, azureCredential) {
-		err = cpm.CredentialInterface.DeleteCredential(ctx, cli_credential.AzurePlaneType, azurePlaneName, name)
+		err = cpm.CredentialInterface.DeleteCredential(ctx, cli_credential.AzurePlaneType, AzurePlaneName, name)
 	} else if strings.EqualFold(name, awsCredential) {
-		err = cpm.CredentialInterface.DeleteCredential(ctx, cli_credential.AWSPlaneType, awsPlaneName, name)
-	}
-	if errors.Is(&cli_credential.ErrUnsupportedCloudProvider{}, err) {
-		return false, err
+		err = cpm.CredentialInterface.DeleteCredential(ctx, cli_credential.AWSPlaneType, AWSPlaneName, name)
 	}
 	if err != nil {
 		if clients.Is404Error(err) {
 			// return true if not found.
 			return true, nil
 		}
-		return false, nil
+		return false, err
 	}
 	return true, nil
 }
-
-// func (cpm *UCPProviderCredentialManagementClient) deleteCredentialConfig(ctx context.Context, credentialClient any, planeType string, planeName string, name string) (bool, error) {
-// 	var err error
-// 	switch credentialClient := credentialClient.(type) {
-// 	case *ucp.AzureCredentialClient:
-// 		_, err = credentialClient.Delete(ctx, planeType, planeName, name, nil)
-// 	case *ucp.AWSCredentialClient:
-// 		// We care about success or failure of delete.
-// 		_, err = credentialClient.Get(ctx, planeType, planeName, name, nil)
-// 	default:
-// 		return false, errUnsupportedCloudProvider
-// 	}
-// 	if err != nil {
-// 		if azclient.Is404Error(err) {
-// 			// return true if not found.
-// 			return true, nil
-// 		}
-// 		return false, nil
-// 	}
-// 	return true, nil
-// }
 
 func validateProviderConfig(config cli_credential.ProviderCredentialConfiguration) error {
 	if config.Name == "" {
@@ -174,11 +149,11 @@ func validateProviderConfig(config cli_credential.ProviderCredentialConfiguratio
 	if config.AzureCredentials != nil {
 		isValid, _, _ := prompt.UUIDv4Validator(config.AzureCredentials.ClientID)
 		if !isValid {
-			return fmt.Errorf(fmt.Sprintf(validInfoTemplate, "azure client id"))
+			return fmt.Errorf(fmt.Sprintf(ValidInfoTemplate, "azure client id"))
 		}
 		isValid, _, _ = prompt.UUIDv4Validator(config.AzureCredentials.TenantID)
 		if !isValid {
-			return fmt.Errorf(validInfoTemplate, "azure tenant id")
+			return fmt.Errorf(ValidInfoTemplate, "azure tenant id")
 		}
 		if config.AzureCredentials.ClientSecret == "" {
 			return fmt.Errorf(infoRequiredTemplate, "azure client secret")
@@ -186,7 +161,7 @@ func validateProviderConfig(config cli_credential.ProviderCredentialConfiguratio
 	}
 	if config.AWSCredentials != nil {
 		if config.AWSCredentials.AccessKeyID == "" {
-			return fmt.Errorf(infoRequiredTemplate, "aws access key")
+			return fmt.Errorf(infoRequiredTemplate, "aws access key id")
 		}
 		if config.AWSCredentials.SecretAccessKey == "" {
 			return fmt.Errorf(infoRequiredTemplate, "aws secret access key")
