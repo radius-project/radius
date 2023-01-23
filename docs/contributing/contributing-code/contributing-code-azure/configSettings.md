@@ -12,7 +12,7 @@ If you wanted to run Radius on Kubernetes with specific configurations, `yaml` f
 
 ## Schema
 
-The following properties can be specified: 
+The following properties can be specified in configuration for all services: 
 | Key | Description | Example | 
 |-----|-------------|---------|
 | environment | Environment name and its role location | [**See below**](#environment) |
@@ -23,9 +23,18 @@ The following properties can be specified:
 | workerServer | Configuration options for the worker server | [**See below**](#workerserver) |
 | metricsProvider | Configuration options of the providers for publishing metrics | [**See below**](#metricsProvider) |
 
-The following are properties that can be specified on the `UCP`: 
-| Key | Description |
-|-----|-------------|
+-----
+
+The following are properties that can be specified for the `Applications.Core RP` and the `Applications.Link RP`: 
+| Key | Description | Example |
+|-----|-------------|---------|
+| ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
+
+----
+
+The following are properties that can be specified for UCP: 
+| Key | Description | Example |
+|-----|-------------|---------|
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
 | plane | Configuration options for the UCP plane | [**See below**](#plane)
  
@@ -84,6 +93,32 @@ The following are properties that can be specified on the `UCP`:
 | enabled | Specified whether to publish metrics (must be `true`/`false`) | `true` |
 | port | The connection port | `/metrics` |
 | path | The endpoint name where the metrics are posted | `2222` |
+
+### ucp
+
+This section configures the connection from either the `Applications.Core RP` or the `Applications.Link RP` to UCP's API. As the UCP service does not need to connect to itself, these settings do not apply in UCP's configuration files.
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| kind | Specifies how to connect and authenticate with UCP. Either `kubernetes` or `direct`. Kubernetes should always be used for production scenarios. Use `direct` for a local debugging configuration | `kubernetes` |
+| direct | Settings that are applied when `kind==direct` | `{ }`|
+| direct.endpoint | The URL endpoint used to connect to to UCP. | `http://localhost:9000` |
+
+Example production use:
+
+```yaml
+ucp:
+  kind: kubernetes
+```
+
+Example development use:
+
+```yaml
+ucp:
+  kind: direct
+  direct:
+    endpoint: 'http://localhost:9000' # Tell RP that UCP is listening on port 9000 locally
+```
 
 ### secretProvider
 | Key | Description | Example |
@@ -162,6 +197,8 @@ server:
 workerServer:
   maxOperationConcurrency: 3
   maxOperationRetryCount: 2
+ucp:
+  kind: kubernetes
 ```
 
 ### UCP 
