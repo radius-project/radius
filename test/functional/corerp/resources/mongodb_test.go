@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -221,6 +222,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
+	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
+	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
+	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
+	if rg == "" {
+		t.Skip("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
+	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -249,12 +256,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 							{
 								Provider:           resourcemodel.ProviderAzure,
 								LocalID:            outputresource.LocalIDAzureCosmosAccount,
-								OutputResourceName: "mongodb-developer-parameters",
+								OutputResourceName: "acnt-developer-" + rg,
 							},
 							{
 								Provider:           resourcemodel.ProviderAzure,
 								LocalID:            outputresource.LocalIDAzureCosmosDBMongo,
-								OutputResourceName: "mongodb-operator-parameters",
+								OutputResourceName: "mdb-operator-" + rg,
 							},
 						},
 					},

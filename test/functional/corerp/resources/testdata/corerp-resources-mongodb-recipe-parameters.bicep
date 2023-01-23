@@ -25,8 +25,8 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
           linkType: 'Applications.Link/mongoDatabases' 
           templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0'
           parameters: {
-            documentdbName: 'account-operator-parameters'
-            mongodbName: 'mongodb-operator-parameters'
+            documentdbName: 'acnt-operator-${rg}'
+            mongodbName: 'mdb-operator-${rg}'
           }
       }
     }
@@ -81,7 +81,7 @@ resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' =
     recipe: {
       name: 'mongodb'
       parameters: {
-        documentdbName: 'account-developer-parameters'
+        documentdbName: 'acnt-developer-${rg}'
       }
     }
   }
