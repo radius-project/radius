@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -168,7 +169,6 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // the creation of a mongoDB from a devrecipe that is linked to the environment when created with useDevRecipes = true
 // the container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_DevRecipe(t *testing.T) {
-
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
 	appNamespace := "corerp-resources-mongodb-devrecipe-app"
@@ -219,8 +219,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
-
-	t.Skip("This test is flaky, see issue: https://github.com/project-radius/radius/issues/4992")
+	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
+	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
+	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
+	if rg == "" {
+		t.Skip("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
+	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -237,7 +241,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mcp-app-ctnr",
+						Name: "mdb-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -249,12 +253,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosAccount,
-								Identity: "account-developer-parameters",
+								Identity: "acnt-developer-" + rg,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
-								Identity: "mongodb-developer-parameters",
+								Identity: "mdb-developer-" + rg,
 							},
 						},
 					},
@@ -263,7 +267,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mcp-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
 					},
 				},
 			},
