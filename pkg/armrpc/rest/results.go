@@ -286,6 +286,7 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	logger.Info("root scope from resource: " + rootScope)
 	if rootScope == "" {
 		rootScope = r.ResourceID.PlaneScope()
+		logger.Info("resource id: " + r.ResourceID.String())
 		logger.Info("getting root plane scope from resource: " + rootScope)
 	}
 
