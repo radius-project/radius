@@ -32,6 +32,7 @@ type Options struct {
 	// Cred represents a credential for OAuth token.
 	Cred azcore.TokenCredential
 
+	// BaseURI represents the base URI for the client.
 	BaseURI string
 }
 
@@ -104,6 +105,11 @@ func NewServiceBusNamespacesClient(subscriptionID string, options *Options) (*ar
 // NewDeploymentsClient creates a new deployments client to handle deployments.
 func NewDeploymentsClient(subscriptionID string, options *Options) (*armresources.DeploymentsClient, error) {
 	return armresources.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
+}
+
+// NewDeploymentOperationsClient creates a new deployment operations client to handle deployment related operations.
+func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*armresources.DeploymentOperationsClient, error) {
+	return armresources.NewDeploymentOperationsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
 // NewResourceGroupsClient creates a new resource groups client to handle resource groups.
