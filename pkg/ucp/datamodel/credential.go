@@ -9,7 +9,7 @@ import v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
 const (
 	// InternalStorageKind represents ucp credential storage type for internal credential type
-	InternalStorageKind = CredentialStorageKind("Internal")
+	InternalStorageKind = "Internal"
 	// AzureCredentialKind represents ucp credential kind for azure credentials.
 	AzureCredentialKind = "azure.com.serviceprincipal"
 	// AWSCredentialKind represents ucp credential kind for aws credentials.
@@ -43,26 +43,25 @@ type CredentialResourceProperties struct {
 // AzureCredentialProperties contains ucp Azure credential properties.
 type AzureCredentialProperties struct {
 	// TenantID represents the tenantId of azure service principal.
-	TenantID *string `json:"tenantId,omitempty"`
+	TenantID string `json:"tenantId"`
 	// ClientID represents the clientId of azure service principal.
-	ClientID *string `json:"clientId,omitempty"`
+	ClientID string `json:"clientId"`
+	// ClientSecret represents the client secret of service principal.
+	ClientSecret string `json:"clientSecret,omitempty"`
 }
 
 // AWSCredentialProperties contains ucp AWS credential properties.
 type AWSCredentialProperties struct {
 	// AccessKeyID contains aws access key for iam.
-	AccessKeyID *string `json:"accessKeyId,omitempty"`
+	AccessKeyID string `json:"accessKeyId"`
 	// SecretAccessKey contains secret access key for iam.
-	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
+	SecretAccessKey string `json:"secretAccessKey,omitempty"`
 }
-
-// CredentialStorageKind represents ucp credential storage kind.
-type CredentialStorageKind string
 
 // CredentialStorageProperties contains ucp credential storage properties.
 type CredentialStorageProperties struct {
 	// Kind represents ucp credential storage kind.
-	Kind *CredentialStorageKind `json:"kind,omitempty"`
+	Kind string `json:"kind"`
 	// InternalCredential represents ucp internal credential storage properties.
 	InternalCredential *InternalCredentialStorageProperties `json:"internalCredential,omitempty"`
 }
@@ -70,5 +69,5 @@ type CredentialStorageProperties struct {
 // InternalCredentialStorageProperties contains ucp internal credential storage properties.
 type InternalCredentialStorageProperties struct {
 	// SecretName is the name of secret stored in ucp for the crendentials.
-	SecretName *string `json:"secretName"`
+	SecretName string `json:"secretName"`
 }

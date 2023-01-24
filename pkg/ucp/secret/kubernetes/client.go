@@ -8,8 +8,8 @@ package kubernetes
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/util"
 	corev1 "k8s.io/api/core/v1"
 	k8s_error "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,17 +37,22 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	if value == nil {
 		return &secret.ErrInvalid{Message: "invalid argument. 'value' is required"}
 	}
-	secretName := util.NormalizeStringToLower(name)
+
+	if !kubernetes.IsValidObjectName(name) {
+		return &secret.ErrInvalid{Message: "invalid name: " + name}
+	}
+
 	secretObjectKey := controller_runtime.ObjectKey{
-		Name:      secretName,
+		Name:      name,
 		Namespace: RadiusNamespace,
 	}
+
 	// build secret object
 	data := make(map[string][]byte)
 	data[SecretKey] = value
 	secret := &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      secretName,
+			Name:      name,
 			Namespace: RadiusNamespace,
 		},
 		Data: data,
@@ -69,10 +74,14 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 	if name == "" {
 		return &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
 	}
-	secretName := util.NormalizeStringToLower(name)
+
+	if !kubernetes.IsValidObjectName(name) {
+		return &secret.ErrInvalid{Message: "invalid name: " + name}
+	}
+
 	secretObject := &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      secretName,
+			Name:      name,
 			Namespace: RadiusNamespace,
 		},
 	}
@@ -91,10 +100,14 @@ func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {
 	if name == "" {
 		return nil, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
 	}
-	secretName := util.NormalizeStringToLower(name)
+
+	if !kubernetes.IsValidObjectName(name) {
+		return nil, &secret.ErrInvalid{Message: "invalid name: " + name}
+	}
+
 	res := &corev1.Secret{}
 	secretObjectKey := controller_runtime.ObjectKey{
-		Name:      secretName,
+		Name:      name,
 		Namespace: RadiusNamespace,
 	}
 	err := c.K8sClient.Get(ctx, secretObjectKey, res)
