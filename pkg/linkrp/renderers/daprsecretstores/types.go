@@ -5,10 +5,6 @@
 
 package daprsecretstores
 
-const (
-	ResourceType = "Applications.Link/daprSecretStores"
-)
-
 type Properties struct {
 	Kind     string `json:"kind"`
 	Resource string `json:"resource"`

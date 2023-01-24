@@ -15,16 +15,13 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	DaprStateStoreResourceType = "Applications.Link/daprStateStores"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
@@ -81,7 +78,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], DaprStateStoreResourceType)
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprStateStoresResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -116,7 +113,7 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.NormalizeResourceName(properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprStateStoreResourceType),
+				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], linkrp.DaprStateStoresResourceType),
 			},
 			"spec": map[string]any{
 				"type":    "state.azure.tablestorage",

@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -43,7 +44,7 @@ func Test_Render_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -84,7 +85,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -110,7 +111,7 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -135,7 +136,7 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -160,7 +161,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -193,7 +194,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, linkrp.DaprStateStoresResourceType),
 			},
 			"spec": map[string]any{
 				"type":    stateStoreType,
@@ -217,7 +218,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -244,7 +245,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -273,7 +274,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -303,7 +304,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
@@ -329,7 +330,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 				Name: resourceName,
-				Type: "Applications.Link/daprStateStores",
+				Type: linkrp.DaprStateStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{

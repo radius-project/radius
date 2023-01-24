@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestDaprInvokeHttpRoute_ConvertVersionedToDataModel(t *testing.T) {
 		convertedResource := dm.(*datamodel.DaprInvokeHttpRoute)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprInvokeHttpRoutes/daprHttpRoute0", convertedResource.ID)
 		require.Equal(t, "daprHttpRoute0", convertedResource.Name)
-		require.Equal(t, "Applications.Link/daprInvokeHttpRoutes", convertedResource.Type)
+		require.Equal(t, linkrp.DaprInvokeHttpRoutesResourceType, convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "daprAppId", string(convertedResource.Properties.AppId))
@@ -66,7 +67,7 @@ func TestDaprInvokeHttpRoute_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprInvokeHttpRoutes/daprHttpRoute0", *versionedResource.ID)
 		require.Equal(t, "daprHttpRoute0", *versionedResource.Name)
-		require.Equal(t, "Applications.Link/daprInvokeHttpRoutes", *versionedResource.Type)
+		require.Equal(t, linkrp.DaprInvokeHttpRoutesResourceType, *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
 		require.Equal(t, "daprAppId", string(*versionedResource.Properties.AppID))
