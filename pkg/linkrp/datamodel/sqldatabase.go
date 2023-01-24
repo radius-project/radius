@@ -68,7 +68,7 @@ func (r *SqlDatabase) GetRecipeData() RecipeData {
 }
 
 func (sql *SqlDatabase) ResourceTypeName() string {
-	return "Applications.Link/sqlDatabases"
+	return linkrp.SqlDatabasesResourceType
 }
 
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.

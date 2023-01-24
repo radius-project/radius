@@ -65,7 +65,7 @@ func (r *DaprSecretStore) GetRecipeData() RecipeData {
 }
 
 func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
-	return "Applications.Link/daprSecretStores"
+	return linkrp.DaprSecretStoresResourceType
 }
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.

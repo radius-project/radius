@@ -85,7 +85,6 @@ func UnfoldErrorDetails(d *generated.ErrorDetail) generated.ErrorDetail {
 
 	new := *d
 	if new.Target != nil {
-		// FIXME: Why do we have this logic?
 		new.Target = nil
 	}
 
@@ -188,7 +187,6 @@ func unfoldResponseError(in *azcore.ResponseError) *v1.ErrorDetails {
 
 func readResponseBody(resp *http.Response) ([]byte, error) {
 	if resp.Body == nil {
-		// FIXME: Should we return an error here?
 		return []byte{}, nil
 	}
 	defer resp.Body.Close()

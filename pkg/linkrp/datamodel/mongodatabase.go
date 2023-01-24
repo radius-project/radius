@@ -86,11 +86,11 @@ func (r *MongoDatabase) GetRecipeData() RecipeData {
 }
 
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
-	return "Applications.Link/mongoDatabases"
+	return linkrp.MongoDatabasesResourceType
 }
 
 func (mongo *MongoDatabase) ResourceTypeName() string {
-	return "Applications.Link/mongoDatabases"
+	return linkrp.MongoDatabasesResourceType
 }
 
 type MongoDatabaseValuesProperties struct {

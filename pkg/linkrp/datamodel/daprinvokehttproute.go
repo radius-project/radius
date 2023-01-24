@@ -65,7 +65,7 @@ func (r *DaprInvokeHttpRoute) GetRecipeData() RecipeData {
 }
 
 func (httpRoute *DaprInvokeHttpRoute) ResourceTypeName() string {
-	return "Applications.Link/daprInvokeHttpRoutes"
+	return linkrp.DaprInvokeHttpRoutesResourceType
 }
 
 // DaprInvokeHttpRouteProperties represents the properties of DaprInvokeHttpRoute resource.

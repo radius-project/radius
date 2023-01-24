@@ -89,7 +89,7 @@ func (r *RedisCache) GetRecipeData() RecipeData {
 }
 
 func (redis *RedisCache) ResourceTypeName() string {
-	return "Applications.Link/redisCaches"
+	return linkrp.RedisCachesResourceType
 }
 
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
@@ -125,5 +125,5 @@ type RedisCacheSecrets struct {
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return "Applications.Link/redisCaches"
+	return linkrp.RedisCachesResourceType
 }

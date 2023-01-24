@@ -65,7 +65,7 @@ func (r *RabbitMQMessageQueue) GetRecipeData() RecipeData {
 }
 
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
-	return "Applications.Link/rabbitMQMessageQueues"
+	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
@@ -83,5 +83,5 @@ type RabbitMQSecrets struct {
 }
 
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return "Applications.Link/rabbitMQMessageQueues"
+	return linkrp.RabbitMQMessageQueuesResourceType
 }

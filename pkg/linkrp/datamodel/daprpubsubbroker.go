@@ -69,7 +69,7 @@ func (r *DaprPubSubBroker) GetRecipeData() RecipeData {
 }
 
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
-	return "Applications.Link/daprPubSubBrokers"
+	return linkrp.DaprPubSubBrokersResourceType
 }
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.

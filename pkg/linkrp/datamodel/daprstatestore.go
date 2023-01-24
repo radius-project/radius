@@ -65,7 +65,7 @@ func (r *DaprStateStore) GetRecipeData() RecipeData {
 }
 
 func (daprStateStore *DaprStateStore) ResourceTypeName() string {
-	return "Applications.Link/daprStateStores"
+	return linkrp.DaprStateStoresResourceType
 }
 
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.

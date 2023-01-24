@@ -37,7 +37,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 				Name: "queue0",
-				Type: "Applications.Link/rabbitMQMessageQueues",
+				Type: linkrp.RabbitMQMessageQueuesResourceType,
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
@@ -79,7 +79,7 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 				Name: "queue0",
-				Type: "Applications.Link/rabbitMQMessageQueues",
+				Type: linkrp.RabbitMQMessageQueuesResourceType,
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
@@ -105,7 +105,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 				Name: "queue0",
-				Type: "Applications.Link/rabbitMQMessageQueues",
+				Type: linkrp.RabbitMQMessageQueuesResourceType,
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
