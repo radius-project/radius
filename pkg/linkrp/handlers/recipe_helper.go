@@ -60,7 +60,7 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	if isCxtSet {
-		parameters["context"] = map[string]interface{}{
+		parameters["context"] = map[string]any{
 			"value": *recipeContext,
 		}
 	}

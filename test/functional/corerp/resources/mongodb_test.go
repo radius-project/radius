@@ -214,7 +214,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 }
 
 // Test_MongoDB_Recipe_Parameters validates:
-// the creation of a mongoDB from recipe
+// the creation of a mongoDB from recipe with passing parameters.
 // container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"

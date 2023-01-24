@@ -60,9 +60,8 @@ const (
 	RecipeContextParameter string   = "context"  // parameter context for recipe deployment
 )
 
-// RecipeContext is used to have the link, environment, application and runtime information to be used by recipe
-// Recipe template authors can leverage the RecipeContext parameter to access properties to help them name/configure their infrastructure
-// This allows the recipe template to generate names & properties that are unique and repeatable for the Link calling the recipe
+// RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
+// generate name and properties that are unique for the Link calling the recipe.
 type RecipeContext struct {
 	Resource    Resource     `json:"resource,omitempty"`
 	Application ResourceInfo `json:"application,omitempty"`
@@ -70,15 +69,19 @@ type RecipeContext struct {
 	Runtime     Runtime      `json:"runtime,omitempty"`
 }
 
-// Resource contains the information about the  resource that is deployed using recipe
+// Resource contains the information needed to deploy a recipe.
 type Resource struct {
 	ResourceInfo
+	// Type of the resource
 	Type string `json:"type"`
 }
 
+// ResourceInfo name and id of the resource
 type ResourceInfo struct {
+	// Name of the resource
 	Name string `json:"name"`
-	ID   string `json:"id"`
+	// ID of the resource
+	ID string `json:"id"`
 }
 
 type Runtime struct {
