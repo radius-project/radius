@@ -213,9 +213,9 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_MongoDB_Recipe_Parameters validates:
-// the creation of a mongoDB from recipe with passing parameters.
-// container using the mongoDB link to connect to the mongoDB resource
+// Test_MongoDB_Recipe_Parameters validates creation of a mongoDB from
+// recipe using the parameter set by the developer and operator,
+// and container using the mongoDB link to connect to the underlying mongoDB resource.
 func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
@@ -278,9 +278,9 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_MongoDB_Recipe_ContextParameter validates:
-// the creation of a mongoDB from recipe using the context parameter set by linkRP dynamically
-// container using the mongoDB link to connect to the mongoDB resource
+// Test_MongoDB_Recipe_ContextParameter validates creation of a mongoDB from
+// recipe using the context parameter generated and set by linkRP,
+// and container using the mongoDB link to connect to the underlying mongoDB resource.
 func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-context.bicep"
 	name := "corerp-resources-mongodb-recipe-context"
