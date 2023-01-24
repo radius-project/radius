@@ -281,13 +281,15 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
 func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) (string, error) {
+	logger := logr.FromContextOrDiscard(req.Context())
 	rootScope := r.RootScope
 	if rootScope == "" {
 		rootScope = r.ResourceID.PlaneScope()
 	}
+	logger.Info("root scope: " + rootScope)
 
 	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
-	logger := logr.FromContextOrDiscard(req.Context())
+
 	// logger.Info("og referer header from request: " + req.Header.Get(v1.RefererHeader))
 	logger.Info("Referer host: " + referer.Host)
 	if err != nil {
@@ -298,6 +300,7 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		baseIndex = getBaseIndex(referer.Path)
 	}
 	base := referer.Path[:baseIndex]
+	logger.Info("Referer full path: " + referer.Path)
 	logger.Info("Referer base path: " + base)
 
 	dest := url.URL{
