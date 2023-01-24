@@ -1,0 +1,25 @@
+name: Nightly Tests
+
+on:
+  # Run at 00:00 UTC every day
+  schedule:
+    - cron: '0 0 * * *'
+  # Add manual trigger
+  workflow_dispatch:
+
+jobs:
+  install-latest:
+    name: Install and initialize latest release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create KinD Cluster
+        uses: helm/kind-action@v1.5.0
+        with:
+          cluster_name: radius
+      - name: Install latest rad
+        run: |
+          wget -q "https://get.radapp.dev/tools/rad/install.sh" -O - | /bin/bash
+      - name: Initialize Radius
+        run: |
+          rad env init kubernetes
+          cat ~/.rad/config.yaml
