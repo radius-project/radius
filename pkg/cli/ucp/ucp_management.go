@@ -157,7 +157,12 @@ func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	var respFromCtx *http.Response
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
-	_, err = client.Delete(ctxWithResp, resourceName, nil)
+	poller, err := client.BeginDelete(ctxWithResp, resourceName, nil)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
 		return false, err
 	}
