@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package armauth
+package tokencredentials
 
 import (
 	"context"
@@ -17,7 +17,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest/to"
 
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpdatamodel "github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -45,8 +44,8 @@ type UCPCredential struct {
 }
 
 // NewUCPCredential creates a UCPCredential. Pass nil to accept default options.
-func NewUCPCredential(options *Options) (*UCPCredential, error) {
-	cli, err := ucpapi.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.UCPConnection))
+func NewUCPCredential(secretProvider *ucpsecretp.SecretProvider, ucpConn sdk.Connection) (*UCPCredential, error) {
+	cli, err := ucpapi.NewAzureCredentialClient(&AnonymousCredential{}, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +54,7 @@ func NewUCPCredential(options *Options) (*UCPCredential, error) {
 		ucpClient:        cli,
 		clientMu:         sync.RWMutex{},
 		secretExpireTime: time.Time{},
-		secretProvider:   options.SecretProvider,
+		secretProvider:   secretProvider,
 	}, nil
 }
 
