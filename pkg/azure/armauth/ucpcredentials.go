@@ -8,6 +8,7 @@ package armauth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpdatamodel "github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 	ucpsecretp "github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
@@ -30,10 +33,8 @@ var _ azcore.TokenCredential = (*UCPCredential)(nil)
 
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
-	tenantID     string
-	clientID     string
-	clientSecret string
-	secretName   string
+	azureCreds ucpdatamodel.AzureCredentialProperties
+	secretName string
 
 	identityClient   azcore.TokenCredential
 	ucpClient        *ucpapi.AzureCredentialClient
@@ -90,24 +91,12 @@ func (c *UCPCredential) updateIdentityOptions(ctx context.Context) error {
 		return err
 	}
 
-	prop, ok := cred.Properties.(*ucpapi.AzureServicePrincipalProperties)
-	if !ok {
-		return errors.New("invalid AzureServicePrincipalProperties")
-	}
-	c.clientID = to.String(prop.ClientID)
-	if c.clientID == "" {
-		return errors.New("ClientID is not specified")
-	}
-	c.tenantID = to.String(prop.TenantID)
-	if c.tenantID == "" {
-		return errors.New("TenantID is not specified")
-	}
-
-	internal, ok := prop.Storage.(*ucpapi.InternalCredentialStorageProperties)
+	storage, ok := cred.Properties.GetCredentialResourceProperties().Storage.(*ucpapi.InternalCredentialStorageProperties)
 	if !ok {
 		return errors.New("invalid InternalCredentialStorageProperties")
 	}
-	c.secretName = to.String(internal.SecretName)
+
+	c.secretName = to.String(storage.SecretName)
 	if c.secretName == "" {
 		return errors.New("SecretName is not specified")
 	}
@@ -121,18 +110,18 @@ func (c *UCPCredential) updateIdentityClient(ctx context.Context) error {
 		return err
 	}
 
-	secret, err := cli.Get(ctx, c.secretName)
+	s, err := secret.GetSecret[ucpdatamodel.AzureCredentialProperties](ctx, cli, c.secretName)
 	if err != nil {
 		return err
 	}
 
 	// Do not instantiate new client unless the secret is rotated.
-	if c.clientSecret == string(secret) {
+	if c.azureCreds.ClientSecret == s.ClientSecret && c.azureCreds.ClientID == s.ClientID && c.azureCreds.TenantID == s.TenantID {
 		return nil
 	}
 
-	c.clientSecret = string(secret)
-	c.identityClient, err = azidentity.NewClientSecretCredential(c.tenantID, c.clientID, c.clientSecret, nil)
+	c.azureCreds = s
+	c.identityClient, err = azidentity.NewClientSecretCredential(s.TenantID, s.ClientID, s.ClientSecret, nil)
 	if err != nil {
 		return err
 	}
@@ -143,7 +132,7 @@ func (c *UCPCredential) updateIdentityClient(ctx context.Context) error {
 func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	if c.isExpired() {
 		if err := c.refreshTokenClient(ctx); err != nil {
-			return azcore.AccessToken{}, err
+			return azcore.AccessToken{}, fmt.Errorf("failed to fetch credentials: %q", err)
 		}
 	}
 
