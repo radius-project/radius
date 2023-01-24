@@ -456,7 +456,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 				Name: "mongodb",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			LinkType:     linkrp.MongoDatabasesResourceTypeName,
+			LinkType:     linkrp.RedisCachesResourceTypeName,
 			EnvParameters: map[string]any{
 				"name": "account-mongo-db",
 			},
