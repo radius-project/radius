@@ -15,6 +15,13 @@ resources:
 
 trigger: none
 
+schedules:
+- cron: "0 0 * * *"
+  displayName: Daily midnight build
+  branches:
+    include:
+    - release/0.16
+
 pr: [ main, features/*]
 
 variables:
