@@ -232,7 +232,7 @@ func TestCreateOrUpdateLinkResource_20220315PrivatePreview(t *testing.T) {
 
 func getDeploymentProcessorOutputs(resourceType string, buildComputedValueReferences bool) (rendererOutput renderers.RendererOutput, deploymentOutput deployment.DeploymentOutput) {
 	switch strings.ToLower(resourceType) {
-	case strings.ToLower(DaprInvokeHttpRoutesResourceTypeName):
+	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
 		rendererOutput = renderers.RendererOutput{
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				"appId": {
@@ -244,7 +244,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		deploymentOutput = deployment.DeploymentOutput{
 			Resources: []outputresource.OutputResource{},
 		}
-	case strings.ToLower(DaprPubSubBrokersResourceTypeName):
+	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
 		output := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 			ResourceType: resourcemodel.ResourceType{
@@ -300,7 +300,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 				linkrp.ComponentNameKey: rendererOutput.ComputedValues[linkrp.ComponentNameKey].Value,
 			},
 		}
-	case strings.ToLower(DaprSecretStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		rendererOutput = renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{
 				{
@@ -334,7 +334,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 				"componentName": rendererOutput.ComputedValues["componentName"].Value,
 			},
 		}
-	case strings.ToLower(DaprStateStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		rendererOutput = renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{
 				{
@@ -368,7 +368,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 				"componentName": rendererOutput.ComputedValues["componentName"].Value,
 			},
 		}
-	case strings.ToLower(ExtendersResourceTypeName):
+	case strings.ToLower(linkrp.ExtendersResourceType):
 		rendererOutput = renderers.RendererOutput{
 			SecretValues: map[string]rp.SecretValueReference{
 				"secretname": {
@@ -385,7 +385,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		deploymentOutput = deployment.DeploymentOutput{
 			Resources: []outputresource.OutputResource{},
 		}
-	case strings.ToLower(MongoDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		rendererOutput := renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{
 				{
@@ -423,7 +423,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 				"database": rendererOutput.ComputedValues["database"].Value,
 			},
 		}
-	case strings.ToLower(RabbitMQMessageQueuesResourceTypeName):
+	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		rendererOutput = renderers.RendererOutput{
 			SecretValues: map[string]rp.SecretValueReference{
 				renderers.ConnectionStringValue: {
@@ -440,7 +440,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		deploymentOutput = deployment.DeploymentOutput{
 			Resources: []outputresource.OutputResource{},
 		}
-	case strings.ToLower(RedisCachesResourceTypeName):
+	case strings.ToLower(linkrp.RedisCachesResourceType):
 		var computedValues map[string]renderers.ComputedValueReference
 		var portValue any
 		if buildComputedValueReferences {
@@ -510,7 +510,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 
-	case strings.ToLower(SqlDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		rendererOutput = renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{
 				{
@@ -552,7 +552,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 
 func createCreateOrUpdateController(resourceType string, opts Options) (controller ctrl.Controller, err error) {
 	switch strings.ToLower(resourceType) {
-	case strings.ToLower(DaprInvokeHttpRoutesResourceTypeName):
+	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
 			RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
 			ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
@@ -566,7 +566,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			true,
 		)
-	case strings.ToLower(DaprPubSubBrokersResourceTypeName):
+	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 			RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 			ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
@@ -580,7 +580,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			true,
 		)
-	case strings.ToLower(DaprSecretStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 			RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 			ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
@@ -594,7 +594,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			true,
 		)
-	case strings.ToLower(DaprStateStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprStateStore]{
 			RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 			ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
@@ -608,7 +608,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			true,
 		)
-	case strings.ToLower(ExtendersResourceTypeName):
+	case strings.ToLower(linkrp.ExtendersResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.Extender]{
 			RequestConverter:  converter.ExtenderDataModelFromVersioned,
 			ResponseConverter: converter.ExtenderDataModelToVersioned,
@@ -622,7 +622,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			false,
 		)
-	case strings.ToLower(MongoDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.MongoDatabase]{
 			RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 			ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
@@ -636,7 +636,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			false,
 		)
-	case strings.ToLower(RabbitMQMessageQueuesResourceTypeName):
+	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 			RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 			ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
@@ -650,7 +650,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			false,
 		)
-	case strings.ToLower(RedisCachesResourceTypeName):
+	case strings.ToLower(linkrp.RedisCachesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.RedisCache]{
 			RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 			ResponseConverter: converter.RedisCacheDataModelToVersioned,
@@ -664,7 +664,7 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			false,
 		)
-	case strings.ToLower(SqlDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.SqlDatabase]{
 			RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 			ResponseConverter: converter.SqlDatabaseDataModelToVersioned,

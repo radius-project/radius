@@ -7,6 +7,7 @@ package controller
 
 import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
@@ -19,28 +20,19 @@ type Options struct {
 }
 
 const (
-	DaprInvokeHttpRoutesResourceTypeName  = "Applications.Link/daprInvokeHttpRoutes"
-	DaprPubSubBrokersResourceTypeName     = "Applications.Link/daprPubSubBrokers"
-	DaprSecretStoresResourceTypeName      = "Applications.Link/daprSecretStores"
-	DaprStateStoresResourceTypeName       = "Applications.Link/daprStateStores"
-	ExtendersResourceTypeName             = "Applications.Link/extenders"
-	MongoDatabasesResourceTypeName        = "Applications.Link/mongoDatabases"
-	RabbitMQMessageQueuesResourceTypeName = "Applications.Link/rabbitMQMessageQueues"
-	RedisCachesResourceTypeName           = "Applications.Link/redisCaches"
-	SqlDatabasesResourceTypeName          = "Applications.Link/sqlDatabases"
 
 	// User defined operation names
 	OperationListSecret = "LISTSECRETS"
 )
 
 var LinkTypes = []string{
-	DaprInvokeHttpRoutesResourceTypeName,
-	DaprPubSubBrokersResourceTypeName,
-	DaprSecretStoresResourceTypeName,
-	DaprStateStoresResourceTypeName,
-	ExtendersResourceTypeName,
-	MongoDatabasesResourceTypeName,
-	RabbitMQMessageQueuesResourceTypeName,
-	RedisCachesResourceTypeName,
-	SqlDatabasesResourceTypeName,
+	linkrp.DaprInvokeHttpRoutesResourceType,
+	linkrp.DaprPubSubBrokersResourceType,
+	linkrp.DaprSecretStoresResourceType,
+	linkrp.DaprStateStoresResourceType,
+	linkrp.ExtendersResourceType,
+	linkrp.MongoDatabasesResourceType,
+	linkrp.RabbitMQMessageQueuesResourceType,
+	linkrp.RedisCachesResourceType,
+	linkrp.SqlDatabasesResourceType,
 }

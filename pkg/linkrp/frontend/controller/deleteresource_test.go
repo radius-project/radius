@@ -19,6 +19,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
@@ -36,14 +37,14 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 
 	t.Parallel()
 	for _, resourceType := range LinkTypes {
-		if resourceType == MongoDatabasesResourceTypeName {
+		if resourceType == linkrp.MongoDatabasesResourceType {
 			//MongoDatabases uses an async controller that has separate test code.
 			continue
 		}
 
 		t.Run(resourceType+"-"+"delete non-existing resource", func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(RedisCachesResourceTypeName), nil)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(linkrp.RedisCachesResourceType), nil)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
 			mStorageClient.
@@ -97,7 +98,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 			t.Run(resourceType+"-"+testcase.desc, func(t *testing.T) {
 				w := httptest.NewRecorder()
 
-				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(RedisCachesResourceTypeName), nil)
+				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(linkrp.RedisCachesResourceType), nil)
 				req.Header.Set("If-Match", testcase.ifMatchETag)
 
 				ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -160,7 +161,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 			})
 
 			t.Run(resourceType+"-"+"delete deploymentprocessor error", func(t *testing.T) {
-				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(RedisCachesResourceTypeName), nil)
+				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(linkrp.RedisCachesResourceType), nil)
 				ctx := radiustesting.ARMTestContextFromRequest(req)
 				dataModel := createDataModelForLinkType(resourceType)
 				w := httptest.NewRecorder()
@@ -194,7 +195,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 
 func createDeleteController(resourceType string, opts Options) (controller ctrl.Controller, err error) {
 	switch strings.ToLower(resourceType) {
-	case strings.ToLower(DaprInvokeHttpRoutesResourceTypeName):
+	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
 			RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
 			ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
@@ -207,7 +208,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(DaprPubSubBrokersResourceTypeName):
+	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 			RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 			ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
@@ -220,7 +221,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(DaprSecretStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 			RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 			ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
@@ -233,7 +234,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(DaprStateStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.DaprStateStore]{
 			RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 			ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
@@ -246,7 +247,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(ExtendersResourceTypeName):
+	case strings.ToLower(linkrp.ExtendersResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.Extender]{
 			RequestConverter:  converter.ExtenderDataModelFromVersioned,
 			ResponseConverter: converter.ExtenderDataModelToVersioned,
@@ -259,7 +260,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(MongoDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.MongoDatabase]{
 			RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 			ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
@@ -272,7 +273,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(RabbitMQMessageQueuesResourceTypeName):
+	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 			RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 			ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
@@ -285,7 +286,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(RedisCachesResourceTypeName):
+	case strings.ToLower(linkrp.RedisCachesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.RedisCache]{
 			RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 			ResponseConverter: converter.RedisCacheDataModelToVersioned,
@@ -298,7 +299,7 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 			opts,
 			operation,
 		)
-	case strings.ToLower(SqlDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.SqlDatabase]{
 			RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 			ResponseConverter: converter.SqlDatabaseDataModelToVersioned,

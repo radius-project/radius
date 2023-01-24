@@ -152,7 +152,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		{
 			ParentRouter: mongoResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.MongoDatabasesResourceType,
-			Method:       mongo_ctrl.OperationListSecret,
+			Method:       link_frontend_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return mongo_ctrl.NewListSecretsMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
@@ -543,7 +543,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		{
 			ParentRouter: redisResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.RedisCachesResourceType,
-			Method:       redis_ctrl.OperationListSecret,
+			Method:       link_frontend_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return redis_ctrl.NewListSecretsRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
@@ -628,7 +628,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		{
 			ParentRouter: rabbitmqResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
-			Method:       rabbitmq_ctrl.OperationListSecret,
+			Method:       link_frontend_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
@@ -789,7 +789,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		{
 			ParentRouter: extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.ExtendersResourceType,
-			Method:       extender_ctrl.OperationListSecret,
+			Method:       link_frontend_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return extender_ctrl.NewListSecretsExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
