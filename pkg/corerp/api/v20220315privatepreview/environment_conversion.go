@@ -6,19 +6,16 @@
 package v20220315privatepreview
 
 import (
-	"errors"
-
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/rp"
+
+	"github.com/Azure/go-autorest/autorest/to"
 )
 
 const (
 	EnvironmentComputeKindKubernetes = "kubernetes"
-	ErrUnsupportedProvider           = errors.New("unsupported provider")
 )
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
@@ -67,17 +64,14 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	if src.Properties.Providers != nil {
-		switch src.Properties.Providers {
-		case v20220315privatepreview.Providers.Azure:
+		if src.Properties.Providers.Azure != nil {
 			converted.Properties.Providers.Azure = datamodel.ProvidersAzure{
 				Scope: to.String(src.Properties.Providers.Azure.Scope),
 			}
-		case v20220315privatepreview.Providers.Aws:
+		} else if src.Properties.Providers.Aws != nil {
 			converted.Properties.Providers.Aws = datamodel.ProvidersAws{
 				Scope: to.String(src.Properties.Providers.Aws.Scope),
 			}
-		default:
-			return converted, ErrUnsupportedProvider
 		}
 	}
 
