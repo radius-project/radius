@@ -40,16 +40,20 @@ type EnvironmentRecipeProperties struct {
 
 // Providers represents configs for providers for the environment, eg azure,aws
 type Providers struct {
-	Azure ProvidersAzure `json:"azure,omitempty"` // Azure provider information
-	AWS   ProvidersAWS   `json:"aws,omitempty"`   // AWS provider information
+	// Azure provider information
+	Azure ProvidersAzure `json:"azure,omitempty"`
+	// AWS provider information
+	AWS ProvidersAWS `json:"aws,omitempty"`
 }
 
 // ProvidersAzure represents the azure provider configs
 type ProvidersAzure struct {
-	Scope string `json:"scope,omitempty"` // scope for deploying the azure resources
+	// Scope is the target level for deploying the azure resources
+	Scope string `json:"scope,omitempty"`
 }
 
 // ProvidersAWS represents the aws provider configs
 type ProvidersAWS struct {
-	Scope string `json:"scope,omitempty"` // scope for deploying the aws resources
+	// Scope is the target level for deploying the aws resources
+	Scope string `json:"scope,omitempty"`
 }

@@ -130,6 +130,13 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 				},
 			}
 		}
+		if env.Properties.Providers.AWS != (datamodel.ProvidersAWS{}) {
+			dst.Properties.Providers = &Providers{
+				Aws: &ProvidersAws{
+					Scope: to.StringPtr(env.Properties.Providers.AWS.Scope),
+				},
+			}
+		}
 	}
 
 	var extensions []EnvironmentExtensionClassification
