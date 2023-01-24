@@ -4,11 +4,12 @@
 // ------------------------------------------------------------
 
 package v20220315privatepreview
-	ErrUnsupportedProvider = errors.New("unsupported api-version")
+
 import (
+	"errors"
+
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -17,7 +18,7 @@ import (
 
 const (
 	EnvironmentComputeKindKubernetes = "kubernetes"
-	ErrUnsupportedProvider = errors.New("unsupported provider")
+	ErrUnsupportedProvider           = errors.New("unsupported provider")
 )
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
