@@ -33,7 +33,16 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	
 	By default, the command outputs a human-readable table. You can customize the output format with the output flag.
 	`,
-		Example: `rad recipe show <recipe-name>`,
+		Example: `
+	# show the details of a recipe
+	rad recipe show redis-prod`
+	
+	# show the details of a recipe, with a JSON output
+	rad recipe show redis-prod --output json
+	
+	# show the details of a recipe, with a specified environment and group
+	rad recipe show redis-dev --group dev --environment dev
+	,
 		RunE:    framework.RunCommand(runner),
 		Args:    cobra.ExactArgs(0),
 	}
