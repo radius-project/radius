@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
@@ -36,45 +37,45 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 
 	radiusResourceModel := []RadiusResourceModel{
 		{
-			ResourceType: mongodatabases.ResourceType,
+			ResourceType: linkrp.MongoDatabasesResourceType,
 			Renderer:     &mongodatabases.Renderer{},
 		},
 		{
-			ResourceType: sqldatabases.ResourceType,
+			ResourceType: linkrp.SqlDatabasesResourceType,
 			Renderer:     &sqldatabases.Renderer{},
 		},
 		{
-			ResourceType: rediscaches.ResourceType,
+			ResourceType: linkrp.RedisCachesResourceType,
 			Renderer:     &rediscaches.Renderer{},
 		},
 		{
-			ResourceType: rabbitmqmessagequeues.ResourceType,
+			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Renderer:     &rabbitmqmessagequeues.Renderer{},
 		},
 		{
-			ResourceType: daprinvokehttproutes.ResourceType,
+			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Renderer:     &daprinvokehttproutes.Renderer{},
 		},
 		{
-			ResourceType: daprpubsubbrokers.ResourceType,
+			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Renderer: &daprpubsubbrokers.Renderer{
 				PubSubs: daprpubsubbrokers.SupportedPubSubModes,
 			},
 		},
 		{
-			ResourceType: daprsecretstores.ResourceType,
+			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Renderer: &daprsecretstores.Renderer{
 				SecretStores: daprsecretstores.SupportedSecretStoreModes,
 			},
 		},
 		{
-			ResourceType: daprstatestores.ResourceType,
+			ResourceType: linkrp.DaprStateStoresResourceType,
 			Renderer: &daprstatestores.Renderer{
 				StateStores: daprstatestores.SupportedStateStoreModes,
 			},
 		},
 		{
-			ResourceType: extenders.ResourceType,
+			ResourceType: linkrp.ExtendersResourceType,
 			Renderer:     &extenders.Renderer{},
 		},
 	}

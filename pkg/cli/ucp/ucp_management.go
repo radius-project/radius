@@ -16,6 +16,7 @@ import (
 
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 
@@ -35,15 +36,15 @@ var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(
 
 var (
 	ResourceTypesList = []string{
-		"Applications.Link/mongoDatabases",
-		"Applications.Link/rabbitMQMessageQueues",
-		"Applications.Link/redisCaches",
-		"Applications.Link/sqlDatabases",
-		"Applications.Link/daprStateStores",
-		"Applications.Link/daprSecretStores",
-		"Applications.Link/daprPubSubBrokers",
-		"Applications.Link/daprInvokeHttpRoutes",
-		"Applications.Link/extenders",
+		linkrp.MongoDatabasesResourceType,
+		linkrp.RabbitMQMessageQueuesResourceType,
+		linkrp.RedisCachesResourceType,
+		linkrp.SqlDatabasesResourceType,
+		linkrp.DaprStateStoresResourceType,
+		linkrp.DaprSecretStoresResourceType,
+		linkrp.DaprPubSubBrokersResourceType,
+		linkrp.DaprInvokeHttpRoutesResourceType,
+		linkrp.ExtendersResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",

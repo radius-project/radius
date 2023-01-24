@@ -12,6 +12,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -45,7 +46,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -78,7 +79,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, linkrp.DaprPubSubBrokersResourceType),
 			},
 			"spec": map[string]any{
 				"type":    pubsubType,
@@ -102,7 +103,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -129,7 +130,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -158,7 +159,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -193,7 +194,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		Version:  &properties.Version,
 		Metadata: properties.Metadata,
 	}
-	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test", ResourceType)
+	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test", linkrp.DaprPubSubBrokersResourceType)
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{
@@ -203,7 +204,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, linkrp.DaprPubSubBrokersResourceType),
 			},
 			"spec": map[string]any{
 				"type":    pubsubType,
@@ -230,7 +231,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -275,7 +276,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -319,7 +320,7 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -345,7 +346,7 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -371,7 +372,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
@@ -401,7 +402,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   resourceID,
 				Name: resourceName,
-				Type: ResourceType,
+				Type: linkrp.DaprPubSubBrokersResourceType,
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{

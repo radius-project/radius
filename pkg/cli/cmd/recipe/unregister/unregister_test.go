@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -83,7 +84,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -125,7 +126,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -164,7 +165,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},

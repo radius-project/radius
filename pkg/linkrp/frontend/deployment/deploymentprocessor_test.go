@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/model"
@@ -357,7 +358,7 @@ func setup(t *testing.T) SharedMocks {
 		},
 		[]model.RadiusResourceModel{
 			{
-				ResourceType: mongodatabases.ResourceType,
+				ResourceType: linkrp.MongoDatabasesResourceType,
 				Renderer:     mockRenderer,
 			},
 		},
@@ -692,7 +693,7 @@ func Test_Render(t *testing.T) {
 			},
 			[]model.RadiusResourceModel{
 				{
-					ResourceType: mongodatabases.ResourceType,
+					ResourceType: linkrp.MongoDatabasesResourceType,
 					Renderer:     mocks.renderer,
 				},
 			},

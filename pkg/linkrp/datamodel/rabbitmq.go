@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -38,7 +39,7 @@ func (r *RabbitMQMessageQueue) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
-	return "Applications.Link/rabbitMQMessageQueues"
+	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
@@ -56,5 +57,5 @@ type RabbitMQSecrets struct {
 }
 
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return "Applications.Link/rabbitMQMessageQueues"
+	return linkrp.RabbitMQMessageQueuesResourceType
 }
