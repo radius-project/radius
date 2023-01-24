@@ -69,7 +69,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 
 	registryRepo, tag, err := parseTemplatePath(recipe.TemplatePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse the acr templatePath %s", err.Error())
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid recipe templatePath %s", err.Error()))
 	}
 
 	// get the recipe from ACR
