@@ -92,7 +92,7 @@ func Test_Run(t *testing.T) {
 				Enabled: true,
 			}
 
-			client := clients.NewMockProviderCredentialManagementClient(ctrl)
+			client := clients.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Get(gomock.Any(), "azure").
 				Return(provider, nil).
@@ -127,7 +127,7 @@ func Test_Run(t *testing.T) {
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			client := clients.NewMockProviderCredentialManagementClient(ctrl)
+			client := clients.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Get(gomock.Any(), "azure").
 				Return(cli_credential.ProviderCredentialResource{}, radcli.Create404Error()).

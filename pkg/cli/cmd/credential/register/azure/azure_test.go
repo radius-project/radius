@@ -210,7 +210,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			client := clients.NewMockProviderCredentialManagementClient(ctrl)
+			client := clients.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Put(gomock.Any(), expectedPut).
 				Return(nil).

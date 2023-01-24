@@ -154,9 +154,9 @@ type ApplicationsManagementClient interface {
 	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)
 }
 
-//go:generate mockgen -destination=./mock_providercredentialclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients ProviderCredentialManagementClient
+//go:generate mockgen -destination=./mock_providercredentialclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients CredentialManagementClient
 
-// ProviderCredentialManagementClient is used to interface with cloud provider configuration and credentials.
+// CredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type CredentialManagementClient interface {
 	Get(ctx context.Context, name string) (cli_credential.ProviderCredentialResource, error)
 	List(ctx context.Context) ([]cli_credential.ProviderCredentialResource, error)

@@ -76,7 +76,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			client := clients.NewMockProviderCredentialManagementClient(ctrl)
+			client := clients.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				List(gomock.Any()).
 				Return(providers, nil).

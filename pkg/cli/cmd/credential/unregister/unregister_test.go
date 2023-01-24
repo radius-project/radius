@@ -85,7 +85,7 @@ func Test_Run(t *testing.T) {
 		t.Run("Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			client := clients.NewMockProviderCredentialManagementClient(ctrl)
+			client := clients.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Delete(gomock.Any(), "azure").
 				Return(true, nil).
@@ -118,7 +118,7 @@ func Test_Run(t *testing.T) {
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			client := clients.NewMockProviderCredentialManagementClient(ctrl)
+			client := clients.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Delete(gomock.Any(), "azure").
 				Return(false, nil).
