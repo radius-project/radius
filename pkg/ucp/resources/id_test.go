@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -837,7 +838,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPost,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "ucp-get",
@@ -845,7 +846,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "ucp-list",
@@ -853,7 +854,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "ucp-put",
@@ -861,7 +862,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPut,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "ucp-patch",
@@ -869,7 +870,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPatch,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "ucp-delete",
@@ -877,14 +878,14 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodDelete,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		}, {
 			desc:   "arm-post-with-custom-action",
 			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0/listSecrets",
 			method: http.MethodPost,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "arm-get",
@@ -892,7 +893,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "arm-list",
@@ -900,7 +901,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "arm-put",
@@ -908,7 +909,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPut,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "arm-patch",
@@ -916,7 +917,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPatch,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 		{
 			desc:   "arm-delete",
@@ -924,7 +925,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodDelete,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: "Applications.Link/mongoDatabases",
+			eRType: linkrp.MongoDatabasesResourceTypeName,
 		},
 	}
 
@@ -968,7 +969,7 @@ func Test_RadiusRPResource(t *testing.T) {
 					{Type: "resourceGroups", Name: "r1"},
 				},
 				typeSegments: []TypeSegment{
-					{Type: "Applications.Link/mongoDatabases", Name: "test-mongo"},
+					{Type: linkrp.MongoDatabasesResourceTypeName, Name: "test-mongo"},
 				},
 			},
 			expected: true,

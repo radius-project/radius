@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
@@ -36,45 +37,45 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 
 	radiusResourceModel := []RadiusResourceModel{
 		{
-			ResourceType: mongodatabases.ResourceType,
+			ResourceType: linkrp.MongoDatabasesResourceTypeName,
 			Renderer:     &mongodatabases.Renderer{},
 		},
 		{
-			ResourceType: sqldatabases.ResourceType,
+			ResourceType: linkrp.SqlDatabasesResourceTypeName,
 			Renderer:     &sqldatabases.Renderer{},
 		},
 		{
-			ResourceType: rediscaches.ResourceType,
+			ResourceType: linkrp.RedisCachesResourceTypeName,
 			Renderer:     &rediscaches.Renderer{},
 		},
 		{
-			ResourceType: rabbitmqmessagequeues.ResourceType,
+			ResourceType: linkrp.RabbitMQMessageQueuesResourceTypeName,
 			Renderer:     &rabbitmqmessagequeues.Renderer{},
 		},
 		{
-			ResourceType: daprinvokehttproutes.ResourceType,
+			ResourceType: linkrp.DaprInvokeHttpRoutesResourceTypeName,
 			Renderer:     &daprinvokehttproutes.Renderer{},
 		},
 		{
-			ResourceType: daprpubsubbrokers.ResourceType,
+			ResourceType: linkrp.DaprPubSubBrokersResourceTypeName,
 			Renderer: &daprpubsubbrokers.Renderer{
 				PubSubs: daprpubsubbrokers.SupportedPubSubModes,
 			},
 		},
 		{
-			ResourceType: daprsecretstores.ResourceType,
+			ResourceType: linkrp.DaprSecretStoresResourceTypeName,
 			Renderer: &daprsecretstores.Renderer{
 				SecretStores: daprsecretstores.SupportedSecretStoreModes,
 			},
 		},
 		{
-			ResourceType: daprstatestores.ResourceType,
+			ResourceType: linkrp.DaprStateStoresResourceTypeName,
 			Renderer: &daprstatestores.Renderer{
 				StateStores: daprstatestores.SupportedStateStoreModes,
 			},
 		},
 		{
-			ResourceType: extenders.ResourceType,
+			ResourceType: linkrp.ExtendersResourceTypeName,
 			Renderer:     &extenders.Renderer{},
 		},
 	}

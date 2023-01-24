@@ -10,10 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-const (
-	ResourceType = "Applications.Link/redisCaches"
-)
-
 var RedisResourceType = resources.KnownType{
 	Types: []resources.TypeSegment{
 		{
