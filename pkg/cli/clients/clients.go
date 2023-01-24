@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ucp_v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
@@ -152,16 +151,6 @@ type ApplicationsManagementClient interface {
 	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
 	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220901privatepreview.ResourceGroupResource, error)
 	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)
-}
-
-//go:generate mockgen -destination=./mock_providercredentialclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients CredentialManagementClient
-
-// CredentialManagementClient is used to interface with cloud provider configuration and credentials.
-type CredentialManagementClient interface {
-	Get(ctx context.Context, name string) (cli_credential.ProviderCredentialResource, error)
-	List(ctx context.Context) ([]cli_credential.ProviderCredentialResource, error)
-	Put(ctx context.Context, credential_config cli_credential.ProviderCredentialConfiguration) error
-	Delete(ctx context.Context, name string) (bool, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

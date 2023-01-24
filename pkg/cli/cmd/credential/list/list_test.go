@@ -10,9 +10,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -76,7 +75,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			client := clients.NewMockCredentialManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				List(gomock.Any()).
 				Return(providers, nil).
@@ -102,7 +101,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     providers,
-					Options: objectformats.GetCloudProviderTableFormat(),
+					Options: objectformats.ListCloudProviderTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

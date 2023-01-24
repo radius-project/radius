@@ -34,7 +34,7 @@ type Factory interface {
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
-	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CredentialManagementClient, error)
+	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error)
 }
 
 var _ Factory = (*impl)(nil)
@@ -174,7 +174,7 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 }
 
 //nolint:all
-func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CredentialManagementClient, error) {
+func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace 
 		return nil, err
 	}
 
-	return &ucp.UCPCredentialManagementClient{
+	return &cli_credential.UCPCredentialManagementClient{
 		CredentialInterface: &cli_credential.Impl{
 			AzureCredentialClient: *azureCredentialClient,
 			AWSCredentialClient:   *awsCredentialClient,

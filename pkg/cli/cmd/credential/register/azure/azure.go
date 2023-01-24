@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
@@ -18,7 +20,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
+)
+
+const (
+	azureCredentialID    = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
+	awsCredentialID      = "/planes/aws/awscloud/providers/System.AWS/credentials/%s"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad provider create azure` command.
@@ -167,20 +175,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	provider := cli_credential.ProviderCredentialConfiguration{
-		ProviderCredentialResource: cli_credential.ProviderCredentialResource{
-			Name:    "azure",
-			Enabled: true,
-		},
-		AzureCredentials: &cli_credential.ServicePrincipalCredentials{
-			ClientID:     r.ClientID,
-			ClientSecret: r.ClientSecret,
-			TenantID:     r.TenantID,
+	credential := ucp.CredentialResource{
+		Name:     to.Ptr("azure"),
+		Location: to.Ptr(v1.LocationGlobal),
+		Type:     to.Ptr(cli_credential.AzureCredential),
+		ID: to.Ptr(fmt.Sprintf(awsCredentialID, "azure")),
+		Properties: &ucp.AzureServicePrincipalProperties{
+			Storage: &ucp.CredentialStorageProperties{
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+			},
+			TenantID: &r.TenantID,
+			ClientID: &r.ClientID,
+			ClientSecret: &r.ClientSecret,
 		},
 	}
 
 	// 1) Update server-side to add/change credentials
-	err = client.Put(ctx, provider)
+	err = client.Put(ctx, credential)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -87,12 +86,14 @@ func Test_Run(t *testing.T) {
 		t.Run("Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			provider := cli_credential.ProviderCredentialResource{
-				Name:    "azure",
-				Enabled: true,
+			provider := cli_credential.ProviderCredentialConfiguration {
+				ProviderCredentialResource : cli_credential.ProviderCredentialResource{
+					Name:    "azure",
+					Enabled: true,
+				},
 			}
 
-			client := clients.NewMockCredentialManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Get(gomock.Any(), "azure").
 				Return(provider, nil).
@@ -119,7 +120,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     provider,
-					Options: objectformats.GetCloudProviderTableFormat(),
+					Options: objectformats.GetCloudProviderTableFormat(runner.Kind),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -127,10 +128,10 @@ func Test_Run(t *testing.T) {
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			client := clients.NewMockCredentialManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Get(gomock.Any(), "azure").
-				Return(cli_credential.ProviderCredentialResource{}, radcli.Create404Error()).
+				Return(cli_credential.ProviderCredentialConfiguration{}, radcli.Create404Error()).
 				Times(1)
 
 			outputSink := &output.MockOutput{}

@@ -7,7 +7,9 @@ package credential
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/project-radius/radius/pkg/cli"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
@@ -30,10 +32,10 @@ type ProviderCredentialConfiguration struct {
 	ProviderCredentialResource
 
 	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AzureCredentials *ServicePrincipalCredentials
+	AzureCredentials *ucp.AzureServicePrincipalProperties
 
 	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AWSCredentials *IAMCredentials
+	AWSCredentials *ucp.AWSCredentialProperties
 }
 
 type ServicePrincipalCredentials struct {
@@ -52,7 +54,7 @@ type Interface interface {
 	// CreateCredential creates ucp crendential for the supported providers.
 	CreateCredential(ctx context.Context, planeType string, planeName string, name string, credential ucp.CredentialResource) error
 	// GetCredential gets ucp credentials for the given name if provider is supported.
-	GetCredential(ctx context.Context, planeType string, planeName string, name string) error
+	GetCredential(ctx context.Context, planeType string, planeName string, name string) (ProviderCredentialConfiguration, error)
 	// ListCredential lists ucp credentials configured at the plane scope.
 	ListCredential(ctx context.Context, planeType string, planeName string) ([]ProviderCredentialResource, error)
 	// DeleteCredential deletes ucp credential of the given name if present.
@@ -83,18 +85,40 @@ func (impl *Impl) CreateCredential(ctx context.Context, planeType string, planeN
 }
 
 // GetCredential gets ucp credentials for the given name if provider is supported.
-func (impl *Impl) GetCredential(ctx context.Context, planeType string, planeName string, name string) error {
+func (impl *Impl) GetCredential(ctx context.Context, planeType string, planeName string, name string) (ProviderCredentialConfiguration, error) {
+	providerCredentialConfiguration := ProviderCredentialConfiguration{
+		ProviderCredentialResource: ProviderCredentialResource{
+			Name:    name,
+			Enabled: true,
+		},
+	}
 	switch planeType {
 	case AzurePlaneType:
 		// We send only the name when getting credentials from backend which we already have access to
-		_, err := impl.AzureCredentialClient.Get(ctx, planeType, planeName, name, nil)
-		return err
+		resp, err := impl.AzureCredentialClient.Get(ctx, planeType, planeName, name, nil)
+		if err != nil {
+			return ProviderCredentialConfiguration{}, err
+		}
+		azureSPN, ok := resp.CredentialResource.Properties.(*ucp.AzureServicePrincipalProperties)
+		if !ok {
+			return ProviderCredentialConfiguration{}, &cli.FriendlyError{Message: fmt.Sprintf("Unable to Find Credentials for %s", name)}
+		}
+		providerCredentialConfiguration.AzureCredentials = azureSPN
+		return providerCredentialConfiguration, nil
 	case AWSPlaneType:
 		// We send only the name when getting credentials from backend which we already have access to
-		_, err := impl.AWSCredentialClient.Get(ctx, planeType, planeName, name, nil)
-		return err
+		resp, err := impl.AWSCredentialClient.Get(ctx, planeType, planeName, name, nil)
+		if err != nil {
+			return ProviderCredentialConfiguration{}, err
+		}
+		awsIAM, ok := resp.CredentialResource.Properties.(*ucp.AWSCredentialProperties)
+		if !ok {
+			return ProviderCredentialConfiguration{}, &cli.FriendlyError{Message: fmt.Sprintf("Unable to Find Credentials for %s", name)}
+		}
+		providerCredentialConfiguration.AWSCredentials = awsIAM
+		return providerCredentialConfiguration, err
 	default:
-		return &ErrUnsupportedCloudProvider{}
+		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
 	}
 }
 
@@ -149,7 +173,7 @@ type ErrUnsupportedCloudProvider struct {
 }
 
 func (fe *ErrUnsupportedCloudProvider) Error() string {
-	return "unsupported Cloud Provider"
+	return "unsupported cloud provider"
 }
 
 func (fe *ErrUnsupportedCloudProvider) Is(target error) bool {
