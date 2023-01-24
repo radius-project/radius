@@ -68,8 +68,9 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			converted.Properties.Providers.Azure = datamodel.ProvidersAzure{
 				Scope: to.String(src.Properties.Providers.Azure.Scope),
 			}
-		} else if src.Properties.Providers.Aws != nil {
-			converted.Properties.Providers.Aws = datamodel.ProvidersAws{
+		}
+		if src.Properties.Providers.Aws != nil {
+			converted.Properties.Providers.AWS = datamodel.ProvidersAWS{
 				Scope: to.String(src.Properties.Providers.Aws.Scope),
 			}
 		}
