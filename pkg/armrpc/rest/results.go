@@ -283,10 +283,11 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) (string, error) {
 	logger := logr.FromContextOrDiscard(req.Context())
 	rootScope := r.RootScope
+	logger.Info("root scope from resource: " + rootScope)
 	if rootScope == "" {
 		rootScope = r.ResourceID.PlaneScope()
+		logger.Info("getting root plane scope from resource: " + rootScope)
 	}
-	logger.Info("root scope: " + rootScope)
 
 	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
 
