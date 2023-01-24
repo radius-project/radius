@@ -41,9 +41,15 @@ type EnvironmentRecipeProperties struct {
 // Providers represents configs for providers for the environment, eg azure
 type Providers struct {
 	Azure ProvidersAzure `json:"azure,omitempty"`
+	Aws   ProvidersAws   `json:"aws,omitempty"`
 }
 
 // ProvidersAzure represents the azure provider configs
 type ProvidersAzure struct {
+	Scope string `json:"scope,omitempty"`
+}
+
+// ProvidersAWS represents the aws provider configs
+type ProvidersAws struct {
 	Scope string `json:"scope,omitempty"`
 }

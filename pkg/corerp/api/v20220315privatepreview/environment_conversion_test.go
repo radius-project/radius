@@ -68,6 +68,39 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			err: nil,
 		},
 		{
+			filename: "environmentresource-with-aws-provider.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2022-03-15-privatepreview",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: rp.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: rp.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
+						},
+					},
+					Providers: datamodel.Providers{
+						Aws: datamodel.ProvidersAws{
+							Scope: "/planes/aws/aws/accounts/140313373712/regions/us-west-2",
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			filename: "environmentresource.json",
 			expected: &datamodel.Environment{
 				BaseResource: v1.BaseResource{

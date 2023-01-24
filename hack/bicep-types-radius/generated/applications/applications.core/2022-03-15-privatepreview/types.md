@@ -322,7 +322,12 @@
 
 ## Providers
 ### Properties
+* **aws**: [ProvidersAws](#providersaws): AWS cloud provider configuration
 * **azure**: [ProvidersAzure](#providersazure): Azure cloud provider configuration
+
+## ProvidersAws
+### Properties
+* **scope**: string: Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'
 
 ## ProvidersAzure
 ### Properties

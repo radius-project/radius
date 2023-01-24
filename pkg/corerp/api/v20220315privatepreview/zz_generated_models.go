@@ -1100,8 +1100,17 @@ func (p *PersistentVolume) GetVolume() *Volume {
 
 // Providers - Cloud providers configuration
 type Providers struct {
+	// AWS cloud provider configuration
+	Aws *ProvidersAws `json:"aws,omitempty"`
+
 	// Azure cloud provider configuration
 	Azure *ProvidersAzure `json:"azure,omitempty"`
+}
+
+// ProvidersAws - AWS cloud provider configuration
+type ProvidersAws struct {
+	// Target scope for AWS resources to be deployed into. For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'
+	Scope *string `json:"scope,omitempty"`
 }
 
 // ProvidersAzure - Azure cloud provider configuration

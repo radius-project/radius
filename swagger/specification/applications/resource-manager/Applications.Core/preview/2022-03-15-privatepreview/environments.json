@@ -398,6 +398,16 @@
               "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
             }
           }
+        },
+        "aws": {
+          "type": "object",
+          "description": "AWS cloud provider configuration",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'"
+            }
+          }
         }
       }
     },
