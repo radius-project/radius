@@ -242,7 +242,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-app-ctnr",
+						Name: "mdb-param-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -268,7 +268,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-param-ctnr"),
 					},
 				},
 			},
@@ -307,7 +307,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-app-ctnr",
+						Name: "mdb-ctx-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -333,7 +333,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr"),
 					},
 				},
 			},
