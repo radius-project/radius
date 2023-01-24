@@ -32,3 +32,15 @@ const (
 	// User defined operation names
 	OperationListSecret = "LISTSECRETS"
 )
+
+var LinkTypes = []string{
+	DaprInvokeHttpRoutesResourceTypeName,
+	DaprPubSubBrokersResourceTypeName,
+	DaprSecretStoresResourceTypeName,
+	DaprStateStoresResourceTypeName,
+	ExtendersResourceTypeName,
+	MongoDatabasesResourceTypeName,
+	RabbitMQMessageQueuesResourceTypeName,
+	RedisCachesResourceTypeName,
+	SqlDatabasesResourceTypeName,
+}

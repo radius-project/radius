@@ -40,7 +40,8 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/linkrp/frontend/deployment github.com/project-radius/radius/pkg/linkrp/frontend/deployment DeploymentProcessor
 
 type DeploymentProcessor interface {
-	RenderAndDeploy(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (DeploymentOutput, error)
+	Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error)
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
 	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
 }
@@ -82,21 +83,7 @@ type EnvironmentMetadata struct {
 	Providers          coreDatamodel.Providers
 }
 
-func (dp *deploymentProcessor) RenderAndDeploy(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (DeploymentOutput, error) {
-	rendererOutput, err := dp.render(ctx, id, resource)
-	if err != nil {
-		return DeploymentOutput{}, err
-	}
-
-	deploymentOutput, err := dp.deploy(ctx, id, rendererOutput)
-	if err != nil {
-		return DeploymentOutput{}, err
-	}
-
-	return deploymentOutput, nil
-}
-
-func (dp *deploymentProcessor) render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
 
@@ -170,7 +157,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
-func (dp *deploymentProcessor) deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceID.String())
 	// Deploy
 	logger.Info("Deploying radius resource")

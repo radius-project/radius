@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -50,6 +51,22 @@ func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeploymentProcessor)(nil).Delete), arg0, arg1)
 }
 
+// Deploy mocks base method.
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (DeploymentOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
+	ret0, _ := ret[0].(DeploymentOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Deploy indicates an expected call of Deploy.
+func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2)
+}
+
+
 // FetchSecrets mocks base method.
 func (m *MockDeploymentProcessor) FetchSecrets(arg0 context.Context, arg1 ResourceData) (map[string]interface{}, error) {
 	m.ctrl.T.Helper()
@@ -66,16 +83,16 @@ func (mr *MockDeploymentProcessorMockRecorder) FetchSecrets(arg0, arg1 interface
 }
 
 // Render mocks base method.
-func (m *MockDeploymentProcessor) RenderAndDeploy(arg0 context.Context, arg1 resources.ID, arg2 v1.ResourceDataModel) (DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.ResourceDataModel) (renderers.RendererOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RenderAndDeploy", arg0, arg1, arg2)
-	ret0, _ := ret[0].(DeploymentOutput)
+	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
+	ret0, _ := ret[0].(renderers.RendererOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Render indicates an expected call of Render.
-func (mr *MockDeploymentProcessorMockRecorder) RenderAndDeploy(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockDeploymentProcessorMockRecorder) Render(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenderAndDeploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).RenderAndDeploy), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockDeploymentProcessor)(nil).Render), arg0, arg1, arg2)
 }

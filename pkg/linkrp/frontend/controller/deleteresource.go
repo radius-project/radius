@@ -18,8 +18,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-// DeleteLink is the controller implementation to delete a link resource.
-type DeleteLink[P interface {
+// DeleteResource is the controller implementation to delete a link resource.
+type DeleteResource[P interface {
 	*T
 	datamodel.Link
 }, T any] struct {
@@ -27,18 +27,18 @@ type DeleteLink[P interface {
 	dp deployment.DeploymentProcessor
 }
 
-// NewDeleteLink creates a new instance DeleteLink.
-func NewDeleteLink[P interface {
+// NewDeleteResource creates a new instance DeleteResource.
+func NewDeleteResource[P interface {
 	*T
 	datamodel.Link
 }, T any](opts Options, op ctrl.Operation[P, T]) (ctrl.Controller, error) {
-	return &DeleteLink[P, T]{
+	return &DeleteResource[P, T]{
 		Operation: op,
 		dp:        opts.DeployProcessor,
 	}, nil
 }
 
-func (link *DeleteLink[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (link *DeleteResource[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	old, etag, err := link.GetResource(ctx, serviceCtx.ResourceID)

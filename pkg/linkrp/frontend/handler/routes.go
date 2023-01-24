@@ -115,7 +115,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -133,7 +133,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -191,7 +191,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
 						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -209,7 +209,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
 						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -226,7 +226,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
 						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)
@@ -266,7 +266,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -284,7 +284,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -302,7 +302,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)
@@ -343,7 +343,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -361,7 +361,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -379,7 +379,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)
@@ -420,7 +420,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -438,7 +438,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -456,7 +456,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)
@@ -497,7 +497,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 						ResponseConverter: converter.RedisCacheDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -515,7 +515,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 						ResponseConverter: converter.RedisCacheDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -533,7 +533,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 						ResponseConverter: converter.RedisCacheDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)
@@ -582,7 +582,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -600,7 +600,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -618,7 +618,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)
@@ -666,7 +666,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -684,7 +684,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -702,7 +702,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)
@@ -743,7 +743,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.ExtenderDataModelFromVersioned,
 						ResponseConverter: converter.ExtenderDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -761,7 +761,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.ExtenderDataModelFromVersioned,
 						ResponseConverter: converter.ExtenderDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewCreateOrUpdateLink(
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
 					options,
 					operation,
 					false,
@@ -779,7 +779,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						RequestConverter:  converter.ExtenderDataModelFromVersioned,
 						ResponseConverter: converter.ExtenderDataModelToVersioned,
 					})
-				return link_frontend_ctrl.NewDeleteLink(
+				return link_frontend_ctrl.NewDeleteResource(
 					options,
 					operation,
 				)

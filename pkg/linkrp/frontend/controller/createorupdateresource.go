@@ -19,8 +19,8 @@ import (
 	kube "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// CreateOrUpdateLink is the controller implementation to create or update any link resource.
-type CreateOrUpdateLink[P interface {
+// CreateOrUpdateResource is the controller implementation to create or update any link resource.
+type CreateOrUpdateResource[P interface {
 	*T
 	datamodel.Link
 }, T any] struct {
@@ -30,12 +30,12 @@ type CreateOrUpdateLink[P interface {
 	isDapr     bool
 }
 
-// NewCreateOrUpdateLink creates the CreateOrUpdateLink controller instance.
-func NewCreateOrUpdateLink[P interface {
+// NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
+func NewCreateOrUpdateResource[P interface {
 	*T
 	datamodel.Link
 }, T any](opts Options, op ctrl.Operation[P, T], isDapr bool) (ctrl.Controller, error) {
-	return &CreateOrUpdateLink[P, T]{
+	return &CreateOrUpdateResource[P, T]{
 		Operation:  op,
 		KubeClient: opts.KubeClient,
 		dp:         opts.DeployProcessor,
@@ -43,8 +43,8 @@ func NewCreateOrUpdateLink[P interface {
 	}, nil
 }
 
-// Run executes CreateOrUpdateLink operation.
-func (link *CreateOrUpdateLink[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+// Run executes CreateOrUpdateResource operation.
+func (link *CreateOrUpdateResource[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	if link.isDapr {
@@ -76,7 +76,12 @@ func (link *CreateOrUpdateLink[P, T]) Run(ctx context.Context, w http.ResponseWr
 		return r, err
 	}
 
-	deploymentOutput, err := link.dp.RenderAndDeploy(ctx, serviceCtx.ResourceID, P(newResource))
+	rendererOutput, err := link.dp.Render(ctx, serviceCtx.ResourceID, P(newResource))
+	if err != nil {
+		return nil, err
+	}
+
+	deploymentOutput, err := link.dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
 		return nil, err
 	}
