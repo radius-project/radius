@@ -23,3 +23,7 @@ jobs:
         run: |
           rad env init kubernetes
           cat ~/.rad/config.yaml
+      - name: Make test
+        run: make test
+
+      
