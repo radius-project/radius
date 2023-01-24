@@ -151,3 +151,30 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 		},
 	}
 }
+
+func GetRecipeParamsTableFormats() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "RECIPE NAME",
+				JSONPath: "{ .RecipeName }",
+			},
+			{
+				Heading:  "TYPE",
+				JSONPath: "{ .LinkType }",
+			},
+			{
+				Heading:  "TEMPLATE",
+				JSONPath: "{ .TemplatePath }",
+			},
+			{
+				Heading:  "PARAMETER NAME",
+				JSONPath: "{ .ParameterName }",
+			},
+			{
+				Heading:  "PARAMETER DETAILS",
+				JSONPath: "{ .ParameterDetails }",
+			},
+		},
+	}
+}

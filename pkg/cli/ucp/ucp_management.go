@@ -544,3 +544,7 @@ func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 
 	return resourceGroupResources, nil
 }
+
+func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, recipeName string, environmentName string) (corerp.EnvironmentRecipeProperties, error) {
+	return corerp.EnvironmentRecipeProperties{}, nil
+}

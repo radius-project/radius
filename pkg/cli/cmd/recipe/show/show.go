@@ -3,34 +3,32 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package unregister
+package show
 
 import (
 	"context"
-	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad recipe unregister` command.
+// NewCommand creates an instance of the command and runner for the `rad recipe list` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "unregister",
-		Short:   "Unregister a link recipe from an environment",
-		Long:    `Unregister a link recipe from an environment`,
-		Example: `rad recipe unregister --name cosmosdb`,
-		Args:    cobra.ExactArgs(0),
+		Use:     "show",
+		Short:   "Show link recipe details",
+		Long:    "Show link recipe parameters within an environment",
+		Example: `rad recipe show <recipe-name>`,
 		RunE:    framework.RunCommand(runner),
+		Args:    cobra.ExactArgs(0),
 	}
 
 	commonflags.AddOutputFlag(cmd)
@@ -43,16 +41,17 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad recipe unregister` command.
+// Runner is the runner implementation for the `rad recipe list` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	RecipeName        string
+	Format            string
 }
 
-// NewRunner creates a new instance of the `rad recipe unregister` runner.
+// NewRunner creates a new instance of the `rad recipe list` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -61,7 +60,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad recipe unregister` command.
+// Validate runs validation for the `rad recipe list` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -86,32 +85,60 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.RecipeName = recipeName
+
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+	r.Format = format
+
 	return nil
 }
 
-// Run runs the `rad recipe unregister` command.
+// Run runs the `rad recipe list` command.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
-	envResource, err := client.GetEnvDetails(ctx, r.Workspace.Environment)
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, r.RecipeName)
+	if err != nil {
+		return err
+	}
+	var recipeParams []EnvironmentRecipe
+	var index = 0
+	for paramName, param := range recipeDetails.Parameters {
+		var recipe EnvironmentRecipe
+		if index == 0 {
+			recipe = EnvironmentRecipe{
+				RecipeName:       r.RecipeName,
+				LinkType:         *recipeDetails.LinkType,
+				TemplatePath:     *recipeDetails.TemplatePath,
+				ParameterName:    paramName,
+				ParameterDetails: param,
+			}
+		} else {
+			recipe = EnvironmentRecipe{
+				ParameterName:    paramName,
+				ParameterDetails: param,
+			}
+		}
+
+		recipeParams = append(recipeParams, recipe)
+		index += 1
+	}
+	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormats())
 	if err != nil {
 		return err
 	}
 
-	recipeProperties := envResource.Properties.Recipes
-
-	if recipeProperties[r.RecipeName] == nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)}
-	}
-	namespace := cmd.GetNamespace(envResource)
-	delete(recipeProperties, r.RecipeName)
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
-	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: fmt.Sprintf("failed to unregister the recipe %s from the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
-	}
-
-	r.Output.LogInfo("Successfully unregistered recipe %q from environment %q ", r.RecipeName, r.Workspace.Environment)
 	return nil
+}
+
+type EnvironmentRecipe struct {
+	RecipeName       string      `json:"recipeName,omitempty"`
+	LinkType         string      `json:"linkType,omitempty"`
+	TemplatePath     string      `json:"templatePath,omitempty"`
+	ParameterName    string      `json:"parameterName,omitempty"`
+	ParameterDetails interface{} `json:"parameterDetails,omitempty"`
 }
