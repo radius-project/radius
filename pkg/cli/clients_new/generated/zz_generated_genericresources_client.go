@@ -109,28 +109,46 @@ func (client *GenericResourcesClient) createOrUpdateHandleResponse(resp *http.Re
 	return result, nil
 }
 
-// Delete - Deletes an existing Generic resource
+// BeginDelete - Deletes an existing Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // resourceName - The name of the generic resource
-// options - GenericResourcesClientDeleteOptions contains the optional parameters for the GenericResourcesClient.Delete method.
-func (client *GenericResourcesClient) Delete(ctx context.Context, resourceName string, options *GenericResourcesClientDeleteOptions) (GenericResourcesClientDeleteResponse, error) {
+// options - GenericResourcesClientBeginDeleteOptions contains the optional parameters for the GenericResourcesClient.BeginDelete
+// method.
+func (client *GenericResourcesClient) BeginDelete(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*runtime.Poller[GenericResourcesClientDeleteResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.deleteOperation(ctx, resourceName, options)
+		if err != nil {
+			return nil, err
+		}
+		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[GenericResourcesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+	} else {
+		return runtime.NewPollerFromResumeToken[GenericResourcesClientDeleteResponse](options.ResumeToken, client.pl, nil)
+	}
+}
+
+// Delete - Deletes an existing Generic resource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceName, options)
 	if err != nil {
-		return GenericResourcesClientDeleteResponse{}, err
+		return nil, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return GenericResourcesClientDeleteResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return GenericResourcesClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return nil, runtime.NewResponseError(resp)
 	}
-	return GenericResourcesClientDeleteResponse{}, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, resourceName string, options *GenericResourcesClientDeleteOptions) (*policy.Request, error) {
+func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)

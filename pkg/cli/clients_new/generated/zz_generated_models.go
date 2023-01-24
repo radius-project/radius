@@ -76,14 +76,15 @@ type GenericResourceProperties struct {
 	PropertyValue map[string]interface{} `json:"propertyValue,omitempty"`
 }
 
+// GenericResourcesClientBeginDeleteOptions contains the optional parameters for the GenericResourcesClient.BeginDelete method.
+type GenericResourcesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // GenericResourcesClientCreateOrUpdateOptions contains the optional parameters for the GenericResourcesClient.CreateOrUpdate
 // method.
 type GenericResourcesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// GenericResourcesClientDeleteOptions contains the optional parameters for the GenericResourcesClient.Delete method.
-type GenericResourcesClientDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
