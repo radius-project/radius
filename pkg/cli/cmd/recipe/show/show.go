@@ -23,7 +23,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "show",
+		Use:     "show [recipe-name]",
 		Short:   "Show recipe details",
 		Long:    `Show recipe details
 	
