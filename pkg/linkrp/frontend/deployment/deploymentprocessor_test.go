@@ -340,7 +340,7 @@ func setup(t *testing.T) SharedMocks {
 		},
 		[]model.RadiusResourceModel{
 			{
-				ResourceType: linkrp.MongoDatabasesResourceTypeName,
+				ResourceType: linkrp.MongoDatabasesResourceType,
 				Renderer:     mockRenderer,
 			},
 		},
@@ -607,7 +607,7 @@ func Test_Render(t *testing.T) {
 			},
 			[]model.RadiusResourceModel{
 				{
-					ResourceType: linkrp.MongoDatabasesResourceTypeName,
+					ResourceType: linkrp.MongoDatabasesResourceType,
 					Renderer:     mocks.renderer,
 				},
 			},

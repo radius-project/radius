@@ -356,59 +356,59 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
-	case strings.ToLower(linkrp.MongoDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		obj := resource.(*datamodel.MongoDatabase)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-	case strings.ToLower(linkrp.SqlDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-	case strings.ToLower(linkrp.RedisCachesResourceTypeName):
+	case strings.ToLower(linkrp.RedisCachesResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceTypeName):
+	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-	case strings.ToLower(linkrp.ExtendersResourceTypeName):
+	case strings.ToLower(linkrp.ExtendersResourceType):
 		obj := resource.(*datamodel.Extender)
 		basicResource = &obj.Properties.BasicResourceProperties
-	case strings.ToLower(linkrp.DaprStateStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-	case strings.ToLower(linkrp.DaprSecretStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-	case strings.ToLower(linkrp.DaprPubSubBrokersResourceTypeName):
+	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceTypeName):
+	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Recipe.Name != "" {

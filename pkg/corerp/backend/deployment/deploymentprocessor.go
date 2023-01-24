@@ -516,55 +516,55 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
-	case strings.ToLower(linkrp.MongoDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		obj := &link_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.SqlDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		obj := &link_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.RedisCachesResourceTypeName):
+	case strings.ToLower(linkrp.RedisCachesResourceType):
 		obj := &link_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceTypeName):
+	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		obj := &link_dm.RabbitMQMessageQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.ExtendersResourceTypeName):
+	case strings.ToLower(linkrp.ExtendersResourceType):
 		obj := &link_dm.Extender{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
-	case strings.ToLower(linkrp.DaprStateStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		obj := &link_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprSecretStoresResourceTypeName):
+	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		obj := &link_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprPubSubBrokersResourceTypeName):
+	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
 		obj := &link_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceTypeName):
+	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
 		obj := &link_dm.DaprInvokeHttpRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)

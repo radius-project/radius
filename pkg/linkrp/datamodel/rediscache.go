@@ -39,7 +39,7 @@ func (r *RedisCache) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (redis *RedisCache) ResourceTypeName() string {
-	return linkrp.RedisCachesResourceTypeName
+	return linkrp.RedisCachesResourceType
 }
 
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
@@ -75,5 +75,5 @@ type RedisCacheSecrets struct {
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return linkrp.RedisCachesResourceTypeName
+	return linkrp.RedisCachesResourceType
 }

@@ -42,7 +42,7 @@ func Test_Render_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
 				Name: "sql0",
-				Type: linkrp.SqlDatabasesResourceTypeName,
+				Type: linkrp.SqlDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
@@ -104,7 +104,7 @@ func Test_Render_MissingResource(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
 				Name: "sql0",
-				Type: linkrp.SqlDatabasesResourceTypeName,
+				Type: linkrp.SqlDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
@@ -129,7 +129,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
 				Name: "sql0",
-				Type: linkrp.SqlDatabasesResourceTypeName,
+				Type: linkrp.SqlDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
@@ -155,7 +155,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
 				Name: "sql0",
-				Type: linkrp.SqlDatabasesResourceTypeName,
+				Type: linkrp.SqlDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{

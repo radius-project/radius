@@ -39,7 +39,7 @@ func (r *SqlDatabase) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (sql *SqlDatabase) ResourceTypeName() string {
-	return linkrp.SqlDatabasesResourceTypeName
+	return linkrp.SqlDatabasesResourceType
 }
 
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.

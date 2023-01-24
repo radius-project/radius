@@ -131,7 +131,7 @@ func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeP
 					switch link {
 					case "mongodatabases":
 						name = "mongo" + "-" + provider
-						linkType = linkrp.MongoDatabasesResourceTypeName
+						linkType = linkrp.MongoDatabasesResourceType
 					default:
 						continue
 					}

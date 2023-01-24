@@ -37,45 +37,45 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 
 	radiusResourceModel := []RadiusResourceModel{
 		{
-			ResourceType: linkrp.MongoDatabasesResourceTypeName,
+			ResourceType: linkrp.MongoDatabasesResourceType,
 			Renderer:     &mongodatabases.Renderer{},
 		},
 		{
-			ResourceType: linkrp.SqlDatabasesResourceTypeName,
+			ResourceType: linkrp.SqlDatabasesResourceType,
 			Renderer:     &sqldatabases.Renderer{},
 		},
 		{
-			ResourceType: linkrp.RedisCachesResourceTypeName,
+			ResourceType: linkrp.RedisCachesResourceType,
 			Renderer:     &rediscaches.Renderer{},
 		},
 		{
-			ResourceType: linkrp.RabbitMQMessageQueuesResourceTypeName,
+			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Renderer:     &rabbitmqmessagequeues.Renderer{},
 		},
 		{
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceTypeName,
+			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Renderer:     &daprinvokehttproutes.Renderer{},
 		},
 		{
-			ResourceType: linkrp.DaprPubSubBrokersResourceTypeName,
+			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Renderer: &daprpubsubbrokers.Renderer{
 				PubSubs: daprpubsubbrokers.SupportedPubSubModes,
 			},
 		},
 		{
-			ResourceType: linkrp.DaprSecretStoresResourceTypeName,
+			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Renderer: &daprsecretstores.Renderer{
 				SecretStores: daprsecretstores.SupportedSecretStoreModes,
 			},
 		},
 		{
-			ResourceType: linkrp.DaprStateStoresResourceTypeName,
+			ResourceType: linkrp.DaprStateStoresResourceType,
 			Renderer: &daprstatestores.Renderer{
 				StateStores: daprstatestores.SupportedStateStoreModes,
 			},
 		},
 		{
-			ResourceType: linkrp.ExtendersResourceTypeName,
+			ResourceType: linkrp.ExtendersResourceType,
 			Renderer:     &extenders.Renderer{},
 		},
 	}

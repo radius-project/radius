@@ -34,7 +34,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 		convertedResource := dm.(*datamodel.RabbitMQMessageQueue)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0", convertedResource.ID)
 		require.Equal(t, "rabbitmq0", convertedResource.Name)
-		require.Equal(t, linkrp.RabbitMQMessageQueuesResourceTypeName, convertedResource.Type)
+		require.Equal(t, linkrp.RabbitMQMessageQueuesResourceType, convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
@@ -69,7 +69,7 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0", *versionedResource.ID)
 		require.Equal(t, "rabbitmq0", *versionedResource.Name)
-		require.Equal(t, linkrp.RabbitMQMessageQueuesResourceTypeName, *versionedResource.Type)
+		require.Equal(t, linkrp.RabbitMQMessageQueuesResourceType, *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetRabbitMQMessageQueueProperties().Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetRabbitMQMessageQueueProperties().Environment)
 		switch v := versionedResource.Properties.(type) {

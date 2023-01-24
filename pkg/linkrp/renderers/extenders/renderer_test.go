@@ -35,7 +35,7 @@ func Test_Render_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/extenders/test-secret-store",
 				Name: "test-secret-store",
-				Type: linkrp.ExtendersResourceTypeName,
+				Type: linkrp.ExtendersResourceType,
 			},
 		},
 		Properties: datamodel.ExtenderProperties{
@@ -77,7 +77,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/extenders/test-secret-store",
 				Name: "test-secret-store",
-				Type: linkrp.ExtendersResourceTypeName,
+				Type: linkrp.ExtendersResourceType,
 			},
 		},
 		Properties: datamodel.ExtenderProperties{

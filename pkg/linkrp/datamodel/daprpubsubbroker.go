@@ -39,7 +39,7 @@ func (r *DaprPubSubBroker) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
-	return linkrp.DaprPubSubBrokersResourceTypeName
+	return linkrp.DaprPubSubBrokersResourceType
 }
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.

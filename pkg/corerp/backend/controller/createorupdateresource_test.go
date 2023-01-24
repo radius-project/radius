@@ -139,7 +139,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 		},
 		{
 			"unsupported-type-put",
-			linkrp.RedisCachesResourceTypeName,
+			linkrp.RedisCachesResourceType,
 			"APPLICATIONS.LINK/REDISCACHES|PUT",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/rc0",
 			nil,
@@ -336,7 +336,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 		},
 		{
 			"unsupported-type-patch",
-			linkrp.RedisCachesResourceTypeName,
+			linkrp.RedisCachesResourceType,
 			"APPLICATIONS.LINK/REDISCACHES|PATCH",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/rc0",
 			nil,

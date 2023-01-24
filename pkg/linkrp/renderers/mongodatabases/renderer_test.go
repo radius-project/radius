@@ -39,7 +39,7 @@ func Test_Render_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -116,7 +116,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -165,7 +165,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
@@ -191,7 +191,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -221,7 +221,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -251,7 +251,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -281,7 +281,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -310,7 +310,7 @@ func Test_Render_InvalidMode(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -340,7 +340,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -398,7 +398,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				},
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			LinkType:     linkrp.MongoDatabasesResourceTypeName,
+			LinkType:     linkrp.MongoDatabasesResourceType,
 			EnvParameters: map[string]any{
 				"name": "account-mongo-db",
 			},
@@ -433,7 +433,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: linkrp.MongoDatabasesResourceTypeName,
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -456,7 +456,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 				Name: "mongodb",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			LinkType:     linkrp.RedisCachesResourceTypeName,
+			LinkType:     linkrp.RedisCachesResourceType,
 			EnvParameters: map[string]any{
 				"name": "account-mongo-db",
 			},

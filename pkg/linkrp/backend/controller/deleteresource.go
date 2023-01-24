@@ -63,7 +63,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceData, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
-	case strings.ToLower(linkrp.MongoDatabasesResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		d := &datamodel.MongoDatabase{}
 		if err := obj.As(d); err != nil {
 			return deployment.ResourceData{}, err

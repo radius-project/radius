@@ -78,7 +78,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprPubSubBrokersResourceTypeName)
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprPubSubBrokersResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -115,7 +115,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.NormalizeResourceName(properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], linkrp.DaprPubSubBrokersResourceTypeName),
+				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], linkrp.DaprPubSubBrokersResourceType),
 			},
 			"spec": map[string]any{
 				"type":    "pubsub.azure.servicebus",

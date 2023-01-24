@@ -608,7 +608,7 @@ func TestGetDevRecipes(t *testing.T) {
 		require.NoError(t, err)
 		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     linkrp.MongoDatabasesResourceTypeName,
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 		}
@@ -668,21 +668,21 @@ func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 	t.Run("No overlap between user and dev recipes", func(t *testing.T) {
 		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     linkrp.MongoDatabasesResourceTypeName,
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 			"redis-azure": {
-				LinkType:     linkrp.RedisCachesResourceTypeName,
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
 			},
 		}
 		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"user-mongo-azure": {
-				LinkType:     linkrp.MongoDatabasesResourceTypeName,
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
 			},
 			"user-redis-azure": {
-				LinkType:     linkrp.RedisCachesResourceTypeName,
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
 			},
 		}
@@ -693,21 +693,21 @@ func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 	t.Run("Single recipe overlap between user and dev recipes", func(t *testing.T) {
 		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     linkrp.MongoDatabasesResourceTypeName,
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 			"redis-azure": {
-				LinkType:     linkrp.RedisCachesResourceTypeName,
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
 			},
 		}
 		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     linkrp.MongoDatabasesResourceTypeName,
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
 			},
 			"user-redis-azure": {
-				LinkType:     linkrp.RedisCachesResourceTypeName,
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
 			},
 		}
@@ -722,21 +722,21 @@ func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 	t.Run("Multiple recipe overlap between user and dev recipes", func(t *testing.T) {
 		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     linkrp.MongoDatabasesResourceTypeName,
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 			"redis-azure": {
-				LinkType:     linkrp.RedisCachesResourceTypeName,
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
 			},
 		}
 		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     linkrp.MongoDatabasesResourceTypeName,
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
 			},
 			"redis-azure": {
-				LinkType:     linkrp.RedisCachesResourceTypeName,
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
 			},
 		}

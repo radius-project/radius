@@ -39,7 +39,7 @@ func (r *DaprInvokeHttpRoute) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (httpRoute *DaprInvokeHttpRoute) ResourceTypeName() string {
-	return linkrp.DaprInvokeHttpRoutesResourceTypeName
+	return linkrp.DaprInvokeHttpRoutesResourceType
 }
 
 // DaprInvokeHttpRouteProperties represents the properties of DaprInvokeHttpRoute resource.

@@ -60,11 +60,11 @@ func (r *MongoDatabase) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
-	return linkrp.MongoDatabasesResourceTypeName
+	return linkrp.MongoDatabasesResourceType
 }
 
 func (mongo *MongoDatabase) ResourceTypeName() string {
-	return linkrp.MongoDatabasesResourceTypeName
+	return linkrp.MongoDatabasesResourceType
 }
 
 type MongoDatabaseValuesProperties struct {

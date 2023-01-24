@@ -39,7 +39,7 @@ func (r *RabbitMQMessageQueue) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
-	return linkrp.RabbitMQMessageQueuesResourceTypeName
+	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
@@ -57,5 +57,5 @@ type RabbitMQSecrets struct {
 }
 
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return linkrp.RabbitMQMessageQueuesResourceTypeName
+	return linkrp.RabbitMQMessageQueuesResourceType
 }

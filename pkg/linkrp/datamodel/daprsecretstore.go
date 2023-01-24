@@ -39,7 +39,7 @@ func (r *DaprSecretStore) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
-	return linkrp.DaprSecretStoresResourceTypeName
+	return linkrp.DaprSecretStoresResourceType
 }
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.

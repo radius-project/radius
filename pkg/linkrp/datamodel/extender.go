@@ -39,7 +39,7 @@ func (r *Extender) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (extender *Extender) ResourceTypeName() string {
-	return linkrp.ExtendersResourceTypeName
+	return linkrp.ExtendersResourceType
 }
 
 // ExtenderProperties represents the properties of Extender resource.

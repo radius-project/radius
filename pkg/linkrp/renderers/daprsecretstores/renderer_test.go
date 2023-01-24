@@ -52,7 +52,7 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 				Name: resourceName,
-				Type: linkrp.DaprSecretStoresResourceTypeName,
+				Type: linkrp.DaprSecretStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -60,7 +60,7 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Type: linkrp.DaprSecretStoresResourceTypeName,
+			Type: linkrp.DaprSecretStoresResourceType,
 			Mode: "invalid",
 		},
 	}
@@ -79,7 +79,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 				Name: resourceName,
-				Type: linkrp.DaprSecretStoresResourceTypeName,
+				Type: linkrp.DaprSecretStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -87,7 +87,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Type:    linkrp.DaprSecretStoresResourceTypeName,
+			Type:    linkrp.DaprSecretStoresResourceType,
 			Mode:    datamodel.LinkModeValues,
 			Version: daprSecretStoreVersion,
 			Metadata: map[string]any{
@@ -118,10 +118,10 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, linkrp.DaprSecretStoresResourceTypeName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, linkrp.DaprSecretStoresResourceType),
 			},
 			"spec": map[string]any{
-				"type":    linkrp.DaprSecretStoresResourceTypeName,
+				"type":    linkrp.DaprSecretStoresResourceType,
 				"version": "v1",
 				"metadata": []map[string]any{
 					{
@@ -143,7 +143,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 				Name: resourceName,
-				Type: linkrp.DaprSecretStoresResourceTypeName,
+				Type: linkrp.DaprSecretStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -170,7 +170,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 				Name: resourceName,
-				Type: linkrp.DaprSecretStoresResourceTypeName,
+				Type: linkrp.DaprSecretStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -200,7 +200,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 				Name: resourceName,
-				Type: linkrp.DaprSecretStoresResourceTypeName,
+				Type: linkrp.DaprSecretStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -231,7 +231,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 				Name: resourceName,
-				Type: linkrp.DaprSecretStoresResourceTypeName,
+				Type: linkrp.DaprSecretStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -240,7 +240,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode:    datamodel.LinkModeValues,
-			Type:    linkrp.DaprSecretStoresResourceTypeName,
+			Type:    linkrp.DaprSecretStoresResourceType,
 			Version: daprSecretStoreVersion,
 			Metadata: map[string]any{
 				"foo": "bar",
@@ -262,7 +262,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 				Name: resourceName,
-				Type: linkrp.DaprSecretStoresResourceTypeName,
+				Type: linkrp.DaprSecretStoresResourceType,
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
@@ -270,7 +270,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode:    datamodel.LinkModeValues,
-			Type:    linkrp.DaprSecretStoresResourceTypeName,
+			Type:    linkrp.DaprSecretStoresResourceType,
 			Version: daprSecretStoreVersion,
 			Metadata: map[string]any{
 				"foo": "bar",
