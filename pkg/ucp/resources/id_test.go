@@ -626,7 +626,7 @@ func TestPlaneScope(t *testing.T) {
 	}{
 		{
 			desc:       "Azure resource id",
-			id:         "/subscriptions/s1/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
+			id:         "/apis/api.ucp.dev/subscriptions/s1/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
 			planeScope: "/subscriptions/s1",
 		},
 		{
@@ -645,6 +645,7 @@ func TestPlaneScope(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			rID, err := Parse(tt.id)
 			require.NoError(t, err)
+			fmt.Println(rID)
 			require.Equal(t, tt.planeScope, rID.PlaneScope())
 		})
 	}
