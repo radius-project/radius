@@ -25,7 +25,14 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	cmd := &cobra.Command{
 		Use:     "show",
 		Short:   "Show link recipe details",
-		Long:    "Show link recipe parameters within an environment",
+		Long:    `Show recipe details
+	
+	The recipe show command outputs details about a recipe. This includes the name, resource type, parameters, and template path.
+	
+	By default, the command is scoped to the resource group and environment defined in your rad.yaml workspace file. You can optionally override these values through the environment and group flags.
+	
+	By default, the command outputs a human-readable table. You can customize the output format with the output flag.
+	`,
 		Example: `rad recipe show <recipe-name>`,
 		RunE:    framework.RunCommand(runner),
 		Args:    cobra.ExactArgs(0),
