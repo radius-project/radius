@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -35,7 +36,7 @@ func Test_Render_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
@@ -111,7 +112,7 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
@@ -161,7 +162,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
@@ -186,7 +187,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
@@ -212,7 +213,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
@@ -242,7 +243,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
@@ -272,7 +273,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{

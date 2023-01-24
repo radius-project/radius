@@ -7,6 +7,7 @@ package daprstatestores
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -35,7 +36,7 @@ func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm v1.ResourceDataModel, appli
 	if !ok {
 		return nil, v1.ErrInvalidModelConversion
 	}
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace, ResourceType)
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace, linkrp.DaprStateStoresResourceType)
 	if err != nil {
 		return nil, err
 	}

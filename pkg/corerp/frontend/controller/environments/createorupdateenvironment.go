@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
@@ -131,7 +131,7 @@ func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeP
 					switch link {
 					case "mongodatabases":
 						name = "mongo" + "-" + provider
-						linkType = mongodatabases.ResourceTypeName
+						linkType = linkrp.MongoDatabasesResourceType
 					default:
 						continue
 					}

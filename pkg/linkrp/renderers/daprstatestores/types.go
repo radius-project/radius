@@ -10,10 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-const (
-	ResourceType = "Applications.Link/daprStateStores"
-)
-
 var StorageAccountResourceType = resources.KnownType{
 	Types: []resources.TypeSegment{
 		{

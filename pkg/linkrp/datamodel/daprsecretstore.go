@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -38,7 +39,7 @@ func (r *DaprSecretStore) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
-	return "Applications.Link/daprSecretStores"
+	return linkrp.DaprSecretStoresResourceType
 }
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.

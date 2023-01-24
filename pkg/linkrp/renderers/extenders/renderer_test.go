@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
@@ -32,9 +33,9 @@ func Test_Render_Success(t *testing.T) {
 	resource := datamodel.Extender{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/extenders/test-secret-store",
 				Name: "test-secret-store",
-				Type: "Applications.Link/daprSecretStores",
+				Type: linkrp.ExtendersResourceType,
 			},
 		},
 		Properties: datamodel.ExtenderProperties{
@@ -74,9 +75,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	resource := datamodel.Extender{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/extenders/test-secret-store",
 				Name: "test-secret-store",
-				Type: "Applications.Link/daprSecretStores",
+				Type: linkrp.ExtendersResourceType,
 			},
 		},
 		Properties: datamodel.ExtenderProperties{
