@@ -24,7 +24,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "show",
-		Short:   "Show link recipe details",
+		Short:   "Show recipe details",
 		Long:    `Show recipe details
 	
 	The recipe show command outputs details about a recipe. This includes the name, resource type, parameters, and template path.
