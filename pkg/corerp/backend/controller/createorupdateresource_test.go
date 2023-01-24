@@ -22,7 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -139,7 +139,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 		},
 		{
 			"unsupported-type-put",
-			rediscaches.ResourceType,
+			linkrp.RedisCachesResourceType,
 			"APPLICATIONS.LINK/REDISCACHES|PUT",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/rc0",
 			nil,
@@ -336,7 +336,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 		},
 		{
 			"unsupported-type-patch",
-			rediscaches.ResourceType,
+			linkrp.RedisCachesResourceType,
 			"APPLICATIONS.LINK/REDISCACHES|PATCH",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/rc0",
 			nil,

@@ -12,8 +12,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -63,7 +63,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceData, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
-	case strings.ToLower(mongodatabases.ResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		d := &datamodel.MongoDatabase{}
 		if err := obj.As(d); err != nil {
 			return deployment.ResourceData{}, err
