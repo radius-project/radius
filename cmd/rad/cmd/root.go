@@ -14,24 +14,19 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
-
+	"github.com/project-radius/radius/pkg/cli/bicep"
+	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	credential "github.com/project-radius/radius/pkg/cli/cmd/credential"
+	cmddeploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
 	env_delete "github.com/project-radius/radius/pkg/cli/cmd/env/delete"
+	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
 	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
-	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
-	"github.com/project-radius/radius/pkg/cli/setup"
-
-	"github.com/project-radius/radius/pkg/cli/bicep"
-	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
-	cmddeploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
-	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
-	credential "github.com/project-radius/radius/pkg/cli/cmd/credential"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
@@ -50,8 +45,12 @@ import (
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/cli/setup"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -82,6 +81,11 @@ func prettyPrintRPError(err error) string {
 			return m
 		}
 	} else if new := clients.TryUnfoldServiceError(err); new != nil {
+		m, err := prettyPrintJSON(new)
+		if err == nil {
+			return m
+		}
+	} else if new := clientv2.TryUnfoldResponseError(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m
