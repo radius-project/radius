@@ -272,9 +272,13 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
 func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) string {
+	logger := logr.FromContextOrDiscard(req.Context())
 	rootScope := r.RootScope
+	logger.Info("root scope from resource: " + rootScope)
 	if rootScope == "" {
 		rootScope = r.ResourceID.PlaneScope()
+		logger.Info("resource id: " + r.ResourceID.String())
+		logger.Info("getting root plane scope from resource: " + rootScope)
 	}
 	dest := url.URL{
 		Host:   req.Host,
