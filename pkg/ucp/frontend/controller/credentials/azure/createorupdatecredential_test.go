@@ -143,7 +143,7 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 			Kind:     to.Ptr("azure.com.serviceprincipal"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure_azurecloud_default"),
+				SecretName: to.Ptr("azure-azurecloud-default"),
 			},
 		},
 	})
