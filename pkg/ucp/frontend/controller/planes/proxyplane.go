@@ -185,6 +185,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	req.Header.Set(v1.RefererHeader, refererURL.String())
 	logger = logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("###### Referer in UCP : %s", req.Header.Get(v1.RefererHeader)))
+	logger.Info("Resource id in UCP: " + resourceID.String())
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
