@@ -9,10 +9,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/sql/mgmt/sql"
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -21,6 +19,8 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,7 +69,7 @@ func Test_Render_Success(t *testing.T) {
 			Provider: resourcemodel.ProviderAzure,
 		},
 		"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server",
-		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		clientv2.SQLManagementClientAPIVersion),
 		serverResource.Identity)
 
 	require.Equal(t, outputresource.LocalIDAzureSqlServerDatabase, databaseResource.LocalID)
@@ -79,7 +79,7 @@ func Test_Render_Success(t *testing.T) {
 			Type:     resourcekinds.AzureSqlServerDatabase,
 			Provider: resourcemodel.ProviderAzure,
 		}, "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database",
-		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		clientv2.SQLManagementClientAPIVersion),
 		databaseResource.Identity)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{

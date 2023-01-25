@@ -8,9 +8,8 @@ package sqldatabases
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/sql/mgmt/sql"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -93,7 +92,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	serverResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureSqlServer,
 		ResourceType: serverResourceType,
-		Identity:     resourcemodel.NewARMIdentity(&serverResourceType, serverID.String(), clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		Identity:     resourcemodel.NewARMIdentity(&serverResourceType, serverID.String(), clientv2.SQLManagementClientAPIVersion),
 		Resource:     map[string]string{},
 	}
 	databaseResourceType := resourcemodel.ResourceType{
@@ -103,7 +102,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	databaseResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureSqlServerDatabase,
 		ResourceType: databaseResourceType,
-		Identity:     resourcemodel.NewARMIdentity(&databaseResourceType, databaseID.String(), clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		Identity:     resourcemodel.NewARMIdentity(&databaseResourceType, databaseID.String(), clientv2.SQLManagementClientAPIVersion),
 		Resource:     map[string]string{},
 		Dependencies: []outputresource.Dependency{sqlServerDependency},
 	}

@@ -8,9 +8,8 @@ package rediscaches
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -111,7 +110,7 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 			Provider: resourcemodel.ProviderAzure,
 		},
 	}
-	redisCacheOutputResource.Identity = resourcemodel.NewARMIdentity(&redisCacheOutputResource.ResourceType, redisCacheID.String(), clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
+	redisCacheOutputResource.Identity = resourcemodel.NewARMIdentity(&redisCacheOutputResource.ResourceType, redisCacheID.String(), clientv2.RedisManagementClientAPIVersion)
 
 	return renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{redisCacheOutputResource},
