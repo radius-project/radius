@@ -123,18 +123,15 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	if env.Properties.Providers != (datamodel.Providers{}) {
+		dst.Properties.Providers = &Providers{}
 		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
-			dst.Properties.Providers = &Providers{
-				Azure: &ProvidersAzure{
-					Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),
-				},
+			dst.Properties.Providers.Azure = &ProvidersAzure{
+				Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),
 			}
 		}
 		if env.Properties.Providers.AWS != (datamodel.ProvidersAWS{}) {
-			dst.Properties.Providers = &Providers{
-				Aws: &ProvidersAws{
-					Scope: to.StringPtr(env.Properties.Providers.AWS.Scope),
-				},
+			dst.Properties.Providers.Aws = &ProvidersAws{
+				Scope: to.StringPtr(env.Properties.Providers.AWS.Scope),
 			}
 		}
 	}
