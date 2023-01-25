@@ -85,23 +85,23 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	// fetch the environment ID and recipe name from the resource
-	linkProperties, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
+	// fetch the environment ID and recipe name from the link resource
+	basicResource, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	// Fetch the environment namespace, recipe link type and recipe template path by doing a db lookup
-	envMetadata, err := dp.getEnvironmentMetadata(ctx, linkProperties.Environment, recipe.Name)
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, basicResource.Environment, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	kubeNamespace := envMetadata.Namespace
 	// Override environment-scope namespace with application-scope kubernetes namespace.
-	if linkProperties.Application != "" {
+	if basicResource.Application != "" {
 		app := &coreDatamodel.Application{}
-		if err := rp_util.FetchScopeResource(ctx, dp.sp, linkProperties.Application, app); err != nil {
+		if err := rp_util.FetchScopeResource(ctx, dp.sp, basicResource.Application, app); err != nil {
 			return renderers.RendererOutput{}, err
 		}
 		c := app.Properties.Status.Compute
@@ -111,7 +111,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// create the context object to be passed to the recipe deployment
-	recipeContext, err := handlers.CreateRecipeContextParameter(id.String(), linkProperties.Environment, envMetadata.Namespace, linkProperties.Application, kubeNamespace)
+	recipeContext, err := handlers.CreateRecipeContextParameter(id.String(), basicResource.Environment, envMetadata.Namespace, basicResource.Application, kubeNamespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
