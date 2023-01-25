@@ -80,7 +80,7 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	// Modify the default log level intialized by the profile preset if a custom value
 	// is specified by config file or the "RADIUS_LOGGING_LEVEL" env variable. env variable takes precedence over config file settings.
 	var logLevel int
-	loggerLevel = options.LogLevel
+	loggerLevel = options.Level
 	logLevelFromEnv := os.Getenv(LogLevel)
 	if logLevelFromEnv != "" {
 		loggerLevel = logLevelFromEnv
