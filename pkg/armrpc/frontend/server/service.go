@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
-	"github.com/project-radius/radius/pkg/rp"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,7 +36,7 @@ type Service struct {
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient controller_runtime.Client
 	// SecretClient is the client to fetch secrets.
-	SecretClient rp.SecretValueClient
+	SecretClient sv.SecretValueClient
 }
 
 // Init initializes web service.
@@ -62,7 +62,7 @@ func (s *Service) Init(ctx context.Context) error {
 	}
 
 	if s.Options.Arm != nil {
-		s.SecretClient = rp.NewSecretValueClient(*s.Options.Arm)
+		s.SecretClient = sv.NewSecretValueClient(*s.Options.Arm)
 	}
 
 	// Initialize the manager for ARM client cert validation
