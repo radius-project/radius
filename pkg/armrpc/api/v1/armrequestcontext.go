@@ -177,6 +177,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	}
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
 	log.Info("#### path from referer: " + path)
+	log.Info("##### path base: " + pathBase)
 	rID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
 		log.V(ucplog.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
