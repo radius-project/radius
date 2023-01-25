@@ -12,7 +12,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
@@ -21,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
@@ -34,7 +32,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/test/testutil"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -117,21 +117,21 @@ func setup(t *testing.T) SharedMocks {
 }
 
 func getTestResource() datamodel.ContainerResource {
-	rawDataModel := radiustesting.ReadFixture("containerresourcedatamodel.json")
+	rawDataModel := testutil.ReadFixture("containerresourcedatamodel.json")
 	testResource := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, testResource)
 	return *testResource
 }
 
 func getLowerCaseTestResource() datamodel.ContainerResource {
-	rawDataModel := radiustesting.ReadFixture("containerresourcedatamodellowercase.json")
+	rawDataModel := testutil.ReadFixture("containerresourcedatamodellowercase.json")
 	testResource := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, testResource)
 	return *testResource
 }
 
 func getUpperCaseTestResource() datamodel.ContainerResource {
-	rawDataModel := radiustesting.ReadFixture("containerresourcedatamodeluppercase.json")
+	rawDataModel := testutil.ReadFixture("containerresourcedatamodeluppercase.json")
 	testResource := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, testResource)
 	return *testResource

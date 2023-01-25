@@ -11,19 +11,20 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestVolumeConvertVersionedToDataModel(t *testing.T) {
 	// arrange
 	r := &VolumeResource{}
-	err := json.Unmarshal(radiustesting.ReadFixture("volume-az-kv.json"), r)
+	err := json.Unmarshal(testutil.ReadFixture("volume-az-kv.json"), r)
 	require.NoError(t, err)
 
 	expected := &datamodel.VolumeResource{}
-	err = json.Unmarshal(radiustesting.ReadFixture("volume-az-kv-datamodel.json"), expected)
+	err = json.Unmarshal(testutil.ReadFixture("volume-az-kv-datamodel.json"), expected)
 	require.NoError(t, err)
 
 	// act
@@ -44,11 +45,11 @@ func TestVolumeConvertVersionedToDataModel(t *testing.T) {
 func TestVolumeConvertDataModelToVersioned(t *testing.T) {
 	// arrange
 	r := &datamodel.VolumeResource{}
-	err := json.Unmarshal(radiustesting.ReadFixture("volume-az-kv-datamodel.json"), r)
+	err := json.Unmarshal(testutil.ReadFixture("volume-az-kv-datamodel.json"), r)
 	require.NoError(t, err)
 
 	expected := &VolumeResource{}
-	err = json.Unmarshal(radiustesting.ReadFixture("volume-az-kv.json"), expected)
+	err = json.Unmarshal(testutil.ReadFixture("volume-az-kv.json"), expected)
 	require.NoError(t, err)
 	expected.Properties.GetVolumeProperties().Status.OutputResources[0]["Identity"] = nil
 

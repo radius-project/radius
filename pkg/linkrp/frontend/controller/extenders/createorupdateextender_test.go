@@ -12,15 +12,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,9 +78,9 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mds.
 				EXPECT().
@@ -157,12 +158,12 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			if testcase.inputFile != "" {
 				input = &v20220315privatepreview.ExtenderResource{}
-				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
+				_ = json.Unmarshal(testutil.ReadFixture(testcase.inputFile), input)
 			}
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mds.
 				EXPECT().

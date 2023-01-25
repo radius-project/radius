@@ -10,21 +10,21 @@ import (
 
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 const testHeaderfile = "requestheaders20220315privatepreview.json"
 
 func getTestModels20220315privatepreview() (*v20220315privatepreview.ContainerResource, *datamodel.ContainerResource, *v20220315privatepreview.ContainerResource) {
-	rawInput := radiustesting.ReadFixture("container20220315privatepreview_input.json")
+	rawInput := testutil.ReadFixture("container20220315privatepreview_input.json")
 	containerInput := &v20220315privatepreview.ContainerResource{}
 	_ = json.Unmarshal(rawInput, containerInput)
 
-	rawDataModel := radiustesting.ReadFixture("container20220315privatepreview_datamodel.json")
+	rawDataModel := testutil.ReadFixture("container20220315privatepreview_datamodel.json")
 	containerDataModel := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, containerDataModel)
 
-	rawExpectedOutput := radiustesting.ReadFixture("container20220315privatepreview_output.json")
+	rawExpectedOutput := testutil.ReadFixture("container20220315privatepreview_output.json")
 	expectedOutput := &v20220315privatepreview.ContainerResource{}
 	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 

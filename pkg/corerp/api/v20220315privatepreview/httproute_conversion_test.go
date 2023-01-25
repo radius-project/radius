@@ -11,14 +11,15 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestHTTPRouteConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("httprouteresource.json")
+	rawPayload := testutil.ReadFixture("httprouteresource.json")
 	r := &HTTPRouteResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -43,7 +44,7 @@ func TestHTTPRouteConvertVersionedToDataModel(t *testing.T) {
 
 func TestHTTPRouteConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("httprouteresourcedatamodel.json")
+	rawPayload := testutil.ReadFixture("httprouteresourcedatamodel.json")
 	r := &datamodel.HTTPRoute{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
