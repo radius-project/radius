@@ -9,11 +9,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -21,6 +19,8 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,24 +66,24 @@ func Test_Render_Success(t *testing.T) {
 		{
 			LocalID:       outputresource.LocalIDAzureCosmosAccount,
 			ResourceType:  accountResourceType,
-			RadiusManaged: to.BoolPtr(false),
+			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
 		},
 		{
 			LocalID:       outputresource.LocalIDAzureCosmosDBMongo,
 			ResourceType:  dbResourceType,
-			RadiusManaged: to.BoolPtr(false),
+			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
 			Dependencies: []outputresource.Dependency{
@@ -374,7 +374,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			RadiusManaged:        to.BoolPtr(true),
+			RadiusManaged:        to.Ptr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 		},
 		{
@@ -383,7 +383,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			RadiusManaged:        to.BoolPtr(true),
+			RadiusManaged:        to.Ptr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
 		},
@@ -408,7 +408,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.Name)
 	require.Equal(t, mongoDBResource.Properties.Recipe.Parameters, output.RecipeData.Parameters)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.TemplatePath)
-	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
+	require.Equal(t, clientv2.DocumentDBManagementClientAPIVersion, output.RecipeData.APIVersion)
 
 	// Secrets
 	require.Equal(t, 1, len(output.SecretValues))
