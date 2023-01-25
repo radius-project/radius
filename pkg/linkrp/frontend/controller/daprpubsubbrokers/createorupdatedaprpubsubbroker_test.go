@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
@@ -63,7 +64,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		daprpubsubbrokers.TopicNameKey: {
 			Value: "test-topic",
 		},
-		renderers.ComponentNameKey: {
+		linkrp.ComponentNameKey: {
 			Value: "test-app-test-pub-sub-topic",
 		},
 	}
@@ -85,7 +86,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 		ComputedValues: map[string]any{
 			daprpubsubbrokers.TopicNameKey: rendererOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].Value,
-			renderers.ComponentNameKey:     rendererOutput.ComputedValues[renderers.ComponentNameKey].Value,
+			linkrp.ComponentNameKey:        rendererOutput.ComputedValues[linkrp.ComponentNameKey].Value,
 		},
 	}
 

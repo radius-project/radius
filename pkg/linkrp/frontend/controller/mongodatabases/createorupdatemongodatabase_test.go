@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
@@ -202,12 +203,12 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 			},
 		},
 		SecretValues: map[string]rp.SecretValueReference{
-			renderers.UsernameStringValue:   {Value: "testUser"},
+			linkrp.UsernameStringValue:      {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
 		},
 		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.DatabaseNameValue: {
+			linkrp.DatabaseNameValue: {
 				Value: "db",
 			},
 		},

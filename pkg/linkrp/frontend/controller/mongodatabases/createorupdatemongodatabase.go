@@ -12,11 +12,11 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -78,7 +78,7 @@ func (mongoDatabase *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w htt
 	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
-	if database, ok := deploymentOutput.ComputedValues[renderers.DatabaseNameValue].(string); ok {
+	if database, ok := deploymentOutput.ComputedValues[linkrp.DatabaseNameValue].(string); ok {
 		newResource.Properties.Database = database
 	}
 
