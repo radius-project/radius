@@ -89,5 +89,5 @@ func Test_RadiusPlane_DELETE_Found(t *testing.T) {
 	response.EqualsFixture(200, radiusPlaneResponseFixture)
 
 	response = server.MakeRequest("DELETE", radiusPlaneResourceURL, nil)
-	response.EqualsResponse(204, nil)
+	response.EqualsResponse(200, nil)
 }
