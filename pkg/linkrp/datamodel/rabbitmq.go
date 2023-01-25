@@ -8,8 +8,8 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // RabbitMQMessageQueue represents RabbitMQMessageQueue link resource.
@@ -34,7 +34,7 @@ func (r *RabbitMQMessageQueue) OutputResources() []outputresource.OutputResource
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *RabbitMQMessageQueue) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *RabbitMQMessageQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -44,7 +44,7 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
 type RabbitMQMessageQueueProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Queue   string          `json:"queue"`
 	Recipe  LinkRecipe      `json:"recipe,omitempty"`
 	Secrets RabbitMQSecrets `json:"secrets,omitempty"`

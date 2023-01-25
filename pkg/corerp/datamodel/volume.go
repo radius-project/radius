@@ -7,8 +7,8 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 const (
@@ -45,13 +45,13 @@ func (h *VolumeResource) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *VolumeResource) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *VolumeResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // VolumeResourceProperties represents the properties of VolumeResource.
 type VolumeResourceProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	// Kind represents the type of Volume resource.
 	Kind string `json:"kind,omitempty"`
 	// AzureKeyVault represents Azure Keyvault volume properties

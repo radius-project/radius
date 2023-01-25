@@ -10,8 +10,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -33,7 +33,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.GetDaprSecretStoreProperties().Environment),
 				Application: to.String(src.Properties.GetDaprSecretStoreProperties().Application),
 			},

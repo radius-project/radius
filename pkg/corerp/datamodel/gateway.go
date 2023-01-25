@@ -7,8 +7,8 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // Gateway represents Gateway resource.
@@ -42,13 +42,13 @@ func (g *Gateway) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *Gateway) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *Gateway) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // GatewayProperties represents the properties of Gateway.
 type GatewayProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Internal bool                       `json:"internal,omitempty"`
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
 	TLS      *GatewayPropertiesTLS      `json:"tls,omitempty"`

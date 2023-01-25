@@ -8,8 +8,8 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // RedisCache represents RedisCache link resource.
@@ -34,7 +34,7 @@ func (r *RedisCache) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *RedisCache) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -60,7 +60,7 @@ type RedisRecipeProperties struct {
 	Recipe LinkRecipe `json:"recipe,omitempty"`
 }
 type RedisCacheProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	RedisValuesProperties
 	RedisResourceProperties
 	RedisRecipeProperties
@@ -75,5 +75,5 @@ type RedisCacheSecrets struct {
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return linkrp.RedisCachesResourceType
+	return linkrpv1.RedisCachesResourceType
 }

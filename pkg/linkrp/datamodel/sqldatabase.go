@@ -8,8 +8,8 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // SqlDatabase represents SqlDatabase link resource.
@@ -34,7 +34,7 @@ func (r *SqlDatabase) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *SqlDatabase) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -44,7 +44,7 @@ func (sql *SqlDatabase) ResourceTypeName() string {
 
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Recipe   LinkRecipe `json:"recipe,omitempty"`
 	Resource string     `json:"resource,omitempty"`
 	Database string     `json:"database,omitempty"`

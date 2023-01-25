@@ -8,8 +8,8 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // DaprPubSubBroker represents DaprPubSubBroker link resource.
@@ -34,7 +34,7 @@ func (r *DaprPubSubBroker) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *DaprPubSubBroker) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -44,8 +44,8 @@ func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.
 type DaprPubSubBrokerProperties struct {
-	rp.BasicResourceProperties
-	rp.BasicDaprResourceProperties
+	rpv1.BasicResourceProperties
+	rpv1.BasicDaprResourceProperties
 	Topic    string         `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
 	Mode     LinkMode       `json:"mode"`
 	Metadata map[string]any `json:"metadata,omitempty"`

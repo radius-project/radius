@@ -11,8 +11,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,13 +30,13 @@ func TestPrepareRadiusResource_OldResource_Nil(t *testing.T) {
 
 func TestPrepareRadiusResource_UnmatchedLinks(t *testing.T) {
 	oldResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
 			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 		},
 	}}
 	newResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
 			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 		},
@@ -55,10 +55,10 @@ func TestPrepareRadiusResource_UnmatchedLinks(t *testing.T) {
 
 func TestPrepareRadiusResource_DeepCopy(t *testing.T) {
 	oldResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
 			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-			Status: rp.ResourceStatus{
+			Status: rpv1.ResourceStatus{
 				OutputResources: []outputresource.OutputResource{
 					{
 						LocalID: "testID",
@@ -68,7 +68,7 @@ func TestPrepareRadiusResource_DeepCopy(t *testing.T) {
 		},
 	}}
 	newResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
 			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 		},

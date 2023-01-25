@@ -25,9 +25,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -78,7 +78,7 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: envID,
 			},
@@ -261,11 +261,11 @@ func buildApplicationResource(namespace string) *store.Object {
 			},
 		},
 		Properties: corerp_dm.ApplicationProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
-				Status: rp.ResourceStatus{
-					Compute: &rp.EnvironmentCompute{
-						Kind: rp.KubernetesComputeKind,
-						KubernetesCompute: rp.KubernetesComputeProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Status: rpv1.ResourceStatus{
+					Compute: &rpv1.EnvironmentCompute{
+						Kind: rpv1.KubernetesComputeKind,
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							Namespace: namespace,
 						},
 					},
@@ -290,8 +290,8 @@ func buildEnvironmentResource(recipeName string, providers *corerp_dm.Providers)
 			},
 		},
 		Properties: corerp_dm.EnvironmentProperties{
-			Compute: rp.EnvironmentCompute{
-				KubernetesCompute: rp.KubernetesComputeProperties{
+			Compute: rpv1.EnvironmentCompute{
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
 					Namespace: "radius-test",
 				},
 			},
@@ -471,7 +471,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "invalid-id",
 				},
 			},
@@ -509,7 +509,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: applicationID,
 					Environment: envID,
 				},
@@ -534,7 +534,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
 				},
 			},

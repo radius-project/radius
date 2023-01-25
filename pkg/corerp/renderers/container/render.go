@@ -30,8 +30,8 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -424,7 +424,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		computedValues[handlers.IdentityProperties] = outputresource.ComputedValueReference{
 			Value: options.Environment.Identity,
 			Transformer: func(r v1.DataModelInterface, cv map[string]any) error {
-				ei, err := handlers.GetMapValue[*rp.IdentitySettings](cv, handlers.IdentityProperties)
+				ei, err := handlers.GetMapValue[*rpv1.IdentitySettings](cv, handlers.IdentityProperties)
 				if err != nil {
 					return err
 				}
@@ -433,7 +433,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return errors.New("resource must be ContainerResource")
 				}
 				if res.Properties.Identity == nil {
-					res.Properties.Identity = &rp.IdentitySettings{}
+					res.Properties.Identity = &rpv1.IdentitySettings{}
 				}
 				res.Properties.Identity.Kind = ei.Kind
 				res.Properties.Identity.OIDCIssuer = ei.OIDCIssuer
@@ -454,7 +454,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return errors.New("resource must be ContainerResource")
 				}
 				if res.Properties.Identity == nil {
-					res.Properties.Identity = &rp.IdentitySettings{}
+					res.Properties.Identity = &rpv1.IdentitySettings{}
 				}
 				res.Properties.Identity.Resource = resourceID
 				return nil

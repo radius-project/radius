@@ -8,8 +8,8 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // Extender represents Extender link resource.
@@ -34,7 +34,7 @@ func (r *Extender) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *Extender) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *Extender) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -44,7 +44,7 @@ func (extender *Extender) ResourceTypeName() string {
 
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
 	Secrets              map[string]any `json:"secrets,omitempty"`
 }

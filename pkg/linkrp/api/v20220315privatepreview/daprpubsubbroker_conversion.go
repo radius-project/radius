@@ -10,8 +10,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -19,7 +19,7 @@ import (
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprPubSubBrokerProperties().Environment),
 			Application: to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		},

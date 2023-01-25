@@ -18,8 +18,8 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
@@ -55,8 +55,8 @@ var (
 				Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 			},
 		},
-		Identity: &rp.IdentitySettings{
-			Kind:       rp.AzureIdentityWorkload,
+		Identity: &rpv1.IdentitySettings{
+			Kind:       rpv1.AzureIdentityWorkload,
 			OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 		},
 	}
@@ -104,7 +104,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	testAzureResourceID := makeResourceID(t, "Microsoft.ServiceBus/namespaces", "testAzureResource")
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -227,7 +227,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 // If you add minor features, add them here.
 func Test_Render_Basic(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -301,7 +301,7 @@ func Test_Render_Basic(t *testing.T) {
 
 func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -369,7 +369,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 
 func Test_Render_PortWithoutRoute(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -413,7 +413,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -468,7 +468,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 
 func Test_Render_Connections(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -568,7 +568,7 @@ func Test_Render_Connections(t *testing.T) {
 
 func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -617,7 +617,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 // of the hash, just that it can change when the data changes.
 func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -675,7 +675,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -722,7 +722,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.ComputedValues, 2)
-	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rp.IdentitySettings).Kind, rp.AzureIdentityWorkload)
+	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rpv1.IdentitySettings).Kind, rpv1.AzureIdentityWorkload)
 	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
 	require.Empty(t, output.SecretValues)
 	require.Len(t, output.Resources, 9)
@@ -828,7 +828,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	testARMID := makeResourceID(t, "SomeProvider/ResourceType", "test-azure-resource").String()
 	expectedRole := "administrator"
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -857,7 +857,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, output.ComputedValues, 2)
-	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rp.IdentitySettings).Kind, rp.AzureIdentityWorkload)
+	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rpv1.IdentitySettings).Kind, rpv1.AzureIdentityWorkload)
 	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
 
 	require.Empty(t, output.SecretValues)
@@ -900,7 +900,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 	testARMID := makeResourceID(t, "SomeProvider/ResourceType", "test-azure-resource").String()
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -931,7 +931,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	const tempVolName = "TempVolume"
 	const tempVolMountPath = "/tmpfs"
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -1009,7 +1009,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	testResourceID := fmt.Sprintf("/subscriptions/%s/resourceGroups/test/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/share/%s", uuid.New(), testShareName)
 
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -1074,7 +1074,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 
 func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 
@@ -1106,7 +1106,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 					},
 				},
 				Properties: datamodel.VolumeResourceProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: applicationResourceID,
 					},
 					Kind: datamodel.AzureKeyVaultVolume,
@@ -1187,7 +1187,7 @@ func outputResourcesToKindMap(resources []outputresource.OutputResource) map[str
 
 func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -1265,7 +1265,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 
 func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -1334,7 +1334,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 
 func Test_Render_LivenessProbeExec(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{
@@ -1403,7 +1403,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 
 func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
 		},
 		Container: datamodel.Container{

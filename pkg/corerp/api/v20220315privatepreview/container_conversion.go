@@ -10,8 +10,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
@@ -96,7 +96,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.ContainerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
 			Connections: connections,
@@ -116,7 +116,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	if src.Properties.Identity != nil {
-		converted.Properties.Identity = &rp.IdentitySettings{
+		converted.Properties.Identity = &rpv1.IdentitySettings{
 			Kind:       toIdentityKind(src.Properties.Identity.Kind),
 			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
 			Resource:   to.String(src.Properties.Identity.Resource),

@@ -7,8 +7,8 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 var _ v1.DataModelInterface = (*Application)(nil)
@@ -37,13 +37,13 @@ func (c *Application) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *Application) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *Application) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 
 	Extensions []Extension `json:"extensions,omitempty"`
 }

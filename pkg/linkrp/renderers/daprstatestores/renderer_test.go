@@ -17,8 +17,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -45,7 +45,7 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -88,7 +88,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -114,7 +114,7 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -139,7 +139,7 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -164,7 +164,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -221,7 +221,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -248,7 +248,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -277,7 +277,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -307,7 +307,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "invalid-app-id",
 				Environment: environmentID,
 			},
@@ -333,7 +333,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: environmentID,
 			},
 			Mode:     datamodel.LinkModeResource,

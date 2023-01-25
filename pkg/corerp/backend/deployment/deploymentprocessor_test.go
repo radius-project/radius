@@ -27,9 +27,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -176,7 +176,7 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 			},
 		},
 		Properties: linkrp_dm.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
@@ -296,9 +296,9 @@ func Test_Render(t *testing.T) {
 			},
 		},
 		Properties: datamodel.EnvironmentProperties{
-			Compute: rp.EnvironmentCompute{
-				Kind: rp.KubernetesComputeKind,
-				KubernetesCompute: rp.KubernetesComputeProperties{
+			Compute: rpv1.EnvironmentCompute{
+				Kind: rpv1.KubernetesComputeKind,
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
 					Namespace: "radius-test",
 				},
 			},
@@ -335,7 +335,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -361,7 +361,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -382,7 +382,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: linkrp_dm.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 				Mode: linkrp_dm.LinkModeValues,
@@ -428,7 +428,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -454,7 +454,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -498,7 +498,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -524,7 +524,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -566,7 +566,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -592,7 +592,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -745,7 +745,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -771,7 +771,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -814,7 +814,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -840,7 +840,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -1005,12 +1005,12 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 
 	env := &datamodel.Environment{
 		Properties: datamodel.EnvironmentProperties{
-			Compute: rp.EnvironmentCompute{
-				Kind: rp.KubernetesComputeKind,
-				KubernetesCompute: rp.KubernetesComputeProperties{
+			Compute: rpv1.EnvironmentCompute{
+				Kind: rpv1.KubernetesComputeKind,
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
 					Namespace: "radius-system",
 				},
-				Identity: &rp.IdentitySettings{},
+				Identity: &rpv1.IdentitySettings{},
 			},
 			Providers: datamodel.Providers{
 				Azure: datamodel.ProvidersAzure{

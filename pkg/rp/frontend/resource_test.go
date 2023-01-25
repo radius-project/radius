@@ -8,8 +8,8 @@ package frontend
 import (
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 const (
@@ -41,13 +41,13 @@ func (c *TestResourceDataModel) OutputResources() []outputresource.OutputResourc
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *TestResourceDataModel) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *TestResourceDataModel) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // TestResourceDataModelProperties represents the properties of TestResourceDataModel.
 type TestResourceDataModelProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	PropertyA string `json:"propertyA,omitempty"`
 	PropertyB string `json:"propertyB,omitempty"`
 }
@@ -94,7 +94,7 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: &TestResourceDataModelProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},

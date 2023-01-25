@@ -11,8 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -41,14 +40,14 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
-						Identity: &rp.IdentitySettings{
-							Kind:       rp.AzureIdentityWorkload,
+						Identity: &rpv1.IdentitySettings{
+							Kind:       rpv1.AzureIdentityWorkload,
 							Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
 							OIDCIssuer: "https://oidcurl/guid",
 						},
@@ -60,7 +59,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
-							LinkType:     linkrp.MongoDatabasesResourceType,
+							LinkType:     linkrpv1.MongoDatabasesResourceType,
 							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
@@ -85,9 +84,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -99,7 +98,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
-							LinkType:     linkrp.MongoDatabasesResourceType,
+							LinkType:     linkrpv1.MongoDatabasesResourceType,
 							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
 							Parameters: map[string]any{
 								"throughput": float64(400),
@@ -128,9 +127,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -142,7 +141,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
-							LinkType:     linkrp.MongoDatabasesResourceType,
+							LinkType:     linkrpv1.MongoDatabasesResourceType,
 							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
@@ -168,9 +167,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -182,7 +181,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
-							LinkType:     linkrp.MongoDatabasesResourceType,
+							LinkType:     linkrpv1.MongoDatabasesResourceType,
 							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
@@ -262,7 +261,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
 				require.Equal(t, 1, len(r.Properties.Recipes))
-				require.Equal(t, linkrp.MongoDatabasesResourceType, r.Properties.Recipes["cosmos-recipe"].LinkType)
+				require.Equal(t, linkrpv1.MongoDatabasesResourceType, r.Properties.Recipes["cosmos-recipe"].LinkType)
 				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
 				require.Equal(t, map[string]any{"throughput": float64(400)}, r.Properties.Recipes["cosmos-recipe"].Parameters)
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
@@ -292,16 +291,16 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
 	require.Equal(t, 1, len(r.Properties.Recipes))
-	require.Equal(t, linkrp.MongoDatabasesResourceType, r.Properties.Recipes["cosmos-recipe"].LinkType)
+	require.Equal(t, linkrpv1.MongoDatabasesResourceType, r.Properties.Recipes["cosmos-recipe"].LinkType)
 	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
 
-	require.Equal(t, &rp.IdentitySettings{
-		Kind:       rp.AzureIdentityWorkload,
+	require.Equal(t, &rpv1.IdentitySettings{
+		Kind:       rpv1.AzureIdentityWorkload,
 		Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
 		OIDCIssuer: "https://oidcurl/guid",
 	}, r.Properties.Compute.Identity)
-	require.Equal(t, rp.AzureIdentityWorkload, r.Properties.Compute.Identity.Kind)
+	require.Equal(t, rpv1.AzureIdentityWorkload, r.Properties.Compute.Identity.Kind)
 	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", r.Properties.Compute.Identity.Resource)
 	require.Equal(t, "https://oidcurl/guid", r.Properties.Compute.Identity.OIDCIssuer)
 }
@@ -345,11 +344,11 @@ func TestConvertFromValidation(t *testing.T) {
 func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
 		versioned string
-		datamodel rp.EnvironmentComputeKind
+		datamodel rpv1.EnvironmentComputeKind
 		err       error
 	}{
-		{EnvironmentComputeKindKubernetes, rp.KubernetesComputeKind, nil},
-		{"", rp.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
+		{EnvironmentComputeKindKubernetes, rpv1.KubernetesComputeKind, nil},
+		{"", rpv1.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
 	}
 
 	for _, tt := range kindTests {
@@ -363,11 +362,11 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 
 func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
-		datamodel rp.EnvironmentComputeKind
+		datamodel rpv1.EnvironmentComputeKind
 		versioned string
 	}{
-		{rp.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
-		{rp.UnknownComputeKind, EnvironmentComputeKindKubernetes},
+		{rpv1.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
+		{rpv1.UnknownComputeKind, EnvironmentComputeKindKubernetes},
 	}
 
 	for _, tt := range kindTests {

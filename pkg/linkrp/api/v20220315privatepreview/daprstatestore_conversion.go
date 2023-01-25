@@ -5,8 +5,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -14,7 +14,7 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		},

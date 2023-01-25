@@ -7,8 +7,8 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // HTTPRoute represents HTTPRoute resource.
@@ -55,13 +55,13 @@ func (h *HTTPRoute) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *HTTPRoute) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *HTTPRoute) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // HTTPRouteProperties represents the properties of HTTPRoute.
 type HTTPRouteProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Hostname string `json:"hostname,omitempty"`
 	Port     int32  `json:"port,omitempty"`
 	Scheme   string `json:"scheme,omitempty"`

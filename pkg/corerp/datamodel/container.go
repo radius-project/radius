@@ -7,8 +7,8 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // ContainerResource represents Container resource.
@@ -40,7 +40,7 @@ func (c *ContainerResource) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *ContainerResource) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *ContainerResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
@@ -54,11 +54,11 @@ func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
-	Identity    *rp.IdentitySettings            `json:"identity,omitempty"`
+	Identity    *rpv1.IdentitySettings          `json:"identity,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

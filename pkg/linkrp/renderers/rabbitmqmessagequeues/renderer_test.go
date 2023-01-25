@@ -14,8 +14,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +42,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -84,7 +84,7 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -110,7 +110,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "invalid-app-id",
 			},

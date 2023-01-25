@@ -9,8 +9,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -161,7 +161,7 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datam
 func makeProperties(t *testing.T, isEmpty bool, hasReservedKey bool) datamodel.ContainerProperties {
 	if isEmpty {
 		return datamodel.ContainerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: application,
 			},
 			Container: datamodel.Container{
@@ -176,7 +176,7 @@ func makeProperties(t *testing.T, isEmpty bool, hasReservedKey bool) datamodel.C
 	)
 
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: application,
 		},
 		Container: datamodel.Container{

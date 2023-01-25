@@ -8,8 +8,8 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // MongoDatabase represents MongoDatabase link resource.
@@ -25,7 +25,7 @@ type MongoDatabase struct {
 
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	MongoDatabaseResourceProperties
 	MongoDatabaseRecipeProperties
 	MongoDatabaseValuesProperties
@@ -55,7 +55,7 @@ func (r *MongoDatabase) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *MongoDatabase) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 

@@ -16,7 +16,6 @@ import (
 	"github.com/go-logr/logr"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
 
 	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -30,10 +29,10 @@ import (
 	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -125,7 +124,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 
 	c := app.Properties.Status.Compute
 	// Override environment-scope namespace with application-scope kubernetes namespace.
-	if c != nil && c.Kind == rp.KubernetesComputeKind {
+	if c != nil && c.Kind == rpv1.KubernetesComputeKind {
 		envOptions.Namespace = c.KubernetesCompute.Namespace
 	}
 
@@ -391,7 +390,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 
 	// Extract compute info
 	switch env.Properties.Compute.Kind {
-	case rp.KubernetesComputeKind:
+	case rpv1.KubernetesComputeKind:
 		kubeProp := &env.Properties.Compute.KubernetesCompute
 
 		if kubeProp.Namespace == "" {
@@ -517,55 +516,55 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
+	case strings.ToLower(linkrpv1.MongoDatabasesResourceType):
 		obj := &link_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.SqlDatabasesResourceType):
+	case strings.ToLower(linkrpv1.SqlDatabasesResourceType):
 		obj := &link_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.RedisCachesResourceType):
+	case strings.ToLower(linkrpv1.RedisCachesResourceType):
 		obj := &link_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
+	case strings.ToLower(linkrpv1.RabbitMQMessageQueuesResourceType):
 		obj := &link_dm.RabbitMQMessageQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.ExtendersResourceType):
+	case strings.ToLower(linkrpv1.ExtendersResourceType):
 		obj := &link_dm.Extender{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
-	case strings.ToLower(linkrp.DaprStateStoresResourceType):
+	case strings.ToLower(linkrpv1.DaprStateStoresResourceType):
 		obj := &link_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
+	case strings.ToLower(linkrpv1.DaprSecretStoresResourceType):
 		obj := &link_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
+	case strings.ToLower(linkrpv1.DaprPubSubBrokersResourceType):
 		obj := &link_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
+	case strings.ToLower(linkrpv1.DaprInvokeHttpRoutesResourceType):
 		obj := &link_dm.DaprInvokeHttpRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)

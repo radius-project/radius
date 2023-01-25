@@ -19,7 +19,7 @@ import (
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rptest "github.com/project-radius/radius/pkg/corerp/testing"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
@@ -456,12 +456,12 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 	t.Run("override namespace", func(t *testing.T) {
 		old := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
-					Status: rp.ResourceStatus{
-						Compute: &rp.EnvironmentCompute{
-							Kind: rp.KubernetesComputeKind,
-							KubernetesCompute: rp.KubernetesComputeProperties{
+					Status: rpv1.ResourceStatus{
+						Compute: &rpv1.EnvironmentCompute{
+							Kind: rpv1.KubernetesComputeKind,
+							KubernetesCompute: rpv1.KubernetesComputeProperties{
 								Namespace: "app-ns",
 							},
 						},
@@ -481,7 +481,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -519,9 +519,9 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: rp.EnvironmentCompute{
-					Kind: rp.KubernetesComputeKind,
-					KubernetesCompute: rp.KubernetesComputeProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+					KubernetesCompute: rpv1.KubernetesComputeProperties{
 						Namespace: "default",
 					},
 				},
@@ -535,7 +535,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 			},
@@ -578,7 +578,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -604,9 +604,9 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	t.Run("conflicted namespace in environment resource", func(t *testing.T) {
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: rp.EnvironmentCompute{
-					Kind: rp.KubernetesComputeKind,
-					KubernetesCompute: rp.KubernetesComputeProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+					KubernetesCompute: rpv1.KubernetesComputeProperties{
 						Namespace: "testns",
 					},
 				},
@@ -623,7 +623,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -654,7 +654,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -687,12 +687,12 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	t.Run("update application with the different namespace", func(t *testing.T) {
 		old := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
-					Status: rp.ResourceStatus{
-						Compute: &rp.EnvironmentCompute{
-							Kind: rp.KubernetesComputeKind,
-							KubernetesCompute: rp.KubernetesComputeProperties{
+					Status: rpv1.ResourceStatus{
+						Compute: &rpv1.EnvironmentCompute{
+							Kind: rpv1.KubernetesComputeKind,
+							KubernetesCompute: rpv1.KubernetesComputeProperties{
 								Namespace: "default-app0",
 							},
 						},
@@ -708,7 +708,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{

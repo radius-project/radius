@@ -14,8 +14,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -65,7 +65,7 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 	}
 
 	// Update the clientID and tenantID only for azure workload identity.
-	if spc.Annotations != nil && spc.Annotations[kubernetes.AnnotationIdentityType] == string(rp.AzureIdentityWorkload) {
+	if spc.Annotations != nil && spc.Annotations[kubernetes.AnnotationIdentityType] == string(rpv1.AzureIdentityWorkload) {
 		clientID, tenantID, err := extractIdentityInfo(options)
 		if err != nil {
 			return err
@@ -94,7 +94,7 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 	}
 
 	switch envOpt.Identity.Kind {
-	case rp.AzureIdentityWorkload:
+	case rpv1.AzureIdentityWorkload:
 		break
 
 	default:

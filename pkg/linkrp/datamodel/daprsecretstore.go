@@ -8,8 +8,8 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // DaprSecretStore represents DaprSecretStore link resource.
@@ -34,7 +34,7 @@ func (r *DaprSecretStore) OutputResources() []outputresource.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *DaprSecretStore) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *DaprSecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -44,8 +44,8 @@ func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.
 type DaprSecretStoreProperties struct {
-	rp.BasicResourceProperties
-	rp.BasicDaprResourceProperties
+	rpv1.BasicResourceProperties
+	rpv1.BasicDaprResourceProperties
 	Mode     LinkMode       `json:"mode"`
 	Type     string         `json:"type"`
 	Version  string         `json:"version"`

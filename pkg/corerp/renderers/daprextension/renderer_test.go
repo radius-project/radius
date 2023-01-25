@@ -17,8 +17,8 @@ import (
 	link "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -55,7 +55,7 @@ func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{
@@ -97,7 +97,7 @@ func Test_Render_Success_AppID_FromRoute(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{
@@ -147,7 +147,7 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{

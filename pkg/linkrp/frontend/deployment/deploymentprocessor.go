@@ -21,10 +21,10 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,7 +105,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		c := app.Properties.Status.Compute
-		if c != nil && c.Kind == rp.KubernetesComputeKind {
+		if c != nil && c.Kind == rpv1.KubernetesComputeKind {
 			kubeNamespace = c.KubernetesCompute.Namespace
 		}
 	}
@@ -354,7 +354,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rpv1.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(linkrp.MongoDatabasesResourceType):
@@ -433,7 +433,7 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	}
 
 	envMetadata = EnvironmentMetadata{}
-	if env.Properties.Compute != (rp.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (rp.KubernetesComputeProperties{}) {
+	if env.Properties.Compute != (rpv1.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (rpv1.KubernetesComputeProperties{}) {
 		envMetadata.Namespace = env.Properties.Compute.KubernetesCompute.Namespace
 	} else {
 		return envMetadata, fmt.Errorf("cannot find namespace in the environment resource")
