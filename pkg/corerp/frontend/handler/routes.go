@@ -7,6 +7,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -332,6 +333,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
 							vol_ctrl.ValidateRequest,
 						},
+						AsyncOperationTimeout: time.Duration(2) * time.Minute,
 					},
 				)
 			},
@@ -349,6 +351,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
 							vol_ctrl.ValidateRequest,
 						},
+						AsyncOperationTimeout: time.Duration(2) * time.Minute,
 					},
 				)
 			},

@@ -218,3 +218,8 @@ func (b *Operation[P, T]) DeleteFilters() []DeleteFilter[T] {
 func (b *Operation[P, T]) UpdateFilters() []UpdateFilter[T] {
 	return b.resourceOptions.UpdateFilters
 }
+
+// AsyncOperationTimeout returns the timeput for the operation.
+func (b *Operation[P, T]) AsyncOperationTimeout() time.Duration {
+	return b.resourceOptions.AsyncOperationTimeout
+}
