@@ -12,7 +12,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
@@ -60,7 +59,7 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	mongoSecrets := datamodel.MongoDatabaseSecrets{}
-	if username, ok := secrets[linkrp.UsernameStringValue].(string); ok {
+	if username, ok := secrets[renderers.UsernameStringValue].(string); ok {
 		mongoSecrets.Username = username
 	}
 	if password, ok := secrets[renderers.PasswordStringHolder].(string); ok {
