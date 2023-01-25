@@ -58,7 +58,7 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	var cfg zap.Config
 	var loggerProfile, loggerLevel string
 
-	// Define the logger profile and level based on the logger profile specified by RADIUS_PROFILE env variable or config files.
+	// Define the logger profile and level based on the logger profile specified by RADIUS_LOGGING_JSON env variable or config files.
 	// env variable takes precedence over config file settings.
 	if options.Json {
 		loggerProfile = LoggerProfileProd
@@ -78,7 +78,7 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	}
 
 	// Modify the default log level intialized by the profile preset if a custom value
-	// is specified by config file or the "RADIUS_LOG_LEVEL" env variable. env variable takes precedence over config file settings.
+	// is specified by config file or the "RADIUS_LOGGING_LEVEL" env variable. env variable takes precedence over config file settings.
 	var logLevel int
 	loggerLevel = options.LogLevel
 	logLevelFromEnv := os.Getenv(LogLevel)
