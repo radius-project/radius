@@ -40,7 +40,7 @@ func Test_DeletePlaneByID(t *testing.T) {
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
 
-	expectedResponse := armrpc_rest.NewNoContentResponse()
+	expectedResponse := armrpc_rest.NewOKResponse(nil)
 
 	require.NoError(t, err)
 	assert.DeepEqual(t, expectedResponse, response)
