@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -65,7 +65,6 @@ func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2 interface
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2)
 }
-
 
 // FetchSecrets mocks base method.
 func (m *MockDeploymentProcessor) FetchSecrets(arg0 context.Context, arg1 ResourceData) (map[string]interface{}, error) {
