@@ -22,7 +22,7 @@ var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
 
 var (
 	// AsyncDeleteMongoDatabaseOperationTimeout is the default timeout duration of async delete container operation.
-	AsyncDeleteMongoDatabaseOperationTimeout = time.Duration(300) * time.Second
+	AsyncDeleteMongoDatabaseOperationTimeout = time.Duration(900) * time.Second
 )
 
 // DeleteMongoDatabase is the controller implementation to delete mongoDatabase link resource.

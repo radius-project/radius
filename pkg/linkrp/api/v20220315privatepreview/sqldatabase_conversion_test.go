@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +33,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		convertedResource := dm.(*datamodel.SqlDatabase)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0", convertedResource.ID)
 		require.Equal(t, "sql0", convertedResource.Name)
-		require.Equal(t, "Applications.Link/sqlDatabases", convertedResource.Type)
+		require.Equal(t, linkrp.SqlDatabasesResourceType, convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
@@ -71,7 +72,7 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0", *versionedResource.ID)
 		require.Equal(t, "sql0", *versionedResource.Name)
-		require.Equal(t, "Applications.Link/sqlDatabases", resource.Type)
+		require.Equal(t, linkrp.SqlDatabasesResourceType, resource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetSQLDatabaseProperties().Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetSQLDatabaseProperties().Environment)
 		switch v := versionedResource.Properties.(type) {

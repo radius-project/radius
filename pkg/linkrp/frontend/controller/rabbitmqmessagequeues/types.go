@@ -6,8 +6,6 @@
 package rabbitmqmessagequeues
 
 const (
-	ResourceTypeName = "Applications.Link/rabbitMQMessageQueues"
-
 	// User defined operation names
 	OperationListSecret = "LISTSECRETS"
 )

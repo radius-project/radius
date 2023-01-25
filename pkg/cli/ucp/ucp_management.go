@@ -16,6 +16,7 @@ import (
 
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 
@@ -35,15 +36,15 @@ var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(
 
 var (
 	ResourceTypesList = []string{
-		"Applications.Link/mongoDatabases",
-		"Applications.Link/rabbitMQMessageQueues",
-		"Applications.Link/redisCaches",
-		"Applications.Link/sqlDatabases",
-		"Applications.Link/daprStateStores",
-		"Applications.Link/daprSecretStores",
-		"Applications.Link/daprPubSubBrokers",
-		"Applications.Link/daprInvokeHttpRoutes",
-		"Applications.Link/extenders",
+		linkrp.MongoDatabasesResourceType,
+		linkrp.RabbitMQMessageQueuesResourceType,
+		linkrp.RedisCachesResourceType,
+		linkrp.SqlDatabasesResourceType,
+		linkrp.DaprStateStoresResourceType,
+		linkrp.DaprSecretStoresResourceType,
+		linkrp.DaprPubSubBrokersResourceType,
+		linkrp.DaprInvokeHttpRoutesResourceType,
+		linkrp.ExtendersResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
@@ -157,7 +158,12 @@ func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	var respFromCtx *http.Response
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
-	_, err = client.Delete(ctxWithResp, resourceName, nil)
+	poller, err := client.BeginDelete(ctxWithResp, resourceName, nil)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
 		return false, err
 	}

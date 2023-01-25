@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 		convertedResource := dm.(*datamodel.DaprPubSubBroker)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprPubSubBrokers/daprPubSub0", convertedResource.ID)
 		require.Equal(t, "daprPubSub0", convertedResource.Name)
-		require.Equal(t, "Applications.Link/daprPubSubBrokers", convertedResource.Type)
+		require.Equal(t, linkrp.DaprPubSubBrokersResourceType, convertedResource.Type)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
@@ -83,7 +84,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprPubSubBrokers/daprPubSub0", resource.ID)
 		require.Equal(t, "daprPubSub0", resource.Name)
-		require.Equal(t, "Applications.Link/daprPubSubBrokers", resource.Type)
+		require.Equal(t, linkrp.DaprPubSubBrokersResourceType, resource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
 		switch v := versionedResource.Properties.(type) {
