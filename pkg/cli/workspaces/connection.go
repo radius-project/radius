@@ -151,7 +151,7 @@ func (c *KubernetesConnectionConfig) Connect() (sdk.Connection, error) {
 	if c.Overrides.UCP != "" {
 		strURL := strings.TrimSuffix(c.Overrides.UCP, "/")
 		strURL = strURL + "/apis/api.ucp.dev/v1alpha3"
-		_, err := url.ParseRequestURI("hi/there?")
+		_, err := url.ParseRequestURI(strURL)
 		if err != nil {
 			return nil, err
 		}
