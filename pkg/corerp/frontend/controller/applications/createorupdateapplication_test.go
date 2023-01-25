@@ -16,12 +16,12 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rptest "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -35,7 +35,7 @@ const (
 )
 
 func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
 		desc               string
@@ -55,9 +55,9 @@ func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testin
 		t.Run(tt.desc, func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodGet, testHeaderfile, appInput)
+			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rptest.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			tCtx.MockSC.
 				EXPECT().
@@ -96,7 +96,7 @@ func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testin
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    rptest.NewFakeKubeClient(nil),
+				KubeClient:    testutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -117,7 +117,7 @@ func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testin
 }
 
 func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
 		desc               string
@@ -141,12 +141,12 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			if tt.inputFile != "" {
 				appInput = &v20220315privatepreview.ApplicationResource{}
-				_ = json.Unmarshal(rptest.ReadFixture(tt.inputFile), appInput)
+				_ = json.Unmarshal(testutil.ReadFixture(tt.inputFile), appInput)
 			}
 			w := httptest.NewRecorder()
-			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodGet, testHeaderfile, appInput)
+			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rptest.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			tCtx.MockSC.
 				EXPECT().
@@ -182,7 +182,7 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    rptest.NewFakeKubeClient(nil),
+				KubeClient:    testutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -204,7 +204,7 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 }
 
 func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
 		desc               string
@@ -223,9 +223,9 @@ func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t 
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			appInput, _, _ := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
+			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rptest.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			tCtx.MockSC.
 				EXPECT().
@@ -249,7 +249,7 @@ func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t 
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    rptest.NewFakeKubeClient(nil),
+				KubeClient:    testutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -263,7 +263,7 @@ func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t 
 }
 
 func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
 		desc               string
@@ -283,9 +283,9 @@ func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *te
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
+			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rptest.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			tCtx.MockSC.
 				EXPECT().
@@ -322,7 +322,7 @@ func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *te
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    rptest.NewFakeKubeClient(nil),
+				KubeClient:    testutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -342,7 +342,7 @@ func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *te
 }
 
 func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
 		desc                 string
@@ -365,9 +365,9 @@ func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *t
 			conflictDataModel.Name = "existing"
 			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/" + tt.existingResourceName
 			w := httptest.NewRecorder()
-			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
+			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rptest.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			tCtx.MockSC.
 				EXPECT().
@@ -426,7 +426,7 @@ func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *t
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    rptest.NewFakeKubeClient(nil),
+				KubeClient:    testutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -441,12 +441,12 @@ func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *t
 }
 
 func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
 		DataProvider:  tCtx.MockSP,
-		KubeClient:    rptest.NewFakeKubeClient(nil),
+		KubeClient:    testutil.NewFakeKubeClient(nil),
 	}
 
 	ctl, err := NewCreateOrUpdateApplication(opts)
@@ -456,12 +456,12 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 	t.Run("override namespace", func(t *testing.T) {
 		old := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
-					Status: rp.ResourceStatus{
-						Compute: &rp.EnvironmentCompute{
-							Kind: rp.KubernetesComputeKind,
-							KubernetesCompute: rp.KubernetesComputeProperties{
+					Status: rpv1.ResourceStatus{
+						Compute: &rpv1.EnvironmentCompute{
+							Kind: rpv1.KubernetesComputeKind,
+							KubernetesCompute: rpv1.KubernetesComputeProperties{
 								Namespace: "app-ns",
 							},
 						},
@@ -481,7 +481,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -519,9 +519,9 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: rp.EnvironmentCompute{
-					Kind: rp.KubernetesComputeKind,
-					KubernetesCompute: rp.KubernetesComputeProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+					KubernetesCompute: rpv1.KubernetesComputeProperties{
 						Namespace: "default",
 					},
 				},
@@ -531,11 +531,11 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 		tCtx.MockSC.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			Return(rptest.FakeStoreObject(envdm), nil)
+			Return(testutil.FakeStoreObject(envdm), nil)
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 			},
@@ -555,12 +555,12 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 }
 
 func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
 		DataProvider:  tCtx.MockSP,
-		KubeClient:    rptest.NewFakeKubeClient(nil),
+		KubeClient:    testutil.NewFakeKubeClient(nil),
 	}
 
 	ctl, err := NewCreateOrUpdateApplication(opts)
@@ -578,7 +578,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -604,9 +604,9 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	t.Run("conflicted namespace in environment resource", func(t *testing.T) {
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: rp.EnvironmentCompute{
-					Kind: rp.KubernetesComputeKind,
-					KubernetesCompute: rp.KubernetesComputeProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+					KubernetesCompute: rpv1.KubernetesComputeProperties{
 						Namespace: "testns",
 					},
 				},
@@ -617,13 +617,13 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 			Query(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 				return &store.ObjectQueryResult{
-					Items: []store.Object{*rptest.FakeStoreObject(envdm)},
+					Items: []store.Object{*testutil.FakeStoreObject(envdm)},
 				}, nil
 			}).Times(1)
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -654,7 +654,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{
@@ -671,7 +671,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 			Return(&store.ObjectQueryResult{}, nil).Times(1)
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			Return(&store.ObjectQueryResult{Items: []store.Object{*rptest.FakeStoreObject(newResource)}}, nil).Times(1)
+			Return(&store.ObjectQueryResult{Items: []store.Object{*testutil.FakeStoreObject(newResource)}}, nil).Times(1)
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
@@ -687,12 +687,12 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	t.Run("update application with the different namespace", func(t *testing.T) {
 		old := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
-					Status: rp.ResourceStatus{
-						Compute: &rp.EnvironmentCompute{
-							Kind: rp.KubernetesComputeKind,
-							KubernetesCompute: rp.KubernetesComputeProperties{
+					Status: rpv1.ResourceStatus{
+						Compute: &rpv1.EnvironmentCompute{
+							Kind: rpv1.KubernetesComputeKind,
+							KubernetesCompute: rpv1.KubernetesComputeProperties{
 								Namespace: "default-app0",
 							},
 						},
@@ -708,7 +708,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
 				},
 				Extensions: []datamodel.Extension{

@@ -11,8 +11,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -60,7 +59,7 @@ type EnvironmentOptions struct {
 	// Gateway represents the gateway options.
 	Gateway GatewayOptions
 	// Identity represents identity of the environment.
-	Identity *rp.IdentitySettings
+	Identity *rpv1.IdentitySettings
 	// KubernetesMetadata represents the Environment KubernetesMetadata extension.
 	KubernetesMetadata *datamodel.KubeMetadataExtension
 }
@@ -79,9 +78,9 @@ type GatewayOptions struct {
 }
 
 type RendererOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]rp.ComputedValueReference
-	SecretValues   map[string]rp.SecretValueReference
+	Resources      []rpv1.OutputResource
+	ComputedValues map[string]rpv1.ComputedValueReference
+	SecretValues   map[string]rpv1.SecretValueReference
 
 	// RadiusResource is the original Radius resource model.
 	RadiusResource v1.DataModelInterface

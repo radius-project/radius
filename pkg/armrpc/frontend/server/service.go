@@ -58,11 +58,9 @@ func (s *Service) Init(ctx context.Context) error {
 		return err
 	}
 
-	// Initialize the manager for ARM client cert validation
-	if s.Options.Config.Server.EnableArmAuth {
-		s.ARMCertManager = authentication.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
-		if err := s.ARMCertManager.Start(ctx); err != nil {
-			return err
+	if s.Options.Arm != nil {
+		s.SecretClient = sv.NewSecretValueClient(*s.Options.Arm)
+	}
 		}
 	}
 

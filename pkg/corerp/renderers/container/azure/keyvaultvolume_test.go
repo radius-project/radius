@@ -15,8 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
@@ -50,15 +49,15 @@ func TestMakeKeyVaultVolumeSpec(t *testing.T) {
 func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 	envOpt := &renderers.EnvironmentOptions{
 		Namespace: "default",
-		Identity: &rp.IdentitySettings{
-			Kind:       rp.AzureIdentityWorkload,
+		Identity: &rpv1.IdentitySettings{
+			Kind:       rpv1.AzureIdentityWorkload,
 			OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 		},
 	}
 
 	spcTests := []struct {
 		desc         string
-		identityKind rp.IdentitySettingKind
+		identityKind rpv1.IdentitySettingKind
 
 		err          error
 		beforeParams map[string]string
@@ -66,7 +65,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 	}{
 		{
 			desc:         "azure.com.workload",
-			identityKind: rp.AzureIdentityWorkload,
+			identityKind: rpv1.AzureIdentityWorkload,
 			err:          nil,
 			beforeParams: map[string]string{
 				"usePodIdentity": "false",
@@ -119,7 +118,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 					Resource: or,
 					DependencyProperties: map[string]map[string]string{
 						// output properties of managed identity
-						outputresource.LocalIDUserAssignedManagedIdentity: {
+						rpv1.LocalIDUserAssignedManagedIdentity: {
 							handlers.UserAssignedIdentityClientIDKey: "newClientID",
 							handlers.UserAssignedIdentityTenantIDKey: "newTenantID",
 						},

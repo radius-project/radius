@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -65,9 +65,9 @@ func getTestEnvironmentModel(rootScope string, resourceName string) *datamodel.E
 			InternalMetadata: v1.InternalMetadata{},
 		},
 		Properties: datamodel.EnvironmentProperties{
-			Compute: rp.EnvironmentCompute{
-				Kind: rp.KubernetesComputeKind,
-				KubernetesCompute: rp.KubernetesComputeProperties{
+			Compute: rpv1.EnvironmentCompute{
+				Kind: rpv1.KubernetesComputeKind,
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
 					ResourceID: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 					Namespace:  "default",
 				},

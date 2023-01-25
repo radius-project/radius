@@ -17,9 +17,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"github.com/go-logr/logr"
@@ -120,15 +120,15 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 
 	if old != nil {
 		c := old.Properties.Status.Compute
-		if c != nil && c.Kind == rp.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
+		if c != nil && c.Kind == rpv1.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
 			return rest.NewBadRequestResponse(fmt.Sprintf("Updating an application's Kubernetes namespace from '%s' to '%s' requires the application to be deleted and redeployed. Please delete your application and try again.", c.KubernetesCompute.Namespace, kubeNamespace)), nil
 		}
 	}
 
 	// Populate kubernetes namespace to internal metadata property for query indexing.
-	newResource.Properties.Status.Compute = &rp.EnvironmentCompute{
-		Kind:              rp.KubernetesComputeKind,
-		KubernetesCompute: rp.KubernetesComputeProperties{Namespace: kubeNamespace},
+	newResource.Properties.Status.Compute = &rpv1.EnvironmentCompute{
+		Kind:              rpv1.KubernetesComputeKind,
+		KubernetesCompute: rpv1.KubernetesComputeProperties{Namespace: kubeNamespace},
 	}
 
 	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742

@@ -9,12 +9,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/testutil"
+
+	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +45,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
 			// arrange
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &ContainerResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
@@ -74,7 +75,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, datamodel.TCPHealthProbe, tcpProbe.Kind)
 				require.Equal(t, to.Float32Ptr(5), tcpProbe.TCP.InitialDelaySeconds)
 				require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
-				require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
+				require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 				require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 				require.Equal(t, 3, len(ct.Properties.Extensions))
 
@@ -112,7 +113,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &datamodel.ContainerResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
@@ -151,7 +152,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 
 func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("containerresourcenegativetest.json")
+	rawPayload := testutil.ReadFixture("containerresourcenegativetest.json")
 	r := &ContainerResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -173,7 +174,7 @@ func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	require.Equal(t, false, *val.DisableDefaultEnvVars)
 	require.Equal(t, "read", val.IAM.Roles[0])
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
-	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
+	require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 
 	var commands []string

@@ -19,8 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -36,13 +35,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
-	outputResources := []outputresource.OutputResource{}
+	outputResources := []rpv1.OutputResource{}
 
 	if route.Properties.Port == 0 {
 		route.Properties.Port = renderers.DefaultPort
 	}
 
-	computedValues := map[string]rp.ComputedValueReference{
+	computedValues := map[string]rpv1.ComputedValueReference{
 		"hostname": {
 			Value: kubernetes.NormalizeResourceName(route.Name),
 		},
@@ -69,10 +68,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
+func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(route.Properties.Application)
 	if err != nil {
-		return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
+		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
 	}
 
 	typeParts := strings.Split(ResourceType, "/")
@@ -102,5 +101,5 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
 }

@@ -12,13 +12,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,10 +57,10 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
+			req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
 			req.Header.Set("If-Match", tt.etag)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := getTestModels20220315privatepreview()
 
 			appDataModel.InternalMetadata.AsyncProvisioningState = tt.curState

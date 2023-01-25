@@ -3,6 +3,5 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-// This package inlcudes test utils used for radius.
-
-package testing
+// rp package includes common packages which are shared by corerp and linkrp.
+package rp

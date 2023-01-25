@@ -12,7 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
@@ -185,7 +185,7 @@ func TestKeyVaultRenderer_Render(t *testing.T) {
 	ctx := context.Background()
 
 	vol := &datamodel.VolumeResource{}
-	err := json.Unmarshal(radiustesting.ReadFixture("volume-az-kv-systemassigned.json"), vol)
+	err := json.Unmarshal(testutil.ReadFixture("volume-az-kv-systemassigned.json"), vol)
 	require.NoError(t, err)
 	param := "array:\n    - |\n      objectName: mysecret\n      objectAlias: mysecret\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: secret\n      objectFormat: \"\"\n      objectEncoding: base64\n      filePermission: \"\"\n    - |\n      objectName: mykey\n      objectAlias: mykey\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: key\n      objectFormat: \"\"\n      objectEncoding: \"\"\n      filePermission: \"\"\n    - |\n      objectName: mycert\n      objectAlias: myalias\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: certificate\n      objectFormat: pfx\n      objectEncoding: \"\"\n      filePermission: \"\"\n"
 

@@ -12,11 +12,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -90,8 +91,8 @@ func TestGetResourceRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -119,8 +120,8 @@ func TestGetResourceRun(t *testing.T) {
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().

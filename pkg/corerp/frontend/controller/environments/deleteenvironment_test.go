@@ -13,11 +13,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,8 +33,8 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("delete non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -83,10 +84,10 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
 			req.Header.Set("If-Match", tt.ifMatchETag)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			_, envDataModel, _ := getTestModels20220315privatepreview()
 
 			mStorageClient.

@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/roleassignment"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -49,7 +49,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	scope := properties[RoleAssignmentScope]
 
 	// Get dependency
-	identityProp, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]
+	identityProp, ok := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]
 	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
@@ -73,7 +73,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
 			roleName, principalID, scope, err)
 	}
-	logger.WithValues(logging.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope))
+	logger.WithValues(logging.LogFieldLocalID, rpv1.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope))
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clientv2.RoleAssignmentClientAPIVersion)
 	return properties, nil

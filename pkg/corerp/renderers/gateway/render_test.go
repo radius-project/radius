@@ -17,8 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -77,7 +76,7 @@ func Test_Render_WithIPAndNoHostname(t *testing.T) {
 	r := &Renderer{}
 
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -105,7 +104,7 @@ func Test_Render_WithIPAndPrefix(t *testing.T) {
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			Prefix: prefix,
 		},
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -134,7 +133,7 @@ func Test_Render_WithIPAndFQHostname(t *testing.T) {
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			FullyQualifiedHostname: expectedHostname,
 		},
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -162,7 +161,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 			Prefix:                 prefix,
 			FullyQualifiedHostname: expectedHostname,
 		},
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -183,7 +182,7 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 	r := &Renderer{}
 
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -205,7 +204,7 @@ func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
 
 	expectedPublicEndpoint := "this_CouldbeAnyString"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{
@@ -232,7 +231,7 @@ func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
 	expectedPublicEndpoint := "www.contoso.com"
 	expectedFQDN := "www.contoso.com"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -255,7 +254,7 @@ func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
 	expectedFQDN := "localhost"
 	expectedPublicEndpoint := "http://localhost:8080"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -277,7 +276,7 @@ func Test_Render_Hostname(t *testing.T) {
 
 	expectedPublicEndpoint := fmt.Sprintf("http://%s", testHostname)
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -300,7 +299,7 @@ func Test_Render_Hostname_WithPort(t *testing.T) {
 	expectedFQDN := "www.contoso.com"
 	expectedPublicEndpoint := "http://www.contoso.com:32434"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -324,7 +323,7 @@ func Test_Render_Hostname_WithPrefix(t *testing.T) {
 	expectedFQDN := fmt.Sprintf("%s.%s", prefix, testHostname)
 	expectedPublicEndpoint := fmt.Sprintf("http://%s", expectedFQDN)
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{
@@ -351,7 +350,7 @@ func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
 	expectedFQDN := fmt.Sprintf("%s.%s", prefix, testHostname)
 	expectedPublicEndpoint := fmt.Sprintf("http://%s:%s", expectedFQDN, testPort)
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{
@@ -375,7 +374,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	r := &Renderer{}
 
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
@@ -407,7 +406,7 @@ func Test_Render_Fails_SSLPassthroughWithRoutePath(t *testing.T) {
 	routes = append(routes, route)
 	r := &Renderer{}
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		TLS: &datamodel.GatewayPropertiesTLS{
@@ -448,7 +447,7 @@ func Test_Render_Fails_SSLPassthroughWithMultipleRoutes(t *testing.T) {
 
 	r := &Renderer{}
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		TLS: &datamodel.GatewayPropertiesTLS{
@@ -479,7 +478,7 @@ func Test_Render_Fails_SSLPassthroughFalse(t *testing.T) {
 	routes = append(routes, route1)
 	r := &Renderer{}
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		TLS: &datamodel.GatewayPropertiesTLS{
@@ -504,7 +503,7 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 	r := &Renderer{}
 
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	}
@@ -526,7 +525,7 @@ func Test_Render_FQDNOverride(t *testing.T) {
 
 	expectedPublicEndpoint := fmt.Sprintf("http://%s", testHostname)
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{
@@ -550,7 +549,7 @@ func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
 	r := &Renderer{}
 
 	properties, _ := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{},
@@ -580,7 +579,7 @@ func Test_Render_Single_Route(t *testing.T) {
 	}
 	routes = append(routes, route)
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Routes: routes,
@@ -626,7 +625,7 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 		SSLPassthrough: true,
 	}
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Routes: routes,
@@ -695,7 +694,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	routes = append(routes, routeA)
 	routes = append(routes, routeB)
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Routes: routes,
@@ -751,7 +750,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 	}
 	routes = append(routes, route)
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Routes: routes,
@@ -828,7 +827,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 	routes = append(routes, routeC)
 	routes = append(routes, routeD)
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Routes: routes,
@@ -915,7 +914,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 	}
 	routes = append(routes, route)
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Routes: routes,
@@ -960,7 +959,7 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 
 	dependencies := map[string]renderers.RendererDependency{}
 	properties := datamodel.HTTPRouteProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Port: port,
@@ -973,10 +972,10 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 	return output
 }
 
-func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include, expectedTCPProxy *contourv1.TCPProxy) {
+func validateGateway(t *testing.T, outputResources []rpv1.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include, expectedTCPProxy *contourv1.TCPProxy) {
 	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
 
-	expectedGatewayOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
+	expectedGatewayOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, gateway, gateway.ObjectMeta)
 	require.Equal(t, expectedGatewayOutputResource, gatewayOutputResource)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), gateway.Name)
 	require.Equal(t, applicationName, gateway.Namespace)
@@ -1010,10 +1009,10 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	require.Equal(t, expectedGatewaySpec, gateway.Spec)
 }
 
-func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputResource, expectedRouteName string, expectedPort int32, expectedRewrite *contourv1.PathRewritePolicy) {
-	expectedLocalID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, expectedRouteName)
+func validateHttpRoute(t *testing.T, outputResources []rpv1.OutputResource, expectedRouteName string, expectedPort int32, expectedRewrite *contourv1.PathRewritePolicy) {
+	expectedLocalID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpRoute, expectedRouteName)
 	httpRoute, httpRouteOutputResource := kubernetes.FindHttpRouteByLocalID(outputResources, expectedLocalID)
-	expectedHttpRouteOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
+	expectedHttpRouteOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedHttpRouteOutputResource, httpRouteOutputResource)
 
 	require.Equal(t, kubernetes.NormalizeResourceName(expectedRouteName), httpRoute.Name)
@@ -1104,7 +1103,7 @@ func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayPrope
 	}
 
 	properties := datamodel.GatewayProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: config.Application,
 		},
 		Hostname: config.Hostname,

@@ -14,13 +14,12 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-var sqlServerDependency outputresource.Dependency = outputresource.Dependency{
-	LocalID: outputresource.LocalIDAzureSqlServer,
+var sqlServerDependency rpv1.Dependency = rpv1.Dependency{
+	LocalID: rpv1.LocalIDAzureSqlServer,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -45,7 +44,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(renderers.ErrorResourceOrServerNameMissingFromResource.Error())
 		}
 		return renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{},
+			Resources: []rpv1.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				"database": {
 					Value: properties.Database,
@@ -56,7 +55,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 			},
 			// We don't provide any secret values here because SQL requires the USER to manage
 			// the usernames and passwords. We don't have access!
-			SecretValues: map[string]rp.SecretValueReference{},
+			SecretValues: map[string]rpv1.SecretValueReference{},
 		}, nil
 	} else {
 		// Source resource identifier is provided, currently only Azure resources are expected with non empty resource id
@@ -89,8 +88,8 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 		Type:     resourcekinds.AzureSqlServer,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	serverResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureSqlServer,
+	serverResource := rpv1.OutputResource{
+		LocalID:      rpv1.LocalIDAzureSqlServer,
 		ResourceType: serverResourceType,
 		Identity:     resourcemodel.NewARMIdentity(&serverResourceType, serverID.String(), clientv2.SQLManagementClientAPIVersion),
 		Resource:     map[string]string{},
@@ -99,12 +98,12 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 		Type:     resourcekinds.AzureSqlServerDatabase,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	databaseResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureSqlServerDatabase,
+	databaseResource := rpv1.OutputResource{
+		LocalID:      rpv1.LocalIDAzureSqlServerDatabase,
 		ResourceType: databaseResourceType,
 		Identity:     resourcemodel.NewARMIdentity(&databaseResourceType, databaseID.String(), clientv2.SQLManagementClientAPIVersion),
 		Resource:     map[string]string{},
-		Dependencies: []outputresource.Dependency{sqlServerDependency},
+		Dependencies: []rpv1.Dependency{sqlServerDependency},
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
@@ -112,7 +111,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 			Value: databaseID.Name(),
 		},
 		"server": {
-			LocalID:     outputresource.LocalIDAzureSqlServer,
+			LocalID:     rpv1.LocalIDAzureSqlServer,
 			JSONPointer: "/properties/fullyQualifiedDomainName",
 		},
 	}
@@ -120,8 +119,8 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	// We don't provide any secret values here because SQL requires the USER to manage
 	// the usernames and passwords. We don't have access!
 	return renderers.RendererOutput{
-		Resources:      []outputresource.OutputResource{serverResource, databaseResource},
+		Resources:      []rpv1.OutputResource{serverResource, databaseResource},
 		ComputedValues: computedValues,
-		SecretValues:   map[string]rp.SecretValueReference{},
+		SecretValues:   map[string]rpv1.SecretValueReference{},
 	}, nil
 }

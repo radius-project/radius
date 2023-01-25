@@ -12,7 +12,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,7 +39,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		switch versionedResource.Properties.(type) {
 		case *RecipeDaprSecretStoreProperties:
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			require.Equal(t, "daprSecretStore", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
 		case *ValuesDaprSecretStoreProperties:

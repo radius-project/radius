@@ -15,14 +15,15 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,10 +94,10 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			gatewayInput, gatewayDataModel, _ := getTestModels20220315privatepreview()
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, gatewayInput)
+			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, gatewayInput)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
@@ -234,19 +235,19 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 			gatewayInput := &v20220315privatepreview.GatewayResource{}
-			err := json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), gatewayInput)
+			err := json.Unmarshal(testutil.ReadFixture(tt.versionedInputFile), gatewayInput)
 			require.NoError(t, err)
 
 			gatewayDataModel := &datamodel.Gateway{}
-			err = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), gatewayDataModel)
+			err = json.Unmarshal(testutil.ReadFixture(tt.datamodelFile), gatewayDataModel)
 			require.NoError(t, err)
 			gatewayDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, gatewayInput)
+			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, gatewayInput)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{
