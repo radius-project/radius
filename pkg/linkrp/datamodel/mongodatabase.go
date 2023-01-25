@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -59,11 +60,11 @@ func (r *MongoDatabase) ResourceMetadata() *rp.BasicResourceProperties {
 }
 
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
-	return "Applications.Link/mongoDatabases"
+	return linkrp.MongoDatabasesResourceType
 }
 
 func (mongo *MongoDatabase) ResourceTypeName() string {
-	return "Applications.Link/mongoDatabases"
+	return linkrp.MongoDatabasesResourceType
 }
 
 type MongoDatabaseValuesProperties struct {

@@ -8,7 +8,6 @@ package daprinvokehttproutes
 import (
 	"context"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -33,7 +32,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 	return renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {
-				Value: to.String(&properties.AppId),
+				Value: properties.AppId,
 			},
 		},
 		SecretValues: map[string]rp.SecretValueReference{},
