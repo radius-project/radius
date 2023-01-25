@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/pkg/version"
 )
@@ -61,10 +60,13 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 
 	// setup metrics object
-	httpMetrics := metrics.NewHTTPMetrics(options.ProviderNamespace)
-	if httpMetrics != nil {
-		r.Use(httpMetrics.HTTPMiddleware())
-	}
+	// httpMetrics := metrics.NewHTTPMetrics(options.ProviderNamespace)
+	// if httpMetrics != nil {
+	// 	r.Use(httpMetrics.HTTPMiddleware())
+	// }
+
+	// TODO: Test this
+	r.Use(middleware.MetricsRecorder())
 
 	server := &http.Server{
 		Addr:    options.Address,

@@ -8,16 +8,33 @@ package middleware
 import (
 	"net/http"
 
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // MetricsRecorder is the middleware which collects metrics for incoming server requests.
-
-func MetricsRecorder(route string, h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		span := trace.SpanFromContext(r.Context())
-		span.SetAttributes(semconv.HTTPRouteKey.String(route))
-		h.ServeHTTP(w, r)
-	})
+func MetricsRecorder() func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		// FIXME: Not sure what the operation should be. The second parameter in the NewHandler call.
+		return otelhttp.NewHandler(h, "Radius",
+			// FIXME
+			otelhttp.WithMeterProvider(metric.NewNoopMeterProvider()))
+	}
 }
+
+// // responseWriterInterceptor is a simple wrapper to intercept the statusCode needed for metrics attributes
+// // default response writer doesn't provide the status code of the response
+// type responseWriterInterceptor struct {
+// 	http.ResponseWriter
+// 	statusCode int
+// }
+
+// // Customized response writer to fetch the response status in the middleware
+// func (w *responseWriterInterceptor) WriteHeader(statusCode int) {
+// 	w.statusCode = statusCode
+// 	w.ResponseWriter.WriteHeader(statusCode)
+// }
+
+// func (w *responseWriterInterceptor) Write(p []byte) (int, error) {
+// 	return w.ResponseWriter.Write(p)
+// }

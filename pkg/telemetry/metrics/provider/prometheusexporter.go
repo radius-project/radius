@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	otelmetric "go.opentelemetry.io/otel/metric"
@@ -25,6 +26,9 @@ import (
 type PrometheusExporter struct {
 	// MeterProvider is used in the creation and coordination of Meters
 	MeterProvider otelmetric.MeterProvider
+
+	// Handler is the HTTP handler with basic metrics
+	Handler http.Handler
 }
 
 var prometheusExporter *PrometheusExporter
@@ -77,5 +81,6 @@ func NewPrometheusExporter() (*PrometheusExporter, error) {
 
 	return &PrometheusExporter{
 		MeterProvider: global.MeterProvider(),
+		Handler:       promhttp.Handler(),
 	}, nil
 }

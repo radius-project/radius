@@ -13,7 +13,6 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -39,19 +38,16 @@ func (s *Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	pme, err := provider.GetPrometheusExporter()
-	if err != nil {
-		logger.Error(err, "Failed to configure prometheus metrics client")
-		panic(err)
-	}
+	// pme, err := provider.GetPrometheusExporter()
+	// if err != nil {
+	// 	logger.Error(err, "Failed to configure prometheus metrics client")
+	// 	panic(err)
+	// }
 
 	mux := http.NewServeMux()
+	handler := otelhttp.NewHandler(mux, "Radius")
 
-	//new Handler change TODO!
-	otelHandler := otelhttp.NewHandler(http.HandlerFunc(helloHandler), "Hello")
-	http.Handle("/hello", otelHandler)
-
-	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
+	mux.HandleFunc(s.Options.Config.Prometheus.Path, handler.ServeHTTP)
 	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
 	server := &http.Server{
 		Addr:    ":" + metricsPort,
@@ -69,7 +65,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("Metrics Server listening on localhost port: '%s'...", metricsPort))
-	err = server.ListenAndServe()
+	err := server.ListenAndServe()
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")
