@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -79,7 +78,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	outputResources = append(outputResources, gatewayObject)
 
-	computedValues := map[string]rp.ComputedValueReference{
+	computedValues := map[string]outputresource.ComputedValueReference{
 		"url": {
 			Value: publicEndpoint,
 		},

@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -201,7 +200,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]rp.SecretValueReference{
+		SecretValues: map[string]outputresource.SecretValueReference{
 			renderers.UsernameStringValue:   {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},

@@ -21,8 +21,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -38,7 +39,7 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8s client.Client) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient sv.SecretValueClient, k8s client.Client) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8s: k8s}
 }
 
@@ -47,14 +48,14 @@ var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
 	sp           dataprovider.DataStorageProvider
-	secretClient rp.SecretValueClient
+	secretClient sv.SecretValueClient
 	k8s          client.Client
 }
 
 type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]any
-	SecretValues   map[string]rp.SecretValueReference
+	SecretValues   map[string]outputresource.SecretValueReference
 	RecipeData     datamodel.RecipeData
 }
 
@@ -63,7 +64,7 @@ type ResourceData struct {
 	Resource        v1.ResourceDataModel
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
-	SecretValues    map[string]rp.SecretValueReference
+	SecretValues    map[string]outputresource.SecretValueReference
 	RecipeData      datamodel.RecipeData
 }
 
@@ -331,7 +332,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData datamodel.RecipeData) (any, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference outputresource.SecretValueReference, recipeData datamodel.RecipeData) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil

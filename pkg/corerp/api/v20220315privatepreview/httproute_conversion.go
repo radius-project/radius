@@ -8,7 +8,8 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -60,7 +61,7 @@ func (dst *HTTPRouteResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(route.Tags)
 	dst.Properties = &HTTPRouteProperties{
 		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(route.Properties.Status.OutputResources),
+			OutputResources: outputresource.BuildExternalOutputResources(route.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(route.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(route.Properties.Application),

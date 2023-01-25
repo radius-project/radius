@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -64,7 +63,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 				Value: kubernetes.NormalizeResourceName(resource.Name),
 			},
 		},
-		SecretValues: map[string]rp.SecretValueReference{},
+		SecretValues: map[string]outputresource.SecretValueReference{},
 	}, nil
 
 }

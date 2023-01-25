@@ -30,7 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -162,7 +162,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, roles...)
 	}
 
-	computedValues := map[string]rp.ComputedValueReference{}
+	computedValues := map[string]outputresource.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
 	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, roles)
@@ -183,7 +183,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rp.ComputedValueReference, resource *datamodel.ContainerResource, roles []outputresource.OutputResource) ([]outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]outputresource.ComputedValueReference, resource *datamodel.ContainerResource, roles []outputresource.OutputResource) ([]outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -421,7 +421,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			deps = append(deps, outputresource.Dependency{LocalID: role.LocalID})
 		}
 
-		computedValues[handlers.IdentityProperties] = rp.ComputedValueReference{
+		computedValues[handlers.IdentityProperties] = outputresource.ComputedValueReference{
 			Value: options.Environment.Identity,
 			Transformer: func(r v1.DataModelInterface, cv map[string]any) error {
 				ei, err := handlers.GetMapValue[*rp.IdentitySettings](cv, handlers.IdentityProperties)
@@ -441,7 +441,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			},
 		}
 
-		computedValues[handlers.UserAssignedIdentityIDKey] = rp.ComputedValueReference{
+		computedValues[handlers.UserAssignedIdentityIDKey] = outputresource.ComputedValueReference{
 			LocalID:           outputresource.LocalIDUserAssignedManagedIdentity,
 			PropertyReference: handlers.UserAssignedIdentityIDKey,
 			Transformer: func(r v1.DataModelInterface, cv map[string]any) error {

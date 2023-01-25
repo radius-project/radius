@@ -5,7 +5,9 @@
 
 package datamodel
 
-import "github.com/project-radius/radius/pkg/rp"
+import (
+	"github.com/project-radius/radius/pkg/rp/outputresource"
+)
 
 // LinkMetadata represents internal DataModel properties common to all link types.
 type LinkMetadata struct {
@@ -16,5 +18,5 @@ type LinkMetadata struct {
 	ComputedValues map[string]any `json:"computedValues,omitempty"`
 
 	// Stores action to retrieve secret values. For Azure, connectionstring is accessed through cosmos listConnectionString operation, if secrets are not provided as input
-	SecretValues map[string]rp.SecretValueReference `json:"secretValues,omitempty"`
+	SecretValues map[string]outputresource.SecretValueReference `json:"secretValues,omitempty"`
 }

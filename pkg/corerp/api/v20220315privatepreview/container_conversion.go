@@ -10,7 +10,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
@@ -209,7 +210,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(c.Properties.Status.OutputResources),
+			OutputResources: outputresource.BuildExternalOutputResources(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(c.Properties.Application),

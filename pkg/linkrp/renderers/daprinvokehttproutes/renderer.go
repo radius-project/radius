@@ -11,7 +11,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -35,6 +35,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 				Value: properties.AppId,
 			},
 		},
-		SecretValues: map[string]rp.SecretValueReference{},
+		SecretValues: map[string]outputresource.SecretValueReference{},
 	}, nil
 }

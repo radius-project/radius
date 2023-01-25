@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package rp
+package datamodel
 
 import (
 	"testing"

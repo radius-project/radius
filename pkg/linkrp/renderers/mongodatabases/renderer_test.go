@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -148,7 +148,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]outputresource.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
 		renderers.UsernameStringValue:   {Value: userName},
 		renderers.PasswordStringHolder:  {Value: password},

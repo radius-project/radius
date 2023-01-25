@@ -11,7 +11,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -41,7 +40,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options 
 	}, nil
 }
 
-func MakeSecretsAndValues(name string, properties datamodel.ExtenderProperties) (map[string]renderers.ComputedValueReference, map[string]rp.SecretValueReference) {
+func MakeSecretsAndValues(name string, properties datamodel.ExtenderProperties) (map[string]renderers.ComputedValueReference, map[string]outputresource.SecretValueReference) {
 	computedValueReferences := map[string]renderers.ComputedValueReference{}
 	for k, v := range properties.AdditionalProperties {
 		computedValueReferences[k] = renderers.ComputedValueReference{
@@ -53,9 +52,9 @@ func MakeSecretsAndValues(name string, properties datamodel.ExtenderProperties) 
 	}
 
 	// Create secret value references to point to the secret output resources created above
-	secretValues := map[string]rp.SecretValueReference{}
+	secretValues := map[string]outputresource.SecretValueReference{}
 	for k, v := range properties.Secrets {
-		secretValues[k] = rp.SecretValueReference{
+		secretValues[k] = outputresource.SecretValueReference{
 			Value: v.(string),
 		}
 	}

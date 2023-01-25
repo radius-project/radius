@@ -30,8 +30,9 @@ import (
 	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -47,12 +48,12 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error)
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (outputresource.DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient sv.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
@@ -61,7 +62,7 @@ var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
 	sp           dataprovider.DataStorageProvider
-	secretClient rp.SecretValueClient
+	secretClient sv.SecretValueClient
 	// k8sClient is the Kubernetes controller runtime client.
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
@@ -73,7 +74,7 @@ type ResourceData struct {
 	Resource        v1.DataModelInterface
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
-	SecretValues    map[string]rp.SecretValueReference
+	SecretValues    map[string]outputresource.SecretValueReference
 	AppID           *resources.ID      // Application ID for which the resource is created
 	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
@@ -218,7 +219,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return nil
 }
 
-func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (outputresource.DeploymentOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldOperationID, id.String())
 
 	// Deploy
@@ -227,7 +228,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		return rp.DeploymentOutput{}, err
+		return outputresource.DeploymentOutput{}, err
 	}
 
 	deployedOutputResources := []outputresource.OutputResource{}
@@ -242,11 +243,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
-			return rp.DeploymentOutput{}, err
+			return outputresource.DeploymentOutput{}, err
 		}
 
 		if outputResource.Identity.ResourceType == nil {
-			return rp.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
+			return outputresource.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 		}
 
 		// Build database resource - copy updated properties to Resource field
@@ -273,12 +274,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	for _, cv := range rendererOutput.ComputedValues {
 		if cv.Transformer != nil {
 			if err := cv.Transformer(rendererOutput.RadiusResource, computedValues); err != nil {
-				return rp.DeploymentOutput{}, err
+				return outputresource.DeploymentOutput{}, err
 			}
 		}
 	}
 
-	return rp.DeploymentOutput{
+	return outputresource.DeploymentOutput{
 		DeployedOutputResources: deployedOutputResources,
 		ComputedValues:          computedValues,
 		SecretValues:            rendererOutput.SecretValues,
@@ -354,7 +355,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency Reso
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceData, reference rp.SecretValueReference) (any, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceData, reference outputresource.SecretValueReference) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
@@ -575,7 +576,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]outputresource.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)

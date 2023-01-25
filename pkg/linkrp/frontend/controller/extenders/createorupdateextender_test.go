@@ -19,7 +19,6 @@ import (
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -27,7 +26,7 @@ import (
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
-		SecretValues: map[string]rp.SecretValueReference{
+		SecretValues: map[string]outputresource.SecretValueReference{
 			"secretname": {
 				Value: "secretvalue",
 			},

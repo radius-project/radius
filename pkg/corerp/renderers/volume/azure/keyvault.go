@@ -12,7 +12,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -116,7 +115,7 @@ func (r *KeyVaultRenderer) Render(ctx context.Context, resource v1.DataModelInte
 		return nil, errCreateSecretResource
 	}
 
-	computedValues := map[string]rp.ComputedValueReference{
+	computedValues := map[string]outputresource.ComputedValueReference{
 		SPCVolumeObjectSpecKey: {
 			Value: keyVaultObjectsSpec,
 		},
@@ -125,7 +124,7 @@ func (r *KeyVaultRenderer) Render(ctx context.Context, resource v1.DataModelInte
 	return &renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{},
 		ComputedValues: computedValues,
-		SecretValues:   map[string]rp.SecretValueReference{},
+		SecretValues:   map[string]outputresource.SecretValueReference{},
 	}, nil
 }
 

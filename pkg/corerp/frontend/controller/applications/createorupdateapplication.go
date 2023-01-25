@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/resources"

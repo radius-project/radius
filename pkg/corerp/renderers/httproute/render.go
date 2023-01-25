@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -42,7 +41,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		route.Properties.Port = renderers.DefaultPort
 	}
 
-	computedValues := map[string]rp.ComputedValueReference{
+	computedValues := map[string]outputresource.ComputedValueReference{
 		"hostname": {
 			Value: kubernetes.NormalizeResourceName(route.Name),
 		},
