@@ -14,35 +14,36 @@ import (
 
 // CreateRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
 func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespace, applicationID, applicationNamespace string) (*datamodel.RecipeContext, error) {
-	linkContext := datamodel.RecipeContext{}
+	recipeContext := datamodel.RecipeContext{}
 
 	parsedLink, err := resources.ParseResource(resourceID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse resourceID : %q while building the context parameter %q", resourceID, err.Error())
+		return nil, fmt.Errorf("failed to parse resourceID: %q while building the recipe context parameter %w", resourceID, err)
 	}
-	linkContext.Resource.ID = resourceID
-	linkContext.Resource.Name = parsedLink.Name()
-	linkContext.Resource.Type = parsedLink.Type()
+	recipeContext.Resource.ID = resourceID
+	recipeContext.Resource.Name = parsedLink.Name()
+	recipeContext.Resource.Type = parsedLink.Type()
 
-	linkContext.Environment.ID = environmentID
+	recipeContext.Environment.ID = environmentID
 	parsedEnv, err := resources.ParseResource(environmentID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse environmentID : %q while building the context parameter %q", environmentID, err.Error())
+		return nil, fmt.Errorf("failed to parse environmentID: %q while building the recipe context parameter %w", environmentID, err)
 	}
-	linkContext.Environment.Name = parsedEnv.Name()
-	linkContext.Runtime.Kubernetes.Namespace = environmentNamespace
+	recipeContext.Environment.Name = parsedEnv.Name()
+	recipeContext.Runtime.Kubernetes.Namespace = environmentNamespace
+	recipeContext.Runtime.Kubernetes.EnvironmentNamespace = environmentNamespace
 
 	if applicationID != "" {
 		parsedApp, err := resources.ParseResource(applicationID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse applicationID : %q while building the context parameter %q", applicationID, err.Error())
+			return nil, fmt.Errorf("failed to parse applicationID :%q while building the recipe context parameter %w", applicationID, err)
 		}
-		linkContext.Application.ID = applicationID
-		linkContext.Application.Name = parsedApp.Name()
-		linkContext.Runtime.Kubernetes.Namespace = applicationNamespace
-		linkContext.Runtime.Kubernetes.EnvironmentNamespace = environmentNamespace
+		recipeContext.Application.ID = applicationID
+		recipeContext.Application.Name = parsedApp.Name()
+		recipeContext.Runtime.Kubernetes.Namespace = applicationNamespace
+		recipeContext.Runtime.Kubernetes.EnvironmentNamespace = environmentNamespace
 	}
-	return &linkContext, nil
+	return &recipeContext, nil
 }
 
 // createRecipeParameters creates the parameters to be passed for recipe deployment after handling conflicts in parameters set by operator and developer

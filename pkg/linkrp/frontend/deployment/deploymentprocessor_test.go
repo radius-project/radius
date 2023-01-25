@@ -66,6 +66,24 @@ var (
 	}
 )
 
+func buildEnvScopedMongoResource() (testResource datamodel.MongoDatabase) {
+	testResource = datamodel.MongoDatabase{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   mongoLinkID,
+				Name: mongoLinkName,
+				Type: mongoLinkType,
+			},
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: envID,
+			},
+		},
+	}
+	testResource.Properties.Resource = cosmosMongoID
+	return
+}
 func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase) {
 	testResource = datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
@@ -442,6 +460,45 @@ func Test_Render(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildEnvironmentResource("", nil), nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
+
+		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
+		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
+		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
+		require.Equal(t, testRendererOutput.RecipeContext.Resource, rendererOutput.RecipeContext.Resource)
+		require.Equal(t, testRendererOutput.RecipeContext.Application, rendererOutput.RecipeContext.Application)
+		require.Equal(t, testRendererOutput.RecipeContext.Environment, rendererOutput.RecipeContext.Environment)
+		require.Equal(t, testRendererOutput.RecipeContext.Runtime, rendererOutput.RecipeContext.Runtime)
+	})
+
+	t.Run("verify environment scoped renderer success", func(t *testing.T) {
+		testResource := buildEnvScopedMongoResource()
+		testRendererOutput := buildRendererOutputMongo(modeResource)
+		env, err := resources.ParseResource(testResource.Properties.Environment)
+		require.NoError(t, err)
+		testRendererOutput.RecipeContext = datamodel.RecipeContext{
+			Resource: datamodel.Resource{
+				ResourceInfo: datamodel.ResourceInfo{
+					ID:   testResource.ID,
+					Name: testResource.Name,
+				},
+				Type: testResource.Type,
+			},
+			Environment: datamodel.ResourceInfo{
+				ID:   testResource.Properties.Environment,
+				Name: env.Name(),
+			},
+			Runtime: datamodel.Runtime{
+				Kubernetes: datamodel.Kubernetes{
+					Namespace:            "radius-test-env",
+					EnvironmentNamespace: "radius-test-env",
+				},
+			},
+		}
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildEnvironmentResource("", nil), nil)
 
 		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.NoError(t, err)

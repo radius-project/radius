@@ -237,7 +237,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-mongodb-recipe-parameters",
+						Name: name,
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
@@ -247,19 +247,19 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongo-recipe-param-db",
+						Name: "mdb-recipe-param-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
-								Provider:           resourcemodel.ProviderAzure,
-								LocalID:            outputresource.LocalIDAzureCosmosAccount,
-								OutputResourceName: "acnt-developer-" + rg,
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+								Name:     "acnt-developer-" + rg,
 							},
 							{
-								Provider:           resourcemodel.ProviderAzure,
-								LocalID:            outputresource.LocalIDAzureCosmosDBMongo,
-								OutputResourceName: "mdb-developer-" + rg,
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+								Name:     "mdb-developer-" + rg,
 							},
 						},
 					},
@@ -302,7 +302,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-mongodb-recipe-context",
+						Name: name,
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
@@ -312,19 +312,19 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "ctx-" + rg,
+						Name: "mdb-ctx-" + rg,
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
-								Provider:           resourcemodel.ProviderAzure,
-								LocalID:            outputresource.LocalIDAzureCosmosAccount,
-								OutputResourceName: "account-ctx-" + rg,
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+								Name:     "account-mdb-ctx-" + rg,
 							},
 							{
-								Provider:           resourcemodel.ProviderAzure,
-								LocalID:            outputresource.LocalIDAzureCosmosDBMongo,
-								OutputResourceName: "mongodb-ctx-" + rg,
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+								Name:     "mongodb-mdb-ctx-" + rg,
 							},
 						},
 					},

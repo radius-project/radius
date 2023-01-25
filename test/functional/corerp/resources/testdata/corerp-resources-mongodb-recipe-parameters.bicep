@@ -68,7 +68,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongo-recipe-param-db'
+  name: 'mdb-recipe-param-db'
   location: 'global'
   properties: {
     application: app.id

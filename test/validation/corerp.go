@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
@@ -41,30 +42,24 @@ const (
 )
 
 type CoreRPResource struct {
-	Type               string
-	Name               string
-	App                string
-	OutputResources    []OutputResourceResponse
-	OutputResourceName string // OutputResourceName is used when validating the output resourceID
+	Type            string
+	Name            string
+	App             string
+	OutputResources []OutputResourceResponse
 }
 
 // Output resource fields returned as a part of get/list response payload for Radius resources
 // https://github.com/project-radius/radius/blob/main/pkg/rp/types.go#L173
 type OutputResourceResponse struct {
-	LocalID            string
-	Provider           string
-	Identity           any
-	OutputResourceName string // OutputResourceName is used when validating the output resourceID
+	LocalID  string
+	Provider string
+	Identity any
+	Name     string // Name of the underlying resource within its platform (Azure/AWS/Kubernetes)
 }
 
 type CoreRPResourceSet struct {
 	Resources []CoreRPResource
 }
-
-const (
-	ProviderAzure      = "azure"
-	ProviderKubernetes = "kubernetes"
-)
 
 func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource CoreRPResource) error {
 	if resource.Type == EnvironmentsResource {
@@ -147,15 +142,20 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 					for _, actualOutputResource := range outputResources {
 						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
 							found = true
-							// if the test has the OutputResourceName set then validate the resource name based on the provider.
+							// if the test has the OutputResourceName set then validate the resource name based on the provider info
 							// we might not need the provider check if we have UCP id for kubernetes resources.
-							if expectedOutputResource.OutputResourceName != "" && expectedOutputResource.Provider == ProviderAzure {
-								identity := actualOutputResource.Identity.(map[string]interface{})
-								actualID := identity["id"].(string)
-								actualResource, err := resources.ParseResource(actualID)
-								if err != nil || expectedOutputResource.OutputResourceName != actualResource.Name() {
-									found = false
-									break
+							if expectedOutputResource.Name != "" && expectedOutputResource.Provider == resourcemodel.ProviderAzure {
+								if expectedOutputResource.Provider == resourcemodel.ProviderAzure {
+									identity := actualOutputResource.Identity.(map[string]interface{})
+									actualID := identity["id"].(string)
+									actualResource, err := resources.ParseResource(actualID)
+									require.NoError(t, err)
+									require.Equal(t, expectedOutputResource.Name, actualResource.Name())
+								}
+								if expectedOutputResource.Provider == resourcemodel.ProviderKubernetes {
+									identity := actualOutputResource.Identity.(map[string]interface{})
+									atualName := identity["name"].(string)
+									require.Equal(t, expectedOutputResource.Name, atualName)
 								}
 							}
 							break

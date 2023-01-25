@@ -50,14 +50,18 @@ type LinkRecipe struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
-// LinkMode Specifies how to build the state store resource. Options are to build automatically via ‘recipe’ or ‘resource’, or build manually via ‘values’. Selection determines which set of fields to additionally require.
+// LinkMode specifies how to build a Link. Options are to build automatically via ‘recipe’ or ‘resource’, or build manually via ‘values’. Selection determines which set of fields to additionally require.
 type LinkMode string
 
 const (
-	LinkModeRecipe         LinkMode = "recipe"   // mode recipe for link deployment
-	LinkModeResource       LinkMode = "resource" // mode resource for link deployment
-	LinkModeValues         LinkMode = "values"   // mode values for link deployment
-	RecipeContextParameter string   = "context"  // parameter context for recipe deployment
+	// LinkModeRecipe is the recipe mode for link deployment
+	LinkModeRecipe LinkMode = "recipe"
+	// LinkModeResource is the resource mode for link deployment
+	LinkModeResource LinkMode = "resource"
+	// LinkModeResource is the values mode for link deployment
+	LinkModeValues LinkMode = "values"
+	// RecipeContextParameter is the parameter context for recipe deployment
+	RecipeContextParameter string = "context"
 )
 
 // RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
@@ -70,18 +74,16 @@ type RecipeContext struct {
 }
 
 // Resource contains the information needed to deploy a recipe.
+// In the case the resource is a Link, it represents the Link's id, name and type.
 type Resource struct {
 	ResourceInfo
-	// Type of the resource
 	Type string `json:"type"`
 }
 
 // ResourceInfo name and id of the resource
 type ResourceInfo struct {
-	// Name of the resource
 	Name string `json:"name"`
-	// ID of the resource
-	ID string `json:"id"`
+	ID   string `json:"id"`
 }
 
 type Runtime struct {
@@ -89,6 +91,8 @@ type Runtime struct {
 }
 
 type Kubernetes struct {
-	Namespace            string `json:"namespace,omitempty"`            // This is set to the applicationNamespace when the Link is application-scoped, and set to the environmentNamespace when the Link is environment scoped
-	EnvironmentNamespace string `json:"environmentNamespace,omitempty"` // This is set to environment namespace when a resource is application-scoped.
+	// Namespace is set to the applicationNamespace when the Link is application-scoped, and set to the environmentNamespace when the Link is environment scoped
+	Namespace string `json:"namespace,omitempty"`
+	// EnvironmentNamespace is set to environment namespace.
+	EnvironmentNamespace string `json:"environmentNamespace"`
 }

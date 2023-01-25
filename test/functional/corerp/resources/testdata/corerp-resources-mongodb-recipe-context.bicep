@@ -68,7 +68,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'ctx-${rg}'
+  name: 'mdb-ctx-${rg}'
   location: 'global'
   properties: {
     application: app.id

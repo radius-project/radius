@@ -6,7 +6,6 @@
 package handlers
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -126,7 +125,5 @@ func Test_ContextParameterError(t *testing.T) {
 	envID := "error-env"
 	linkContext, err := CreateRecipeContextParameter("/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0", envID, "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
 	require.Error(t, err)
-	errMsg := fmt.Sprintf("%s is not a valid resource id", "'error-env'")
-	require.Equal(t, fmt.Errorf("failed to parse environmentID : %q while building the context parameter %q", envID, errMsg), err)
 	require.Nil(t, linkContext)
 }
