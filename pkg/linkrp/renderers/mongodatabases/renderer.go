@@ -9,11 +9,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -78,7 +77,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 	recipeData := datamodel.RecipeData{
 		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
-		APIVersion:       clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+		APIVersion:       clientv2.DocumentDBManagementClientAPIVersion,
 	}
 
 	secretValues := buildSecretValueReferenceForAzure(resource.Properties)
@@ -152,7 +151,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 		},
 		RadiusManaged: to.Ptr(false),
 	}
-	cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+	cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clientv2.DocumentDBManagementClientAPIVersion)
 
 	databaseResource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
@@ -167,7 +166,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			},
 		},
 	}
-	databaseResource.Identity = resourcemodel.NewARMIdentity(&databaseResource.ResourceType, cosmosMongoDBID.String(), clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+	databaseResource.Identity = resourcemodel.NewARMIdentity(&databaseResource.ResourceType, cosmosMongoDBID.String(), clientv2.DocumentDBManagementClientAPIVersion)
 
 	return renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{cosmosAccountResource, databaseResource},

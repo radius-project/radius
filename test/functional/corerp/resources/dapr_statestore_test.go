@@ -142,6 +142,6 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 			},
 		},
 	})
-
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 	test.Test(t)
 }
