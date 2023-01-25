@@ -13,13 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/go-logr/logr"
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
-	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
+	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
@@ -34,6 +31,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
+	"github.com/go-logr/logr"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -126,7 +126,7 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         cosmosAccountID,
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
 			RadiusManaged: &radiusManaged,
@@ -139,7 +139,7 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         cosmosMongoID,
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
 			Resource: map[string]any{
@@ -207,7 +207,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 					"name": "account-mongo-db",
 				},
 			},
-			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+			APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 			Provider:   resourcemodel.ProviderAzure,
 		}
 	}
@@ -253,13 +253,13 @@ func buildApplicationResource(namespace string) *store.Object {
 		namespace = "radius-test"
 	}
 
-	app := corerpDatamodel.Application{
+	app := corerp_dm.Application{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID: applicationID,
 			},
 		},
-		Properties: corerpDatamodel.ApplicationProperties{
+		Properties: corerp_dm.ApplicationProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
 				Status: rp.ResourceStatus{
 					Compute: &rp.EnvironmentCompute{
@@ -281,14 +281,14 @@ func buildApplicationResource(namespace string) *store.Object {
 	}
 }
 
-func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Providers) *store.Object {
-	environment := corerpDatamodel.Environment{
+func buildEnvironmentResource(recipeName string, providers *corerp_dm.Providers) *store.Object {
+	environment := corerp_dm.Environment{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
 		},
-		Properties: corerpDatamodel.EnvironmentProperties{
+		Properties: corerp_dm.EnvironmentProperties{
 			Compute: rp.EnvironmentCompute{
 				KubernetesCompute: rp.KubernetesComputeProperties{
 					Namespace: "radius-test",
@@ -297,7 +297,7 @@ func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Prov
 		},
 	}
 	if recipeName != "" {
-		environment.Properties.Recipes = map[string]corerpDatamodel.EnvironmentRecipeProperties{
+		environment.Properties.Recipes = map[string]corerp_dm.EnvironmentRecipeProperties{
 			recipeName: {
 				LinkType:     "Applications.Link/MongoDatabases",
 				TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
@@ -430,7 +430,7 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
-		er := buildEnvironmentResource(recipeName, &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		er := buildEnvironmentResource(recipeName, &corerp_dm.Providers{Azure: corerp_dm.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
@@ -1072,7 +1072,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("successfully get recipe metadata", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource(recipeName, &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		er := buildEnvironmentResource(recipeName, &corerp_dm.Providers{Azure: corerp_dm.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 
@@ -1085,7 +1085,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 
 	t.Run("fail to get recipe metadata", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource("cosmos-test", &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		er := buildEnvironmentResource("cosmos-test", &corerp_dm.Providers{Azure: corerp_dm.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 

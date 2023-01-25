@@ -9,9 +9,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -19,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,7 +63,7 @@ func Test_Render_Success(t *testing.T) {
 			},
 			Data: resourcemodel.ARMIdentity{
 				ID:         "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
-				APIVersion: clients.GetAPIVersionFromUserAgent(redis.UserAgent()),
+				APIVersion: clientv2.RedisManagementClientAPIVersion,
 			},
 		},
 	}
