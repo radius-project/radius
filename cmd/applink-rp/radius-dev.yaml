@@ -20,5 +20,5 @@ server:
   enableArmAuth: false
  # Logging configuration   
 logging:
-  logLevel: "info"
+  level: "info"
   json: true

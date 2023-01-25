@@ -34,5 +34,5 @@ featureFlags:
   - "PLACEHOLDER"
    # Logging configuration   
 logging:
-  logLevel: "info"
+  log: "info"
   json: true

@@ -25,5 +25,6 @@ workerServer:
 ucp:
   kind: kubernetes
 logging:
-  logLevel: "info"
-  json: true
+  level: "info"
+  json: false
+  
