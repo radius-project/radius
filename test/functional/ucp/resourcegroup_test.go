@@ -142,6 +142,6 @@ func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 
 	res, err := roundTripper.RoundTrip(deleteRgRequest)
 	require.NoError(t, err, "")
-	require.Equal(t, http.StatusNoContent, res.StatusCode)
+	require.Equal(t, http.StatusOK, res.StatusCode)
 	t.Logf("Resource group: %s deleted successfully", url)
 }
