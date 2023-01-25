@@ -41,7 +41,6 @@ func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespac
 		recipeContext.Application.ID = applicationID
 		recipeContext.Application.Name = parsedApp.Name()
 		recipeContext.Runtime.Kubernetes.Namespace = applicationNamespace
-		recipeContext.Runtime.Kubernetes.EnvironmentNamespace = environmentNamespace
 	}
 	return &recipeContext, nil
 }

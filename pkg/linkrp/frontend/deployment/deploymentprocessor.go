@@ -105,7 +105,6 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	var applicationNamespace string
 	kubeNamespace := envMetadata.Namespace
 	// Override environment-scope namespace with application-scope kubernetes namespace.
 	if linkProperties.Application != "" {
@@ -116,12 +115,11 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		c := app.Properties.Status.Compute
 		if c != nil && c.Kind == rp.KubernetesComputeKind {
 			kubeNamespace = c.KubernetesCompute.Namespace
-			applicationNamespace = kubeNamespace
 		}
 	}
 
 	// create the context object to be passed to the recipe deployment
-	recipeContext, err := handlers.CreateRecipeContextParameter(id.String(), linkProperties.Environment, envMetadata.Namespace, linkProperties.Application, applicationNamespace)
+	recipeContext, err := handlers.CreateRecipeContextParameter(id.String(), linkProperties.Environment, envMetadata.Namespace, linkProperties.Application, kubeNamespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
