@@ -13,10 +13,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-logr/logr"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/logging"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	rp_util "github.com/project-radius/radius/pkg/rp/util"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -27,17 +29,14 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 
+	"github.com/project-radius/radius/pkg/linkrp"
 	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/logging"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
-	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
+	"github.com/go-logr/logr"
 	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -47,12 +46,12 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error)
-	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)
+	Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient sv.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
@@ -61,7 +60,7 @@ var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
 	sp           dataprovider.DataStorageProvider
-	secretClient rp.SecretValueClient
+	secretClient sv.SecretValueClient
 	// k8sClient is the Kubernetes controller runtime client.
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
@@ -71,9 +70,9 @@ type deploymentProcessor struct {
 type ResourceData struct {
 	ID              resources.ID // resource ID
 	Resource        v1.DataModelInterface
-	OutputResources []outputresource.OutputResource
+	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
-	SecretValues    map[string]rp.SecretValueReference
+	SecretValues    map[string]rpv1.SecretValueReference
 	AppID           *resources.ID      // Application ID for which the resource is created
 	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
@@ -124,7 +123,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 
 	c := app.Properties.Status.Compute
 	// Override environment-scope namespace with application-scope kubernetes namespace.
-	if c != nil && c.Kind == rp.KubernetesComputeKind {
+	if c != nil && c.Kind == rpv1.KubernetesComputeKind {
 		envOptions.Namespace = c.KubernetesCompute.Namespace
 	}
 
@@ -218,19 +217,19 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return nil
 }
 
-func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldOperationID, id.String())
 
 	// Deploy
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
 
 	// Order output resources in deployment dependency order
-	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
+	orderedOutputResources, err := rpv1.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		return rp.DeploymentOutput{}, err
+		return rpv1.DeploymentOutput{}, err
 	}
 
-	deployedOutputResources := []outputresource.OutputResource{}
+	deployedOutputResources := []rpv1.OutputResource{}
 
 	// Values consumed by other Radius resource types through connections
 	computedValues := map[string]any{}
@@ -242,19 +241,19 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
-			return rp.DeploymentOutput{}, err
+			return rpv1.DeploymentOutput{}, err
 		}
 
 		if outputResource.Identity.ResourceType == nil {
-			return rp.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
+			return rpv1.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 		}
 
 		// Build database resource - copy updated properties to Resource field
-		outputResource := outputresource.OutputResource{
+		outputResource := rpv1.OutputResource{
 			LocalID:      outputResource.LocalID,
 			ResourceType: outputResource.ResourceType,
 			Identity:     outputResource.Identity,
-			Status: outputresource.OutputResourceStatus{
+			Status: rpv1.OutputResourceStatus{
 				ProvisioningState:        string(v1.ProvisioningStateProvisioned),
 				ProvisioningErrorDetails: "",
 			},
@@ -273,19 +272,19 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	for _, cv := range rendererOutput.ComputedValues {
 		if cv.Transformer != nil {
 			if err := cv.Transformer(rendererOutput.RadiusResource, computedValues); err != nil {
-				return rp.DeploymentOutput{}, err
+				return rpv1.DeploymentOutput{}, err
 			}
 		}
 	}
 
-	return rp.DeploymentOutput{
+	return rpv1.DeploymentOutput{
 		DeployedOutputResources: deployedOutputResources,
 		ComputedValues:          computedValues,
 		SecretValues:            rendererOutput.SecretValues,
 	}, nil
 }
 
-func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []outputresource.OutputResource) error {
+func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []rpv1.OutputResource) error {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldOperationID, id)
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
@@ -354,13 +353,13 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency Reso
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceData, reference rp.SecretValueReference) (any, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceData, reference rpv1.SecretValueReference) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
 	}
 
-	var match *outputresource.OutputResource
+	var match *rpv1.OutputResource
 	for _, outputResource := range dependency.OutputResources {
 		if outputResource.LocalID == reference.LocalID {
 			copy := outputResource
@@ -390,7 +389,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 
 	// Extract compute info
 	switch env.Properties.Compute.Kind {
-	case rp.KubernetesComputeKind:
+	case rpv1.KubernetesComputeKind:
 		kubeProp := &env.Properties.Compute.KubernetesCompute
 
 		if kubeProp.Namespace == "" {
@@ -575,7 +574,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)

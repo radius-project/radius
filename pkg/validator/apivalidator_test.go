@@ -13,10 +13,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/swagger"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 )
 
@@ -437,7 +438,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			// Load test fixture.
 			var body []byte = []byte("")
 			if tc.contentFilePath != "" {
-				body = radiustesting.ReadFixture(tc.contentFilePath)
+				body = testutil.ReadFixture(tc.contentFilePath)
 			}
 
 			if tc.apiVersion != "" {

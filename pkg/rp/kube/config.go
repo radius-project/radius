@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package k8sauth
+package kube
 
 import (
 	"errors"

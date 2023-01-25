@@ -12,12 +12,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	store "github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,10 +46,10 @@ func TestDefaultAsyncDelete(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
+			req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
 			req.Header.Set("If-Match", tt.etag)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := loadTestResurce()
 
 			appDataModel.InternalMetadata.AsyncProvisioningState = tt.curState

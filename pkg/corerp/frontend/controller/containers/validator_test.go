@@ -11,7 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,8 +40,8 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 			desc: "user defined identity not supported",
 			newResource: &datamodel.ContainerResource{
 				Properties: datamodel.ContainerProperties{
-					Identity: &rp.IdentitySettings{
-						Kind:       rp.AzureIdentityWorkload,
+					Identity: &rpv1.IdentitySettings{
+						Kind:       rpv1.AzureIdentityWorkload,
 						OIDCIssuer: "https://issuer",
 					},
 				},
@@ -55,8 +55,8 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 			},
 			oldResource: &datamodel.ContainerResource{
 				Properties: datamodel.ContainerProperties{
-					Identity: &rp.IdentitySettings{
-						Kind:       rp.AzureIdentityWorkload,
+					Identity: &rpv1.IdentitySettings{
+						Kind:       rpv1.AzureIdentityWorkload,
 						OIDCIssuer: "https://oidcurl/id",
 						Resource:   "identity-resource-id",
 					},
@@ -64,8 +64,8 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 			},
 			mutatedResource: &datamodel.ContainerResource{
 				Properties: datamodel.ContainerProperties{
-					Identity: &rp.IdentitySettings{
-						Kind:       rp.AzureIdentityWorkload,
+					Identity: &rpv1.IdentitySettings{
+						Kind:       rpv1.AzureIdentityWorkload,
 						OIDCIssuer: "https://oidcurl/id",
 						Resource:   "identity-resource-id",
 					},

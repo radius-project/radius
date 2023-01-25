@@ -12,7 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 )
 
 // ApplicationModel defines the set of supported resource types and related features.
@@ -68,7 +68,7 @@ type RadiusResourceModel struct {
 type OutputResourceModel struct {
 	ResourceType           resourcemodel.ResourceType
 	ResourceHandler        handlers.ResourceHandler
-	SecretValueTransformer rp.SecretValueTransformer
+	SecretValueTransformer sv.SecretValueTransformer
 }
 
 type RecipeModel struct {
