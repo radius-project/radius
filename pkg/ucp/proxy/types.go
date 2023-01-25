@@ -110,6 +110,8 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
 		logger := logr.FromContextOrDiscard(ctx)
+		logger.Info(fmt.Sprintf("#### Async header from response before conversion: %s", resp.Header[AzureAsyncOperationHeader]))
+		logger.Info(fmt.Sprintf("#### Location header from response before conversion: %s", resp.Header[LocationHeader]))
 
 		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
 			// This is an Async Response with a Azure-AsyncOperation Header
@@ -124,8 +126,8 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 				return err
 			}
 		}
-		logger.Info(fmt.Sprintf("Async header from response : %s", resp.Header[AzureAsyncOperationHeader]))
-		logger.Info(fmt.Sprintf("Location header from response : %s", resp.Header[LocationHeader]))
+		logger.Info(fmt.Sprintf("#### Async header from response after conversion: %s", resp.Header[AzureAsyncOperationHeader]))
+		logger.Info(fmt.Sprintf("#### Location header from response after conversion: %s", resp.Header[LocationHeader]))
 	}
 	return nil
 }
