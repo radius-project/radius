@@ -5,6 +5,10 @@
 
 package ucplog
 
+const (
+	UCPLoggerName string = "ucp"
+)
+
 // Field names for structured logging
 const (
 	// LogHTTPStatusCode represents the HTTP status code of response from downstream as seen by UCP.
