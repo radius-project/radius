@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	resourcemodel "github.com/project-radius/radius/pkg/resourcemodel"
-	outputresource "github.com/project-radius/radius/pkg/rp/outputresource"
+	v1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // MockResourceHandler is a mock of ResourceHandler interface.
@@ -37,7 +37,7 @@ func (m *MockResourceHandler) EXPECT() *MockResourceHandlerMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockResourceHandler) Delete(arg0 context.Context, arg1 *outputresource.OutputResource) error {
+func (m *MockResourceHandler) Delete(arg0 context.Context, arg1 *v1.OutputResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -51,7 +51,7 @@ func (mr *MockResourceHandlerMockRecorder) Delete(arg0, arg1 interface{}) *gomoc
 }
 
 // Put mocks base method.
-func (m *MockResourceHandler) Put(arg0 context.Context, arg1 *outputresource.OutputResource) (resourcemodel.ResourceIdentity, map[string]string, error) {
+func (m *MockResourceHandler) Put(arg0 context.Context, arg1 *v1.OutputResource) (resourcemodel.ResourceIdentity, map[string]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", arg0, arg1)
 	ret0, _ := ret[0].(resourcemodel.ResourceIdentity)

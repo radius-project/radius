@@ -13,14 +13,15 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/golang/mock/gomock"
 )
 
 const (
@@ -178,15 +179,15 @@ func testValidateRequest(ctx context.Context, newResource *TestResourceDataModel
 }
 
 func loadTestResurce() (*TestResource, *TestResourceDataModel, *TestResource) {
-	reqBody := radiustesting.ReadFixture("resource-request.json")
+	reqBody := testutil.ReadFixture("resource-request.json")
 	reqModel := &TestResource{}
 	_ = json.Unmarshal(reqBody, reqModel)
 
-	rawDataModel := radiustesting.ReadFixture("resource-datamodel.json")
+	rawDataModel := testutil.ReadFixture("resource-datamodel.json")
 	datamodel := &TestResourceDataModel{}
 	_ = json.Unmarshal(rawDataModel, datamodel)
 
-	respBody := radiustesting.ReadFixture("resource-response.json")
+	respBody := testutil.ReadFixture("resource-response.json")
 	respModel := &TestResource{}
 	_ = json.Unmarshal(respBody, respModel)
 

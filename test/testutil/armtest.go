@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package testing
+package testutil
 
 import (
 	"bytes"
@@ -13,7 +13,6 @@ import (
 	"os"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 )
 
 func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSONFile string, body any) (*http.Request, error) {
@@ -44,8 +43,5 @@ func ARMTestContextFromRequest(req *http.Request) context.Context {
 	ctx := context.Background()
 	armctx, _ := v1.FromARMRequest(req, "", "West US")
 	ctx = v1.WithARMRequestContext(ctx, armctx)
-	ctx = hostoptions.WithContext(ctx, &hostoptions.ProviderConfig{
-		Env: hostoptions.EnvironmentOptions{RoleLocation: "West US"},
-	})
 	return ctx
 }

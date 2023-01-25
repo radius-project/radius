@@ -13,11 +13,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,8 +43,8 @@ func TestListResourcesRun(t *testing.T) {
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -91,13 +92,13 @@ func TestListResourcesRun(t *testing.T) {
 	for _, tt := range listEnvsCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 
 			q := req.URL.Query()
 			q.Add("top", tt.top)
 			req.URL.RawQuery = q.Encode()
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			paginationToken := ""
 			if tt.skipToken {

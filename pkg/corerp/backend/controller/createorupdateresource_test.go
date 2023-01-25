@@ -23,7 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -190,7 +190,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				if tt.renderErr == nil {
 					deployCall := mdp.EXPECT().
 						Deploy(gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(rp.DeploymentOutput{}, tt.deployErr).
+						Return(rpv1.DeploymentOutput{}, tt.deployErr).
 						After(renderCall).
 						Times(1)
 
@@ -387,7 +387,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				if tt.renderErr == nil {
 					deployCall := mdp.EXPECT().
 						Deploy(gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(rp.DeploymentOutput{}, tt.deployErr).
+						Return(rpv1.DeploymentOutput{}, tt.deployErr).
 						After(renderCall).
 						Times(1)
 

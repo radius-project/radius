@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/stretchr/testify/require"
+	"github.com/project-radius/radius/test/testutil"
 
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPlaneConvertVersionedToDataModel(t *testing.T) {
@@ -60,7 +60,7 @@ func TestPlaneConvertVersionedToDataModel(t *testing.T) {
 
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &PlaneResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestPlaneConvertVersionedToDataModel(t *testing.T) {
 
 func TestPlaneConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("planeresourcedatamodel.json")
+	rawPayload := testutil.ReadFixture("planeresourcedatamodel.json")
 	r := &datamodel.Plane{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)

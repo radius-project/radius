@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
@@ -83,7 +83,7 @@ func (mongoDatabase *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w htt
 	}
 
 	if old != nil {
-		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
+		diff := rpv1.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
 		err = mongoDatabase.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
 		if err != nil {
 			return nil, err

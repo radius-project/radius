@@ -12,7 +12,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +41,7 @@ func TestDaprInvokeHttpRoute_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 
 		if payload == "daprinvokehttprouteresource.json" {
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
 
 		if payload == "daprinvokehttprouteresource_recipe.json" {

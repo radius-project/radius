@@ -8,8 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // Extender represents Extender link resource.
@@ -24,17 +23,17 @@ type Extender struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *Extender) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (r *Extender) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 }
 
 // OutputResources returns the output resources array.
-func (r *Extender) OutputResources() []outputresource.OutputResource {
+func (r *Extender) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *Extender) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *Extender) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -44,7 +43,7 @@ func (extender *Extender) ResourceTypeName() string {
 
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
 	Secrets              map[string]any `json:"secrets,omitempty"`
 }

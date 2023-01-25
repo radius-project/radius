@@ -8,7 +8,7 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -30,7 +30,7 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (v1.DataModelInterface, erro
 			},
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -60,7 +60,7 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src v1.DataModelInterface) e
 	dst.Tags = *to.StringMapPtr(daprHttpRoute.Tags)
 	dst.Properties = &DaprInvokeHTTPRouteProperties{
 		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
+			OutputResources: rpv1.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),

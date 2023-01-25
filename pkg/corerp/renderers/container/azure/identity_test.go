@@ -16,10 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
-	"github.com/stretchr/testify/require"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -52,12 +51,12 @@ func TestMakeManagedIdentity(t *testing.T) {
 		}
 		or, err := MakeManagedIdentity("mi", provider)
 		require.NoError(t, err)
-		require.Equal(t, &outputresource.OutputResource{
+		require.Equal(t, &rpv1.OutputResource{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
+			LocalID:  rpv1.LocalIDUserAssignedManagedIdentity,
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.UserAssignedIdentityNameKey:        "mi",
@@ -79,8 +78,8 @@ func TestMakeRoleAssignments(t *testing.T) {
 	require.Len(t, or, 2)
 	require.Len(t, ra, 2)
 
-	require.Equal(t, outputresource.LocalIDUserAssignedManagedIdentity, or[0].Dependencies[0].LocalID)
-	require.Equal(t, outputresource.LocalIDUserAssignedManagedIdentity, or[1].Dependencies[0].LocalID)
+	require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or[0].Dependencies[0].LocalID)
+	require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or[1].Dependencies[0].LocalID)
 	require.NotEqual(t, or[0].LocalID, or[1].LocalID)
 	require.Equal(t, map[string]string{
 		handlers.RoleNameKey:         "Role1",
@@ -106,7 +105,7 @@ func TestMakeFederatedIdentitySA(t *testing.T) {
 		Resource: fi,
 		DependencyProperties: map[string]map[string]string{
 			// output properties of managed identity
-			outputresource.LocalIDUserAssignedManagedIdentity: {
+			rpv1.LocalIDUserAssignedManagedIdentity: {
 				handlers.UserAssignedIdentityClientIDKey: "newClientID",
 				handlers.UserAssignedIdentityTenantIDKey: "newTenantID",
 			},
@@ -120,7 +119,7 @@ func TestMakeFederatedIdentitySA(t *testing.T) {
 
 	require.Equal(t, sa.Annotations[azureWorkloadIdentityClientID], "newClientID")
 	require.Equal(t, sa.Annotations[azureWorkloadIdentityTenantID], "newTenantID")
-	require.Equal(t, outputresource.LocalIDFederatedIdentity, fi.Dependencies[0].LocalID)
+	require.Equal(t, rpv1.LocalIDFederatedIdentity, fi.Dependencies[0].LocalID)
 }
 
 func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
@@ -144,7 +143,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 			desc:     "missing client ID",
 			resource: &corev1.ServiceAccount{},
 			dep: map[string]map[string]string{
-				outputresource.LocalIDUserAssignedManagedIdentity: {
+				rpv1.LocalIDUserAssignedManagedIdentity: {
 					handlers.UserAssignedIdentityTenantIDKey: "tenantID",
 				},
 			},
@@ -154,7 +153,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 			desc:     "missing tenant ID",
 			resource: &corev1.ServiceAccount{},
 			dep: map[string]map[string]string{
-				outputresource.LocalIDUserAssignedManagedIdentity: {
+				rpv1.LocalIDUserAssignedManagedIdentity: {
 					handlers.UserAssignedIdentityClientIDKey: "clientID",
 				},
 			},
@@ -165,7 +164,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			err := TransformFederatedIdentitySA(context.Background(), &handlers.PutOptions{
-				Resource:             &outputresource.OutputResource{Resource: tc.resource},
+				Resource:             &rpv1.OutputResource{Resource: tc.resource},
 				DependencyProperties: tc.dep,
 			})
 
@@ -177,8 +176,8 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 func TestMakeFederatedIdentity(t *testing.T) {
 	t.Run("invalid environment option", func(t *testing.T) {
 		envOpt := &renderers.EnvironmentOptions{
-			Identity: &rp.IdentitySettings{
-				Kind: rp.AzureIdentityWorkload,
+			Identity: &rpv1.IdentitySettings{
+				Kind: rpv1.AzureIdentityWorkload,
 			},
 		}
 
@@ -189,8 +188,8 @@ func TestMakeFederatedIdentity(t *testing.T) {
 	t.Run("valid federated identity", func(t *testing.T) {
 		envOpt := &renderers.EnvironmentOptions{
 			Namespace: "default",
-			Identity: &rp.IdentitySettings{
-				Kind:       rp.AzureIdentityWorkload,
+			Identity: &rpv1.IdentitySettings{
+				Kind:       rpv1.AzureIdentityWorkload,
 				OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 			},
 		}
@@ -198,8 +197,8 @@ func TestMakeFederatedIdentity(t *testing.T) {
 		or, err := MakeFederatedIdentity("fi", envOpt)
 
 		require.NoError(t, err)
-		require.Equal(t, outputresource.LocalIDFederatedIdentity, or.LocalID)
-		require.Equal(t, outputresource.LocalIDUserAssignedManagedIdentity, or.Dependencies[0].LocalID)
+		require.Equal(t, rpv1.LocalIDFederatedIdentity, or.LocalID)
+		require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or.Dependencies[0].LocalID)
 		require.Equal(t, map[string]string{
 			handlers.FederatedIdentityNameKey:    "fi",
 			handlers.FederatedIdentitySubjectKey: "system:serviceaccount:default:fi",

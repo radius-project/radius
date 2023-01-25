@@ -10,7 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -47,7 +47,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	deploymentDataModel, ok := dataModel.(rp.DeploymentDataModel)
+	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
 	if !ok {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}

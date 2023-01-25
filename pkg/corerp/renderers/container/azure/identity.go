@@ -16,8 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -28,7 +29,7 @@ const (
 )
 
 // MakeManagedIdentity builds a user-assigned managed identity output resource.
-func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
+func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*rpv1.OutputResource, error) {
 	var rID resources.ID
 	var err error
 	if cloudProvider != nil && cloudProvider.Azure.Scope != "" {
@@ -40,12 +41,12 @@ func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*outp
 		return nil, errors.New("environment providers are not specified")
 	}
 
-	return &outputresource.OutputResource{
+	return &rpv1.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
 			Provider: resourcemodel.ProviderAzure,
 		},
-		LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
+		LocalID:  rpv1.LocalIDUserAssignedManagedIdentity,
 		Deployed: false,
 		Resource: map[string]string{
 			handlers.UserAssignedIdentityNameKey:        name,
@@ -56,28 +57,28 @@ func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*outp
 }
 
 // MakeRoleAssignments assigns roles/permissions to a specific resource for the managed identity resource.
-func MakeRoleAssignments(azResourceID string, roleNames []string) ([]outputresource.OutputResource, []outputresource.Dependency) {
-	deps := []outputresource.Dependency{}
-	outputResources := []outputresource.OutputResource{}
+func MakeRoleAssignments(azResourceID string, roleNames []string) ([]rpv1.OutputResource, []rpv1.Dependency) {
+	deps := []rpv1.Dependency{}
+	outputResources := []rpv1.OutputResource{}
 	for _, roleName := range roleNames {
-		roleAssignment := outputresource.OutputResource{
+		roleAssignment := rpv1.OutputResource{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(azResourceID, roleName),
+			LocalID:  rpv1.GenerateLocalIDForRoleAssignment(azResourceID, roleName),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         roleName,
 				handlers.RoleAssignmentScope: azResourceID,
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+					LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
 				},
 			},
 		}
-		deps = append(deps, outputresource.Dependency{LocalID: roleAssignment.LocalID})
+		deps = append(deps, rpv1.Dependency{LocalID: roleAssignment.LocalID})
 		outputResources = append(outputResources, roleAssignment)
 	}
 
@@ -85,7 +86,7 @@ func MakeRoleAssignments(azResourceID string, roleNames []string) ([]outputresou
 }
 
 // MakeFederatedIdentity builds azure federated identity (aka workload identity) for User assignmend managed identity.
-func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*outputresource.OutputResource, error) {
+func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*rpv1.OutputResource, error) {
 	if envOpt.Identity == nil || envOpt.Identity.OIDCIssuer == "" {
 		return nil, errors.New("OIDC Issuer URL is not specified")
 	}
@@ -95,21 +96,21 @@ func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*
 	}
 
 	subject := handlers.GetKubeAzureSubject(envOpt.Namespace, name)
-	return &outputresource.OutputResource{
+	return &rpv1.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureFederatedIdentity,
 			Provider: resourcemodel.ProviderAzure,
 		},
-		LocalID:  outputresource.LocalIDFederatedIdentity,
+		LocalID:  rpv1.LocalIDFederatedIdentity,
 		Deployed: false,
 		Resource: map[string]string{
 			handlers.FederatedIdentityNameKey:    name,
 			handlers.FederatedIdentitySubjectKey: subject,
 			handlers.FederatedIdentityIssuerKey:  envOpt.Identity.OIDCIssuer,
 		},
-		Dependencies: []outputresource.Dependency{
+		Dependencies: []rpv1.Dependency{
 			{
-				LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+				LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
 			},
 		},
 	}, nil
@@ -134,7 +135,7 @@ func TransformFederatedIdentitySA(ctx context.Context, options *handlers.PutOpti
 }
 
 func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantID string, err error) {
-	mi := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]
+	mi := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]
 	if mi == nil {
 		err = errors.New("cannot find LocalIDUserAssignedManagedIdentity")
 		return
@@ -155,7 +156,7 @@ func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantI
 }
 
 // MakeFederatedIdentitySA builds service account for the federated identity.
-func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamodel.ContainerResource) *outputresource.OutputResource {
+func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
 	labels["azure.workload.identity/use"] = "true"
 
@@ -176,15 +177,15 @@ func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamode
 		},
 	}
 
-	or := outputresource.NewKubernetesOutputResource(
+	or := rpv1.NewKubernetesOutputResource(
 		resourcekinds.ServiceAccount,
-		outputresource.LocalIDServiceAccount,
+		rpv1.LocalIDServiceAccount,
 		sa,
 		sa.ObjectMeta)
 
-	or.Dependencies = []outputresource.Dependency{
+	or.Dependencies = []rpv1.Dependency{
 		{
-			LocalID: outputresource.LocalIDFederatedIdentity,
+			LocalID: rpv1.LocalIDFederatedIdentity,
 		},
 	}
 

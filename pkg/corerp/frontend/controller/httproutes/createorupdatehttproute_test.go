@@ -15,14 +15,15 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,10 +94,10 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			httprouteInput, httprouteDataModel, _ := getTestModels20220315privatepreview()
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, httprouteInput)
+			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, httprouteInput)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
@@ -236,18 +237,18 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			defer teardownTest(t)
 
 			httprouteInput := &v20220315privatepreview.HTTPRouteResource{}
-			_ = json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), httprouteInput)
+			_ = json.Unmarshal(testutil.ReadFixture(tt.versionedInputFile), httprouteInput)
 
 			httprouteDataModel := &datamodel.HTTPRoute{}
-			_ = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), httprouteDataModel)
+			_ = json.Unmarshal(testutil.ReadFixture(tt.datamodelFile), httprouteDataModel)
 
 			httprouteDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, httprouteInput)
+			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, httprouteInput)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package rp
+package v1
 
 import (
 	"testing"

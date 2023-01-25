@@ -8,7 +8,7 @@ package handlers
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 const (
@@ -32,7 +32,7 @@ const (
 // PutOptions represents the options for ResourceHandler.Put.
 type PutOptions struct {
 	// Resource represents the rendered resource.
-	Resource *outputresource.OutputResource
+	Resource *rpv1.OutputResource
 
 	// DependencyProperties is a map of output resource localID to resource properties populated during deployment in the resource handler
 	DependencyProperties map[string]map[string]string
@@ -41,7 +41,7 @@ type PutOptions struct {
 // DeleteOptions represents the options for ResourceHandler.Delete.
 type DeleteOptions struct {
 	// Resource represents the rendered resource.
-	Resource *outputresource.OutputResource
+	Resource *rpv1.OutputResource
 }
 
 // ResourceHandler interface defines the methods that every output resource will implement

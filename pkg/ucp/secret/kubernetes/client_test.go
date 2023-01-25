@@ -10,8 +10,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	rp_testing "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 	"k8s.io/kubectl/pkg/scheme"
 )
@@ -22,7 +23,7 @@ const (
 
 func Test_Save(t *testing.T) {
 	k8sFakeClient := Client{
-		K8sClient: rp_testing.NewFakeKubeClient(scheme.Scheme),
+		K8sClient: testutil.NewFakeKubeClient(scheme.Scheme),
 	}
 	ctx := context.Background()
 	secretValue, err := json.Marshal("test_secret_value")
@@ -68,7 +69,7 @@ func Test_Save(t *testing.T) {
 
 func Test_Get(t *testing.T) {
 	k8sFakeClient := Client{
-		K8sClient: rp_testing.NewFakeKubeClient(scheme.Scheme),
+		K8sClient: testutil.NewFakeKubeClient(scheme.Scheme),
 	}
 	ctx := context.Background()
 	secretValue, err := json.Marshal("test_secret_value")
@@ -107,7 +108,7 @@ func Test_Get(t *testing.T) {
 
 func Test_Delete(t *testing.T) {
 	k8sFakeClient := Client{
-		K8sClient: rp_testing.NewFakeKubeClient(scheme.Scheme),
+		K8sClient: testutil.NewFakeKubeClient(scheme.Scheme),
 	}
 	ctx := context.Background()
 	secretValue, err := json.Marshal("test_secret_value")
