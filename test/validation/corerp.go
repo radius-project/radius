@@ -145,11 +145,18 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 							// if the test has the OutputResourceName set then validate the resource name based on the provider info
 							// we might not need the provider check if we have UCP id for kubernetes resources.
 							if expectedOutputResource.Name != "" && expectedOutputResource.Provider == resourcemodel.ProviderAzure {
-								identity := actualOutputResource.Identity.(map[string]interface{})
-								actualID := identity["id"].(string)
-								actualResource, err := resources.ParseResource(actualID)
-								require.NoError(t, err)
-								require.Equal(t, expectedOutputResource.Name, actualResource.Name())
+								if expectedOutputResource.Provider == resourcemodel.ProviderAzure {
+									identity := actualOutputResource.Identity.(map[string]interface{})
+									actualID := identity["id"].(string)
+									actualResource, err := resources.ParseResource(actualID)
+									require.NoError(t, err)
+									require.Equal(t, expectedOutputResource.Name, actualResource.Name())
+								}
+								if expectedOutputResource.Provider == resourcemodel.ProviderKubernetes {
+									identity := actualOutputResource.Identity.(map[string]interface{})
+									atualName := identity["name"].(string)
+									require.Equal(t, expectedOutputResource.Name, atualName)
+								}
 							}
 							break
 						}
