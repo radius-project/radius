@@ -3,14 +3,13 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package clientv2
+package clients
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
@@ -82,45 +81,45 @@ type ProviderConfig struct {
 	Deployments *Deployments `json:"deployments,omitempty"`
 }
 
-// ResourceDeploymentClient is a deployment client for Azure Resource Manager.
+// ResourceDeploymentsClient is a deployments client for Azure Resource Manager.
 // It is used by both Azure and UCP clients.
-type ResourceDeploymentClient struct {
-	client   *armresources.DeploymentsClient
+type ResourceDeploymentsClient struct {
+	client   *armresources.Client
 	pipeline *runtime.Pipeline
 	baseURI  string
 }
 
-// NewResourceDeploymentClient creates an instance of the ResourceDeploymentClient.
-func NewResourceDeploymentClient(subscriptionID string, options *Options) (*ResourceDeploymentClient, error) {
-	baseURI := DefaultBaseURI
-	if options.BaseURI != "" {
-		baseURI = options.BaseURI
+// NewDeploymentsClient creates an instance of the ResourceDeploymentClient.
+func NewResourceDeploymentsClient(options *Options) (*ResourceDeploymentsClient, error) {
+	if options.BaseURI == "" {
+		return nil, errors.New("baseURI cannot be empty")
 	}
 
-	client, err := armresources.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
+	// SubscriptionID will be empty for this type of client.
+	client, err := armresources.NewClient("", options.Cred, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, defaultClientOptions)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ResourceDeploymentClient{
+	return &ResourceDeploymentsClient{
 		client:   client,
 		pipeline: &pipeline,
-		baseURI:  baseURI,
+		baseURI:  options.BaseURI,
 	}, nil
 }
 
 // ClientCreateOrUpdateResponse contains the response from method Client.CreateOrUpdate.
 type ClientCreateOrUpdateResponse struct {
-	armresources.GenericResource
+	armresources.DeploymentExtended
 }
 
 // CreateOrUpdate creates a deployment or updates the existing deployment.
-func (client *ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
+func (client *ResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
 	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")
 	}
@@ -147,12 +146,12 @@ func (client *ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, para
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ResourceDeploymentClient) createOrUpdateCreateRequest(ctx context.Context, resourceID, apiVersion string, parameters Deployment) (*policy.Request, error) {
+func (client *ResourceDeploymentsClient) createOrUpdateCreateRequest(ctx context.Context, resourceID, apiVersion string, parameters Deployment) (*policy.Request, error) {
 	if resourceID == "" {
 		return nil, errors.New("resourceID cannot be empty")
 	}
 
-	urlPath := runtime.JoinPaths(client.baseURI, url.PathEscape(resourceID))
+	urlPath := DeploymentEngineURL(client.baseURI, resourceID)
 	req, err := runtime.NewRequest(ctx, http.MethodPut, urlPath)
 	if err != nil {
 		return nil, err

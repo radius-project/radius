@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		convertedResource := dm.(*datamodel.MongoDatabase)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", convertedResource.ID)
 		require.Equal(t, "mongo0", convertedResource.Name)
-		require.Equal(t, "Applications.Link/mongoDatabases", convertedResource.Type)
+		require.Equal(t, linkrp.MongoDatabasesResourceType, convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
@@ -106,7 +107,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", *versionedResource.ID)
 		require.Equal(t, "mongo0", *versionedResource.Name)
-		require.Equal(t, "Applications.Link/mongoDatabases", *versionedResource.Type)
+		require.Equal(t, linkrp.MongoDatabasesResourceType, *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetMongoDatabaseProperties().Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetMongoDatabaseProperties().Environment)
 		switch v := versionedResource.Properties.(type) {

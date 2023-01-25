@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rp "github.com/project-radius/radius/pkg/rp/datamodel"
@@ -37,7 +38,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 				Name: "queue0",
-				Type: "Applications.Link/rabbitMQMessageQueues",
+				Type: linkrp.RabbitMQMessageQueuesResourceType,
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
@@ -79,7 +80,7 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 				Name: "queue0",
-				Type: "Applications.Link/rabbitMQMessageQueues",
+				Type: linkrp.RabbitMQMessageQueuesResourceType,
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
@@ -105,7 +106,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 				Name: "queue0",
-				Type: "Applications.Link/rabbitMQMessageQueues",
+				Type: linkrp.RabbitMQMessageQueuesResourceType,
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
