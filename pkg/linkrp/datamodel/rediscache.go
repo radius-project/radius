@@ -75,5 +75,5 @@ type RedisCacheSecrets struct {
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return linkrpv1.RedisCachesResourceType
+	return linkrp.RedisCachesResourceType
 }
