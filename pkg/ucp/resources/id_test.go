@@ -626,7 +626,7 @@ func TestPlaneScope(t *testing.T) {
 	}{
 		{
 			desc:       "Azure resource id",
-			id:         "/apis/api.ucp.dev/subscriptions/s1/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
+			id:         "/subscriptions/s1/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
 			planeScope: "/subscriptions/s1",
 		},
 		{

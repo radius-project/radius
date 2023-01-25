@@ -175,6 +175,12 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	if refererUri == "" || err != nil {
 		refererURL = r.URL
 	}
+
+	if pathBase == "" {
+		pathPrefix := getBaseIndex(refererURL.Path)
+		pathBase = refererURL.Path[:pathPrefix]
+		log.Info("#### Path prefix: " + pathBase)
+	}
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
 	log.Info("#### path from referer: " + path)
 	log.Info("##### path base: " + pathBase)
@@ -273,4 +279,18 @@ func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 // WithARMRequestContext injects ARMRequestContext into the given http context.
 func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) context.Context {
 	return context.WithValue(ctx, armContextKey, armctx)
+}
+
+func getBaseIndex(path string) int {
+	normalized := strings.ToLower(path)
+	idx := strings.Index(normalized, "/planes/")
+	if idx >= 0 {
+		return idx
+	}
+	idx = strings.Index(normalized, "/subscriptions/")
+	if idx >= 0 {
+		return idx
+	}
+	return 0
+
 }
