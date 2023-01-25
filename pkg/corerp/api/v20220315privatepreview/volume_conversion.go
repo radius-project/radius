@@ -8,7 +8,8 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest/to"
@@ -86,7 +87,7 @@ func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 		azProp := resource.Properties.AzureKeyVault
 		p := &AzureKeyVaultVolumeProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(resource.Properties.Status.OutputResources),
+				OutputResources: outputresource.BuildExternalOutputResources(resource.Properties.Status.OutputResources),
 			},
 			Kind:              azto.Ptr(resource.Properties.Kind),
 			Application:       azto.Ptr(resource.Properties.Application),

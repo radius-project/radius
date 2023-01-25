@@ -13,7 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +60,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 			Value: "abc",
 		},
 	}
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]outputresource.SecretValueReference{
 		"connectionString": {
 			Value: "admin:deadbeef@localhost:42",
 		},

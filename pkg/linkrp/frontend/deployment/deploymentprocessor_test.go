@@ -27,8 +27,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -156,7 +157,7 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 
 func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOutput) {
 	computedValues := map[string]renderers.ComputedValueReference{}
-	secretValues := map[string]rp.SecretValueReference{}
+	secretValues := map[string]outputresource.SecretValueReference{}
 	if mode == modeResource || mode == modeRecipe {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
@@ -168,7 +169,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 			},
 		}
 
-		secretValues = map[string]rp.SecretValueReference{
+		secretValues = map[string]outputresource.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				LocalID:       outputresource.LocalIDAzureCosmosAccount,
 				Action:        "listConnectionStrings",
@@ -186,7 +187,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 			},
 		}
 
-		secretValues = map[string]rp.SecretValueReference{
+		secretValues = map[string]outputresource.SecretValueReference{
 			renderers.UsernameStringValue:   {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: cosmosConnectionString},
@@ -322,7 +323,7 @@ type SharedMocks struct {
 	recipeHandler      *handlers.MockRecipeHandler
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
-	secretsValueClient *rp.MockSecretValueClient
+	secretsValueClient *sv.MockSecretValueClient
 	storageProvider    *dataprovider.MockDataStorageProvider
 }
 
@@ -379,7 +380,7 @@ func setup(t *testing.T) SharedMocks {
 		recipeHandler:      mockRecipeHandler,
 		resourceHandler:    mockResourceHandler,
 		renderer:           mockRenderer,
-		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
+		secretsValueClient: sv.NewMockSecretValueClient(ctrl),
 	}
 }
 

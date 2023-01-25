@@ -13,7 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -53,7 +52,7 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 		},
 	}
 
-	secrets := map[string]rp.SecretValueReference{}
+	secrets := map[string]outputresource.SecretValueReference{}
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,

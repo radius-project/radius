@@ -27,8 +27,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -47,7 +48,7 @@ type SharedMocks struct {
 	dbProvider         *dataprovider.MockDataStorageProvider
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
-	secretsValueClient *rp.MockSecretValueClient
+	secretsValueClient *sv.MockSecretValueClient
 	mctrl              *gomock.Controller
 }
 
@@ -112,7 +113,7 @@ func setup(t *testing.T) SharedMocks {
 		dbProvider:         dataprovider.NewMockDataStorageProvider(ctrl),
 		resourceHandler:    resourceHandler,
 		renderer:           renderer,
-		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
+		secretsValueClient: sv.NewMockSecretValueClient(ctrl),
 		mctrl:              ctrl,
 	}
 }
@@ -151,7 +152,7 @@ func getTestRendererOutput() renderers.RendererOutput {
 
 	rendererOutput := renderers.RendererOutput{
 		Resources: testOutputResources,
-		ComputedValues: map[string]rp.ComputedValueReference{
+		ComputedValues: map[string]outputresource.ComputedValueReference{
 			"url": {
 				Value: "http://test-application/test-route:8080",
 			},
@@ -206,8 +207,8 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	testResource := buildMongoDBLinkWithRecipe()
 
-	secretValues := map[string]rp.SecretValueReference{}
-	secretValues[linkrp_r.ConnectionStringValue] = rp.SecretValueReference{
+	secretValues := map[string]outputresource.SecretValueReference{}
+	secretValues[linkrp_r.ConnectionStringValue] = outputresource.SecretValueReference{
 		LocalID:       outputresource.LocalIDAzureCosmosAccount,
 		Action:        "listConnectionStrings",
 		ValueSelector: "/connectionStrings/0/connectionString",

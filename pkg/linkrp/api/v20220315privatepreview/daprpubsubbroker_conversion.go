@@ -10,7 +10,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -93,7 +94,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		mode := "recipe"
 		dst.Properties = &RecipeDaprPubSubProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+				OutputResources: outputresource.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
@@ -110,7 +111,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		mode := "resource"
 		dst.Properties = &ResourceDaprPubSubProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+				OutputResources: outputresource.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
@@ -125,7 +126,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		mode := "values"
 		dst.Properties = &ValuesDaprPubSubProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+				OutputResources: outputresource.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),

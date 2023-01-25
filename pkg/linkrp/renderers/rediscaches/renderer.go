@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -57,7 +56,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 	}
 }
 
-func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rp.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
+func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]outputresource.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this link
 	redisCacheID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
@@ -84,7 +83,7 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	}
 
 	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
-		secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{
+		secretValues[renderers.PasswordStringHolder] = outputresource.SecretValueReference{
 			LocalID:       outputresource.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
@@ -92,7 +91,7 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	}
 
 	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
-		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
+		secretValues[renderers.ConnectionStringValue] = outputresource.SecretValueReference{
 			LocalID:       outputresource.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
@@ -120,14 +119,14 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	}, nil
 }
 
-func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[string]rp.SecretValueReference {
-	secretValues := map[string]rp.SecretValueReference{}
+func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[string]outputresource.SecretValueReference {
+	secretValues := map[string]outputresource.SecretValueReference{}
 	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Password != "" {
-			secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{Value: properties.Secrets.Password}
+			secretValues[renderers.PasswordStringHolder] = outputresource.SecretValueReference{Value: properties.Secrets.Password}
 		}
 		if properties.Secrets.ConnectionString != "" {
-			secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{Value: properties.Secrets.ConnectionString}
+			secretValues[renderers.ConnectionStringValue] = outputresource.SecretValueReference{Value: properties.Secrets.ConnectionString}
 		}
 	}
 

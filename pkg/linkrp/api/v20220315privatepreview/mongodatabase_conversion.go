@@ -10,7 +10,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -118,7 +119,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: outputresource.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -132,7 +133,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: outputresource.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -147,7 +148,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: outputresource.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),

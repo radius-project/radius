@@ -8,7 +8,7 @@ package frontend
 import (
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -31,7 +31,7 @@ func (r *TestResourceDataModel) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (c *TestResourceDataModel) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (c *TestResourceDataModel) ApplyDeploymentOutput(do outputresource.DeploymentOutput) {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 }
 
@@ -119,7 +119,7 @@ func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 	dst.Properties = &TestResourceProperties{
 		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
+			OutputResources: outputresource.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(dm.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.StringPtr(dm.Properties.Environment),

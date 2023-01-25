@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -176,30 +175,30 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 	}, nil
 }
 
-func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[string]rp.SecretValueReference {
-	secretValues := map[string]rp.SecretValueReference{}
+func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[string]outputresource.SecretValueReference {
+	secretValues := map[string]outputresource.SecretValueReference{}
 	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Username != "" {
-			secretValues[renderers.UsernameStringValue] = rp.SecretValueReference{Value: properties.Secrets.Username}
+			secretValues[renderers.UsernameStringValue] = outputresource.SecretValueReference{Value: properties.Secrets.Username}
 		}
 		if properties.Secrets.Password != "" {
-			secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{Value: properties.Secrets.Password}
+			secretValues[renderers.PasswordStringHolder] = outputresource.SecretValueReference{Value: properties.Secrets.Password}
 		}
 		if properties.Secrets.ConnectionString != "" {
-			secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{Value: properties.Secrets.ConnectionString}
+			secretValues[renderers.ConnectionStringValue] = outputresource.SecretValueReference{Value: properties.Secrets.ConnectionString}
 		}
 	}
 
 	return secretValues
 }
 
-func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabaseProperties) map[string]rp.SecretValueReference {
+func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabaseProperties) map[string]outputresource.SecretValueReference {
 	secretValues := getProvidedSecretValues(properties)
 
 	// Populate connection string reference if a value isn't provided
 	_, ok := secretValues[renderers.ConnectionStringValue]
 	if !ok {
-		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
+		secretValues[renderers.ConnectionStringValue] = outputresource.SecretValueReference{
 			LocalID:       outputresource.LocalIDAzureCosmosAccount,
 			Action:        "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
 			ValueSelector: "/connectionStrings/0/connectionString",

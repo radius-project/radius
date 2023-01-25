@@ -11,7 +11,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	renderers "github.com/project-radius/radius/pkg/corerp/renderers"
-	rp "github.com/project-radius/radius/pkg/rp"
 	outputresource "github.com/project-radius/radius/pkg/rp/outputresource"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -54,10 +53,10 @@ func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1, arg2 interface
 }
 
 // Deploy mocks base method.
-func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (rp.DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (outputresource.DeploymentOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
-	ret0, _ := ret[0].(rp.DeploymentOutput)
+	ret0, _ := ret[0].(outputresource.DeploymentOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

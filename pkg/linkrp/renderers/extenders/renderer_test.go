@@ -13,7 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +62,7 @@ func Test_Render_Success(t *testing.T) {
 	}
 	require.Equal(t, expected, result.ComputedValues)
 
-	expectedSecrets := map[string]rp.SecretValueReference{
+	expectedSecrets := map[string]outputresource.SecretValueReference{
 		"secretname": {
 			Value: "secretvalue",
 		},

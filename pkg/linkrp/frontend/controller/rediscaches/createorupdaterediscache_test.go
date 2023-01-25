@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -73,7 +72,7 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]rp.SecretValueReference{
+		SecretValues: map[string]outputresource.SecretValueReference{
 			renderers.ConnectionStringValue: {Value: "test-connection-string"},
 			renderers.PasswordStringHolder:  {Value: "testpassword"},
 			renderers.UsernameStringValue:   {Value: "redisusername"},

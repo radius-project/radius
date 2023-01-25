@@ -7,7 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -44,7 +44,7 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *MongoDatabase) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (r *MongoDatabase) ApplyDeploymentOutput(do outputresource.DeploymentOutput) {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 }
 

@@ -23,7 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -69,7 +68,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{output},
-		SecretValues:   map[string]rp.SecretValueReference{},
+		SecretValues:   map[string]outputresource.SecretValueReference{},
 		ComputedValues: values,
 	}
 

@@ -7,7 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -23,7 +23,7 @@ type DaprStateStore struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *DaprStateStore) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (r *DaprStateStore) ApplyDeploymentOutput(do outputresource.DeploymentOutput) {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 }
 

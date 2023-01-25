@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -82,7 +81,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		},
 	}
 
-	secrets := map[string]rp.SecretValueReference{}
+	secrets := map[string]outputresource.SecretValueReference{}
 
 	return renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{output},

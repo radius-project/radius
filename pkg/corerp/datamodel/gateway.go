@@ -7,7 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
+	rp "github.com/project-radius/radius/pkg/rp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -27,7 +27,7 @@ func (g *Gateway) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (g *Gateway) ApplyDeploymentOutput(do outputresource.DeploymentOutput) {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.ComputedValues = do.ComputedValues
 	g.SecretValues = do.SecretValues
