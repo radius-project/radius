@@ -39,7 +39,9 @@ func NewDirectConnection(endpoint string) (Connection, error) {
 // autorest.Sender interface (autorest Track1 Go SDK) and policy.Transporter interface
 // (autorest Track2 Go SDK).
 func (c *directConnection) Client() *http.Client {
-	return http.DefaultClient
+	client := http.Client{Transport: NewTransport(http.DefaultTransport)}
+	//return http.DefaultClient
+	return &client
 }
 
 // Endpoint returns the endpoint (aka. base URL) of the Radius API. This definitely includes
