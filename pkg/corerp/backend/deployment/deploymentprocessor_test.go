@@ -12,18 +12,18 @@ import (
 	"os"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	linkrp_r "github.com/project-radius/radius/pkg/linkrp/renderers"
+	linkrp_renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -34,8 +34,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -181,7 +179,7 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: dm.LinkModeRecipe,
+			Mode: linkrp_dm.LinkModeRecipe,
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
 			RecipeData: linkrp_dm.RecipeData{
@@ -195,7 +193,7 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 					},
 					TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 				},
-				APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
 			},
@@ -207,7 +205,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	testResource := buildMongoDBLinkWithRecipe()
 
 	secretValues := map[string]rp.SecretValueReference{}
-	secretValues[linkrp_r.ConnectionStringValue] = rp.SecretValueReference{
+	secretValues[linkrp_renderers.ConnectionStringValue] = rp.SecretValueReference{
 		LocalID:       outputresource.LocalIDAzureCosmosAccount,
 		Action:        "listConnectionStrings",
 		ValueSelector: "/connectionStrings/0/connectionString",
@@ -218,7 +216,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	}
 
 	computedValues := map[string]any{
-		linkrp_r.DatabaseNameValue: "db",
+		linkrp_renderers.DatabaseNameValue: "db",
 	}
 
 	testResource.ComputedValues = computedValues
@@ -241,10 +239,10 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
-			RadiusManaged: to.BoolPtr(true),
+			RadiusManaged: to.Ptr(true),
 		},
 		{
 			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
@@ -254,7 +252,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
 			Resource: map[string]any{
@@ -264,7 +262,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 					},
 				},
 			},
-			RadiusManaged: to.BoolPtr(true),
+			RadiusManaged: to.Ptr(true),
 			Dependencies:  []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
 		},
 	}
@@ -386,7 +384,7 @@ func Test_Render(t *testing.T) {
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
-				Mode: dm.LinkModeValues,
+				Mode: linkrp_dm.LinkModeValues,
 			},
 		}
 		mr := store.Object{
@@ -1092,10 +1090,10 @@ func Test_fetchSecrets(t *testing.T) {
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
 		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
-		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
 		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(secretValues))
-		require.Equal(t, secret, secretValues[linkrp_r.ConnectionStringValue])
+		require.Equal(t, secret, secretValues[linkrp_renderers.ConnectionStringValue])
 	})
 }

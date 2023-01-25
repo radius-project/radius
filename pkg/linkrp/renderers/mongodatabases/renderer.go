@@ -9,11 +9,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -72,13 +72,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	if options.RecipeProperties.LinkType != resource.ResourceTypeName() {
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("link type %q of provided recipe %q is incompatible with %q resource type. Recipe link type must match link resource type.",
-			options.RecipeProperties.LinkType, options.RecipeProperties.Name, ResourceType))
+			options.RecipeProperties.LinkType, options.RecipeProperties.Name, linkrp.MongoDatabasesResourceType))
 	}
 
 	recipeData := datamodel.RecipeData{
 		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
-		APIVersion:       clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+		APIVersion:       clientv2.DocumentDBManagementClientAPIVersion,
 	}
 
 	secretValues := buildSecretValueReferenceForAzure(resource.Properties)
@@ -98,7 +98,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 			Provider: resourcemodel.ProviderAzure,
 		},
 		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
-		RadiusManaged:        to.BoolPtr(true),
+		RadiusManaged:        to.Ptr(true),
 	}
 
 	expectedMongoDBResource := outputresource.OutputResource{
@@ -108,7 +108,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 			Provider: resourcemodel.ProviderAzure,
 		},
 		ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-		RadiusManaged:        to.BoolPtr(true),
+		RadiusManaged:        to.Ptr(true),
 		Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
 	}
 
@@ -150,9 +150,9 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			Type:     resourcekinds.AzureCosmosAccount,
 			Provider: resourcemodel.ProviderAzure,
 		},
-		RadiusManaged: to.BoolPtr(false),
+		RadiusManaged: to.Ptr(false),
 	}
-	cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+	cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clientv2.DocumentDBManagementClientAPIVersion)
 
 	databaseResource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
@@ -160,14 +160,14 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			Type:     resourcekinds.AzureCosmosDBMongo,
 			Provider: resourcemodel.ProviderAzure,
 		},
-		RadiusManaged: to.BoolPtr(false),
+		RadiusManaged: to.Ptr(false),
 		Dependencies: []outputresource.Dependency{
 			{
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
 			},
 		},
 	}
-	databaseResource.Identity = resourcemodel.NewARMIdentity(&databaseResource.ResourceType, cosmosMongoDBID.String(), clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+	databaseResource.Identity = resourcemodel.NewARMIdentity(&databaseResource.ResourceType, cosmosMongoDBID.String(), clientv2.DocumentDBManagementClientAPIVersion)
 
 	return renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{cosmosAccountResource, databaseResource},

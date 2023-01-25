@@ -907,23 +907,23 @@
       ],
       "properties": {
         "clientId": {
-          "description": "clientId when the CredentialKind is ServicePrincipal",
+          "description": "A client ID that represents the application.",
           "type": "string"
-        },
-        "secret": {
-          "description": "secret when the CredentialKind is ServicePrincipal",
-          "type": "string",
-          "x-ms-secret": true
         },
         "tenantId": {
-          "description": "tenantId when the CredentialKind is ServicePrincipal",
+          "description": "A tenant Id that the application is created.",
           "type": "string"
+        },
+        "clientSecret": {
+          "description": "A secret string that the application uses to prove its identity when requesting a token.",
+          "type": "string",
+          "x-ms-secret": true
         }
       },
       "required": [
         "clientId",
-        "secret",
-        "tenantId"
+        "tenantId",
+        "clientSecret"
       ],
       "type": "object",
       "x-ms-discriminator-value": "azure.com.serviceprincipal"

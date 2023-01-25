@@ -169,7 +169,6 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // the creation of a mongoDB from a devrecipe that is linked to the environment when created with useDevRecipes = true
 // the container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_DevRecipe(t *testing.T) {
-
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
 	appNamespace := "corerp-resources-mongodb-devrecipe-app"

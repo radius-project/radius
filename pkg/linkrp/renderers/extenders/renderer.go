@@ -15,10 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
-const (
-	ResourceType = "Applications.Link/extenders"
-)
-
 var _ renderers.Renderer = (*Renderer)(nil)
 
 type Renderer struct {

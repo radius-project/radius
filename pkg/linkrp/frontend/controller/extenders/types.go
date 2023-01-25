@@ -6,8 +6,6 @@
 package extenders
 
 const (
-	ResourceTypeName = "Applications.Link/extenders"
-
 	// User defined operation names
 	OperationListSecret = "LISTSECRETS"
 )
