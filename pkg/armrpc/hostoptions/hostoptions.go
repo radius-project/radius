@@ -17,7 +17,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/rp/k8sauth"
+	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
@@ -129,7 +129,7 @@ func getArm() (*armauth.ArmConfig, error) {
 }
 
 func getKubernetes() (*rest.Config, error) {
-	cfg, err := k8sauth.GetConfig()
+	cfg, err := kube.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
 	}
