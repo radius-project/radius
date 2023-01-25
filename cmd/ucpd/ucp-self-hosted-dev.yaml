@@ -52,4 +52,4 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 
+    port: 9090
