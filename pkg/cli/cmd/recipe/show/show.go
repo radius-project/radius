@@ -23,28 +23,26 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "show [recipe-name]",
-		Short:   "Show recipe details",
-		Long:    `Show recipe details
+		Use:   "show [recipe-name]",
+		Short: "Show recipe details",
+		Long: `Show recipe details
 	
 	The recipe show command outputs details about a recipe. This includes the name, resource type, parameters, and template path.
 	
 	By default, the command is scoped to the resource group and environment defined in your rad.yaml workspace file. You can optionally override these values through the environment and group flags.
 	
-	By default, the command outputs a human-readable table. You can customize the output format with the output flag.
-	`,
+	By default, the command outputs a human-readable table. You can customize the output format with the output flag.`,
 		Example: `
 	# show the details of a recipe
-	rad recipe show redis-prod`
+	rad recipe show redis-prod
 	
 	# show the details of a recipe, with a JSON output
 	rad recipe show redis-prod --output json
 	
 	# show the details of a recipe, with a specified environment and group
-	rad recipe show redis-dev --group dev --environment dev
-	,
-		RunE:    framework.RunCommand(runner),
-		Args:    cobra.ExactArgs(0),
+	rad recipe show redis-dev --group dev --environment dev`,
+		RunE: framework.RunCommand(runner),
+		Args: cobra.ExactArgs(0),
 	}
 
 	commonflags.AddOutputFlag(cmd)
@@ -85,7 +83,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// TODO: support fallback workspace
 	if !r.Workspace.IsNamedWorkspace() {
 		return workspaces.ErrNamedWorkspaceRequired
 	}
@@ -106,6 +103,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if format == "" {
+		format = "table"
+	}
 	r.Format = format
 
 	return nil
@@ -121,6 +121,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	var recipeParams []EnvironmentRecipe
 	var index = 0
 	for paramName, param := range recipeDetails.Parameters {

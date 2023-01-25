@@ -428,7 +428,8 @@ func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, e
 func RequireRecipeName(cmd *cobra.Command) (string, error) {
 	recipeName, err := cmd.Flags().GetString("name")
 	if err != nil {
-		return recipeName, err
+		return "", err
 	}
+
 	return recipeName, nil
 }
