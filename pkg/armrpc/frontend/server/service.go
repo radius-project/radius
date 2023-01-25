@@ -38,7 +38,6 @@ type Service struct {
 
 // Init initializes web service.
 func (s *Service) Init(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 
 	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
@@ -56,12 +55,6 @@ func (s *Service) Init(ctx context.Context) error {
 	s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err
-	}
-
-	if s.Options.Arm != nil {
-		s.SecretClient = sv.NewSecretValueClient(*s.Options.Arm)
-	}
-		}
 	}
 
 	return nil

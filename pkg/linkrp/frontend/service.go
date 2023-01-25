@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
-	"github.com/project-radius/radius/pkg/rp"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 )
@@ -53,7 +53,7 @@ func (s *Service) Run(ctx context.Context) error {
 		StatusManager: s.OperationStatusManager,
 	}
 
-	secretClient := rp.NewSecretValueClient(s.Options.Arm)
+	secretClient := sv.NewSecretValueClient(s.Options.Arm)
 	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, secretClient, s.KubeClient)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
