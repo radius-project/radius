@@ -10,7 +10,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -119,7 +118,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -133,7 +132,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -148,7 +147,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),

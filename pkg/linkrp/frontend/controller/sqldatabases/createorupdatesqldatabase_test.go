@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -29,9 +29,9 @@ import (
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureSqlServer,
+				LocalID: rpv1.LocalIDAzureSqlServer,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureSqlServer,
 					Provider: resourcemodel.ProviderAzure,
@@ -39,22 +39,22 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]outputresource.SecretValueReference{},
+		SecretValues: map[string]rpv1.SecretValueReference{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
 				Value: "db",
 			},
 			renderers.ServerNameValue: {
-				LocalID:     outputresource.LocalIDAzureSqlServer,
+				LocalID:     rpv1.LocalIDAzureSqlServer,
 				JSONPointer: "/properties/fullyQualifiedDomainName",
 			},
 		},
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureSqlServer,
+				LocalID: rpv1.LocalIDAzureSqlServer,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureSqlServer,
 					Provider: resourcemodel.ProviderAzure,

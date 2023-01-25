@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -254,13 +253,13 @@ func Test_Render_Basic(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
 
-		expected := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		expected.Dependencies = []outputresource.Dependency{
+		expected := rpv1.NewKubernetesOutputResource(resourcekinds.Deployment, rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
+		expected.Dependencies = []rpv1.Dependency{
 			{
-				LocalID: outputresource.LocalIDKubernetesRole,
+				LocalID: rpv1.LocalIDKubernetesRole,
 			},
 			{
-				LocalID: outputresource.LocalIDKubernetesRoleBinding,
+				LocalID: rpv1.LocalIDKubernetesRoleBinding,
 			},
 		}
 		require.Equal(t, outputResource, expected)
@@ -331,13 +330,13 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
 
-		expected := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		expected.Dependencies = []outputresource.Dependency{
+		expected := rpv1.NewKubernetesOutputResource(resourcekinds.Deployment, rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
+		expected.Dependencies = []rpv1.Dependency{
 			{
-				LocalID: outputresource.LocalIDKubernetesRole,
+				LocalID: rpv1.LocalIDKubernetesRole,
 			},
 			{
-				LocalID: outputresource.LocalIDKubernetesRoleBinding,
+				LocalID: rpv1.LocalIDKubernetesRoleBinding,
 			},
 		}
 		require.Equal(t, outputResource, expected)
@@ -550,7 +549,7 @@ func Test_Render_Connections(t *testing.T) {
 		secret, outputResource := kubernetes.FindSecret(output.Resources)
 		require.NotNil(t, secret)
 
-		expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Secret, outputresource.LocalIDSecret, secret, secret.ObjectMeta)
+		expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Secret, rpv1.LocalIDSecret, secret, secret.ObjectMeta)
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		require.Equal(t, secretName, secret.Name)
@@ -558,7 +557,7 @@ func Test_Render_Connections(t *testing.T) {
 		require.Equal(t, labels, secret.Labels)
 		require.Empty(t, secret.Annotations)
 
-		require.Equal(t, outputResource.LocalID, outputresource.LocalIDSecret)
+		require.Equal(t, outputResource.LocalID, rpv1.LocalIDSecret)
 		require.Len(t, secret.Data, 2)
 		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
@@ -738,21 +737,21 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 
 	matches = resourceMap[resourcekinds.AzureRoleAssignment]
 	require.Equal(t, 2, len(matches))
-	expected := []outputresource.OutputResource{
+	expected := []rpv1.OutputResource{
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
+			LocalID:  rpv1.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole1",
 				handlers.RoleAssignmentScope: makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(),
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+					LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
 				},
 			},
 		},
@@ -761,15 +760,15 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
+			LocalID:  rpv1.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole2",
 				handlers.RoleAssignmentScope: makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(),
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+					LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
 				},
 			},
 		},
@@ -779,13 +778,13 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	matches = resourceMap[resourcekinds.AzureUserAssignedManagedIdentity]
 	require.Equal(t, 1, len(matches))
 
-	expected = []outputresource.OutputResource{
+	expected = []rpv1.OutputResource{
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
+			LocalID:  rpv1.LocalIDUserAssignedManagedIdentity,
 			Deployed: false,
 			Resource: map[string]string{
 				"userassignedidentityname":           "test-app-test-container",
@@ -799,22 +798,22 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	matches = resourceMap[resourcekinds.AzureFederatedIdentity]
 	require.Equal(t, 1, len(matches))
 
-	expected = []outputresource.OutputResource{
+	expected = []rpv1.OutputResource{
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureFederatedIdentity,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.LocalIDFederatedIdentity,
+			LocalID:  rpv1.LocalIDFederatedIdentity,
 			Deployed: false,
 			Resource: map[string]string{
 				"federatedidentityname":    "test-container",
 				"federatedidentitysubject": "system:serviceaccount:default:test-container",
 				"federatedidentityissuer":  "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+					LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
 				},
 			},
 		}}
@@ -871,21 +870,21 @@ func Test_Render_AzureConnection(t *testing.T) {
 	roleOutputResource, ok := kindResourceMap[resourcekinds.AzureRoleAssignment]
 	require.Equal(t, true, ok)
 	require.Len(t, roleOutputResource, 1)
-	expected := []outputresource.OutputResource{
+	expected := []rpv1.OutputResource{
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
+			LocalID:  rpv1.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         expectedRole,
 				handlers.RoleAssignmentScope: testARMID,
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+					LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
 				},
 			},
 		},
@@ -1043,14 +1042,14 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	renderOutput, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
 
-	deploymentResource := outputresource.OutputResource{}
-	secretResource := outputresource.OutputResource{}
+	deploymentResource := rpv1.OutputResource{}
+	secretResource := rpv1.OutputResource{}
 	for _, resource := range renderOutput.Resources {
-		if resource.LocalID == outputresource.LocalIDDeployment {
+		if resource.LocalID == rpv1.LocalIDDeployment {
 			deploymentResource = resource
 		}
 
-		if resource.LocalID == outputresource.LocalIDSecret {
+		if resource.LocalID == rpv1.LocalIDSecret {
 			secretResource = resource
 		}
 	}
@@ -1126,7 +1125,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 				azvolrenderer.SPCVolumeObjectSpecKey: "objectspecs",
 			},
 			OutputResources: map[string]resourcemodel.ResourceIdentity{
-				outputresource.LocalIDSecretProviderClass: {
+				rpv1.LocalIDSecretProviderClass: {
 					ResourceType: &resourcemodel.ResourceType{
 						Type:     resourcekinds.SecretProviderClass,
 						Provider: resourcemodel.ProviderKubernetes,
@@ -1150,7 +1149,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 
 	// Verify deployment
 	deploymentSpec := renderOutput.Resources[7]
-	require.Equal(t, outputresource.LocalIDDeployment, deploymentSpec.LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
+	require.Equal(t, rpv1.LocalIDDeployment, deploymentSpec.LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
 	require.Contains(t, deploymentSpec.Dependencies[0].LocalID, "RoleAssignment")
 	require.Equal(t, deploymentSpec.Dependencies[1].LocalID, "SecretProviderClass")
 	require.Equal(t, deploymentSpec.Dependencies[2].LocalID, "ServiceAccount")
@@ -1174,8 +1173,8 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	require.Equal(t, true, volumeMounts[0].ReadOnly)
 }
 
-func outputResourcesToKindMap(resources []outputresource.OutputResource) map[string][]outputresource.OutputResource {
-	results := map[string][]outputresource.OutputResource{}
+func outputResourcesToKindMap(resources []rpv1.OutputResource) map[string][]rpv1.OutputResource {
+	results := map[string][]rpv1.OutputResource{}
 	for _, resource := range resources {
 		matches := results[resource.ResourceType.Type]
 		matches = append(matches, resource)

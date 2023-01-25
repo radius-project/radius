@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -241,9 +241,9 @@ func TestCreateOrUpdateDaprStateStore_20220315PrivatePreview(t *testing.T) {
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDDaprComponent,
+				LocalID: rpv1.LocalIDDaprComponent,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprComponent,
 					Provider: resourcemodel.ProviderKubernetes,
@@ -251,7 +251,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]outputresource.SecretValueReference{},
+		SecretValues: map[string]rpv1.SecretValueReference{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"componentName": {
 				Value: "test-app-test-resource",
@@ -260,9 +260,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDDaprComponent,
+				LocalID: rpv1.LocalIDDaprComponent,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprComponent,
 					Provider: resourcemodel.ProviderKubernetes,

@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -191,9 +191,9 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				LocalID: rpv1.LocalIDAzureCosmosAccount,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosAccount,
 					Provider: resourcemodel.ProviderAzure,
@@ -201,7 +201,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]outputresource.SecretValueReference{
+		SecretValues: map[string]rpv1.SecretValueReference{
 			renderers.UsernameStringValue:   {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
@@ -214,9 +214,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				LocalID: rpv1.LocalIDAzureCosmosAccount,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosAccount,
 					Provider: resourcemodel.ProviderAzure,

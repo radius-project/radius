@@ -8,7 +8,6 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -57,7 +56,7 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
-			OutputResources: outputresource.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
+			OutputResources: rpv1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.StringPtr(extender.Properties.Environment),

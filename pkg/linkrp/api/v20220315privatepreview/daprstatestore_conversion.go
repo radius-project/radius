@@ -5,7 +5,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -87,7 +86,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		mode := "recipe"
 		dst.Properties = &RecipeDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -103,7 +102,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		mode := "resource"
 		dst.Properties = &ResourceDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -117,7 +116,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		mode := "values"
 		dst.Properties = &ValuesDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),

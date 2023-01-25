@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -33,11 +33,11 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 	if buildComputedValueReferences {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.Host: {
-				LocalID:     outputresource.LocalIDAzureRedis,
+				LocalID:     rpv1.LocalIDAzureRedis,
 				JSONPointer: "/properties/hostName",
 			},
 			renderers.Port: {
-				LocalID:     outputresource.LocalIDAzureRedis,
+				LocalID:     rpv1.LocalIDAzureRedis,
 				JSONPointer: "/properties/sslPort",
 			},
 			renderers.UsernameStringValue: {
@@ -63,9 +63,9 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 	}
 
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureRedis,
+				LocalID: rpv1.LocalIDAzureRedis,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRedis,
 					Provider: resourcemodel.ProviderAzure,
@@ -73,7 +73,7 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]outputresource.SecretValueReference{
+		SecretValues: map[string]rpv1.SecretValueReference{
 			renderers.ConnectionStringValue: {Value: "test-connection-string"},
 			renderers.PasswordStringHolder:  {Value: "testpassword"},
 			renderers.UsernameStringValue:   {Value: "redisusername"},
@@ -82,9 +82,9 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureRedis,
+				LocalID: rpv1.LocalIDAzureRedis,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRedis,
 					Provider: resourcemodel.ProviderAzure,

@@ -10,7 +10,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -82,7 +81,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 		mode := "values"
 		dst.Properties = &ValuesRabbitMQMessageQueueProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(rabbitmq.Properties.Environment),
@@ -96,7 +95,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 		recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 		dst.Properties = &RecipeRabbitMQMessageQueueProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(rabbitmq.Properties.Environment),

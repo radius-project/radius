@@ -11,7 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,7 @@ func TestHTTPRouteConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, int32(8080), ct.Properties.Port)
 	require.Equal(t, "http", ct.Properties.Scheme)
 	require.Equal(t, "http://testapplications.com/httproute/", ct.Properties.URL)
-	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
+	require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 }
 

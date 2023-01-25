@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
@@ -61,7 +60,7 @@ func Test_Render_Success(t *testing.T) {
 	serverResource := output.Resources[0]
 	databaseResource := output.Resources[1]
 
-	require.Equal(t, outputresource.LocalIDAzureSqlServer, serverResource.LocalID)
+	require.Equal(t, rpv1.LocalIDAzureSqlServer, serverResource.LocalID)
 	require.Equal(t, resourcekinds.AzureSqlServer, serverResource.ResourceType.Type)
 	require.Equal(t, resourcemodel.NewARMIdentity(
 		&resourcemodel.ResourceType{
@@ -72,7 +71,7 @@ func Test_Render_Success(t *testing.T) {
 		clientv2.SQLManagementClientAPIVersion),
 		serverResource.Identity)
 
-	require.Equal(t, outputresource.LocalIDAzureSqlServerDatabase, databaseResource.LocalID)
+	require.Equal(t, rpv1.LocalIDAzureSqlServerDatabase, databaseResource.LocalID)
 	require.Equal(t, resourcekinds.AzureSqlServerDatabase, databaseResource.ResourceType.Type)
 	require.Equal(t, resourcemodel.NewARMIdentity(
 		&resourcemodel.ResourceType{
@@ -87,7 +86,7 @@ func Test_Render_Success(t *testing.T) {
 			Value: "test-database",
 		},
 		"server": {
-			LocalID:     outputresource.LocalIDAzureSqlServer,
+			LocalID:     rpv1.LocalIDAzureSqlServer,
 			JSONPointer: "/properties/fullyQualifiedDomainName",
 		},
 	}

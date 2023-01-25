@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -53,18 +52,18 @@ type deploymentProcessor struct {
 }
 
 type DeploymentOutput struct {
-	Resources      []outputresource.OutputResource
+	Resources      []rpv1.OutputResource
 	ComputedValues map[string]any
-	SecretValues   map[string]outputresource.SecretValueReference
+	SecretValues   map[string]rpv1.SecretValueReference
 	RecipeData     datamodel.RecipeData
 }
 
 type ResourceData struct {
 	ID              resources.ID
 	Resource        v1.ResourceDataModel
-	OutputResources []outputresource.OutputResource
+	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
-	SecretValues    map[string]outputresource.SecretValueReference
+	SecretValues    map[string]rpv1.SecretValueReference
 	RecipeData      datamodel.RecipeData
 }
 
@@ -165,7 +164,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	}
 
 	// Order output resources in deployment dependency order
-	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
+	orderedOutputResources, err := rpv1.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
 		return DeploymentOutput{}, err
 	}
@@ -173,7 +172,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	// Recipe based links - Add deployed recipe resource IDs to output resource; Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
 	// Resource id based links - Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
 	// Dapr links - Validate that the resource exists (if resource id is provided); Apply dapr spec from output resource; Populate expected computed values from response of the GET request.
-	updatedOutputResources := []outputresource.OutputResource{}
+	updatedOutputResources := []rpv1.OutputResource{}
 	computedValues := make(map[string]any)
 	for _, outputResource := range orderedOutputResources {
 		// Add resources deployed by recipe to output resource identity
@@ -219,7 +218,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	}, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]any, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *rpv1.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]any, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
@@ -274,7 +273,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceData.ID)
 
-	orderedOutputResources, err := outputresource.OrderOutputResources(resourceData.OutputResources)
+	orderedOutputResources, err := rpv1.OrderOutputResources(resourceData.OutputResources)
 	if err != nil {
 		return err
 	}
@@ -332,7 +331,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference outputresource.SecretValueReference, recipeData datamodel.RecipeData) (any, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []rpv1.OutputResource, reference rpv1.SecretValueReference, recipeData datamodel.RecipeData) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil

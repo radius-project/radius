@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -62,9 +61,9 @@ func Test_Render_Success(t *testing.T) {
 		Type:     resourcekinds.AzureCosmosDBMongo,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	expectedOutputResources := []outputresource.OutputResource{
+	expectedOutputResources := []rpv1.OutputResource{
 		{
-			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+			LocalID:       rpv1.LocalIDAzureCosmosAccount,
 			ResourceType:  accountResourceType,
 			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
@@ -76,7 +75,7 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		{
-			LocalID:       outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:       rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType:  dbResourceType,
 			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
@@ -86,9 +85,9 @@ func Test_Render_Success(t *testing.T) {
 					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDAzureCosmosAccount,
+					LocalID: rpv1.LocalIDAzureCosmosAccount,
 				},
 			},
 		},
@@ -148,7 +147,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
-	expectedSecretValues := map[string]outputresource.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
 		renderers.UsernameStringValue:   {Value: userName},
 		renderers.PasswordStringHolder:  {Value: password},
@@ -362,14 +361,14 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
-			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id",
 		},
 	}
 
-	expectedOutputResources := []outputresource.OutputResource{
+	expectedOutputResources := []rpv1.OutputResource{
 		{
-			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			LocalID: rpv1.LocalIDAzureCosmosAccount,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: resourcemodel.ProviderAzure,
@@ -378,14 +377,14 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 		},
 		{
-			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID: rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			RadiusManaged:        to.Ptr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},
 	}
 
@@ -412,7 +411,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	// Secrets
 	require.Equal(t, 1, len(output.SecretValues))
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
+	require.Equal(t, rpv1.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
 

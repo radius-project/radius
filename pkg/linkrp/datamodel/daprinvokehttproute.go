@@ -8,7 +8,6 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -24,12 +23,12 @@ type DaprInvokeHttpRoute struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *DaprInvokeHttpRoute) ApplyDeploymentOutput(do outputresource.DeploymentOutput) {
+func (r *DaprInvokeHttpRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 }
 
 // OutputResources returns the output resources array.
-func (r *DaprInvokeHttpRoute) OutputResources() []outputresource.OutputResource {
+func (r *DaprInvokeHttpRoute) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 

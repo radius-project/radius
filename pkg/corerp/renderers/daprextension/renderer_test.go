@@ -17,7 +17,6 @@ import (
 	link "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -35,17 +34,17 @@ func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options ren
 	// Return a deployment so the Dapr extension can modify it
 	deployment := appsv1.Deployment{}
 
-	deploymentResource := outputresource.OutputResource{
+	deploymentResource := rpv1.OutputResource{
 		Resource: &deployment,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.Deployment,
 			Provider: resourcemodel.ProviderKubernetes,
 		},
-		LocalID: outputresource.LocalIDDeployment,
+		LocalID: rpv1.LocalIDDeployment,
 	}
 
 	output := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{deploymentResource},
+		Resources: []rpv1.OutputResource{deploymentResource},
 	}
 
 	return output, nil

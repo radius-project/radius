@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
@@ -61,7 +60,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 			Value: "abc",
 		},
 	}
-	expectedSecretValues := map[string]outputresource.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		"connectionString": {
 			Value: "admin:deadbeef@localhost:42",
 		},

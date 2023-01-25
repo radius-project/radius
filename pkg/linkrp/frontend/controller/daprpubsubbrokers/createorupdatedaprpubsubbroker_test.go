@@ -21,7 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -33,8 +33,8 @@ import (
 )
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
-	output := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
+	output := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Provider: resourcemodel.ProviderAzure,
@@ -53,11 +53,11 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	}
 	values := map[string]renderers.ComputedValueReference{
 		daprpubsubbrokers.NamespaceNameKey: {
-			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
+			LocalID:           rpv1.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ServiceBusNamespaceNameKey,
 		},
 		daprpubsubbrokers.PubSubNameKey: {
-			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
+			LocalID:           rpv1.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ResourceName,
 		},
 		daprpubsubbrokers.TopicNameKey: {
@@ -68,15 +68,15 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 	rendererOutput := renderers.RendererOutput{
-		Resources:      []outputresource.OutputResource{output},
-		SecretValues:   map[string]outputresource.SecretValueReference{},
+		Resources:      []rpv1.OutputResource{output},
+		SecretValues:   map[string]rpv1.SecretValueReference{},
 		ComputedValues: values,
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureServiceBusNamespace,
+				LocalID: rpv1.LocalIDAzureServiceBusNamespace,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 					Provider: resourcemodel.ProviderAzure,

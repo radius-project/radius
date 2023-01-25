@@ -10,7 +10,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -210,7 +209,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
-			OutputResources: outputresource.BuildExternalOutputResources(c.Properties.Status.OutputResources),
+			OutputResources: rpv1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(c.Properties.Application),

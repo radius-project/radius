@@ -11,7 +11,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -79,9 +78,9 @@ type GatewayOptions struct {
 }
 
 type RendererOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]outputresource.ComputedValueReference
-	SecretValues   map[string]outputresource.SecretValueReference
+	Resources      []rpv1.OutputResource
+	ComputedValues map[string]rpv1.ComputedValueReference
+	SecretValues   map[string]rpv1.SecretValueReference
 
 	// RadiusResource is the original Radius resource model.
 	RadiusResource v1.DataModelInterface

@@ -10,7 +10,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -88,7 +87,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		mode := "resource"
 		dst.Properties = &ResourceSQLDatabaseProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 			},
 			Mode:              &mode,
 			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
@@ -102,7 +101,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		mode := "values"
 		dst.Properties = &ValuesSQLDatabaseProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 			},
 			Mode:              &mode,
 			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
@@ -117,7 +116,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		recipe = fromRecipeDataModel(sql.Properties.Recipe)
 		dst.Properties = &RecipeSQLDatabaseProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresource.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 			},
 			Mode:              &mode,
 			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),

@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -60,7 +59,7 @@ func Test_Render_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, output.LocalID)
+	require.Equal(t, rpv1.LocalIDDaprStateStoreAzureStorage, output.LocalID)
 	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, output.ResourceType.Type)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
@@ -182,7 +181,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDDaprComponent, output.LocalID)
+	require.Equal(t, rpv1.LocalIDDaprComponent, output.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, output.ResourceType.Type)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 

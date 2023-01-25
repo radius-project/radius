@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 
@@ -119,7 +118,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 					Resource: or,
 					DependencyProperties: map[string]map[string]string{
 						// output properties of managed identity
-						outputresource.LocalIDUserAssignedManagedIdentity: {
+						rpv1.LocalIDUserAssignedManagedIdentity: {
 							handlers.UserAssignedIdentityClientIDKey: "newClientID",
 							handlers.UserAssignedIdentityTenantIDKey: "newTenantID",
 						},

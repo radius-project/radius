@@ -7,15 +7,14 @@ import (
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-
-	"github.com/project-radius/radius/pkg/corerp/renderers"
 )
 
 var _ renderers.Renderer = (*noop)(nil)
@@ -40,7 +39,7 @@ func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options ren
 	deployment.Annotations = map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"}
 	deployment.Labels = map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}
 
-	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
+	resources := []rpv1.OutputResource{rpv1.NewKubernetesOutputResource(resourcekinds.Deployment, rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
 
 	return renderers.RendererOutput{Resources: resources}, nil
 }

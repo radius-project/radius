@@ -12,7 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,10 +41,10 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 
 		if payload == "extenderresource.json" {
 			require.Equal(t, map[string]any{"accountSid": "sid", "authToken:": "token"}, convertedResource.Properties.Secrets)
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		} else {
 			require.Empty(t, convertedResource.Properties.Secrets)
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
 	}
 }

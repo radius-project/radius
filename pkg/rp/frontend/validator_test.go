@@ -11,7 +11,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +58,7 @@ func TestPrepareRadiusResource_DeepCopy(t *testing.T) {
 			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
 			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 			Status: rpv1.ResourceStatus{
-				OutputResources: []outputresource.OutputResource{
+				OutputResources: []rpv1.OutputResource{
 					{
 						LocalID: "testID",
 					},

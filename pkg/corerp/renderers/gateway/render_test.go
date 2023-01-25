@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -973,10 +972,10 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 	return output
 }
 
-func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include, expectedTCPProxy *contourv1.TCPProxy) {
+func validateGateway(t *testing.T, outputResources []rpv1.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include, expectedTCPProxy *contourv1.TCPProxy) {
 	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
 
-	expectedGatewayOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
+	expectedGatewayOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, gateway, gateway.ObjectMeta)
 	require.Equal(t, expectedGatewayOutputResource, gatewayOutputResource)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), gateway.Name)
 	require.Equal(t, applicationName, gateway.Namespace)
@@ -1010,10 +1009,10 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	require.Equal(t, expectedGatewaySpec, gateway.Spec)
 }
 
-func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputResource, expectedRouteName string, expectedPort int32, expectedRewrite *contourv1.PathRewritePolicy) {
-	expectedLocalID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, expectedRouteName)
+func validateHttpRoute(t *testing.T, outputResources []rpv1.OutputResource, expectedRouteName string, expectedPort int32, expectedRewrite *contourv1.PathRewritePolicy) {
+	expectedLocalID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpRoute, expectedRouteName)
 	httpRoute, httpRouteOutputResource := kubernetes.FindHttpRouteByLocalID(outputResources, expectedLocalID)
-	expectedHttpRouteOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
+	expectedHttpRouteOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedHttpRouteOutputResource, httpRouteOutputResource)
 
 	require.Equal(t, kubernetes.NormalizeResourceName(expectedRouteName), httpRoute.Name)

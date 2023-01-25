@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -45,7 +45,7 @@ type daprStateStoreAzureStorageHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
@@ -94,7 +94,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
 	properties := resource.Resource.(map[string]any)
 
 	err := handler.deleteDaprStateStore(ctx, properties)

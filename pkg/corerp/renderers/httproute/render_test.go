@@ -16,8 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -59,7 +60,7 @@ func Test_Render_WithPort(t *testing.T) {
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
 
-	expectedValues := map[string]outputresource.ComputedValueReference{
+	expectedValues := map[string]rpv1.ComputedValueReference{
 		"hostname": {Value: kubernetes.NormalizeResourceName(resourceName)},
 		"port":     {Value: port},
 		"scheme":   {Value: "http"},
@@ -69,7 +70,7 @@ func Test_Render_WithPort(t *testing.T) {
 
 	service, outputResource := kubernetes.FindService(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
+	expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.NormalizeResourceName(resource.Name), service.Name)
@@ -104,7 +105,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
 
-	expectedValues := map[string]outputresource.ComputedValueReference{
+	expectedValues := map[string]rpv1.ComputedValueReference{
 		"hostname": {Value: kubernetes.NormalizeResourceName(resourceName)},
 		"port":     {Value: defaultPort},
 		"scheme":   {Value: "http"},
@@ -114,7 +115,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 
 	service, outputResource := kubernetes.FindService(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
+	expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.NormalizeResourceName(resource.Name), service.Name)
@@ -150,7 +151,7 @@ func Test_Render_WithNameSpace(t *testing.T) {
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
 
-	expectedValues := map[string]outputresource.ComputedValueReference{
+	expectedValues := map[string]rpv1.ComputedValueReference{
 		"hostname": {Value: kubernetes.NormalizeResourceName(resourceName)},
 		"port":     {Value: defaultPort},
 		"scheme":   {Value: "http"},
@@ -160,7 +161,7 @@ func Test_Render_WithNameSpace(t *testing.T) {
 
 	service, outputResource := kubernetes.FindService(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
+	expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.NormalizeResourceName(resource.Name), service.Name)

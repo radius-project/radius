@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -138,9 +137,9 @@ func getUpperCaseTestResource() datamodel.ContainerResource {
 }
 
 func getTestRendererOutput() renderers.RendererOutput {
-	testOutputResources := []outputresource.OutputResource{
+	testOutputResources := []rpv1.OutputResource{
 		{
-			LocalID: outputresource.LocalIDService,
+			LocalID: rpv1.LocalIDService,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
 				Provider: resourcemodel.ProviderKubernetes,
@@ -150,7 +149,7 @@ func getTestRendererOutput() renderers.RendererOutput {
 
 	rendererOutput := renderers.RendererOutput{
 		Resources: testOutputResources,
-		ComputedValues: map[string]outputresource.ComputedValueReference{
+		ComputedValues: map[string]rpv1.ComputedValueReference{
 			"url": {
 				Value: "http://test-application/test-route:8080",
 			},
@@ -205,9 +204,9 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	testResource := buildMongoDBLinkWithRecipe()
 
-	secretValues := map[string]outputresource.SecretValueReference{}
-	secretValues[linkrp_renderers.ConnectionStringValue] = outputresource.SecretValueReference{
-		LocalID:       outputresource.LocalIDAzureCosmosAccount,
+	secretValues := map[string]rpv1.SecretValueReference{}
+	secretValues[linkrp_renderers.ConnectionStringValue] = rpv1.SecretValueReference{
+		LocalID:       rpv1.LocalIDAzureCosmosAccount,
 		Action:        "listConnectionStrings",
 		ValueSelector: "/connectionStrings/0/connectionString",
 		Transformer: resourcemodel.ResourceType{
@@ -231,9 +230,9 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 		Type:     resourcekinds.AzureCosmosDBMongo,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	outputResources := []outputresource.OutputResource{
+	outputResources := []rpv1.OutputResource{
 		{
-			LocalID:              outputresource.LocalIDAzureCosmosAccount,
+			LocalID:              rpv1.LocalIDAzureCosmosAccount,
 			ResourceType:         accountResourceType,
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 			Identity: resourcemodel.ResourceIdentity{
@@ -246,7 +245,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 			RadiusManaged: to.Ptr(true),
 		},
 		{
-			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:              rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType:         dbResourceType,
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Identity: resourcemodel.ResourceIdentity{
@@ -264,7 +263,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 				},
 			},
 			RadiusManaged: to.Ptr(true),
-			Dependencies:  []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+			Dependencies:  []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},
 	}
 
@@ -920,7 +919,7 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		testRendererOutput.Resources[0].Dependencies = []outputresource.Dependency{
+		testRendererOutput.Resources[0].Dependencies = []rpv1.Dependency{
 			{LocalID: ""},
 		}
 
@@ -989,7 +988,7 @@ func Test_Delete(t *testing.T) {
 	t.Run("Verify delete with no output resources", func(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
-		testResource.Properties.Status.OutputResources = []outputresource.OutputResource{}
+		testResource.Properties.Status.OutputResources = []rpv1.OutputResource{}
 
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(0).Return(nil)
 

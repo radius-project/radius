@@ -8,7 +8,6 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -24,12 +23,12 @@ type RedisCache struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *RedisCache) ApplyDeploymentOutput(do outputresource.DeploymentOutput) {
+func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 }
 
 // OutputResources returns the output resources array.
-func (r *RedisCache) OutputResources() []outputresource.OutputResource {
+func (r *RedisCache) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 

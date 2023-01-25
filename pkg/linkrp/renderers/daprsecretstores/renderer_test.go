@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
@@ -102,7 +101,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	outputResource := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDDaprComponent, outputResource.LocalID)
+	require.Equal(t, rpv1.LocalIDDaprComponent, outputResource.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, outputResource.ResourceType.Type)
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.ComponentNameKey: {
