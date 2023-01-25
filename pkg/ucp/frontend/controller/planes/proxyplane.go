@@ -49,17 +49,16 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
 	}
 
-	logger.Info("#### req url before get relative: " + req.URL.Path)
-	req.URL.Path = p.GetRelativePath(req.URL.Path)
-
 	refererURL := url.URL{
-		Scheme:   req.URL.Scheme,
+		// Scheme:   req.URL.Scheme,
 		Host:     req.Host,
 		Path:     req.URL.Path,
 		RawQuery: req.URL.RawQuery,
 	}
+
+	logger.Info("#### req url before get relative: " + req.URL.Path)
+	req.URL.Path = p.GetRelativePath(req.URL.Path)
 	logger.Info("#### req url after get relative" + req.URL.String())
-	logger.Info(fmt.Sprintf("###### Referer in UCP : %s", req.Header.Get(v1.RefererHeader)))
 
 	// Make a copy of the incoming URL and trim the base path
 	newURL := *req.URL
@@ -157,6 +156,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if req.TLS != nil {
 		httpScheme = "https"
 	}
+	refererURL.Scheme = httpScheme
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
@@ -185,10 +185,11 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	// 	Path:     p.Options.BasePath + newURL.Path,
 	// 	RawQuery: uri.RawQuery,
 	// }
+	logger.Info(fmt.Sprintf("###### Referer in UCP : %s", req.Header.Get(v1.RefererHeader)))
 	req.Header.Set(v1.RefererHeader, refererURL.String())
 	logger = logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("###### Referer in UCP : %s", req.Header.Get(v1.RefererHeader)))
-	logger.Info("Resource id in UCP: " + resourceID.String())
+	logger.Info("#### Resource id in UCP: " + resourceID.String())
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
