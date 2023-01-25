@@ -23,7 +23,12 @@ var rootCmd = &cobra.Command{
 	Short: "UCP server",
 	Long:  `Server process for the Univeral Control Plane (UCP).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger, flush, err := ucplog.NewLogger("ucp")
+		options, err := server.NewServerOptionsFromEnvironment()
+		if err != nil {
+			return err
+		}
+
+		logger, flush, err := ucplog.NewLogger(ucplog.UCPLoggerName, &options.LoggingOptions)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -31,11 +36,6 @@ var rootCmd = &cobra.Command{
 
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
-
-		options, err := server.NewServerOptionsFromEnvironment()
-		if err != nil {
-			return err
-		}
 
 		host, err := server.NewServer(options)
 		if err != nil {
