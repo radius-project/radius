@@ -38,10 +38,10 @@ type Service struct {
 
 // Init initializes web service.
 func (s *Service) Init(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
-
 	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
-
 	opSC, err := s.StorageProvider.GetStorageClient(ctx, s.ProviderName+"/operationstatuses")
 	if err != nil {
 		return err
@@ -55,6 +55,14 @@ func (s *Service) Init(ctx context.Context) error {
 	s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err
+	}
+
+	// Initialize the manager for ARM client cert validation
+	if s.Options.Config.Server.EnableArmAuth {
+		s.ARMCertManager = authentication.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
+		if err := s.ARMCertManager.Start(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
