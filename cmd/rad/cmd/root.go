@@ -99,6 +99,7 @@ func prettyPrintJSON(o any) (string, error) {
 // It also initializes the tracer.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
+	initTracer(ctx)
 	err := RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
@@ -107,8 +108,6 @@ func Execute() {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}
-
-	initTracer(ctx)
 
 }
 
