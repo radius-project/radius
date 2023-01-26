@@ -17,6 +17,7 @@ import (
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/logging"
@@ -109,6 +110,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		}
 	}
 
+	// create the context object to be passed to the recipe deployment
+	recipeContext, err := handlers.CreateRecipeContextParameter(id.String(), basicResource.Environment, envMetadata.Namespace, basicResource.Application, kubeNamespace)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
 		Namespace: kubeNamespace,
 		RecipeProperties: datamodel.RecipeProperties{
@@ -123,6 +130,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
+	rendererOutput.RecipeContext = *recipeContext
 	// Check if the output resources have the corresponding provider supported in Radius
 	for _, or := range rendererOutput.Resources {
 		if or.ResourceType.Provider == "" {
@@ -156,7 +164,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 
 	// Deploy recipe
 	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders)
+		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.RecipeContext)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
