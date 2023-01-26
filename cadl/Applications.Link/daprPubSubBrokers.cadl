@@ -105,7 +105,7 @@ model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
 
 @armResourceOperations
 interface DaprPubSubBroker
-  extends Radius.RootScopeResourceOperations<
+  extends Radius.ResourceOperationWithSyncDelete<
       DaprPubSubBrokerResource,
       DaprPubSubBrokerProperties,
       RootScopeParam

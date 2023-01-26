@@ -58,7 +58,7 @@ model DaprInvokeHttpRouteResource is TrackedResource<DaprInvokeHttpRouteProperti
 
 @armResourceOperations
 interface DaprInvokeHttpRoute
-  extends Radius.RootScopeResourceOperations<
+  extends Radius.ResourceOperationWithSyncDelete<
       DaprInvokeHttpRouteResource,
       DaprInvokeHttpRouteProperties,
       RootScopeParam
