@@ -19,9 +19,7 @@ import (
 // MarshalJSON implements the json.Marshaller interface for type AWSCredentialProperties.
 func (a AWSCredentialProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "accessKeyId", a.AccessKeyID)
-	populate(objectMap, "secretAccessKey", a.SecretAccessKey)
-	populate(objectMap, "storage", a.Storage)
+	objectMap["kind"] = a.Kind
 	return json.Marshal(objectMap)
 }
 
@@ -34,14 +32,8 @@ func (a *AWSCredentialProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "accessKeyId":
-				err = unpopulate(val, "AccessKeyID", &a.AccessKeyID)
-				delete(rawMsg, key)
-		case "secretAccessKey":
-				err = unpopulate(val, "SecretAccessKey", &a.SecretAccessKey)
-				delete(rawMsg, key)
-		case "storage":
-				a.Storage, err = unmarshalCredentialStoragePropertiesClassification(val)
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -83,7 +75,7 @@ func (a *AWSCredentialResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &a.Name)
 				delete(rawMsg, key)
 		case "properties":
-				err = unpopulate(val, "Properties", &a.Properties)
+				a.Properties, err = unmarshalAWSCredentialPropertiesClassification(val)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &a.SystemData)
@@ -133,6 +125,72 @@ func (a *AWSCredentialResourceListResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type AWSIamCredentialProperties.
+func (a AWSIamCredentialProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "accessKeyId", a.AccessKeyID)
+	objectMap["kind"] = "IAM"
+	populate(objectMap, "secretAccessKey", a.SecretAccessKey)
+	populate(objectMap, "storage", a.Storage)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AWSIamCredentialProperties.
+func (a *AWSIamCredentialProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "accessKeyId":
+				err = unpopulate(val, "AccessKeyID", &a.AccessKeyID)
+				delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+				delete(rawMsg, key)
+		case "secretAccessKey":
+				err = unpopulate(val, "SecretAccessKey", &a.SecretAccessKey)
+				delete(rawMsg, key)
+		case "storage":
+				a.Storage, err = unmarshalCredentialStoragePropertiesClassification(val)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type AzureCredentialProperties.
+func (a AzureCredentialProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	objectMap["kind"] = a.Kind
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureCredentialProperties.
+func (a *AzureCredentialProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type AzureCredentialResource.
 func (a AzureCredentialResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
@@ -165,7 +223,7 @@ func (a *AzureCredentialResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &a.Name)
 				delete(rawMsg, key)
 		case "properties":
-				err = unpopulate(val, "Properties", &a.Properties)
+				a.Properties, err = unmarshalAzureCredentialPropertiesClassification(val)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &a.SystemData)
@@ -219,6 +277,7 @@ func (a *AzureCredentialResourceListResult) UnmarshalJSON(data []byte) error {
 func (a AzureServicePrincipalProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "clientId", a.ClientID)
+	objectMap["kind"] = "ServicePrincipal"
 	populate(objectMap, "secret", a.Secret)
 	populate(objectMap, "storage", a.Storage)
 	populate(objectMap, "tenantId", a.TenantID)
@@ -236,6 +295,9 @@ func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "clientId":
 				err = unpopulate(val, "ClientID", &a.ClientID)
+				delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
 				delete(rawMsg, key)
 		case "secret":
 				err = unpopulate(val, "Secret", &a.Secret)

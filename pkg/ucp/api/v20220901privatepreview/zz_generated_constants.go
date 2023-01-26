@@ -14,6 +14,32 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
+type AwsCredentialKind string
+
+const (
+	AwsCredentialKindIAM AwsCredentialKind = "IAM"
+)
+
+// PossibleAwsCredentialKindValues returns the possible values for the AwsCredentialKind const type.
+func PossibleAwsCredentialKindValues() []AwsCredentialKind {
+	return []AwsCredentialKind{	
+		AwsCredentialKindIAM,
+	}
+}
+
+type AzureCredentialKind string
+
+const (
+	AzureCredentialKindServicePrincipal AzureCredentialKind = "ServicePrincipal"
+)
+
+// PossibleAzureCredentialKindValues returns the possible values for the AzureCredentialKind const type.
+func PossibleAzureCredentialKindValues() []AzureCredentialKind {
+	return []AzureCredentialKind{	
+		AzureCredentialKindServicePrincipal,
+	}
+}
+
 // CreatedByType - The type of identity that created the resource.
 type CreatedByType string
 

@@ -11,6 +11,42 @@ package v20220901privatepreview
 
 import "encoding/json"
 
+func unmarshalAWSCredentialPropertiesClassification(rawMsg json.RawMessage) (AWSCredentialPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b AWSCredentialPropertiesClassification
+	switch m["kind"] {
+	case "IAM":
+		b = &AWSIamCredentialProperties{}
+	default:
+		b = &AWSCredentialProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalAzureCredentialPropertiesClassification(rawMsg json.RawMessage) (AzureCredentialPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b AzureCredentialPropertiesClassification
+	switch m["kind"] {
+	case "ServicePrincipal":
+		b = &AzureServicePrincipalProperties{}
+	default:
+		b = &AzureCredentialProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
 func unmarshalCredentialStoragePropertiesClassification(rawMsg json.RawMessage) (CredentialStoragePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

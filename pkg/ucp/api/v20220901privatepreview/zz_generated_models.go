@@ -11,17 +11,22 @@ package v20220901privatepreview
 
 import "time"
 
-// AWSCredentialProperties - AWS credential storage properties
-type AWSCredentialProperties struct {
-	// REQUIRED; Access key ID for AWS identity
-	AccessKeyID *string `json:"accessKeyId,omitempty"`
-
-	// REQUIRED; Secret Access Key for AWS identity
-	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
-
-	// REQUIRED; The storage properties
-	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
+// AWSCredentialPropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetAWSCredentialProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AWSCredentialProperties, *AWSIamCredentialProperties
+type AWSCredentialPropertiesClassification interface {
+	// GetAWSCredentialProperties returns the AWSCredentialProperties content of the underlying type.
+	GetAWSCredentialProperties() *AWSCredentialProperties
 }
+
+type AWSCredentialProperties struct {
+	// REQUIRED; Discriminator property for AWSCredentialProperties.
+	Kind *string `json:"kind,omitempty"`
+}
+
+// GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSCredentialProperties.
+func (a *AWSCredentialProperties) GetAWSCredentialProperties() *AWSCredentialProperties { return a }
 
 // AWSCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
 // type.
@@ -30,7 +35,7 @@ type AWSCredentialResource struct {
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties *AWSCredentialProperties `json:"properties,omitempty"`
+	Properties AWSCredentialPropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -55,6 +60,28 @@ type AWSCredentialResourceListResult struct {
 
 	// The link to the next page of items
 	NextLink *string `json:"nextLink,omitempty"`
+}
+
+// AWSIamCredentialProperties - AWS credential storage properties
+type AWSIamCredentialProperties struct {
+	// REQUIRED; Access key ID for AWS identity
+	AccessKeyID *string `json:"accessKeyId,omitempty"`
+
+	// REQUIRED; Discriminator property for AWSCredentialProperties.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; Secret Access Key for AWS identity
+	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
+
+	// REQUIRED; The storage properties
+	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
+}
+
+// GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSIamCredentialProperties.
+func (a *AWSIamCredentialProperties) GetAWSCredentialProperties() *AWSCredentialProperties {
+	return &AWSCredentialProperties{
+		Kind: a.Kind,
+	}
 }
 
 // AwsCredentialClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialClient.CreateOrUpdate method.
@@ -100,6 +127,23 @@ type AzureCredentialClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// AzureCredentialPropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetAzureCredentialProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AzureCredentialProperties, *AzureServicePrincipalProperties
+type AzureCredentialPropertiesClassification interface {
+	// GetAzureCredentialProperties returns the AzureCredentialProperties content of the underlying type.
+	GetAzureCredentialProperties() *AzureCredentialProperties
+}
+
+type AzureCredentialProperties struct {
+	// REQUIRED; Discriminator property for AzureCredentialProperties.
+	Kind *string `json:"kind,omitempty"`
+}
+
+// GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureCredentialProperties.
+func (a *AzureCredentialProperties) GetAzureCredentialProperties() *AzureCredentialProperties { return a }
+
 // AzureCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
 // type.
 type AzureCredentialResource struct {
@@ -107,7 +151,7 @@ type AzureCredentialResource struct {
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties *AzureServicePrincipalProperties `json:"properties,omitempty"`
+	Properties AzureCredentialPropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -139,6 +183,9 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
 	ClientID *string `json:"clientId,omitempty"`
 
+	// REQUIRED; Discriminator property for AzureCredentialProperties.
+	Kind *string `json:"kind,omitempty"`
+
 	// REQUIRED; secret when the CredentialKind is ServicePrincipal
 	Secret *string `json:"secret,omitempty"`
 
@@ -147,6 +194,13 @@ type AzureServicePrincipalProperties struct {
 
 	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
+}
+
+// GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureServicePrincipalProperties.
+func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureCredentialProperties {
+	return &AzureCredentialProperties{
+		Kind: a.Kind,
+	}
 }
 
 // BasicResourceProperties - Basic properties of a UCP resource.

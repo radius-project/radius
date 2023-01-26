@@ -50,10 +50,6 @@ model BasicResourceProperties {
     provisioningState?: ProvisioningState;
 }
 
-enum CredentialStorageKind {
-    Internal,
-}
-
 @doc("UCP PlaneResource.")
 model PlaneResource is TrackedResource<PlaneResourceProperties> {
     @key("planeType")
@@ -70,6 +66,18 @@ enum PlaneKind {
     AWS
 }
 
+enum CredentialStorageKind {
+    Internal,
+}
+
+enum AwsCredentialKind {
+    IAM,
+}
+
+enum AzureCredentialKind {
+    ServicePrincipal,
+}
+
 @doc("Plane properties.")
 model PlaneResourceProperties extends BasicResourceProperties {
     @doc("The kind of plane")
@@ -82,8 +90,13 @@ model PlaneResourceProperties extends BasicResourceProperties {
     resourceProviders?: Record<string>
 }
 
+@discriminator("kind")
+model AzureCredentialProperties {
+}
+
 @doc("Service Principal credential storage properties")
-model AzureServicePrincipalProperties {
+model AzureServicePrincipalProperties extends AzureCredentialProperties {
+    kind: "ServicePrincipal";
     @doc("clientId when the CredentialKind is ServicePrincipal")
     clientId: string;
     @doc("secret when the CredentialKind is ServicePrincipal")
@@ -95,8 +108,13 @@ model AzureServicePrincipalProperties {
     storage: CredentialStorageProperties;
 }
 
-@doc("AWS credential storage properties")
+@discriminator("kind")
 model AWSCredentialProperties {
+}
+
+@doc("AWS credential storage properties")
+model AWSIamCredentialProperties extends AWSCredentialProperties {
+    kind: "IAM";
     @doc("Access key ID for AWS identity")
     @extension("x-ms-secret", true)
     accessKeyId: string;
@@ -115,7 +133,7 @@ model AWSCredentialResource is TrackedResource<AWSCredentialProperties> {
     name: string;
 }
 
-model AzureCredentialResource is TrackedResource<AzureServicePrincipalProperties> {
+model AzureCredentialResource is TrackedResource<AzureCredentialProperties> {
     @key("credentialName")
     @doc("The plane type.")
     @path
@@ -184,7 +202,7 @@ interface ResourceGroups
 interface AzureCredential
   extends CredentialResourceOperations<
       AzureCredentialResource,
-      AzureServicePrincipalProperties,
+      AzureCredentialProperties,
       Root<PlaneResource>
     > {}
 

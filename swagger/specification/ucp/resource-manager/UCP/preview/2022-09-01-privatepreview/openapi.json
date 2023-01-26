@@ -852,26 +852,14 @@
     "AWSCredentialProperties": {
       "type": "object",
       "properties": {
-        "accessKeyId": {
+        "kind": {
           "type": "string",
-          "description": "Access key ID for AWS identity",
-          "x-ms-secret": true
-        },
-        "secretAccessKey": {
-          "type": "string",
-          "description": "Secret Access Key for AWS identity",
-          "x-ms-secret": true
-        },
-        "storage": {
-          "$ref": "#/definitions/CredentialStorageProperties",
-          "description": "The storage properties"
+          "description": "Discriminator property for AWSCredentialProperties."
         }
       },
-      "description": "AWS credential storage properties",
+      "discriminator": "kind",
       "required": [
-        "accessKeyId",
-        "secretAccessKey",
-        "storage"
+        "kind"
       ]
     },
     "AWSCredentialResource": {
@@ -917,11 +905,75 @@
         "value"
       ]
     },
+    "AWSIamCredentialProperties": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string",
+          "description": "Access key ID for AWS identity",
+          "x-ms-secret": true
+        },
+        "secretAccessKey": {
+          "type": "string",
+          "description": "Secret Access Key for AWS identity",
+          "x-ms-secret": true
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "description": "AWS credential storage properties",
+      "required": [
+        "accessKeyId",
+        "secretAccessKey",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AWSCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "IAM"
+    },
+    "AwsCredentialKind": {
+      "type": "string",
+      "enum": [
+        "IAM"
+      ],
+      "x-ms-enum": {
+        "name": "AwsCredentialKind",
+        "modelAsString": true
+      }
+    },
+    "AzureCredentialKind": {
+      "type": "string",
+      "enum": [
+        "ServicePrincipal"
+      ],
+      "x-ms-enum": {
+        "name": "AzureCredentialKind",
+        "modelAsString": true
+      }
+    },
+    "AzureCredentialProperties": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for AzureCredentialProperties."
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
     "AzureCredentialResource": {
       "type": "object",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/AzureServicePrincipalProperties",
+          "$ref": "#/definitions/AzureCredentialProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
           "x-ms-mutability": [
@@ -987,7 +1039,13 @@
         "secret",
         "tenantId",
         "storage"
-      ]
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AzureCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "ServicePrincipal"
     },
     "BasicResourceProperties": {
       "type": "object",
