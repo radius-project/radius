@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/go-playground/validator/v10"
@@ -293,7 +292,7 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	}
 	baseIndex := 0
 	if referer.Path != "" {
-		baseIndex = getBaseIndex(referer.Path)
+		baseIndex = v1.GetBaseIndex(referer.Path)
 	}
 	base := referer.Path[:baseIndex]
 
@@ -323,20 +322,6 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	}
 
 	return dest.String(), nil
-}
-
-func getBaseIndex(path string) int {
-	normalized := strings.ToLower(path)
-	idx := strings.Index(normalized, "/planes/")
-	if idx >= 0 {
-		return idx
-	}
-	idx = strings.Index(normalized, "/subscriptions/")
-	if idx >= 0 {
-		return idx
-	}
-	return 0
-
 }
 
 // NoContentResponse represents an HTTP 204.
