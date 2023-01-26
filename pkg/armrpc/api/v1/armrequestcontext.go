@@ -178,7 +178,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	}
 
 	if pathBase == "" {
-		pathPrefix := getBaseIndex(refererURL.Path)
+		pathPrefix := GetBaseIndex(refererURL.Path)
 		pathBase = refererURL.Path[:pathPrefix]
 	}
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
@@ -278,7 +278,7 @@ func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) conte
 	return context.WithValue(ctx, armContextKey, armctx)
 }
 
-func getBaseIndex(path string) int {
+func GetBaseIndex(path string) int {
 	normalized := strings.ToLower(path)
 	idx := strings.Index(normalized, "/planes/")
 	if idx >= 0 {
