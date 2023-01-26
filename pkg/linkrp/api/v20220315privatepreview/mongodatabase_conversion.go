@@ -10,7 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -32,7 +32,7 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.GetMongoDatabaseProperties().Environment),
 				Application: to.String(src.Properties.GetMongoDatabaseProperties().Application),
 			},
@@ -118,7 +118,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -132,7 +132,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -147,7 +147,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),

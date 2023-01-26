@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package testing
+package testutil
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"

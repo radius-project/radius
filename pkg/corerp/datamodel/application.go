@@ -7,8 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 var _ v1.DataModelInterface = (*Application)(nil)
@@ -27,23 +26,23 @@ func (e *Application) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (c *Application) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (c *Application) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 }
 
 // OutputResources returns the output resources array.
-func (c *Application) OutputResources() []outputresource.OutputResource {
+func (c *Application) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *Application) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *Application) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 
 	Extensions []Extension `json:"extensions,omitempty"`
 }

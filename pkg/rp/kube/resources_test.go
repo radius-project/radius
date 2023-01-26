@@ -13,7 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -41,13 +41,13 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 
 	nsTests := []struct {
 		desc string
-		prop rp.KubernetesComputeProperties
+		prop rpv1.KubernetesComputeProperties
 		id   string
 		out  string
 	}{
 		{
 			desc: "namespace is defined",
-			prop: rp.KubernetesComputeProperties{
+			prop: rpv1.KubernetesComputeProperties{
 				Namespace: "default-ns",
 			},
 			id:  testEnvID,
@@ -55,7 +55,7 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 		},
 		{
 			desc: "undefined namespace",
-			prop: rp.KubernetesComputeProperties{},
+			prop: rpv1.KubernetesComputeProperties{},
 			id:   testEnvID,
 			out:  "env",
 		},
@@ -65,8 +65,8 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			envdm := &datamodel.Environment{
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
-						Kind:              rp.KubernetesComputeKind,
+					Compute: rpv1.EnvironmentCompute{
+						Kind:              rpv1.KubernetesComputeKind,
 						KubernetesCompute: tc.prop,
 					},
 				},

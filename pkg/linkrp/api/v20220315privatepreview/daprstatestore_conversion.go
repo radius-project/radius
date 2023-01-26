@@ -5,7 +5,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -13,7 +13,7 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		},
@@ -86,7 +86,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		mode := "recipe"
 		dst.Properties = &RecipeDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -102,7 +102,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		mode := "resource"
 		dst.Properties = &ResourceDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -116,7 +116,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		mode := "values"
 		dst.Properties = &ValuesDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),

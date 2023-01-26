@@ -12,7 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,7 +46,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			if payload == "rediscacheresource.json" {
 				require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
 				require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
-				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+				require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			}
 		case *RecipeRedisCacheProperties:
 			require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
@@ -62,7 +62,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, int32(10255), *v.Port)
 			require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
 			require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			require.Equal(t, datamodel.LinkModeValues, convertedResource.Properties.Mode)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -27,7 +27,7 @@ type daprComponentHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprComponentHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (resourcemodel.ResourceIdentity, map[string]string, error) {
+func (handler *daprComponentHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (resourcemodel.ResourceIdentity, map[string]string, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	item, err := convertToUnstructured(*resource)
@@ -99,7 +99,7 @@ func (handler *daprComponentHandler) PatchNamespace(ctx context.Context, namespa
 	return nil
 }
 
-func (handler *daprComponentHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *daprComponentHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
 	identity := &resourcemodel.KubernetesIdentity{}
 	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
 		return err

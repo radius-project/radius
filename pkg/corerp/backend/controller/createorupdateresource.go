@@ -19,8 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -94,7 +93,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	deploymentDataModel, ok := dataModel.(rp.DeploymentDataModel)
+	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
 	if !ok {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), err
 	}
@@ -104,7 +103,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
 
 	if !isNewResource {
-		diff := outputresource.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
+		diff := rpv1.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
 		err = c.DeploymentProcessor().Delete(ctx, id, diff)
 		if err != nil {
 			return ctrl.Result{}, err

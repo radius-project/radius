@@ -12,8 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 const (
@@ -42,9 +41,9 @@ type RenderOptions struct {
 }
 
 type RendererOutput struct {
-	Resources      []outputresource.OutputResource
+	Resources      []rpv1.OutputResource
 	ComputedValues map[string]ComputedValueReference
-	SecretValues   map[string]rp.SecretValueReference
+	SecretValues   map[string]rpv1.SecretValueReference
 	RecipeData     datamodel.RecipeData
 	// EnvironmentProviders specifies the providers mapped to the linked environment needed to deploy the recipe
 	EnvironmentProviders coreDatamodel.Providers

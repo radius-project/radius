@@ -12,22 +12,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
-		SecretValues: map[string]rp.SecretValueReference{
+		SecretValues: map[string]rpv1.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				Value: "testConnectionString",
 			},
@@ -40,7 +40,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{},
+		Resources: []rpv1.OutputResource{},
 	}
 
 	return rendererOutput, deploymentOutput
@@ -73,9 +73,9 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 		t.Run(testcase.desc, func(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -150,12 +150,12 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			if testcase.inputFile != "" {
 				input = &v20220315privatepreview.RabbitMQMessageQueueResource{}
-				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
+				_ = json.Unmarshal(testutil.ReadFixture(testcase.inputFile), input)
 			}
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
