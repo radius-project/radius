@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -202,8 +201,6 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 		respCode = http.StatusCreated
 	}
 
-	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info("Resource ID from async request: " + serviceCtx.ResourceID.String())
 	return rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion, "", ""), nil
 }
 
