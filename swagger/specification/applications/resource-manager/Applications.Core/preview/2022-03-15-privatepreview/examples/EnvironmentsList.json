@@ -53,6 +53,28 @@
             }
           },
           {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "name": "env0",
+            "type": "Applications.Core/environments",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "compute": {
+                "kind": "Kubernetes",
+                "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc"
+                }
+              },
+              "providers" : {
+                "aws" : {
+                    "scope":"/planes/aws/aws/accounts/140313373712/regions/us-west-2" 
+                }
+              }
+            }
+          },
+          {
             "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
             "name": "env1",
             "type": "Applications.Core/environments",

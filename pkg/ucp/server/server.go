@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -31,6 +32,7 @@ const (
 type Options struct {
 	Port                   string
 	StorageProviderOptions dataprovider.StorageProviderOptions
+	LoggingOptions         ucplog.LoggingOptions
 	SecretProviderOptions  provider.SecretProviderOptions
 	MetricsProviderOptions metricsprovider.MetricsProviderOptions
 	TLSCertDir             string
@@ -61,6 +63,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	planes := opts.Config.Planes
 	secretOpts := opts.Config.SecretProvider
 	metricsOpts := opts.Config.MetricsProvider
+	loggingOpts := opts.Config.Logging
 
 	return Options{
 		Port:                   port,
@@ -69,6 +72,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		StorageProviderOptions: storeOpts,
 		SecretProviderOptions:  secretOpts,
 		MetricsProviderOptions: metricsOpts,
+		LoggingOptions:         loggingOpts,
 		InitialPlanes:          planes,
 	}, nil
 }

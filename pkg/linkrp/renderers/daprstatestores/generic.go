@@ -9,13 +9,14 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-func GetDaprStateStoreGeneric(resource *datamodel.DaprStateStore, applicationName string, namespace string) ([]rpv1.OutputResource, error) {
+func GetDaprStateStoreGeneric(resource *datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := resource.Properties
 
 	daprGeneric := dapr.DaprGeneric{
@@ -24,7 +25,13 @@ func GetDaprStateStoreGeneric(resource *datamodel.DaprStateStore, applicationNam
 		Metadata: properties.Metadata,
 	}
 
-	return getDaprGeneric(daprGeneric, resource, applicationName, namespace)
+	outputResources, err := getDaprGeneric(daprGeneric, resource, applicationName, options.Namespace)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+	return renderers.RendererOutput{
+		Resources: outputResources,
+	}, nil
 }
 
 func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm v1.ResourceDataModel, applicationName string, namespace string) ([]rpv1.OutputResource, error) {

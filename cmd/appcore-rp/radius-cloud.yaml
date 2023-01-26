@@ -37,3 +37,7 @@ featureFlags:
   - "PLACEHOLDER"
 ucp:
   kind: kubernetes
+ # Logging configuration   
+logging:
+  level: "info"
+  json: true

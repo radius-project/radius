@@ -21,14 +21,14 @@ import (
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 
+	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
+	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
-
-	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
-	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
 )
 
 func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
@@ -73,7 +73,7 @@ func main() {
 
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
-	logger, flush, err := ucplog.NewLogger("applications.core")
+	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)
 	if err != nil {
 		log.Fatal(err)
 	}
