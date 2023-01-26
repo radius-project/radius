@@ -87,7 +87,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	// Configure AWS provider for cloud resources if specified
-	awsProvider, err := setup.ParseAWSProviderFromArgs(cmd, interactive)
+	awsProvider, err := setup.ParseAWSProviderFromArgs(cmd, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}

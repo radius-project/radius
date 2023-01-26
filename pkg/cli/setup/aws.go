@@ -48,18 +48,18 @@ func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 	)
 }
 
-func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*radAWS.Provider, error) {
+func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*radAWS.Provider, error) {
 	if interactive {
-		return parseAWSProviderInteractive(cmd)
+		return parseAWSProviderInteractive(cmd, prompter)
 	}
 	return parseAWSProviderNonInteractive(cmd)
 
 }
 
-func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
+func parseAWSProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) (*radAWS.Provider, error) {
 	ctx := cmd.Context()
 
-	addAWSCred, err := prompt.ConfirmWithDefault("Add AWS provider for cloud resources [y/N]?", prompt.No)
+	addAWSCred, err := prompt.YesOrNoPrompt("Add AWS provider for cloud resources?", "no", prompter)
 	if err != nil {
 		return nil, err
 	}
@@ -67,17 +67,26 @@ func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
 		return nil, nil
 	}
 
-	region, err := prompt.Text("Enter the region you would like to use to deploy AWS resources:", prompt.EmptyValidator)
+	region, err := prompter.GetTextInput(
+		"Enter the region you would like to use to deploy AWS resources:",
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	keyID, err := prompt.Text("Enter the IAM Access Key ID:", prompt.EmptyValidator)
+	keyID, err := prompter.GetTextInput(
+		"Enter the IAM Access Key ID:",
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	secretAccessKey, err := prompt.Text("Enter your IAM Secret Access Keys:", prompt.EmptyValidator)
+	secretAccessKey, err := prompter.GetTextInput(
+		"Enter your IAM Secret Access Keys:",
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
