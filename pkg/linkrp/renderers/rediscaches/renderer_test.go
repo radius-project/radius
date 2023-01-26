@@ -9,7 +9,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -172,9 +174,13 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			Mode: datamodel.LinkModeResource,
 		},
 	}
+	expectedErr := &v1.ErrClientRP{
+		Code:    "BadRequest",
+		Message: "the 'resource' field must be a valid resource id",
+	}
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
-	require.NoError(t, err)
+	require.Equal(t, expectedErr, err)
 }
 
 func Test_Render_InvalidResourceModel(t *testing.T) {
@@ -290,4 +296,142 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
+}
+
+func Test_Render_Recipe_Success(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	redisResource := datamodel.RedisCache{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: linkrp.RedisCachesResourceType,
+			},
+		},
+		Properties: datamodel.RedisCacheProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeRecipe,
+			RedisRecipeProperties: datamodel.RedisRecipeProperties{
+				Recipe: datamodel.LinkRecipe{
+					Name: "redis",
+					Parameters: map[string]any{
+						"throughput": 400,
+					},
+				},
+			},
+		},
+	}
+	expectedOutputResource := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureRedis,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRedis,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		ProviderResourceType: azresources.CacheRedis,
+		RadiusManaged:        to.Ptr(true),
+	}
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		renderers.Host: {
+			LocalID:     outputresource.LocalIDAzureRedis,
+			JSONPointer: "/properties/hostName",
+		},
+		renderers.Port: {
+			LocalID:     outputresource.LocalIDAzureRedis,
+			JSONPointer: "/properties/sslPort",
+		},
+	}
+	expectedSecretValues := map[string]rp.SecretValueReference{
+		renderers.PasswordStringHolder: {
+			LocalID:       outputresource.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+		},
+		renderers.ConnectionStringValue: {
+			LocalID:       outputresource.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+			Transformer: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderAzure,
+				Type:     resourcekinds.AzureRedis,
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{
+		RecipeProperties: datamodel.RecipeProperties{
+			LinkRecipe: datamodel.LinkRecipe{
+				Name: "redis",
+				Parameters: map[string]any{
+					"throughput": 400,
+				},
+			},
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/redis:v1",
+			LinkType:     linkrp.RedisCachesResourceType,
+		}})
+
+	require.NoError(t, err)
+	// Recipe properties
+	require.Equal(t, redisResource.Properties.Recipe.Name, output.RecipeData.Name)
+	require.Equal(t, redisResource.Properties.Recipe.Parameters, output.RecipeData.Parameters)
+	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/redis:v1", output.RecipeData.TemplatePath)
+	require.Equal(t, clientv2.DocumentDBManagementClientAPIVersion, output.RecipeData.APIVersion)
+
+	// secrets and computed values
+	require.Equal(t, expectedSecretValues, output.SecretValues)
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+
+	// output resources
+	require.Len(t, output.Resources, 1)
+	require.Equal(t, expectedOutputResource, output.Resources[0])
+}
+
+func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	redisResource := datamodel.RedisCache{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: linkrp.RedisCachesResourceType,
+			},
+		},
+		Properties: datamodel.RedisCacheProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeRecipe,
+			RedisRecipeProperties: datamodel.RedisRecipeProperties{
+				Recipe: datamodel.LinkRecipe{
+					Name: "redis",
+					Parameters: map[string]any{
+						"throughput": 400,
+					},
+				},
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{
+		RecipeProperties: datamodel.RecipeProperties{
+			LinkRecipe: datamodel.LinkRecipe{
+				Name: "redis",
+			},
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
+			LinkType:     linkrp.MongoDatabasesResourceType,
+			EnvParameters: map[string]any{
+				"throughput": 400,
+			},
+		}})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "link type \"Applications.Link/mongoDatabases\" of provided recipe \"redis\" is incompatible with \"Applications.Link/redisCaches\" resource type. Recipe link type must match link resource type.", err.(*v1.ErrClientRP).Message)
 }
