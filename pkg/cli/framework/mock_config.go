@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	aws "github.com/project-radius/radius/pkg/cli/aws"
 	azure "github.com/project-radius/radius/pkg/cli/azure"
 	workspaces "github.com/project-radius/radius/pkg/cli/workspaces"
 	viper "github.com/spf13/viper"
@@ -66,17 +67,17 @@ func (mr *MockConfigFileInterfaceMockRecorder) DeleteWorkspace(arg0, arg1, arg2 
 }
 
 // EditWorkspaces mocks base method.
-func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *viper.Viper, arg2 *workspaces.Workspace, arg3 *azure.Provider) error {
+func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *viper.Viper, arg2 *workspaces.Workspace, arg3 *azure.Provider, arg4 *aws.Provider) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EditWorkspaces", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "EditWorkspaces", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // EditWorkspaces indicates an expected call of EditWorkspaces.
-func (mr *MockConfigFileInterfaceMockRecorder) EditWorkspaces(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockConfigFileInterfaceMockRecorder) EditWorkspaces(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspaces", reflect.TypeOf((*MockConfigFileInterface)(nil).EditWorkspaces), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspaces", reflect.TypeOf((*MockConfigFileInterface)(nil).EditWorkspaces), arg0, arg1, arg2, arg3, arg4)
 }
 
 // SetDefaultWorkspace mocks base method.

@@ -22,6 +22,8 @@ const (
 	SelectExistingEnvironmentCreateSentinel = "[create new]"
 	EnterEnvironmentNamePrompt              = "Enter an environment name"
 	EnterNamespacePrompt                    = "Enter a namespace name to deploy apps into"
+	AzureCredentialID                       = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
+	AWSCredentialID                         = "/planes/aws/awscloud/providers/System.AWS/credentials/%s"
 )
 
 func ValidateCloudProviderName(name string) error {

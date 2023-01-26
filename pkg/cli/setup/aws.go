@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/spf13/cobra"
 
+	"github.com/project-radius/radius/pkg/cli"
 	radAWS "github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 )
@@ -22,6 +23,10 @@ const (
 	AWSProviderAccessKeyIdFlagName     = "provider-aws-access-key-id"
 	AWSProviderSecretAccessKeyFlagName = "provider-aws-secret-access-key"
 	AWSProviderRegionFlagName          = "provider-aws-region"
+)
+
+var (
+	errNotEmptyTemplate = "%s cannot be empty"
 )
 
 func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
@@ -48,18 +53,18 @@ func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 	)
 }
 
-func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*radAWS.Provider, error) {
+func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*radAWS.Provider, error) {
 	if interactive {
-		return parseAWSProviderInteractive(cmd)
+		return parseAWSProviderInteractive(cmd, prompter)
 	}
 	return parseAWSProviderNonInteractive(cmd)
 
 }
 
-func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
+func parseAWSProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) (*radAWS.Provider, error) {
 	ctx := cmd.Context()
 
-	addAWSCred, err := prompt.ConfirmWithDefault("Add AWS provider for cloud resources [y/N]?", prompt.No)
+	addAWSCred, err := prompt.YesOrNoPrompt("Add AWS provider for cloud resources?", "no", prompter)
 	if err != nil {
 		return nil, err
 	}
@@ -67,19 +72,28 @@ func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
 		return nil, nil
 	}
 
-	region, err := prompt.Text("Enter the region you would like to use to deploy AWS resources:", prompt.EmptyValidator)
+	region, err := prompter.GetTextInput("Enter the region you would like to use to deploy AWS resources:", "Enter a region...")
 	if err != nil {
 		return nil, err
 	}
+	if region == "" {
+		return nil, &cli.FriendlyError{Message: fmt.Sprintf(errNotEmptyTemplate, "aws region")}
+	}
 
-	keyID, err := prompt.Text("Enter the IAM Access Key ID:", prompt.EmptyValidator)
+	keyID, err := prompter.GetTextInput("Enter the IAM Access Key ID:", "Enter KeyId...")
 	if err != nil {
 		return nil, err
 	}
+	if keyID == "" {
+		return nil, &cli.FriendlyError{Message: fmt.Sprintf(errNotEmptyTemplate, "aws keyId")}
+	}
 
-	secretAccessKey, err := prompt.Text("Enter your IAM Secret Access Keys:", prompt.EmptyValidator)
+	secretAccessKey, err := prompter.GetTextInput("Enter your IAM Secret Access Keys:", "Enter IAM access key...")
 	if err != nil {
 		return nil, err
+	}
+	if secretAccessKey == "" {
+		return nil, &cli.FriendlyError{Message: fmt.Sprintf(errNotEmptyTemplate, "iam access key")}
 	}
 
 	return verifyAWSCredentials(ctx, keyID, secretAccessKey, region)

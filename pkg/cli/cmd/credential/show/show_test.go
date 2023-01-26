@@ -102,7 +102,7 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Connection: connection},
 				Kind:              "azure",
@@ -137,7 +137,7 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Connection: connection},
 				Kind:              "azure",
