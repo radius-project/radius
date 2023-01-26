@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
-	"go.uber.org/atomic"
 
 	"github.com/project-radius/radius/pkg/sdk"
 	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
@@ -33,15 +32,17 @@ var _ azcore.TokenCredential = (*UCPCredential)(nil)
 
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
+	secretProvider *ucpsecretp.SecretProvider
+
 	azureCreds ucpdatamodel.AzureCredentialProperties
 	secretName string
 
-	credentialClient azcore.TokenCredential
-	ucpClient        *ucpapi.AzureCredentialClient
-	clientMu         sync.RWMutex
-	secretExpireTime atomic.Int64
+	ucpClient *ucpapi.AzureCredentialClient
 
-	secretProvider *ucpsecretp.SecretProvider
+	credClient   azcore.TokenCredential
+	credClientMu sync.RWMutex
+
+	once sync.Once
 }
 
 // NewUCPCredential creates a UCPCredential. Pass nil to accept default options.
@@ -51,41 +52,44 @@ func NewUCPCredential(secretProvider *ucpsecretp.SecretProvider, ucpConn sdk.Con
 		return nil, err
 	}
 
+	if secretProvider == nil {
+		return nil, errors.New("secretProvider is not ready")
+	}
+
 	return &UCPCredential{
 		ucpClient:      cli,
-		clientMu:       sync.RWMutex{},
 		secretProvider: secretProvider,
 	}, nil
 }
 
-func (c *UCPCredential) isExpired() bool {
-	return c.secretExpireTime.Load() < time.Now().Unix()
+// StartFetcher starts azure service principal credential fetcher worker. This must be
+// called during startup with the cancellable context.
+func (c *UCPCredential) StartFetcher(ctx context.Context) {
+	c.once.Do(func() {
+		go func(ctx context.Context) {
+			logger := logr.FromContextOrDiscard(ctx)
+			ticker := time.NewTicker(credFetchPeriod)
+
+			logger.Info("Starting Azure service principal credential fetcher.")
+			for {
+				select {
+				case <-ticker.C:
+					if err := c.refreshClient(ctx); err != nil {
+						logger.Error(err, "failed to refresh azure service principal credential client")
+					}
+				case <-ctx.Done():
+					logger.Info("Exiting Azure service principal credential fetcher gracefully.")
+					return
+				}
+			}
+		}(ctx)
+	})
 }
 
-func (c *UCPCredential) refreshTokenClient(ctx context.Context) error {
-	c.clientMu.Lock()
-	defer c.clientMu.Unlock()
+func (c *UCPCredential) refreshClient(ctx context.Context) error {
+	c.credClientMu.Lock()
+	defer c.credClientMu.Unlock()
 
-	// When two requests fetch the token simultaneously, the second one does not need to refresh clients after the first one updates client successfully.
-	if !c.isExpired() {
-		return nil
-	}
-
-	err := c.updateIdentityOptions(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = c.updatecredentialClient(ctx)
-	if err != nil {
-		return err
-	}
-
-	c.secretExpireTime.Store(time.Now().Add(credFetchPeriod).Unix())
-	return nil
-}
-
-func (c *UCPCredential) updateIdentityOptions(ctx context.Context) error {
 	cred, err := c.ucpClient.Get(ctx, "azure", "azurecloud", "default", &ucpapi.AzureCredentialClientGetOptions{})
 	if err != nil {
 		return err
@@ -101,10 +105,6 @@ func (c *UCPCredential) updateIdentityOptions(ctx context.Context) error {
 		return errors.New("SecretName is not specified")
 	}
 
-	return nil
-}
-
-func (c *UCPCredential) updatecredentialClient(ctx context.Context) error {
 	cli, err := c.secretProvider.GetClient(ctx)
 	if err != nil {
 		return err
@@ -112,41 +112,38 @@ func (c *UCPCredential) updatecredentialClient(ctx context.Context) error {
 
 	s, err := secret.GetSecret[ucpdatamodel.AzureCredentialProperties](ctx, cli, c.secretName)
 	if err != nil {
-		return err
+		return errors.New("azure service principal credential may not set: " + err.Error())
+	}
+
+	if s.ClientID == "" || s.ClientSecret == "" || s.TenantID == "" {
+		return errors.New("invalid azure service principal credential info")
 	}
 
 	// Do not instantiate new client unless the secret is rotated.
-	if c.azureCreds.ClientSecret == s.ClientSecret && c.azureCreds.ClientID == s.ClientID && c.azureCreds.TenantID == s.TenantID {
+	if c.azureCreds.ClientSecret == s.ClientSecret &&
+		c.azureCreds.ClientID == s.ClientID &&
+		c.azureCreds.TenantID == s.TenantID {
 		return nil
 	}
 
 	c.azureCreds = s
-	cred, err := azidentity.NewClientSecretCredential(s.TenantID, s.ClientID, s.ClientSecret, nil)
+	azCred, err := azidentity.NewClientSecretCredential(s.TenantID, s.ClientID, s.ClientSecret, nil)
 	if err != nil {
 		return err
 	}
 
-	c.credentialClient = cred
+	c.credClient = azCred
 	return nil
 }
 
 // GetToken requests an access token from the hosting environment. This method is called automatically by Azure SDK clients.
 func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	c.credClientMu.RLock()
+	defer c.credClientMu.RUnlock()
 
-	if c.isExpired() {
-		err := c.refreshTokenClient(ctx)
-		if err != nil {
-			logger.Error(err, "failed to refresh credential client")
-		}
+	if c.credClient == nil {
+		return azcore.AccessToken{}, errors.New("credClient is not ready")
 	}
 
-	c.clientMu.RLock()
-	defer c.clientMu.RUnlock()
-
-	if c.credentialClient == nil {
-		return azcore.AccessToken{}, errors.New("credentialClient is not ready")
-	}
-
-	return c.credentialClient.GetToken(ctx, opts)
+	return c.credClient.GetToken(ctx, opts)
 }

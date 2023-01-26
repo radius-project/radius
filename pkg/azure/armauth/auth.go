@@ -6,6 +6,7 @@
 package armauth
 
 import (
+	"context"
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -29,6 +30,16 @@ const (
 type ArmConfig struct {
 	// ClientOptions is the client options for Azure SDK client.
 	ClientOptions clientv2.Options
+}
+
+// Init initializes the clients in ArmConfig.
+func (ac *ArmConfig) Init(ctx context.Context) error {
+	switch cli := ac.ClientOptions.Cred.(type) {
+	case *aztoken.UCPCredential:
+		cli.StartFetcher(ctx)
+	}
+
+	return nil
 }
 
 // Options represents the options of ArmConfig.
@@ -64,10 +75,7 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	case UCPCredentialsAuth:
 		return aztoken.NewUCPCredential(opt.SecretProvider, opt.UCPConnection)
 	case ServicePrincipalAuth:
-		return azidentity.NewClientSecretCredential(
-			os.Getenv("AZURE_TENANT_ID"),
-			os.Getenv("AZURE_CLIENT_ID"),
-			os.Getenv("AZURE_CLIENT_SECRET"), nil)
+		return azidentity.NewEnvironmentCredential(nil)
 	case ManagedIdentityAuth:
 		return azidentity.NewManagedIdentityCredential(nil)
 	default:
