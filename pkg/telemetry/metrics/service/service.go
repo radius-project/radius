@@ -15,7 +15,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Service struct {
@@ -34,23 +34,48 @@ func (s *Service) Name() string {
 	return "Metrics Collector"
 }
 
+// func initMeter() (*sdkmetric.MeterProvider, error) {
+// 	fmt.Println("Initializing Meter Provider...")
+
+// 	exporter, err := prometheus.New()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+// 	global.SetMeterProvider(mp)
+
+// 	return mp, nil
+// }
+
 // Run method of metrics package creates a new server for exposing an endpoint to collect metrics from
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	pme, err := provider.NewPrometheusExporter()
+	// TODO: Check if the metrics are enabled.
+	// 1. Create a new global meter provider
+	// mp, err := initMeter()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	return err
+	// }
+	// defer func() {
+	// 	if err := mp.Shutdown(context.Background()); err != nil {
+	// 		log.Printf("Error shutting down meter provider: %v", err)
+	// 	}
+	// }()
+
+	exporter, err := provider.NewPrometheusExporter()
 	if err != nil {
-		logger.Error(err, "Failed to configure prometheus metrics client")
-		panic(err)
+		return err
 	}
-	global.SetMeterProvider(pme.MeterProvider)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
+	mux.HandleFunc(s.Options.Config.Prometheus.Path, exporter.Handler.ServeHTTP)
 	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
 	server := &http.Server{
 		Addr:    ":" + metricsPort,
-		Handler: mux,
+		Handler: otelhttp.NewHandler(mux, "metrics-service", otelhttp.WithMeterProvider(exporter.MeterProvider)),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},
