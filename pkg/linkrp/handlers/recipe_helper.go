@@ -8,6 +8,7 @@ package handlers
 import (
 	"fmt"
 
+	dockerParser "github.com/novln/docker-parser"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -65,4 +66,14 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	return parameters
+}
+
+func parseTemplatePath(templatePath string) (repository string, tag string, err error) {
+	reference, err := dockerParser.Parse(templatePath)
+	if err != nil {
+		return "", "", err
+	}
+	repository = reference.Repository()
+	tag = reference.Tag()
+	return
 }
