@@ -28,7 +28,7 @@ func InitTracer(url string, serviceName string) (func(context.Context) error, er
 	//Assume zipkin for now
 	exporter, err := zipkin.New(
 		url,
-		zipkin.WithLogger(logger),
+		//zipkin.WithLogger(logger),
 	)
 	if err != nil || exporter == nil {
 		return nil, err
