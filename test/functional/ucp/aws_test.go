@@ -58,14 +58,12 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		// Issue the Delete Request
 		deleteRequest, err := http.NewRequest(http.MethodPost, deleteURL, bytes.NewBuffer(deleteBody))
 		require.NoError(t, err)
-		fmt.Println("Delete Req: " + deleteRequest.URL.String())
 		refererURL := url_url.URL{
 			Host:   deleteRequest.URL.Host,
 			Scheme: deleteRequest.URL.Scheme,
 			Path:   deleteRequest.URL.Path,
 		}
 		deleteRequest.Header.Add(v1.RefererHeader, refererURL.String())
-		fmt.Println("Referer: " + refererURL.String())
 		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)

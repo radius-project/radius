@@ -281,19 +281,13 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
 func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) (string, error) {
-	logger := logr.FromContextOrDiscard(req.Context())
 	rootScope := r.RootScope
-	logger.Info("root scope from resource: " + rootScope)
 	if rootScope == "" {
 		rootScope = r.ResourceID.PlaneScope()
-		logger.Info("resource id: " + r.ResourceID.String())
-		logger.Info("getting root plane scope from resource: " + rootScope)
 	}
 
 	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
 
-	// logger.Info("og referer header from request: " + req.Header.Get(v1.RefererHeader))
-	logger.Info("Referer host: " + referer.Host)
 	if err != nil {
 		return "", err
 	}
@@ -302,15 +296,12 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		baseIndex = getBaseIndex(referer.Path)
 	}
 	base := referer.Path[:baseIndex]
-	logger.Info("Referer full path: " + referer.Path)
-	logger.Info("Referer base path: " + base)
 
 	dest := url.URL{
 		Host:   referer.Host,
 		Scheme: referer.Scheme,
 		Path:   fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", base, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
 	}
-	fmt.Println(dest.String())
 
 	query := url.Values{}
 	if r.APIVersion != "" {
