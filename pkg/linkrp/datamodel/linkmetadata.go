@@ -92,7 +92,7 @@ type Runtime struct {
 
 type Kubernetes struct {
 	// Namespace is set to the applicationNamespace when the Link is application-scoped, and set to the environmentNamespace when the Link is environment scoped
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }

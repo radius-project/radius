@@ -67,24 +67,6 @@ var (
 	}
 )
 
-func buildEnvScopedMongoResource() (testResource datamodel.MongoDatabase) {
-	testResource = datamodel.MongoDatabase{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   mongoLinkID,
-				Name: mongoLinkName,
-				Type: mongoLinkType,
-			},
-		},
-		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: envID,
-			},
-		},
-	}
-	testResource.Properties.Resource = cosmosMongoID
-	return
-}
 func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase) {
 	testResource = datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
@@ -471,7 +453,8 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render success with environment scoped link", func(t *testing.T) {
-		testResource := buildEnvScopedMongoResource()
+		testResource := buildInputResourceMongo(modeResource)
+		testResource.Properties.Application = ""
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 		env, err := resources.ParseResource(testResource.Properties.Environment)
 		require.NoError(t, err)
