@@ -7,16 +7,20 @@ package azure
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -197,19 +201,22 @@ func Test_Run(t *testing.T) {
 			config := radcli.LoadConfig(t, string(yamlData))
 			config.SetConfigFile(configPath)
 
-			expectedPut := clients.AzureCloudProviderResource{
-				CloudProviderResource: clients.CloudProviderResource{
-					Name:    "azure",
-					Enabled: true,
-				},
-				Credentials: &clients.ServicePrincipalCredentials{
-					ClientID:     "cool-client-id",
-					ClientSecret: "cool-client-secret",
-					TenantID:     "cool-tenant-id",
+			expectedPut := ucp.CredentialResource{
+				Name:     to.Ptr("default"),
+				Location: to.Ptr(v1.LocationGlobal),
+				Type:     to.Ptr(cli_credential.AzureCredential),
+				ID:       to.Ptr(fmt.Sprintf(azureCredentialID, "azure")),
+				Properties: &ucp.AzureServicePrincipalProperties{
+					Storage: &ucp.CredentialStorageProperties{
+						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+					},
+					ClientID:     to.Ptr("cool-client-id"),
+					ClientSecret: to.Ptr("cool-client-secret"),
+					TenantID:     to.Ptr("cool-tenant-id"),
 				},
 			}
 
-			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Put(gomock.Any(), expectedPut).
 				Return(nil).

@@ -10,7 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -32,7 +32,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.GetDaprSecretStoreProperties().Environment),
 				Application: to.String(src.Properties.GetDaprSecretStoreProperties().Application),
 			},
@@ -80,7 +80,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		mode := "values"
 		dst.Properties = &ValuesDaprSecretStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
@@ -97,7 +97,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 		dst.Properties = &RecipeDaprSecretStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),

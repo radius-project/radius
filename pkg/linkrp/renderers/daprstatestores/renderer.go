@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 type StateStoreFunc = func(resource *datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (renderers.RendererOutput, error)
@@ -67,7 +67,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options 
 			Value: kubernetes.NormalizeResourceName(resource.Name),
 		},
 	}
-	secrets := map[string]rp.SecretValueReference{}
+	secrets := map[string]rpv1.SecretValueReference{}
 
 	rendererOutput.ComputedValues = values
 	rendererOutput.SecretValues = secrets

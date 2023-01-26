@@ -21,7 +21,7 @@ import (
 var _ ctrl.Controller = (*DeleteDaprStateStore)(nil)
 
 const (
-	// AsyncDeleteDeleteDaprStateStoreOperationTimeout is the default timeout duration of async delete container operation.
+	// AsyncDeleteDeleteDaprStateStoreOperationTimeout is the default timeout duration of async delete dapr state store operation.
 	// DaprStateStore takes 1-2 mins to delete.
 	AsyncDeleteDeleteDaprStateStoreOperationTimeout = time.Duration(300) * time.Second
 )

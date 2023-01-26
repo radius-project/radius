@@ -12,12 +12,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,18 +29,18 @@ func TestGetOperationStatusRun(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	rawDataModel := radiustesting.ReadFixture("operationstatus_datamodel.json")
+	rawDataModel := testutil.ReadFixture("operationstatus_datamodel.json")
 	osDataModel := &manager.Status{}
 	_ = json.Unmarshal(rawDataModel, osDataModel)
 
-	rawExpectedOutput := radiustesting.ReadFixture("operationstatus_output.json")
+	rawExpectedOutput := testutil.ReadFixture("operationstatus_output.json")
 	expectedOutput := &v1.AsyncOperationStatus{}
 	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -61,8 +62,8 @@ func TestGetOperationStatusRun(t *testing.T) {
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().

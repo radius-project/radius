@@ -3,17 +3,17 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package rp
+package secretvalue
 
 import (
-	context "context"
+	"context"
 	"fmt"
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	resources "github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 

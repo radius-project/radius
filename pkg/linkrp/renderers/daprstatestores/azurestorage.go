@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -32,8 +32,8 @@ func GetDaprStateStoreAzureStorage(resource *datamodel.DaprStateStore, applicati
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to a Storage Table")
 	}
 
-	daprStateStoreOutputResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDDaprStateStoreAzureStorage,
+	daprStateStoreOutputResource := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprStateStoreAzureStorage,
 			Provider: resourcemodel.ProviderAzure,
@@ -49,7 +49,7 @@ func GetDaprStateStoreAzureStorage(resource *datamodel.DaprStateStore, applicati
 	}
 	daprStateStoreOutputResource.Identity = resourcemodel.NewARMIdentity(&daprStateStoreOutputResource.ResourceType, azuretableStorageID.String(), clientv2.StateStoreClientAPIVersion)
 	// generate data we can use to connect to a Storage Account
-	outputResources := []outputresource.OutputResource{
+	outputResources := []rpv1.OutputResource{
 		daprStateStoreOutputResource,
 	}
 	rendererOutput = renderers.RendererOutput{

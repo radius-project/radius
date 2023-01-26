@@ -7,7 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // Environment represents Application environment resource.
@@ -24,7 +24,7 @@ func (e *Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	Compute       rp.EnvironmentCompute                  `json:"compute,omitempty"`
+	Compute       rpv1.EnvironmentCompute                `json:"compute,omitempty"`
 	Recipes       map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
 	Providers     Providers                              `json:"providers,omitempty"`
 	UseDevRecipes bool                                   `json:"useDevRecipes,omitempty"`
@@ -38,12 +38,22 @@ type EnvironmentRecipeProperties struct {
 	Parameters   map[string]any `json:"parameters,omitempty"`
 }
 
-// Providers represents configs for providers for the environment, eg azure
+// Providers represents configs for providers for the environment, eg azure,aws
 type Providers struct {
+	// Azure provider information
 	Azure ProvidersAzure `json:"azure,omitempty"`
+	// AWS provider information
+	AWS ProvidersAWS `json:"aws,omitempty"`
 }
 
 // ProvidersAzure represents the azure provider configs
 type ProvidersAzure struct {
+	// Scope is the target level for deploying the azure resources
+	Scope string `json:"scope,omitempty"`
+}
+
+// ProvidersAWS represents the aws provider configs
+type ProvidersAWS struct {
+	// Scope is the target level for deploying the aws resources
 	Scope string `json:"scope,omitempty"`
 }

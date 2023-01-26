@@ -25,8 +25,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -77,7 +77,7 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: envID,
 			},
@@ -102,7 +102,7 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 	return
 }
 
-func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
+func buildOutputResourcesMongo(mode string) []rpv1.OutputResource {
 	radiusManaged := false
 	if mode == modeRecipe {
 		radiusManaged = true
@@ -117,9 +117,9 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 		Provider: resourcemodel.ProviderAzure,
 	}
 
-	return []outputresource.OutputResource{
+	return []rpv1.OutputResource{
 		{
-			LocalID:              outputresource.LocalIDAzureCosmosAccount,
+			LocalID:              rpv1.LocalIDAzureCosmosAccount,
 			ResourceType:         accountResourceType,
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 			Identity: resourcemodel.ResourceIdentity{
@@ -132,7 +132,7 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 			RadiusManaged: &radiusManaged,
 		},
 		{
-			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:              rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType:         dbResourceType,
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Identity: resourcemodel.ResourceIdentity{
@@ -150,18 +150,18 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 				},
 			},
 			RadiusManaged: &radiusManaged,
-			Dependencies:  []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+			Dependencies:  []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},
 	}
 }
 
 func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOutput) {
 	computedValues := map[string]renderers.ComputedValueReference{}
-	secretValues := map[string]rp.SecretValueReference{}
+	secretValues := map[string]rpv1.SecretValueReference{}
 	if mode == modeResource || mode == modeRecipe {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
-				LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+				LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
 				JSONPointer: "/properties/resource/id",
 			},
 			renderers.Host: {
@@ -169,9 +169,9 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 			},
 		}
 
-		secretValues = map[string]rp.SecretValueReference{
+		secretValues = map[string]rpv1.SecretValueReference{
 			renderers.ConnectionStringValue: {
-				LocalID:       outputresource.LocalIDAzureCosmosAccount,
+				LocalID:       rpv1.LocalIDAzureCosmosAccount,
 				Action:        "listConnectionStrings",
 				ValueSelector: "/connectionStrings/0/connectionString",
 				Transformer: resourcemodel.ResourceType{
@@ -187,7 +187,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 			},
 		}
 
-		secretValues = map[string]rp.SecretValueReference{
+		secretValues = map[string]rpv1.SecretValueReference{
 			renderers.UsernameStringValue:   {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: cosmosConnectionString},
@@ -222,12 +222,12 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	return
 }
 
-func buildOutputResourcesDapr(mode string) []outputresource.OutputResource {
+func buildOutputResourcesDapr(mode string) []rpv1.OutputResource {
 	radiusManaged := true
 
-	return []outputresource.OutputResource{
+	return []rpv1.OutputResource{
 		{
-			LocalID: outputresource.LocalIDDaprStateStoreAzureStorage,
+			LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprStateStoreAzureStorage,
 				Provider: resourcemodel.ProviderAzure,
@@ -257,11 +257,11 @@ func buildApplicationResource(namespace string) *store.Object {
 			},
 		},
 		Properties: corerp_dm.ApplicationProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
-				Status: rp.ResourceStatus{
-					Compute: &rp.EnvironmentCompute{
-						Kind: rp.KubernetesComputeKind,
-						KubernetesCompute: rp.KubernetesComputeProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Status: rpv1.ResourceStatus{
+					Compute: &rpv1.EnvironmentCompute{
+						Kind: rpv1.KubernetesComputeKind,
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							Namespace: namespace,
 						},
 					},
@@ -286,8 +286,8 @@ func buildEnvironmentResource(recipeName string, providers *corerp_dm.Providers)
 			},
 		},
 		Properties: corerp_dm.EnvironmentProperties{
-			Compute: rp.EnvironmentCompute{
-				KubernetesCompute: rp.KubernetesComputeProperties{
+			Compute: rpv1.EnvironmentCompute{
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
 					Namespace: "radius-test",
 				},
 			},
@@ -320,7 +320,7 @@ type SharedMocks struct {
 	recipeHandler      *handlers.MockRecipeHandler
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
-	secretsValueClient *rp.MockSecretValueClient
+	secretsValueClient *sv.MockSecretValueClient
 	storageProvider    *dataprovider.MockDataStorageProvider
 }
 
@@ -377,7 +377,7 @@ func setup(t *testing.T) SharedMocks {
 		recipeHandler:      mockRecipeHandler,
 		resourceHandler:    mockResourceHandler,
 		renderer:           mockRenderer,
-		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
+		secretsValueClient: sv.NewMockSecretValueClient(ctrl),
 	}
 }
 
@@ -467,7 +467,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "invalid-id",
 				},
 			},
@@ -505,7 +505,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: applicationID,
 					Environment: envID,
 				},
@@ -530,7 +530,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
 				},
 			},
@@ -574,9 +574,9 @@ func Test_Render(t *testing.T) {
 	t.Run("Unsupported output resource provider", func(t *testing.T) {
 		testResource := buildInputResourceMongo(modeResource)
 		rendererOutput := renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{
+			Resources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureCosmosAccount,
+					LocalID: rpv1.LocalIDAzureCosmosAccount,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureCosmosAccount,
 						Provider: "unknown",
@@ -695,7 +695,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
 		testRendererOutput := buildRendererOutputMongo(modeResource)
-		testRendererOutput.Resources[0].Dependencies = []outputresource.Dependency{
+		testRendererOutput.Resources[0].Dependencies = []rpv1.Dependency{
 			{LocalID: ""},
 		}
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
@@ -743,26 +743,26 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 		Type:     resourcekinds.AzureCosmosAccount,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	testOutputResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosAccount,
+	testOutputResource := rpv1.OutputResource{
+		LocalID:      rpv1.LocalIDAzureCosmosAccount,
 		ResourceType: testResourceType,
 		Resource: map[string]any{
 			"some-data": "jsonpointer-value",
 		},
 	}
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{testOutputResource},
+		Resources: []rpv1.OutputResource{testOutputResource},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"test-key1": {
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				LocalID: rpv1.LocalIDAzureCosmosAccount,
 				Value:   "static-value",
 			},
 			"test-key2": {
-				LocalID:           outputresource.LocalIDAzureCosmosAccount,
+				LocalID:           rpv1.LocalIDAzureCosmosAccount,
 				PropertyReference: "property-key",
 			},
 			"test-key3": {
-				LocalID:     outputresource.LocalIDAzureCosmosAccount,
+				LocalID:     rpv1.LocalIDAzureCosmosAccount,
 				JSONPointer: "/some-data",
 			},
 		},
@@ -796,7 +796,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 		Type:     resourcekinds.AzureCosmosAccount,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	outputResource := outputresource.OutputResource{
+	outputResource := rpv1.OutputResource{
 		LocalID:      "test-local-id",
 		ResourceType: resourceType,
 		Identity: resourcemodel.ResourceIdentity{
@@ -804,7 +804,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 		},
 	}
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{outputResource},
+		Resources: []rpv1.OutputResource{outputResource},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"test-value": {
 				LocalID:     "test-local-id",
@@ -830,7 +830,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 		Type:     resourcekinds.AzureCosmosAccount,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	outputResource := outputresource.OutputResource{
+	outputResource := rpv1.OutputResource{
 		LocalID:      "test-local-id",
 		ResourceType: resourceType,
 		Identity: resourcemodel.ResourceIdentity{
@@ -844,7 +844,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 		},
 	}
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{outputResource},
+		Resources: []rpv1.OutputResource{outputResource},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"test-value": {
 				LocalID:     "test-local-id",
@@ -873,7 +873,7 @@ func Test_Delete(t *testing.T) {
 		OutputResources: testOutputResources,
 	}
 
-	t.Run("Verify skip resource deletion for resource based links", func(t *testing.T) {
+	t.Run("Verify deletion for mode resource", func(t *testing.T) {
 		outputResources := buildOutputResourcesMongo(modeResource)
 		resourceData := ResourceData{
 			ID:              mongoLinkResourceID,
@@ -899,9 +899,9 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
-		outputResources := []outputresource.OutputResource{
+		outputResources := []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+				LocalID: rpv1.LocalIDAzureCosmosDBMongo,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosDBMongo,
 					Provider: resourcemodel.ProviderAzure,
@@ -913,7 +913,7 @@ func Test_Delete(t *testing.T) {
 					},
 					Data: resourcemodel.ARMIdentity{},
 				},
-				Dependencies: []outputresource.Dependency{
+				Dependencies: []rpv1.Dependency{
 					{
 						LocalID: "",
 					},
@@ -931,9 +931,9 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Invalid output resource type", func(t *testing.T) {
-		outputResources := []outputresource.OutputResource{
+		outputResources := []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				LocalID: rpv1.LocalIDAzureCosmosAccount,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     "foo",
 					Provider: resourcemodel.ProviderAzure,

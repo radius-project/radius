@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -127,7 +127,7 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  outputresource.LocalIDDaprStateStoreAzureStorage,
+								LocalID:  rpv1.LocalIDDaprStateStoreAzureStorage,
 							},
 						},
 					},

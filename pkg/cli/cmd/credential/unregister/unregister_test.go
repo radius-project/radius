@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -85,7 +85,7 @@ func Test_Run(t *testing.T) {
 		t.Run("Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Delete(gomock.Any(), "azure").
 				Return(true, nil).
@@ -118,7 +118,7 @@ func Test_Run(t *testing.T) {
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Delete(gomock.Any(), "azure").
 				Return(false, nil).

@@ -309,10 +309,6 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
 				t.Logf("finished validation of deletion of pods for %s", ct.Description)
 			}
-			// temporary fix to test functional test failures. will remove it before merge
-			if resource.Type == validation.EnvironmentsResource {
-				break
-			}
 		}
 	}
 

@@ -14,7 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 const (
@@ -34,9 +34,9 @@ func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName
 		APIVersion:       clientv2.StateStoreClientAPIVersion,
 	}
 
-	outputResources := []outputresource.OutputResource{
+	outputResources := []rpv1.OutputResource{
 		{
-			LocalID: outputresource.LocalIDDaprStateStoreAzureStorage,
+			LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprStateStoreAzureStorage,
 				Provider: resourcemodel.ProviderAzure,

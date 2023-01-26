@@ -13,7 +13,7 @@ import (
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/rp"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
@@ -29,7 +29,7 @@ type Options struct {
 	DataProvider dataprovider.DataStorageProvider
 
 	// SecretClient is the client to fetch secrets.
-	SecretClient rp.SecretValueClient
+	SecretClient sv.SecretValueClient
 
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
@@ -86,7 +86,7 @@ func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 }
 
 // SecretClient gets secret client for this controller.
-func (b *BaseController) SecretClient() rp.SecretValueClient {
+func (b *BaseController) SecretClient() sv.SecretValueClient {
 	return b.options.SecretClient
 }
 

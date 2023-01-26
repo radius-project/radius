@@ -6,6 +6,8 @@
 package objectformats
 
 import (
+	"strings"
+
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
@@ -118,12 +120,12 @@ func GetWorkspaceTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetCloudProviderTableFormat() output.FormatterOptions {
+func CloudProviderTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
-				Heading:  "KIND",
-				JSONPath: "{ .Kind }",
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
 			},
 			{
 				Heading:  "Status",
@@ -131,6 +133,53 @@ func GetCloudProviderTableFormat() output.FormatterOptions {
 			},
 		},
 	}
+}
+
+func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions {
+	if strings.EqualFold(credentialType, "azure") {
+		return output.FormatterOptions{
+			Columns: []output.Column{
+				{
+					Heading:  "NAME",
+					JSONPath: "{ .Name }",
+				},
+				{
+					Heading:  "Status",
+					JSONPath: "{ .Enabled }",
+				},
+				{
+					Heading:  "ClientID",
+					JSONPath: "{ .AzureCredentials.ClientID }",
+				},
+				{
+					Heading:  "TenantID",
+					JSONPath: "{ .AzureCredentials.TenantID }",
+				},
+			},
+		}
+	} else if strings.EqualFold(credentialType, "aws") {
+		return output.FormatterOptions{
+			Columns: []output.Column{
+				{
+					Heading:  "NAME",
+					JSONPath: "{ .Name }",
+				},
+				{
+					Heading:  "Status",
+					JSONPath: "{ .Enabled }",
+				},
+				{
+					Heading:  "ClientID",
+					JSONPath: "{ .AzureCredentials.ClientID }",
+				},
+				{
+					Heading:  "TenantID",
+					JSONPath: "{ .AzureCredentials.TenantID }",
+				},
+			},
+		}
+	}
+	return output.FormatterOptions{}
 }
 
 func GetEnvironmentRecipesTableFormat() output.FormatterOptions {

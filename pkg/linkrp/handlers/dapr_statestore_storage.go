@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -40,7 +40,7 @@ type daprStateStoreAzureStorageHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
@@ -48,7 +48,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 
 	id, _, err := resource.Identity.RequireARM()
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required property %s for the resource", id)
+		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	parsedID, err := resources.ParseResource(id)
@@ -91,7 +91,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
 	err := handler.deleteDaprStateStore(ctx, resource)
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 	return nil, fmt.Errorf("listkeys contained keys, but none of them have full access")
 }
 
-func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, resource *rpv1.OutputResource) error {
 	properties := resource.Resource.(map[string]any)
 	item := unstructured.Unstructured{
 		Object: map[string]any{
