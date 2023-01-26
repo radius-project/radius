@@ -15,7 +15,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/kube"
@@ -59,12 +58,6 @@ func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConf
 	arm, err := armauth.NewArmConfig(option)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build ARM config: %w", err)
-	}
-
-	// Try to fetch token to validate the secret is valid.
-	_, err = arm.ClientOptions.Cred.GetToken(context.Background(), policy.TokenRequestOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch token: %w", err)
 	}
 
 	return arm, nil
