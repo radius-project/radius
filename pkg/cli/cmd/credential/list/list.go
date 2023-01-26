@@ -94,7 +94,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, providers, objectformats.GetCloudProviderTableFormat())
+	err = r.Output.WriteFormatted(r.Format, providers, objectformats.CloudProviderTableFormat())
 	if err != nil {
 		return err
 	}

@@ -114,28 +114,46 @@ func (client *MongoDatabasesClient) createOrUpdateHandleResponse(resp *http.Resp
 	return result, nil
 }
 
-// Delete - Deletes an existing MongoDatabaseResource
+// BeginDelete - Deletes an existing MongoDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // mongoDatabaseName - The name of the MongoDatabase link resource
-// options - MongoDatabasesClientDeleteOptions contains the optional parameters for the MongoDatabasesClient.Delete method.
-func (client *MongoDatabasesClient) Delete(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientDeleteOptions) (MongoDatabasesClientDeleteResponse, error) {
+// options - MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete
+// method.
+func (client *MongoDatabasesClient) BeginDelete(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientBeginDeleteOptions) (*runtime.Poller[MongoDatabasesClientDeleteResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.deleteOperation(ctx, mongoDatabaseName, options)
+		if err != nil {
+			return nil, err
+		}
+		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[MongoDatabasesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+	} else {
+		return runtime.NewPollerFromResumeToken[MongoDatabasesClientDeleteResponse](options.ResumeToken, client.pl, nil)
+	}
+}
+
+// Delete - Deletes an existing MongoDatabaseResource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+func (client *MongoDatabasesClient) deleteOperation(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, mongoDatabaseName, options)
 	if err != nil {
-		return MongoDatabasesClientDeleteResponse{}, err
+		return nil, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return MongoDatabasesClientDeleteResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return MongoDatabasesClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return nil, runtime.NewResponseError(resp)
 	}
-	return client.deleteHandleResponse(resp)
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientDeleteOptions) (*policy.Request, error) {
+func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
@@ -151,20 +169,6 @@ func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mon
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
-}
-
-// deleteHandleResponse handles the Delete response.
-func (client *MongoDatabasesClient) deleteHandleResponse(resp *http.Response) (MongoDatabasesClientDeleteResponse, error) {
-	result := MongoDatabasesClientDeleteResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return MongoDatabasesClientDeleteResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	return result, nil
 }
 
 // Get - Retrieves information about a MongoDatabaseResource

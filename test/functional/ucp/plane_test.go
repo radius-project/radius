@@ -32,7 +32,7 @@ func Test_Plane_Operations(t *testing.T) {
 		require.Equal(t, 3, len(planes.Value))
 
 		t.Cleanup(func() {
-			deletePlane(t, roundTripper, planeURL)
+			_ = deletePlane(t, roundTripper, planeURL)
 		})
 
 		// Create Plane
@@ -69,7 +69,8 @@ func Test_Plane_Operations(t *testing.T) {
 		assert.DeepEqual(t, testPlaneRest, plane)
 
 		// Delete Plane
-		deletePlane(t, roundTripper, planeURL)
+		statusCode = deletePlane(t, roundTripper, planeURL)
+		require.Equal(t, http.StatusOK, statusCode)
 
 		// Get Plane - Expected Not Found
 		_, statusCode = getPlane(t, roundTripper, planeURL)
@@ -138,7 +139,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 	return listOfPlanes
 }
 
-func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) {
+func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
 	deleteRgRequest, err := http.NewRequest(
 		http.MethodDelete,
 		url,
@@ -148,6 +149,6 @@ func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) {
 
 	res, err := roundTripper.RoundTrip(deleteRgRequest)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, res.StatusCode)
 	t.Logf("Plane: %s deleted successfully", url)
+	return res.StatusCode
 }
