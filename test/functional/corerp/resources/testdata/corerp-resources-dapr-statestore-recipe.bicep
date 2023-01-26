@@ -65,7 +65,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'ts-sts-ctnr'
+        appId: 'dss-recipe-app-ctnr'
         appPort: 3000
       }
     ]
