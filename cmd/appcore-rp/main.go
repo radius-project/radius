@@ -121,14 +121,6 @@ func main() {
 
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
-	// Initializes ArmConfig to start secret fetcher.
-	if err := options.Arm.Init(ctx); err != nil {
-		log.Fatal(err)
-	}
-	if err := linkOpts.Arm.Init(ctx); err != nil {
-		log.Fatal(err)
-	}
-
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	exitCh := make(chan os.Signal, 2)

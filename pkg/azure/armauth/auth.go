@@ -6,7 +6,6 @@
 package armauth
 
 import (
-	"context"
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -30,16 +29,6 @@ const (
 type ArmConfig struct {
 	// ClientOptions is the client options for Azure SDK client.
 	ClientOptions clientv2.Options
-}
-
-// Init initializes the clients in ArmConfig.
-func (ac *ArmConfig) Init(ctx context.Context) error {
-	switch cli := ac.ClientOptions.Cred.(type) {
-	case *aztoken.UCPCredential:
-		cli.StartCredentialRotater(ctx)
-	}
-
-	return nil
 }
 
 // Options represents the options of ArmConfig.
