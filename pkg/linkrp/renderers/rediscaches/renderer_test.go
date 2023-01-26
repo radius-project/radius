@@ -311,7 +311,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -326,8 +326,8 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			},
 		},
 	}
-	expectedOutputResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureRedis,
+	expectedOutputResource := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureRedis,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRedis,
 			Provider: resourcemodel.ProviderAzure,
@@ -338,22 +338,22 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.Host: {
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName",
 		},
 		renderers.Port: {
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort",
 		},
 	}
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.PasswordStringHolder: {
-			LocalID:       outputresource.LocalIDAzureRedis,
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 		},
 		renderers.ConnectionStringValue: {
-			LocalID:       outputresource.LocalIDAzureRedis,
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 			Transformer: resourcemodel.ResourceType{
@@ -404,7 +404,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
