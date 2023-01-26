@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -51,8 +50,6 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, w http.ResponseWriter
 		return nil, err
 	}
 
-	logger := logr.FromContextOrDiscard(req.Context())
-	logger.Info("Resource ID in container: " + serviceCtx.ResourceID.String())
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err

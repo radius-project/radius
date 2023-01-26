@@ -107,8 +107,6 @@ func Test_ProxyOperations(t *testing.T) {
 }
 
 func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, rgURL string, asyncHeaderName string, asyncHeaderValue string, apiVersion string) {
-	t.Logf("url: %s", url)
-	t.Logf("rg ugl: %s", rgURL)
 	var requestURL string
 	if asyncHeaderName != "" {
 		requestURL = fmt.Sprintf("%s/providers/Applications.Test/hello?%s=%s", rgURL, asyncHeaderName, asyncHeaderValue)
@@ -123,8 +121,6 @@ func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, r
 		nil,
 	)
 	require.NoError(t, err, "")
-	getRequest.URL.RawPath = "/apis/api.ucp.dev/v1alpha3"
-	t.Logf("getReq: %s", getRequest.URL)
 
 	result, err := roundTripper.RoundTrip(getRequest)
 	require.NoError(t, err, "")
