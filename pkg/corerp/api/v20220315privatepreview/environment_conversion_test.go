@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -95,6 +96,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					Providers: datamodel.Providers{
 						Azure: datamodel.ProvidersAzure{
 							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+						},
+						AWS: datamodel.ProvidersAWS{
+							Scope: "/planes/aws/aws/accounts/140313373712/regions/us-west-2",
 						},
 					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
@@ -256,16 +260,17 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 			} else {
 				// assert
 				require.NoError(t, err)
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", r.ID)
-				require.Equal(t, "env0", r.Name)
-				require.Equal(t, "Applications.Core/environments", r.Type)
-				require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
-				require.Equal(t, 1, len(r.Properties.Recipes))
-				require.Equal(t, linkrp.MongoDatabasesResourceType, r.Properties.Recipes["cosmos-recipe"].LinkType)
-				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
-				require.Equal(t, map[string]any{"throughput": float64(400)}, r.Properties.Recipes["cosmos-recipe"].Parameters)
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", string(*versioned.ID))
+				require.Equal(t, "env0", string(*versioned.Name))
+				require.Equal(t, "Applications.Core/environments", string(*versioned.Type))
+				require.Equal(t, "kubernetes", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
+				require.Equal(t, 1, len(versioned.Properties.Recipes))
+				require.Equal(t, "Applications.Link/mongoDatabases", string(*versioned.Properties.Recipes["cosmos-recipe"].LinkType))
+				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes["cosmos-recipe"].TemplatePath))
+				require.Equal(t, map[string]any{"throughput": float64(400)}, versioned.Properties.Recipes["cosmos-recipe"].Parameters)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
+				require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, 1, len(versioned.Properties.Extensions))
 			}
@@ -286,24 +291,24 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", r.ID)
-	require.Equal(t, "env0", r.Name)
-	require.Equal(t, "Applications.Core/environments", r.Type)
-	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
-	require.Equal(t, 1, len(r.Properties.Recipes))
-	require.Equal(t, linkrp.MongoDatabasesResourceType, r.Properties.Recipes["cosmos-recipe"].LinkType)
-	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", string(*versioned.ID))
+	require.Equal(t, "env0", string(*versioned.Name))
+	require.Equal(t, "Applications.Core/environments", string(*versioned.Type))
+	require.Equal(t, "kubernetes", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
+	require.Equal(t, 1, len(versioned.Properties.Recipes))
+	require.Equal(t, linkrp.MongoDatabasesResourceType, string(*versioned.Properties.Recipes["cosmos-recipe"].LinkType))
+	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes["cosmos-recipe"].TemplatePath))
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 
-	require.Equal(t, &rpv1.IdentitySettings{
-		Kind:       rpv1.AzureIdentityWorkload,
-		Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
-		OIDCIssuer: "https://oidcurl/guid",
-	}, r.Properties.Compute.Identity)
-	require.Equal(t, rpv1.AzureIdentityWorkload, r.Properties.Compute.Identity.Kind)
-	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", r.Properties.Compute.Identity.Resource)
-	require.Equal(t, "https://oidcurl/guid", r.Properties.Compute.Identity.OIDCIssuer)
+	require.Equal(t, &IdentitySettings{
+		Kind:       to.Ptr(IdentitySettingKindAzureComWorkload),
+		Resource:   to.Ptr("/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"),
+		OidcIssuer: to.Ptr("https://oidcurl/guid"),
+	}, versioned.Properties.Compute.GetEnvironmentCompute().Identity)
+	require.Equal(t, "azure.com.workload", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Kind))
+	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Resource))
+	require.Equal(t, "https://oidcurl/guid", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.OidcIssuer))
 }
 
 type fakeResource struct{}
