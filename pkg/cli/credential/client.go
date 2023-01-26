@@ -18,8 +18,8 @@ const (
 	AWSPlaneType   = "aws"
 )
 
-// ProviderCredentialResource is the representation of a cloud provider configuration.
-type ProviderCredentialResource struct {
+// CloudProviderStatus is the representation of a cloud provider configuration.
+type CloudProviderStatus struct {
 
 	// Name is the name/kind of the provider. For right now this only supports Azure.
 	Name string
@@ -29,24 +29,13 @@ type ProviderCredentialResource struct {
 }
 
 type ProviderCredentialConfiguration struct {
-	ProviderCredentialResource
+	CloudProviderStatus
 
 	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
 	AzureCredentials *ucp.AzureServicePrincipalProperties
 
 	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
 	AWSCredentials *ucp.AWSCredentialProperties
-}
-
-type ServicePrincipalCredentials struct {
-	ClientID     string
-	ClientSecret string
-	TenantID     string
-}
-
-type IAMCredentials struct {
-	AccessKeyID     string
-	SecretAccessKey string
 }
 
 //go:generate mockgen -destination=./mock_client.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential Interface
@@ -56,7 +45,7 @@ type Interface interface {
 	// GetCredential gets ucp credentials for the given name if provider is supported.
 	GetCredential(ctx context.Context, planeType string, planeName string, name string) (ProviderCredentialConfiguration, error)
 	// ListCredential lists ucp credentials configured at the plane scope.
-	ListCredential(ctx context.Context, planeType string, planeName string) ([]ProviderCredentialResource, error)
+	ListCredential(ctx context.Context, planeType string, planeName string) ([]CloudProviderStatus, error)
 	// DeleteCredential deletes ucp credential of the given name if present.
 	DeleteCredential(ctx context.Context, planeType string, planeName string, name string) error
 }
@@ -87,7 +76,7 @@ func (impl *Impl) CreateCredential(ctx context.Context, planeType string, planeN
 // GetCredential gets ucp credentials for the given name if provider is supported.
 func (impl *Impl) GetCredential(ctx context.Context, planeType string, planeName string, name string) (ProviderCredentialConfiguration, error) {
 	providerCredentialConfiguration := ProviderCredentialConfiguration{
-		ProviderCredentialResource: ProviderCredentialResource{
+		CloudProviderStatus: CloudProviderStatus{
 			Name:    name,
 			Enabled: true,
 		},
@@ -123,7 +112,7 @@ func (impl *Impl) GetCredential(ctx context.Context, planeType string, planeName
 }
 
 // ListCredential lists ucp credentials configured at the plane scope.
-func (impl *Impl) ListCredential(ctx context.Context, planeType string, planeName string) ([]ProviderCredentialResource, error) {
+func (impl *Impl) ListCredential(ctx context.Context, planeType string, planeName string) ([]CloudProviderStatus, error) {
 	var providerList []*ucp.CredentialResource
 	switch planeType {
 	case AzurePlaneType:
@@ -141,9 +130,9 @@ func (impl *Impl) ListCredential(ctx context.Context, planeType string, planeNam
 	default:
 		return nil, &ErrUnsupportedCloudProvider{}
 	}
-	res := make([]ProviderCredentialResource, 0)
+	res := make([]CloudProviderStatus, 0)
 	for _, provider := range providerList {
-		res = append(res, ProviderCredentialResource{
+		res = append(res, CloudProviderStatus{
 			Name:    *provider.Name,
 			Enabled: true,
 		})

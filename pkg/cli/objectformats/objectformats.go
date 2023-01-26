@@ -120,7 +120,7 @@ func GetWorkspaceTableFormat() output.FormatterOptions {
 	}
 }
 
-func ListCloudProviderTableFormat() output.FormatterOptions {
+func CloudProviderTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{

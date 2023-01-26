@@ -79,10 +79,10 @@ func (mr *MockInterfaceMockRecorder) GetCredential(arg0, arg1, arg2, arg3 interf
 }
 
 // ListCredential mocks base method.
-func (m *MockInterface) ListCredential(arg0 context.Context, arg1, arg2 string) ([]ProviderCredentialResource, error) {
+func (m *MockInterface) ListCredential(arg0 context.Context, arg1, arg2 string) ([]CloudProviderStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListCredential", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]ProviderCredentialResource)
+	ret0, _ := ret[0].([]CloudProviderStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -20,7 +20,7 @@ type CredentialManagementClient interface {
 	// Get gets the credential registered with the given ucp provider plane.
 	Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error)
 	// List lists the credentials registered with all ucp provider planes.
-	List(ctx context.Context) ([]ProviderCredentialResource, error)
+	List(ctx context.Context) ([]CloudProviderStatus, error)
 	// Put registers a credential with the respective ucp provider plane.
 	Put(ctx context.Context, credential_config ucp.CredentialResource) error
 	// Delete unregisters credential from the given ucp provider plane.
@@ -71,23 +71,22 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) 
 	} else {
 		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
 	}
-	if err != nil {
-		// return not enabled if 404
-		if clients.Is404Error(err) {
-			return ProviderCredentialConfiguration{
-				ProviderCredentialResource: ProviderCredentialResource{
-					Name:    name,
-					Enabled: false,
-				},
-			}, nil
-		}
+	// We get 404 when credential for the provider plane is not registered.
+	if clients.Is404Error(err) {
+		return ProviderCredentialConfiguration{
+			CloudProviderStatus: CloudProviderStatus{
+				Name:    name,
+				Enabled: false,
+			},
+		}, nil
+	} else if err != nil {
 		return ProviderCredentialConfiguration{}, err
 	}
 	return cred, nil
 }
 
 // List, lists the credentials registered with all ucp provider planes
-func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]ProviderCredentialResource, error) {
+func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
 	// list azure credential
 	res, err := cpm.CredentialInterface.ListCredential(ctx, AzurePlaneType, AzurePlaneName)
 	if err != nil {
@@ -111,11 +110,11 @@ func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, name strin
 	} else if strings.EqualFold(name, AWSCredential) {
 		err = cpm.CredentialInterface.DeleteCredential(ctx, AWSPlaneType, AWSPlaneName, name)
 	}
-	if err != nil {
-		if clients.Is404Error(err) {
-			// return true if not found.
-			return true, nil
-		}
+	// We get 404 when credential for the provider plane is not registered.
+	if clients.Is404Error(err) {
+		// return true if not found.
+		return true, nil
+	} else if err != nil {
 		return false, err
 	}
 	return true, nil

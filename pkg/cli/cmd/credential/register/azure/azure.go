@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	azureCredentialID    = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
-	awsCredentialID      = "/planes/aws/awscloud/providers/System.AWS/credentials/%s"
+	azureCredentialID = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
+	awsCredentialID   = "/planes/aws/awscloud/providers/System.AWS/credentials/%s"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad provider create azure` command.
@@ -176,16 +176,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	credential := ucp.CredentialResource{
-		Name:     to.Ptr("azure"),
+		Name:     to.Ptr("default"),
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AzureCredential),
-		ID: to.Ptr(fmt.Sprintf(awsCredentialID, "azure")),
+		ID:       to.Ptr(fmt.Sprintf(azureCredentialID, "azure")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
-			TenantID: &r.TenantID,
-			ClientID: &r.ClientID,
+			TenantID:     &r.TenantID,
+			ClientID:     &r.ClientID,
 			ClientSecret: &r.ClientSecret,
 		},
 	}

@@ -20,15 +20,10 @@ import (
 )
 
 const (
-	azureProviderName   = "azure"
-	awsProviderName     = "aws"
-	testClientSecret    = "testAzureSecret"
-	validClientID       = "3b4e017f-f31b-4b0b-93d0-ee06f85b33ee"
-	invalidClientID     = "invalid_test_client_id"
-	validTenantID       = "72f988bf-86f1-41af-91ab-2d7cd011db47"
-	invalidTenantID     = "invalid_tenant_id"
-	testAccessKeyId     = "test_access_key_id"
-	testSecretAccessKey = "test_secret_access_key"
+	azureProviderName = "azure"
+	awsProviderName   = "aws"
+	clientID          = "00000000-0000-0000-0000-000000000000"
+	tenantID          = "00000000-0000-0000-0000-000000000000"
 )
 
 var (
@@ -57,9 +52,9 @@ func Test_Credential_Put(t *testing.T) {
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					ClientID:     to.Ptr("cool-client-id"),
+					ClientID:     to.Ptr(clientID),
 					ClientSecret: to.Ptr("cool-client-secret"),
-					TenantID:     to.Ptr("cool-tenant-id"),
+					TenantID:     to.Ptr(tenantID),
 				},
 			},
 			err:        nil,
@@ -77,7 +72,7 @@ func Test_Credential_Put(t *testing.T) {
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					AccessKeyID: to.Ptr("access-key-id"),
+					AccessKeyID:     to.Ptr("access-key-id"),
 					SecretAccessKey: to.Ptr("secret-access-key"),
 				},
 			},
@@ -131,7 +126,7 @@ func Test_Credential_Get(t *testing.T) {
 		{
 			name: "get azure credential success",
 			credentialResource: ProviderCredentialConfiguration{
-				ProviderCredentialResource: ProviderCredentialResource{
+				CloudProviderStatus: CloudProviderStatus{
 					Name:    azureProviderName,
 					Enabled: true,
 				},
@@ -144,7 +139,7 @@ func Test_Credential_Get(t *testing.T) {
 		{
 			name: "get aws credential success",
 			credentialResource: ProviderCredentialConfiguration{
-				ProviderCredentialResource: ProviderCredentialResource{
+				CloudProviderStatus: CloudProviderStatus{
 					Name:    awsProviderName,
 					Enabled: true,
 				},
@@ -157,7 +152,7 @@ func Test_Credential_Get(t *testing.T) {
 		{
 			name: "credential not found",
 			credentialResource: ProviderCredentialConfiguration{
-				ProviderCredentialResource: ProviderCredentialResource{
+				CloudProviderStatus: CloudProviderStatus{
 					Name:    azureProviderName,
 					Enabled: false,
 				},
@@ -170,7 +165,7 @@ func Test_Credential_Get(t *testing.T) {
 		{
 			name: "credential get failure",
 			credentialResource: ProviderCredentialConfiguration{
-				ProviderCredentialResource: ProviderCredentialResource{
+				CloudProviderStatus: CloudProviderStatus{
 					Name:    azureProviderName,
 					Enabled: false,
 				},
@@ -212,7 +207,7 @@ func Test_Credential_List(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockCredentialClient := NewMockInterface(mockCtrl)
-	azureList := []ProviderCredentialResource{
+	azureList := []CloudProviderStatus{
 		{
 			Name:    AzureCredential,
 			Enabled: true,
@@ -222,7 +217,7 @@ func Test_Credential_List(t *testing.T) {
 		ListCredential(gomock.Any(), AzurePlaneType, AzurePlaneName).
 		Return(azureList, nil).
 		Times(1)
-	awsList := []ProviderCredentialResource{
+	awsList := []CloudProviderStatus{
 		{
 			Name:    AWSCredential,
 			Enabled: true,
@@ -315,15 +310,15 @@ func setupSuccessPutMocks(mockCredentialClient MockInterface, planeType string, 
 
 func setupSuccessGetMocks(mockCredentialClient MockInterface, planeType string, planeName string) {
 	credential := ProviderCredentialConfiguration{
-		ProviderCredentialResource: ProviderCredentialResource{
+		CloudProviderStatus: CloudProviderStatus{
 			Name:    azureProviderName,
 			Enabled: true,
 		},
 	}
 	if strings.EqualFold(planeType, AzurePlaneType) {
-		credential.ProviderCredentialResource.Name = azureProviderName
+		credential.CloudProviderStatus.Name = azureProviderName
 	} else if strings.EqualFold(planeType, AWSPlaneType) {
-		credential.ProviderCredentialResource.Name = awsProviderName
+		credential.CloudProviderStatus.Name = awsProviderName
 	}
 	mockCredentialClient.EXPECT().
 		GetCredential(gomock.Any(), planeType, planeName, gomock.Any()).

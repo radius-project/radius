@@ -68,7 +68,7 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			providers := []cli_credential.ProviderCredentialResource{
+			providers := []cli_credential.CloudProviderStatus{
 				{
 					Name:    "azure",
 					Enabled: true,
@@ -101,7 +101,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     providers,
-					Options: objectformats.ListCloudProviderTableFormat(),
+					Options: objectformats.CloudProviderTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

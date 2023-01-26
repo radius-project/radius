@@ -66,10 +66,10 @@ func (mr *MockCredentialManagementClientMockRecorder) Get(arg0, arg1 interface{}
 }
 
 // List mocks base method.
-func (m *MockCredentialManagementClient) List(arg0 context.Context) ([]ProviderCredentialResource, error) {
+func (m *MockCredentialManagementClient) List(arg0 context.Context) ([]CloudProviderStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
-	ret0, _ := ret[0].([]ProviderCredentialResource)
+	ret0, _ := ret[0].([]CloudProviderStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

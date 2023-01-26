@@ -86,8 +86,8 @@ func Test_Run(t *testing.T) {
 		t.Run("Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			provider := cli_credential.ProviderCredentialConfiguration {
-				ProviderCredentialResource : cli_credential.ProviderCredentialResource{
+			provider := cli_credential.ProviderCredentialConfiguration{
+				CloudProviderStatus: cli_credential.CloudProviderStatus{
 					Name:    "azure",
 					Enabled: true,
 				},

@@ -205,7 +205,7 @@ func Test_Run(t *testing.T) {
 				Name:     to.Ptr("azure"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AzureCredential),
-				ID:       to.Ptr(fmt.Sprintf(awsCredentialID, "azure")),
+				ID:       to.Ptr(fmt.Sprintf(azureCredentialID, "azure")),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
