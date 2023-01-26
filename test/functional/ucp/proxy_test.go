@@ -86,7 +86,9 @@ func Test_ProxyOperations(t *testing.T) {
 		}
 		createPlane(t, roundTripper, nativeplaneURL, nativePlane)
 		t.Cleanup(func() {
-			deletePlane(t, roundTripper, nativeplaneURL)
+			statusCode := deletePlane(t, roundTripper, nativeplaneURL)
+			require.Equal(t, http.StatusOK, statusCode)
+
 		})
 
 		rgID = nativePlaneID + "/resourceGroups/test-rg"

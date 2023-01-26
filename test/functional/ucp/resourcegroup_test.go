@@ -29,7 +29,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		rgURL := fmt.Sprintf("%s%s?api-version=%s", url, rgID, apiVersion)
 
 		t.Cleanup(func() {
-			deleteResourceGroup(t, roundTripper, rgURL)
+			_ = deleteResourceGroup(t, roundTripper, rgURL)
 		})
 
 		createResourceGroup(t, roundTripper, rgURL)
@@ -53,7 +53,8 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		assert.DeepEqual(t, expectedResourceGroup, rg)
 
 		// Delete Resource Group
-		deleteResourceGroup(t, roundTripper, rgURL)
+		statusCode = deleteResourceGroup(t, roundTripper, rgURL)
+		require.Equal(t, http.StatusOK, statusCode)
 
 		// Get Resource Group - Expected Not Found
 		_, statusCode = getResourceGroup(t, roundTripper, rgURL)
@@ -132,7 +133,7 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 	return resourceGroup, result.StatusCode
 }
 
-func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) {
+func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) int {
 	deleteRgRequest, err := http.NewRequest(
 		http.MethodDelete,
 		url,
@@ -142,6 +143,6 @@ func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 
 	res, err := roundTripper.RoundTrip(deleteRgRequest)
 	require.NoError(t, err, "")
-	require.Equal(t, http.StatusOK, res.StatusCode)
 	t.Logf("Resource group: %s deleted successfully", url)
+	return res.StatusCode
 }
