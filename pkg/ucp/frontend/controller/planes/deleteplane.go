@@ -53,7 +53,7 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return nil, err
 	}
 	logger := logr.FromContextOrDiscard(ctx)
-	restResponse := armrpc_rest.NewNoContentResponse()
+	restResponse := armrpc_rest.NewOKResponse(nil)
 	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil
 }
