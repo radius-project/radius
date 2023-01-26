@@ -33,14 +33,13 @@ var _ azcore.TokenCredential = (*UCPCredential)(nil)
 
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
-	secretProvider *ucpsecretp.SecretProvider
+	secretProvider    *ucpsecretp.SecretProvider
+	azUCPClient       *ucpapi.AzureCredentialClient
+	currentCredential ucpdatamodel.AzureCredentialProperties
 
-	credentialProp ucpdatamodel.AzureCredentialProperties
-	systemClient   *ucpapi.AzureCredentialClient
-	tokenCred      azcore.TokenCredential
+	tokenCred azcore.TokenCredential
 	// tokenCredMu is the read write mutex to protect tokenCred.
 	tokenCredMu sync.RWMutex
-
 	nextRefresh atomic.Int64
 }
 
@@ -56,7 +55,7 @@ func NewUCPCredential(secretProvider *ucpsecretp.SecretProvider, ucpConn sdk.Con
 	}
 
 	return &UCPCredential{
-		systemClient:   cli,
+		azUCPClient:    cli,
 		secretProvider: secretProvider,
 	}, nil
 }
@@ -75,7 +74,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	}
 
 	// 1. Fetch the secret name of Azure service principal credentials from UCP.
-	cred, err := c.systemClient.Get(ctx, "azure", "azurecloud", "default", &ucpapi.AzureCredentialClientGetOptions{})
+	cred, err := c.azUCPClient.Get(ctx, "azure", "azurecloud", "default", &ucpapi.AzureCredentialClientGetOptions{})
 	if err != nil {
 		return err
 	}
@@ -106,20 +105,20 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	}
 
 	// Do not instantiate new client unless the secret is rotated.
-	if c.credentialProp.ClientSecret == s.ClientSecret &&
-		c.credentialProp.ClientID == s.ClientID &&
-		c.credentialProp.TenantID == s.TenantID {
+	if c.currentCredential.ClientSecret == s.ClientSecret &&
+		c.currentCredential.ClientID == s.ClientID &&
+		c.currentCredential.TenantID == s.TenantID {
 		return nil
 	}
 
 	// Rotate credentials by creating new ClientSecretCredential.
-	c.credentialProp = s
 	azCred, err := azidentity.NewClientSecretCredential(s.TenantID, s.ClientID, s.ClientSecret, nil)
 	if err != nil {
 		return err
 	}
 
 	c.tokenCred = azCred
+	c.currentCredential = s
 
 	c.nextRefresh.Store(time.Now().Add(credFetchPeriod).Unix())
 	return nil
