@@ -473,7 +473,7 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, testRendererOutput.RecipeContext.Runtime, rendererOutput.RecipeContext.Runtime)
 	})
 
-	t.Run("verify environment scoped renderer success", func(t *testing.T) {
+	t.Run("verify render success with environment scoped link", func(t *testing.T) {
 		testResource := buildEnvScopedMongoResource()
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 		env, err := resources.ParseResource(testResource.Properties.Environment)
