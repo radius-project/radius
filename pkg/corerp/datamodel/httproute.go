@@ -7,8 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // HTTPRoute represents HTTPRoute resource.
@@ -27,7 +26,7 @@ func (h *HTTPRoute) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
+func (h *HTTPRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	if h.Properties != nil {
 		h.Properties.Status.OutputResources = do.DeployedOutputResources
 	}
@@ -51,18 +50,18 @@ func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 }
 
 // OutputResources returns the output resources array.
-func (h *HTTPRoute) OutputResources() []outputresource.OutputResource {
+func (h *HTTPRoute) OutputResources() []rpv1.OutputResource {
 	return h.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *HTTPRoute) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *HTTPRoute) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // HTTPRouteProperties represents the properties of HTTPRoute.
 type HTTPRouteProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Hostname string `json:"hostname,omitempty"`
 	Port     int32  `json:"port,omitempty"`
 	Scheme   string `json:"scheme,omitempty"`

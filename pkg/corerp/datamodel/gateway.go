@@ -7,8 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // Gateway represents Gateway resource.
@@ -27,7 +26,7 @@ func (g *Gateway) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
+func (g *Gateway) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.ComputedValues = do.ComputedValues
 	g.SecretValues = do.SecretValues
@@ -38,18 +37,18 @@ func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 }
 
 // OutputResources returns the output resources array.
-func (g *Gateway) OutputResources() []outputresource.OutputResource {
+func (g *Gateway) OutputResources() []rpv1.OutputResource {
 	return g.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *Gateway) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *Gateway) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // GatewayProperties represents the properties of Gateway.
 type GatewayProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Internal bool                       `json:"internal,omitempty"`
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
 	TLS      *GatewayPropertiesTLS      `json:"tls,omitempty"`

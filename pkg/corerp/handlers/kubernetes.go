@@ -14,8 +14,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -172,7 +173,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOpt
 	return client.IgnoreNotFound(handler.client.Delete(ctx, &item))
 }
 
-func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
+func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructured, error) {
 	if resource.ResourceType.Provider != resourcemodel.ProviderKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}

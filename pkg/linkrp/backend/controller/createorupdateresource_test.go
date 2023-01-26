@@ -17,10 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -52,7 +52,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 	}{
 		{
 			"mongo-put-success",
-			mongodatabases.ResourceType,
+			linkrp.MongoDatabasesResourceType,
 			"APPLICATIONS.LINK/MONGODATABASES|PUT",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0",
 			nil,
@@ -64,7 +64,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 		},
 		{
 			"mongo-put-not-found",
-			mongodatabases.ResourceType,
+			linkrp.MongoDatabasesResourceType,
 			"APPLICATIONS.LINK/MONGODATABASES|PUT",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo1",
 			&store.ErrNotFound{},
@@ -76,7 +76,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 		},
 		{
 			"mongo-put-get-err",
-			mongodatabases.ResourceType,
+			linkrp.MongoDatabasesResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo1",
 			errors.New("error getting object"),
@@ -127,7 +127,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				if tt.renderErr == nil {
 					deployCall := mdp.EXPECT().
 						Deploy(gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(rp.DeploymentOutput{}, tt.deployErr).
+						Return(rpv1.DeploymentOutput{}, tt.deployErr).
 						After(renderCall).
 						Times(1)
 

@@ -12,10 +12,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-func makeRBACRole(appName, name, namespace string, resource *datamodel.ContainerResource) *outputresource.OutputResource {
+func makeRBACRole(appName, name, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
 
 	role := &rbacv1.Role{
@@ -38,16 +38,16 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 		},
 	}
 
-	or := outputresource.NewKubernetesOutputResource(
+	or := rpv1.NewKubernetesOutputResource(
 		resourcekinds.KubernetesRole,
-		outputresource.LocalIDKubernetesRole,
+		rpv1.LocalIDKubernetesRole,
 		role,
 		role.ObjectMeta)
 
 	return &or
 }
 
-func makeRBACRoleBinding(appName, name, saName, namespace string, resource *datamodel.ContainerResource) *outputresource.OutputResource {
+func makeRBACRoleBinding(appName, name, saName, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
 
 	bindings := &rbacv1.RoleBinding{
@@ -73,15 +73,15 @@ func makeRBACRoleBinding(appName, name, saName, namespace string, resource *data
 		},
 	}
 
-	or := outputresource.NewKubernetesOutputResource(
+	or := rpv1.NewKubernetesOutputResource(
 		resourcekinds.KubernetesRoleBinding,
-		outputresource.LocalIDKubernetesRoleBinding,
+		rpv1.LocalIDKubernetesRoleBinding,
 		bindings,
 		bindings.ObjectMeta)
 
-	or.Dependencies = []outputresource.Dependency{
+	or.Dependencies = []rpv1.Dependency{
 		{
-			LocalID: outputresource.LocalIDKubernetesRole,
+			LocalID: rpv1.LocalIDKubernetesRole,
 		},
 	}
 	return &or

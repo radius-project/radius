@@ -13,13 +13,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,9 +50,9 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -125,9 +127,9 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -201,9 +203,9 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			envInput, _, _ := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -254,9 +256,9 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -332,9 +334,9 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			conflictDataModel.Name = "existing"
 			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/" + tt.existingResourceName
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -404,8 +406,8 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 	t.Run("Add dev recipes successfully", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsWithDevRecipes20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -452,8 +454,8 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 	t.Run("Append dev recipes to user recipes successfully", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipes20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -500,8 +502,8 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 	t.Run("Append dev recipes and user recipes to existing user recipes successfully", func(t *testing.T) {
 		envExistingDataModel, envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipesToExisting20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -547,8 +549,8 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 	t.Run("User recipes conflict with dev recipe names", func(t *testing.T) {
 		envInput := getTestModelsUserRecipesConflictWithReservedNames20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -573,8 +575,8 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 	t.Run("Existing user recipe conflicts with dev recipe names ", func(t *testing.T) {
 		envExistingDataModel, envInput := getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -607,7 +609,7 @@ func TestGetDevRecipes(t *testing.T) {
 		require.NoError(t, err)
 		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     "Applications.Link/mongoDatabases",
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 		}
@@ -667,21 +669,21 @@ func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 	t.Run("No overlap between user and dev recipes", func(t *testing.T) {
 		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     "Applications.Link/mongoDatabases",
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 			"redis-azure": {
-				LinkType:     "Applications.Link/redisCache",
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
 			},
 		}
 		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"user-mongo-azure": {
-				LinkType:     "Applications.Link/mongoDatabases",
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
 			},
 			"user-redis-azure": {
-				LinkType:     "Applications.Link/redisCache",
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
 			},
 		}
@@ -692,21 +694,21 @@ func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 	t.Run("Single recipe overlap between user and dev recipes", func(t *testing.T) {
 		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     "Applications.Link/mongoDatabases",
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 			"redis-azure": {
-				LinkType:     "Applications.Link/redisCache",
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
 			},
 		}
 		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     "Applications.Link/mongoDatabases",
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
 			},
 			"user-redis-azure": {
-				LinkType:     "Applications.Link/redisCache",
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
 			},
 		}
@@ -721,21 +723,21 @@ func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 	t.Run("Multiple recipe overlap between user and dev recipes", func(t *testing.T) {
 		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     "Applications.Link/mongoDatabases",
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 			"redis-azure": {
-				LinkType:     "Applications.Link/redisCache",
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
 			},
 		}
 		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
-				LinkType:     "Applications.Link/mongoDatabases",
+				LinkType:     linkrp.MongoDatabasesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
 			},
 			"redis-azure": {
-				LinkType:     "Applications.Link/redisCache",
+				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
 			},
 		}

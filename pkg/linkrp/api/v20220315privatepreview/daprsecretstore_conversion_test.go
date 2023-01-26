@@ -10,8 +10,10 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,12 +34,12 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 		convertedResource := dm.(*datamodel.DaprSecretStore)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/daprSecretStore0", convertedResource.ID)
 		require.Equal(t, "daprSecretStore0", convertedResource.Name)
-		require.Equal(t, "Applications.Link/daprSecretStores", convertedResource.Type)
+		require.Equal(t, linkrp.DaprSecretStoresResourceType, convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		switch versionedResource.Properties.(type) {
 		case *RecipeDaprSecretStoreProperties:
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			require.Equal(t, "daprSecretStore", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
 		case *ValuesDaprSecretStoreProperties:
@@ -66,7 +68,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/daprSecretStore0", *versionedResource.ID)
 		require.Equal(t, "daprSecretStore0", *versionedResource.Name)
-		require.Equal(t, "Applications.Link/daprSecretStores", *versionedResource.Type)
+		require.Equal(t, linkrp.DaprSecretStoresResourceType, *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetDaprSecretStoreProperties().Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetDaprSecretStoreProperties().Environment)
 

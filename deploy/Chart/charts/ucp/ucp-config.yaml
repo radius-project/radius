@@ -51,3 +51,8 @@ metricsProvider:
     enabled: true
     path: "/metrics"
     port: 2222
+
+ # Logging configuration   
+logging:
+  level: "info"
+  json: true

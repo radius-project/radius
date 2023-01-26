@@ -13,15 +13,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/stretchr/testify/require"
-
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {
@@ -46,8 +46,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mds.
 			EXPECT().
@@ -77,8 +77,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mds.
 			EXPECT().
@@ -118,8 +118,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
 		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 		w := httptest.NewRecorder()
 
 		mds.

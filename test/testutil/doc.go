@@ -3,8 +3,6 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package sqldatabases
+// This package inlcudes test utils used for radius.
 
-const (
-	ResourceTypeName = "Applications.Link/sqlDatabases"
-)
+package testutil

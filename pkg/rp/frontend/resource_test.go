@@ -8,8 +8,7 @@ package frontend
 import (
 	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 const (
@@ -31,24 +30,24 @@ func (r *TestResourceDataModel) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (c *TestResourceDataModel) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
+func (c *TestResourceDataModel) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
 // OutputResources returns the output resources array.
-func (c *TestResourceDataModel) OutputResources() []outputresource.OutputResource {
+func (c *TestResourceDataModel) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *TestResourceDataModel) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *TestResourceDataModel) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // TestResourceDataModelProperties represents the properties of TestResourceDataModel.
 type TestResourceDataModelProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	PropertyA string `json:"propertyA,omitempty"`
 	PropertyB string `json:"propertyB,omitempty"`
 }
@@ -95,7 +94,7 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: &TestResourceDataModelProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -120,7 +119,7 @@ func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 	dst.Properties = &TestResourceProperties{
 		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
+			OutputResources: rpv1.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(dm.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.StringPtr(dm.Properties.Environment),

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package outputresource
+package v1
 
 import (
 	"errors"

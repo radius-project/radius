@@ -33,3 +33,15 @@ type LinkRecipe struct {
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
+
+const (
+	DaprInvokeHttpRoutesResourceType  = "Applications.Link/daprInvokeHttpRoutes"
+	DaprPubSubBrokersResourceType     = "Applications.Link/daprPubSubBrokers"
+	DaprSecretStoresResourceType      = "Applications.Link/daprSecretStores"
+	DaprStateStoresResourceType       = "Applications.Link/daprStateStores"
+	ExtendersResourceType             = "Applications.Link/extenders"
+	MongoDatabasesResourceType        = "Applications.Link/mongoDatabases"
+	RabbitMQMessageQueuesResourceType = "Applications.Link/rabbitMQMessageQueues"
+	RedisCachesResourceType           = "Applications.Link/redisCaches"
+	SqlDatabasesResourceType          = "Applications.Link/sqlDatabases"
+)

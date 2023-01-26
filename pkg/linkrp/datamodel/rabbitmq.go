@@ -8,8 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // RabbitMQMessageQueue represents RabbitMQMessageQueue link resource.
@@ -24,28 +23,28 @@ type RabbitMQMessageQueue struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
+func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
 // OutputResources returns the output resources array.
-func (r *RabbitMQMessageQueue) OutputResources() []outputresource.OutputResource {
+func (r *RabbitMQMessageQueue) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *RabbitMQMessageQueue) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *RabbitMQMessageQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
-	return "Applications.Link/rabbitMQMessageQueues"
+	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
 type RabbitMQMessageQueueProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Queue   string            `json:"queue"`
 	Recipe  linkrp.LinkRecipe `json:"recipe,omitempty"`
 	Secrets RabbitMQSecrets   `json:"secrets,omitempty"`
@@ -58,5 +57,5 @@ type RabbitMQSecrets struct {
 }
 
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return "Applications.Link/rabbitMQMessageQueues"
+	return linkrp.RabbitMQMessageQueuesResourceType
 }

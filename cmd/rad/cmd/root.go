@@ -13,16 +13,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
-	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	app_switch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
 	credential "github.com/project-radius/radius/pkg/cli/cmd/credential"
-	cmddeploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
+	cmd_deploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
 	env_delete "github.com/project-radius/radius/pkg/cli/cmd/env/delete"
-	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
+	env_switch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
 	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
@@ -75,17 +74,7 @@ var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
-	if new := clients.TryUnfoldErrorResponse(err); new != nil {
-		m, err := prettyPrintJSON(new)
-		if err == nil {
-			return m
-		}
-	} else if new := clients.TryUnfoldServiceError(err); new != nil {
-		m, err := prettyPrintJSON(new)
-		if err == nil {
-			return m
-		}
-	} else if new := clientv2.TryUnfoldResponseError(err); new != nil {
+	if new := clientv2.TryUnfoldResponseError(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m
@@ -146,7 +135,7 @@ func initSubCommands() {
 		SetupInterface:      &setup.Impl{},
 	}
 
-	deployCmd, _ := cmddeploy.NewCommand(framework)
+	deployCmd, _ := cmd_deploy.NewCommand(framework)
 	RootCmd.AddCommand(deployCmd)
 
 	runCmd, _ := run.NewCommand(framework)
@@ -206,10 +195,10 @@ func initSubCommands() {
 	workspaceSwitchCmd, _ := workspace_switch.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceSwitchCmd)
 
-	appSwitchCmd, _ := appSwitch.NewCommand(framework)
+	appSwitchCmd, _ := app_switch.NewCommand(framework)
 	applicationCmd.AddCommand(appSwitchCmd)
 
-	envSwitchCmd, _ := envSwitch.NewCommand(framework)
+	envSwitchCmd, _ := env_switch.NewCommand(framework)
 	envCmd.AddCommand(envSwitchCmd)
 }
 

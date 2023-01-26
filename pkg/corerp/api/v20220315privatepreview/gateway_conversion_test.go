@@ -11,14 +11,15 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestGatewayConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("gatewayresource.json")
+	rawPayload := testutil.ReadFixture("gatewayresource.json")
 	r := &GatewayResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -39,14 +40,14 @@ func TestGatewayConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "mypath", ct.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", ct.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", ct.Properties.URL)
-	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
+	require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, true, ct.Properties.TLS.SSLPassthrough)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 }
 
 func TestGatewayConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("gatewayresourcedatamodel.json")
+	rawPayload := testutil.ReadFixture("gatewayresourcedatamodel.json")
 	r := &datamodel.Gateway{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)

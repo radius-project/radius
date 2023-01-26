@@ -3,8 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package daprsecretstores
+package ucplog
 
-const (
-	ResourceTypeName = "Applications.Link/daprSecretStores"
-)
+// LoggingOptions represents the logger.
+type LoggingOptions struct {
+	Json  bool   `yaml:"json"`
+	Level string `yaml:"level"`
+}

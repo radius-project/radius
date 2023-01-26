@@ -12,6 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
@@ -24,8 +25,8 @@ var (
 	// ResourceTypeNames is the array that holds resource types that needs async processing.
 	// We use this array to generate generic backend controller for each resource.
 	ResourceTypeNames = []string{
-		"Applications.Link/mongoDatabases",
-		"Applications.Link/redisCaches",
+		linkrp.MongoDatabasesResourceType,
+		linkrp.RedisCachesResourceType,
 	}
 )
 

@@ -15,11 +15,10 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-type StateStoreFunc = func(resource *datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
+type StateStoreFunc = func(resource *datamodel.DaprStateStore, applicationName string, namespace string) ([]rpv1.OutputResource, error)
 
 var SupportedStateStoreModes = map[string]StateStoreFunc{
 	string(datamodel.LinkModeResource): GetDaprStateStoreAzureStorage,
@@ -67,7 +66,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options 
 			Value: kubernetes.NormalizeResourceName(resource.Name),
 		},
 	}
-	secrets := map[string]rp.SecretValueReference{}
+	secrets := map[string]rpv1.SecretValueReference{}
 
 	return renderers.RendererOutput{
 		Resources:      resources,

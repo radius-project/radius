@@ -9,18 +9,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,11 +38,11 @@ func Test_Render_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -62,33 +61,33 @@ func Test_Render_Success(t *testing.T) {
 		Type:     resourcekinds.AzureCosmosDBMongo,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	expectedOutputResources := []outputresource.OutputResource{
+	expectedOutputResources := []rpv1.OutputResource{
 		{
-			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+			LocalID:       rpv1.LocalIDAzureCosmosAccount,
 			ResourceType:  accountResourceType,
-			RadiusManaged: to.BoolPtr(false),
+			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
 		},
 		{
-			LocalID:       outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:       rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType:  dbResourceType,
-			RadiusManaged: to.BoolPtr(false),
+			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDAzureCosmosAccount,
+					LocalID: rpv1.LocalIDAzureCosmosAccount,
 				},
 			},
 		},
@@ -116,11 +115,11 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -148,7 +147,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
 		renderers.UsernameStringValue:   {Value: userName},
 		renderers.PasswordStringHolder:  {Value: password},
@@ -165,11 +164,11 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -191,11 +190,11 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -221,11 +220,11 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -251,11 +250,11 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "invalid-app-id",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -281,11 +280,11 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -310,11 +309,11 @@ func Test_Render_InvalidMode(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -340,11 +339,11 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -362,30 +361,30 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
-			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id",
 		},
 	}
 
-	expectedOutputResources := []outputresource.OutputResource{
+	expectedOutputResources := []rpv1.OutputResource{
 		{
-			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			LocalID: rpv1.LocalIDAzureCosmosAccount,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			RadiusManaged:        to.BoolPtr(true),
+			RadiusManaged:        to.Ptr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 		},
 		{
-			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID: rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			RadiusManaged:        to.BoolPtr(true),
+			RadiusManaged:        to.Ptr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},
 	}
 
@@ -398,7 +397,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				},
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			LinkType:     ResourceType,
+			LinkType:     linkrp.MongoDatabasesResourceType,
 			EnvParameters: map[string]any{
 				"name": "account-mongo-db",
 			},
@@ -408,11 +407,11 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.Name)
 	require.Equal(t, mongoDBResource.Properties.Recipe.Parameters, output.RecipeData.Parameters)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.TemplatePath)
-	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
+	require.Equal(t, clientv2.DocumentDBManagementClientAPIVersion, output.RecipeData.APIVersion)
 
 	// Secrets
 	require.Equal(t, 1, len(output.SecretValues))
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
+	require.Equal(t, rpv1.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
 
@@ -433,11 +432,11 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -456,7 +455,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 				Name: "mongodb",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			LinkType:     "Applications.Link/redisCaches",
+			LinkType:     linkrp.RedisCachesResourceType,
 			EnvParameters: map[string]any{
 				"name": "account-mongo-db",
 			},

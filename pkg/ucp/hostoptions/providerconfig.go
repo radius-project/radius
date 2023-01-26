@@ -10,6 +10,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // UCPConfig includes the resource provider configuration.
@@ -18,4 +19,5 @@ type UCPConfig struct {
 	Planes          []rest.Plane                           `yaml:"planes"`
 	SecretProvider  provider.SecretProviderOptions         `yaml:"secretProvider"`
 	MetricsProvider metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
+	Logging         ucplog.LoggingOptions                  `yaml:"logging"`
 }

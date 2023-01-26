@@ -14,29 +14,27 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp"
-	dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	linkrp_r "github.com/project-radius/radius/pkg/linkrp/renderers"
+	linkrp_renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/test/testutil"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -48,7 +46,7 @@ type SharedMocks struct {
 	dbProvider         *dataprovider.MockDataStorageProvider
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
-	secretsValueClient *rp.MockSecretValueClient
+	secretsValueClient *sv.MockSecretValueClient
 	mctrl              *gomock.Controller
 }
 
@@ -113,36 +111,36 @@ func setup(t *testing.T) SharedMocks {
 		dbProvider:         dataprovider.NewMockDataStorageProvider(ctrl),
 		resourceHandler:    resourceHandler,
 		renderer:           renderer,
-		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
+		secretsValueClient: sv.NewMockSecretValueClient(ctrl),
 		mctrl:              ctrl,
 	}
 }
 
 func getTestResource() datamodel.ContainerResource {
-	rawDataModel := radiustesting.ReadFixture("containerresourcedatamodel.json")
+	rawDataModel := testutil.ReadFixture("containerresourcedatamodel.json")
 	testResource := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, testResource)
 	return *testResource
 }
 
 func getLowerCaseTestResource() datamodel.ContainerResource {
-	rawDataModel := radiustesting.ReadFixture("containerresourcedatamodellowercase.json")
+	rawDataModel := testutil.ReadFixture("containerresourcedatamodellowercase.json")
 	testResource := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, testResource)
 	return *testResource
 }
 
 func getUpperCaseTestResource() datamodel.ContainerResource {
-	rawDataModel := radiustesting.ReadFixture("containerresourcedatamodeluppercase.json")
+	rawDataModel := testutil.ReadFixture("containerresourcedatamodeluppercase.json")
 	testResource := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, testResource)
 	return *testResource
 }
 
 func getTestRendererOutput() renderers.RendererOutput {
-	testOutputResources := []outputresource.OutputResource{
+	testOutputResources := []rpv1.OutputResource{
 		{
-			LocalID: outputresource.LocalIDService,
+			LocalID: rpv1.LocalIDService,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
 				Provider: resourcemodel.ProviderKubernetes,
@@ -152,7 +150,7 @@ func getTestRendererOutput() renderers.RendererOutput {
 
 	rendererOutput := renderers.RendererOutput{
 		Resources: testOutputResources,
-		ComputedValues: map[string]rp.ComputedValueReference{
+		ComputedValues: map[string]rpv1.ComputedValueReference{
 			"url": {
 				Value: "http://test-application/test-route:8080",
 			},
@@ -178,11 +176,11 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 			},
 		},
 		Properties: linkrp_dm.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: dm.LinkModeRecipe,
+			Mode: linkrp_dm.LinkModeRecipe,
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
 			RecipeData: linkrp.RecipeData{
@@ -196,7 +194,7 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 					},
 					TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 				},
-				APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
 			},
@@ -207,9 +205,9 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	testResource := buildMongoDBLinkWithRecipe()
 
-	secretValues := map[string]rp.SecretValueReference{}
-	secretValues[linkrp_r.ConnectionStringValue] = rp.SecretValueReference{
-		LocalID:       outputresource.LocalIDAzureCosmosAccount,
+	secretValues := map[string]rpv1.SecretValueReference{}
+	secretValues[linkrp_renderers.ConnectionStringValue] = rpv1.SecretValueReference{
+		LocalID:       rpv1.LocalIDAzureCosmosAccount,
 		Action:        "listConnectionStrings",
 		ValueSelector: "/connectionStrings/0/connectionString",
 		Transformer: resourcemodel.ResourceType{
@@ -219,7 +217,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	}
 
 	computedValues := map[string]any{
-		linkrp_r.DatabaseNameValue: "db",
+		linkrp_renderers.DatabaseNameValue: "db",
 	}
 
 	testResource.ComputedValues = computedValues
@@ -233,29 +231,29 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 		Type:     resourcekinds.AzureCosmosDBMongo,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	outputResources := []outputresource.OutputResource{
+	outputResources := []rpv1.OutputResource{
 		{
-			LocalID:              outputresource.LocalIDAzureCosmosAccount,
+			LocalID:              rpv1.LocalIDAzureCosmosAccount,
 			ResourceType:         accountResourceType,
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
-			RadiusManaged: to.BoolPtr(true),
+			RadiusManaged: to.Ptr(true),
 		},
 		{
-			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:              rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType:         dbResourceType,
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
 			Resource: map[string]any{
@@ -265,8 +263,8 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 					},
 				},
 			},
-			RadiusManaged: to.BoolPtr(true),
-			Dependencies:  []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+			RadiusManaged: to.Ptr(true),
+			Dependencies:  []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},
 	}
 
@@ -298,9 +296,9 @@ func Test_Render(t *testing.T) {
 			},
 		},
 		Properties: datamodel.EnvironmentProperties{
-			Compute: rp.EnvironmentCompute{
-				Kind: rp.KubernetesComputeKind,
-				KubernetesCompute: rp.KubernetesComputeProperties{
+			Compute: rpv1.EnvironmentCompute{
+				Kind: rpv1.KubernetesComputeKind,
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
 					Namespace: "radius-test",
 				},
 			},
@@ -337,7 +335,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -363,7 +361,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -384,10 +382,10 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: linkrp_dm.MongoDatabaseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
-				Mode: dm.LinkModeValues,
+				Mode: linkrp_dm.LinkModeValues,
 			},
 		}
 		mr := store.Object{
@@ -430,7 +428,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -456,7 +454,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -500,7 +498,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -526,7 +524,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -568,7 +566,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -594,7 +592,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -747,7 +745,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -773,7 +771,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -816,7 +814,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -842,7 +840,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -922,7 +920,7 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		testRendererOutput.Resources[0].Dependencies = []outputresource.Dependency{
+		testRendererOutput.Resources[0].Dependencies = []rpv1.Dependency{
 			{LocalID: ""},
 		}
 
@@ -991,7 +989,7 @@ func Test_Delete(t *testing.T) {
 	t.Run("Verify delete with no output resources", func(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
-		testResource.Properties.Status.OutputResources = []outputresource.OutputResource{}
+		testResource.Properties.Status.OutputResources = []rpv1.OutputResource{}
 
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(0).Return(nil)
 
@@ -1007,12 +1005,12 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 
 	env := &datamodel.Environment{
 		Properties: datamodel.EnvironmentProperties{
-			Compute: rp.EnvironmentCompute{
-				Kind: rp.KubernetesComputeKind,
-				KubernetesCompute: rp.KubernetesComputeProperties{
+			Compute: rpv1.EnvironmentCompute{
+				Kind: rpv1.KubernetesComputeKind,
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
 					Namespace: "radius-system",
 				},
-				Identity: &rp.IdentitySettings{},
+				Identity: &rpv1.IdentitySettings{},
 			},
 			Providers: datamodel.Providers{
 				Azure: datamodel.ProvidersAzure{
@@ -1093,10 +1091,10 @@ func Test_fetchSecrets(t *testing.T) {
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
 		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
-		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
 		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(secretValues))
-		require.Equal(t, secret, secretValues[linkrp_r.ConnectionStringValue])
+		require.Equal(t, secret, secretValues[linkrp_renderers.ConnectionStringValue])
 	})
 }

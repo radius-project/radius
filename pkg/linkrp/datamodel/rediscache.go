@@ -12,8 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // RedisCache represents RedisCache link resource.
@@ -28,7 +27,7 @@ type RedisCache struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *RedisCache) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
+func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
 	r.SecretValues = do.SecretValues
@@ -60,17 +59,17 @@ func (r *RedisCache) ApplyDeploymentOutput(do rp.DeploymentOutput) error {
 }
 
 // OutputResources returns the output resources array.
-func (r *RedisCache) OutputResources() []outputresource.OutputResource {
+func (r *RedisCache) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *RedisCache) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
 func (redis *RedisCache) ResourceTypeName() string {
-	return "Applications.Link/redisCaches"
+	return linkrp.RedisCachesResourceType
 }
 
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
@@ -91,7 +90,7 @@ type RedisRecipeProperties struct {
 	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
 }
 type RedisCacheProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	RedisValuesProperties
 	RedisResourceProperties
 	RedisRecipeProperties
@@ -106,5 +105,5 @@ type RedisCacheSecrets struct {
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return "Applications.Link/redisCaches"
+	return linkrp.RedisCachesResourceType
 }

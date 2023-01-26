@@ -12,8 +12,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -71,7 +70,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, req *ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	deploymentDataModel, ok := dataModel.(rp.DeploymentDataModel)
+	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
 	if !ok {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), err
 	}
@@ -83,7 +82,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, req *ctrl.Request) (ct
 	}
 
 	if !isNewResource {
-		diff := outputresource.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
+		diff := rpv1.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
 		err = c.LinkDeploymentProcessor().Delete(ctx, id, diff)
 		if err != nil {
 			return ctrl.Result{}, err

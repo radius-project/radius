@@ -12,10 +12,9 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -52,7 +51,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	deploymentDataModel, ok := dataModel.(rp.DeploymentDataModel)
+	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
 	if !ok {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
@@ -73,9 +72,9 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
-	case strings.ToLower(mongodatabases.ResourceTypeName):
+	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		return &datamodel.MongoDatabase{}, nil
-	case strings.ToLower(rediscaches.ResourceTypeName):
+	case strings.ToLower(linkrp.RedisCachesResourceType):
 		return &datamodel.RedisCache{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
