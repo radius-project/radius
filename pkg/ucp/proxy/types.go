@@ -112,20 +112,19 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
 		logger.Info(fmt.Sprintf("#### Async header from response : %s", resp.Header[AzureAsyncOperationHeader]))
 		logger.Info(fmt.Sprintf("#### Location header from response : %s", resp.Header[LocationHeader]))
-		// if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
-
-		// 	// This is an Async Response with a Azure-AsyncOperation Header
-		// 	err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// } else if locationHeader, ok := resp.Header[LocationHeader]; ok {
-		// 	// This is an Async Response with a Location Header
-		// 	err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
+		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
+			// This is an Async Response with a Azure-AsyncOperation Header
+			err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
+			if err != nil {
+				logger.Error(err, "failing here")
+			}
+		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
+			// This is an Async Response with a Location Header
+			err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
+			if err != nil {
+				logger.Error(err, "failing here")
+			}
+		}
 	}
 	return nil
 }
