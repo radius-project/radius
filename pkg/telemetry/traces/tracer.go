@@ -16,8 +16,6 @@ package traces
 
 import (
 	"context"
-	"log"
-	"os"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/zipkin"
@@ -29,10 +27,8 @@ import (
 
 func InitTracer(url string, serviceName string) (func(context.Context) error, error) {
 	//Assume zipkin for now
-	var logger = log.New(os.Stderr, "zipkin-example", log.Ldate|log.Ltime|log.Llongfile)
 	exporter, err := zipkin.New(
 		url,
-		zipkin.WithLogger(logger),
 	)
 	if err != nil || exporter == nil {
 		return nil, err
