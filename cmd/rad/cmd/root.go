@@ -96,12 +96,11 @@ func prettyPrintJSON(o any) (string, error) {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-// It also initializes the tracer.
+// It also initializes the traceprovider for cli.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
-	url := "http://localhost:9411/api/v2/spans"
-	shutdown, err := traces.InitTracer(url, "ucp")
+	shutdown, err := traces.InitTracer(RadiusTraceProviderURL, "rad.cli")
 	if err != nil {
 		log.Fatal(err)
 	}
