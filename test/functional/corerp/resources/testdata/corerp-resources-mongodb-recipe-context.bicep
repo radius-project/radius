@@ -23,7 +23,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       mongodb: {
           linkType: 'Applications.Link/mongoDatabases' 
-          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/mongodatabases/azure:1.0' 
+          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/context/mongodatabases/azure:1.0' 
       }
     }
   }
@@ -68,7 +68,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mdb-ctx-${rg}'
+  name: 'mdb-ctx'
   location: 'global'
   properties: {
     application: app.id

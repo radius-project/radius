@@ -312,19 +312,18 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-ctx-" + rg,
+						Name: "mdb-ctx",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDAzureCosmosAccount,
-								Name:     "account-mdb-ctx-" + rg,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
-								Name:     "mongodb-mdb-ctx-" + rg,
+								Name:     "mdb-ctx-" + rg,
 							},
 						},
 					},
