@@ -351,7 +351,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
 							vol_ctrl.ValidateRequest,
 						},
-						AsyncOperationTimeout: time.Duration(2) * time.Minute,
 					},
 				)
 			},
@@ -365,6 +364,9 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
 						RequestConverter:  converter.VolumeResourceModelFromVersioned,
 						ResponseConverter: converter.VolumeResourceModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.VolumeResource]{
+							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
+						},
 					},
 				)
 			},

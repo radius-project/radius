@@ -7,7 +7,6 @@ package defaultoperation
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -53,8 +52,7 @@ func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, 
 			return resp, err
 		}
 	}
-	tmp := e.AsyncOperationTimeout()
-	fmt.Printf(tmp.String())
+
 	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, e.AsyncOperationTimeout(), &etag); r != nil || err != nil {
 		return r, err
 	}

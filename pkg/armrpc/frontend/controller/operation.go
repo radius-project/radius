@@ -221,5 +221,8 @@ func (b *Operation[P, T]) UpdateFilters() []UpdateFilter[T] {
 
 // AsyncOperationTimeout returns the timeput for the operation.
 func (b *Operation[P, T]) AsyncOperationTimeout() time.Duration {
+	if b.resourceOptions.AsyncOperationTimeout == 0 {
+		return time.Duration(2) * time.Minute
+	}
 	return b.resourceOptions.AsyncOperationTimeout
 }
