@@ -212,9 +212,10 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_MongoDB_Recipe_Parameters validates creation of a mongoDB from
-// recipe using the parameter set by the developer and operator,
-// and container using the mongoDB link to connect to the underlying mongoDB resource.
+// Test_MongoDB_Recipe_Parameters validates the creation of a mongoDB from recipe with parameters passed by operator while linking recipe
+// and developer while creating the mongoDatabase link.
+// If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.
+// Container uses the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
@@ -232,7 +233,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-recipes-parameters-env",
+						Name: "corerp-resources-environment-recipe-parameters-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -253,12 +254,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDAzureCosmosAccount,
-								Identity: "acnt-developer-" + rg,
+								Name:     "acnt-developer-" + rg,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
-								Identity: "mdb-developer-" + rg,
+								Name:     "mdb-operator-" + rg,
 							},
 						},
 					},

@@ -66,7 +66,11 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 	)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 
-	registryRepo, tag := strings.Split(recipe.TemplatePath, ":")[0], strings.Split(recipe.TemplatePath, ":")[1]
+	registryRepo, tag, err := parseTemplatePath(recipe.TemplatePath)
+	if err != nil {
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid recipe templatePath %s", err.Error()))
+	}
+
 	// get the recipe from ACR
 	// client to the ACR repository in the templatePath
 	repo, err := remote.NewRepository(registryRepo)
