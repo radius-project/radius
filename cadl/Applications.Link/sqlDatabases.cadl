@@ -95,7 +95,7 @@ model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
 
 @armResourceOperations
 interface SqlDatabases
-  extends Radius.RootScopeResourceOperations<
+  extends Radius.ResourceOperationWithSyncDelete<
       SqlDatabaseResource,
       SqlDatabaseProperties,
       RootScopeParam

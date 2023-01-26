@@ -28,3 +28,11 @@ func ValidateApplicationID(application string) (resources.ID, error) {
 	}
 	return resources.ID{}, nil
 }
+
+func ValidateLinkType(resource v1.DataModelInterface, options RenderOptions) error {
+	if options.RecipeProperties.LinkType != resource.ResourceTypeName() {
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("link type %q of provided recipe %q is incompatible with %q resource type. Recipe link type must match link resource type.",
+			options.RecipeProperties.LinkType, options.RecipeProperties.Name, resource.ResourceTypeName()))
+	}
+	return nil
+}

@@ -282,21 +282,19 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
 		outputResource := orderedOutputResources[i]
 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+		if resourceData.RecipeData.Name != "" && !outputResource.IsRadiusManaged() {
+			// If the resource is not Radius managed for a link tied to a recipe, then this is a bug in the output resource initialization in renderer
+			return fmt.Errorf("resources deployed through recipe must be Radius managed")
+		}
 		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 		if err != nil {
 			return err
 		}
-
-		if outputResource.IsRadiusManaged() || outputResource.ResourceType.Provider == resourcemodel.ProviderKubernetes {
-			err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
-			if err != nil {
-				return err
-			}
-		} else if resourceData.RecipeData.Name != "" {
-			// If the resource is not Radius managed for a link tied to a recipe, then this is a bug in the output resource initialization in renderer
-			return fmt.Errorf("resources deployed through recipe must be Radius managed")
+		err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
+		if err != nil {
+			return err
 		}
-		logger.Info("Underlying resource lifecycle is not managed by Radius, skipping deletion")
+
 	}
 
 	return nil

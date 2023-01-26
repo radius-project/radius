@@ -238,10 +238,7 @@ func buildOutputResourcesDapr(mode string) []rpv1.OutputResource {
 				handlers.ApplicationName:         "testApplication",
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
-
-				handlers.ResourceIDKey:         azureTableStorageID,
-				handlers.StorageAccountNameKey: "test-account",
-				handlers.ResourceName:          daprLinkName,
+				handlers.ResourceName:            daprLinkName,
 			},
 			RadiusManaged: &radiusManaged,
 		},
@@ -876,12 +873,13 @@ func Test_Delete(t *testing.T) {
 		OutputResources: testOutputResources,
 	}
 
-	t.Run("Verify skip resource deletion for resource based links", func(t *testing.T) {
+	t.Run("Verify deletion for mode resource", func(t *testing.T) {
 		outputResources := buildOutputResourcesMongo(modeResource)
 		resourceData := ResourceData{
 			ID:              mongoLinkResourceID,
 			OutputResources: outputResources,
 		}
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 		err := dp.Delete(ctx, resourceData)
 		require.NoError(t, err)
 	})

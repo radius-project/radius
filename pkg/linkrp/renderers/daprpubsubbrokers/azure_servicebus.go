@@ -6,7 +6,6 @@
 package daprpubsubbrokers
 
 import (
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -61,7 +60,6 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			handlers.ServiceBusNamespaceNameKey: serviceBusNamespaceName,
 			handlers.ServiceBusTopicNameKey:     topicName,
 		},
-		RadiusManaged: to.BoolPtr(true),
 	}
 
 	values := map[string]renderers.ComputedValueReference{
