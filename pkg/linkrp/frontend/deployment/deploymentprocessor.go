@@ -91,7 +91,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	// Fetch the environment namespace, recipe link type and recipe template path by doing a db lookup
+	// Fetch the environment namespace, recipe's linkType, templatePath and parameters by doing a db lookup
 	envMetadata, err := dp.getEnvironmentMetadata(ctx, basicResource.Environment, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
