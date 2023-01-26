@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -30,7 +30,7 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *armHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+func (handler *armHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	id, apiVersion, err := resource.Identity.RequireARM()
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
@@ -53,7 +53,7 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	return resourcemodel.ResourceIdentity{}, map[string]string{}, nil
 }
 
-func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *armHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
 	id, apiVersion, err := resource.Identity.RequireARM()
 	if err != nil {
 		return err
@@ -69,16 +69,6 @@ func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.
 	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), &handler.arm.ClientOptions)
 	if err != nil {
 		return err
-	}
-
-	resp, err := client.CheckExistenceByID(ctx, id, apiVersion, &armresources.ClientCheckExistenceByIDOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to check existence of resource %q: %w", id, err)
-	}
-
-	if !resp.Success {
-		logger.Info(fmt.Sprintf("Resource %s does not exist", id))
-		return nil
 	}
 
 	poller, err := client.BeginDeleteByID(ctx, id, apiVersion, &armresources.ClientBeginDeleteByIDOptions{})

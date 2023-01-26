@@ -8,15 +8,13 @@ package rediscaches
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -42,7 +40,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 
 	if resource.Properties.Resource == "" {
 		return renderers.RendererOutput{
-			Resources:      []outputresource.OutputResource{},
+			Resources:      []rpv1.OutputResource{},
 			ComputedValues: computedValues,
 			SecretValues:   secretValues,
 		}, nil
@@ -57,7 +55,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 	}
 }
 
-func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rp.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
+func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rpv1.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this link
 	redisCacheID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
@@ -71,29 +69,29 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 
 	if _, ok := computedValues[renderers.Host]; !ok {
 		computedValues[renderers.Host] = renderers.ComputedValueReference{
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
 	if _, ok := computedValues[renderers.Port]; !ok {
 		computedValues[renderers.Port] = renderers.ComputedValueReference{
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
 	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
-		secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{
-			LocalID:       outputresource.LocalIDAzureRedis,
+		secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 		}
 	}
 
 	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
-		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
-			LocalID:       outputresource.LocalIDAzureRedis,
+		secretValues[renderers.ConnectionStringValue] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 			Transformer: resourcemodel.ResourceType{
@@ -104,30 +102,30 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	}
 
 	// Build output resources
-	redisCacheOutputResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureRedis,
+	redisCacheOutputResource := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureRedis,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRedis,
 			Provider: resourcemodel.ProviderAzure,
 		},
 	}
-	redisCacheOutputResource.Identity = resourcemodel.NewARMIdentity(&redisCacheOutputResource.ResourceType, redisCacheID.String(), clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
+	redisCacheOutputResource.Identity = resourcemodel.NewARMIdentity(&redisCacheOutputResource.ResourceType, redisCacheID.String(), clientv2.RedisManagementClientAPIVersion)
 
 	return renderers.RendererOutput{
-		Resources:      []outputresource.OutputResource{redisCacheOutputResource},
+		Resources:      []rpv1.OutputResource{redisCacheOutputResource},
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil
 }
 
-func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[string]rp.SecretValueReference {
-	secretValues := map[string]rp.SecretValueReference{}
+func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[string]rpv1.SecretValueReference {
+	secretValues := map[string]rpv1.SecretValueReference{}
 	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Password != "" {
-			secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{Value: properties.Secrets.Password}
+			secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{Value: properties.Secrets.Password}
 		}
 		if properties.Secrets.ConnectionString != "" {
-			secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{Value: properties.Secrets.ConnectionString}
+			secretValues[renderers.ConnectionStringValue] = rpv1.SecretValueReference{Value: properties.Secrets.ConnectionString}
 		}
 	}
 

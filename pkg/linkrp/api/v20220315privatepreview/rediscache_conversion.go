@@ -10,7 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -32,7 +32,7 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.GetRedisCacheProperties().Environment),
 				Application: to.String(src.Properties.GetRedisCacheProperties().Application),
 			},
@@ -114,7 +114,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(redis.Properties.Port),
 			Username: to.StringPtr(redis.Properties.Username),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
@@ -128,7 +128,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(redis.Properties.Port),
 			Username: to.StringPtr(redis.Properties.Username),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
@@ -143,7 +143,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 			Port:     to.Int32Ptr(redis.Properties.Port),
 			Username: to.StringPtr(redis.Properties.Username),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),

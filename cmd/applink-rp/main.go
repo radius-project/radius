@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/linkrp/backend"
 	"github.com/project-radius/radius/pkg/linkrp/frontend"
+	"github.com/project-radius/radius/pkg/logging"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
@@ -47,7 +48,7 @@ func main() {
 	}
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
-	logger, flush, err := ucplog.NewLogger("applications.link")
+	logger, flush, err := ucplog.NewLogger(logging.AppLinkLoggerName, &options.Config.Logging)
 	if err != nil {
 		log.Fatal(err)
 	}

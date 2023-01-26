@@ -11,6 +11,9 @@
     "providers": {
       "azure": {
         "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
+      },
+      "aws": {
+        "scope": "/planes/aws/aws/accounts/140313373712/regions/us-west-2"
       }
     },
     "recipes": {

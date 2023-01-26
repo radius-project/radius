@@ -15,8 +15,9 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -24,9 +25,8 @@ import (
 )
 
 const (
-	StorageAccountNameKey      = "storageaccount"
-	ResourceIDKey              = "resourceid"
-	DaprStateStoreResourceType = "Applications.Link/daprStateStores"
+	StorageAccountNameKey = "storageaccount"
+	ResourceIDKey         = "resourceid"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
@@ -45,7 +45,7 @@ type daprStateStoreAzureStorageHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
@@ -81,7 +81,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], DaprStateStoreResourceType)
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprStateStoresResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -94,7 +94,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
 	properties := resource.Resource.(map[string]any)
 
 	err := handler.deleteDaprStateStore(ctx, properties)
@@ -118,7 +118,7 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.NormalizeResourceName(properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprStateStoreResourceType),
+				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], linkrp.DaprStateStoresResourceType),
 			},
 			"spec": map[string]any{
 				"type":    "state.azure.tablestorage",

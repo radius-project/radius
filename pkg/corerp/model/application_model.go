@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
+	azcontainer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 	"github.com/project-radius/radius/pkg/corerp/renderers/daprextension"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
@@ -21,9 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
-
-	azcontainer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"k8s.io/client-go/kubernetes"
@@ -45,7 +44,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		// - Find the output resource matching LocalID of that dependency (Microsoft.KeyVault/vaults)
 		// - Apply the roles in RoleNames (Key Vault Secrets User, Key Vault Crypto User)
 		datamodel.KindAzureComKeyVault: {
-			LocalID: outputresource.LocalIDKeyVault,
+			LocalID: rpv1.LocalIDKeyVault,
 			RoleNames: []string{
 				"Key Vault Secrets User",
 				"Key Vault Crypto User",

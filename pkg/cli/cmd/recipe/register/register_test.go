@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +32,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Register Command with parameters",
-			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases", "--parameters", "a=b"},
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "a=b"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -40,7 +41,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Valid Register Command with parameters passed as file",
-			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases", "--parameters", "@testdata/recipeparam.json"},
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -49,7 +50,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command with fallback workspace",
-			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -58,7 +59,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command without name",
-			Input:         []string{"--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
+			Input:         []string{"--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -67,7 +68,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command without template path",
-			Input:         []string{"--name", "test_recipe", "--link-type", "Applications.Link/mongoDatabases"},
+			Input:         []string{"--name", "test_recipe", "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -110,7 +111,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -135,7 +136,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          linkrp.MongoDatabasesResourceType,
 				RecipeName:        "cosmosDB_new",
 			}
 
@@ -154,7 +155,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 							Parameters:   map[string]any{"throughput": 400},
 						},
@@ -180,7 +181,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          linkrp.MongoDatabasesResourceType,
 				RecipeName:        "cosmosDB_new",
 				Parameters:        map[string]map[string]any{},
 			}
@@ -200,7 +201,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -221,7 +222,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          linkrp.MongoDatabasesResourceType,
 				RecipeName:        "cosmosDB_no_namespace",
 			}
 
@@ -240,7 +241,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -259,7 +260,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          linkrp.MongoDatabasesResourceType,
 				RecipeName:        "cosmosDB",
 			}
 

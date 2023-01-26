@@ -142,9 +142,9 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 					for _, actualOutputResource := range outputResources {
 						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
 							found = true
-							// if the test has the OutputResourceName set then validate the resource name based on the provider info
-							// we might not need the provider check if we have UCP id for kubernetes resources.
-							if expectedOutputResource.Name != "" && expectedOutputResource.Provider == resourcemodel.ProviderAzure {
+							// if the test has the OutputResourceResponse.Name set then validate
+							// the actual outputresource name with the expected resource name based on the provider type.
+							if expectedOutputResource.Name != "" {
 								if expectedOutputResource.Provider == resourcemodel.ProviderAzure {
 									identity := actualOutputResource.Identity.(map[string]interface{})
 									actualID := identity["id"].(string)
@@ -154,8 +154,7 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 								}
 								if expectedOutputResource.Provider == resourcemodel.ProviderKubernetes {
 									identity := actualOutputResource.Identity.(map[string]interface{})
-									atualName := identity["name"].(string)
-									require.Equal(t, expectedOutputResource.Name, atualName)
+									require.Equal(t, expectedOutputResource.Name, identity["name"].(string))
 								}
 							}
 							break

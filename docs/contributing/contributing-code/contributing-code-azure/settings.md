@@ -36,8 +36,8 @@ Enum values are compared *case-insensitively*.
 | AZURE_CLIENT_SECRET            | no                         | string  | Configures the client secret of a service principal for ARM authentication.                                                                  |
 | AZURE_TENANT_ID                | no                         | string  | Configures the AAD tenant of a service principal for ARM authentication.                                                                     |
 | MSI_ENDPOINT/IDENTITY_ENDPOINT | no                         | string  | Used to detect whether the RP should use managed identity for ARM authentication.                                                            |
-| RADIUS_LOG_PROFILE                 | no (`development`)   | string  | Configures the log profile for Radius |
-| RADIUS_LOG_LEVEL                   | *see Logging section*   | string  | Configures the log level for Radius |
+| RADIUS_LOGGING_JSON                 | no (`development`)   | string  | Configures the log profile for Radius |
+| RADIUS_LOGGING_LEVEL                   | *see Logging section*   | string  | Configures the log level for Radius |
 
 ## ARM authentication
 

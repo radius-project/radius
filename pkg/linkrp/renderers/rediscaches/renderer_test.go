@@ -9,15 +9,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,11 +35,11 @@ func Test_Render_Success(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -49,8 +49,8 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 	}
-	expectedOutputResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureRedis,
+	expectedOutputResource := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureRedis,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRedis,
 			Provider: resourcemodel.ProviderAzure,
@@ -62,29 +62,29 @@ func Test_Render_Success(t *testing.T) {
 			},
 			Data: resourcemodel.ARMIdentity{
 				ID:         "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
-				APIVersion: clients.GetAPIVersionFromUserAgent(redis.UserAgent()),
+				APIVersion: clientv2.RedisManagementClientAPIVersion,
 			},
 		},
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.Host: {
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName",
 		},
 		renderers.Port: {
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort",
 		},
 	}
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.PasswordStringHolder: {
-			LocalID:       outputresource.LocalIDAzureRedis,
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 		},
 		renderers.ConnectionStringValue: {
-			LocalID:       outputresource.LocalIDAzureRedis,
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 			Transformer: resourcemodel.ResourceType{
@@ -111,11 +111,11 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -145,7 +145,7 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
 		renderers.PasswordStringHolder:  {Value: password},
 	}
@@ -161,11 +161,11 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -186,11 +186,11 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
+				Type: linkrp.MongoDatabasesResourceType,
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -212,11 +212,11 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -242,11 +242,11 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -272,11 +272,11 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 				Name: "redis0",
-				Type: "Applications.Link/redisCaches",
+				Type: linkrp.RedisCachesResourceType,
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "invalid-app-id",
 			},

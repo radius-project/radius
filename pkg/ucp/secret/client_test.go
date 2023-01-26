@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	testSecretName = "azure_azurecloud_default"
+	testSecretName = "azure-azurecloud-default"
 )
 
 func Test_SaveSecret(t *testing.T) {

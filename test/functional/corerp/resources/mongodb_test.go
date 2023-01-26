@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -142,11 +142,11 @@ func Test_MongoDB_Recipe(t *testing.T) {
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+								LocalID:  rpv1.LocalIDAzureCosmosAccount,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
 							},
 						},
 					},
@@ -169,7 +169,6 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // the creation of a mongoDB from a devrecipe that is linked to the environment when created with useDevRecipes = true
 // the container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_DevRecipe(t *testing.T) {
-
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
 	appNamespace := "corerp-resources-mongodb-devrecipe-app"
@@ -255,12 +254,12 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+								LocalID:  rpv1.LocalIDAzureCosmosAccount,
 								Name:     "acnt-developer-" + rg,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
 								Name:     "mdb-operator-" + rg,
 							},
 						},
