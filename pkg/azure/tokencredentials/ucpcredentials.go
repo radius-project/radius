@@ -68,7 +68,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	c.tokenCredMu.Lock()
 	defer c.tokenCredMu.Unlock()
 
-	// Ensure if credential refresh not is done by the previous request.
+	// Ensure if credential refresh is not done by the previous request.
 	if !c.isRefreshRequired() {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 
 	secretName := to.String(storage.SecretName)
 	if secretName == "" {
-		return errors.New("SecretName is not specified")
+		return errors.New("unspecified SecretName for internal storage")
 	}
 
 	// 2. Fetch the credential from internal storage (e.g. Kubernetes secret store)
@@ -139,7 +139,7 @@ func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOp
 	defer c.tokenCredMu.RUnlock()
 
 	if c.tokenCred == nil {
-		return azcore.AccessToken{}, errors.New("Azure service principal credential is not ready")
+		return azcore.AccessToken{}, errors.New("azure service principal credential is not ready")
 	}
 
 	return c.tokenCred.GetToken(ctx, opts)
