@@ -36,7 +36,7 @@ type ArmConfig struct {
 func (ac *ArmConfig) Init(ctx context.Context) error {
 	switch cli := ac.ClientOptions.Cred.(type) {
 	case *aztoken.UCPCredential:
-		cli.StartFetcher(ctx)
+		cli.StartCredentialRotater(ctx)
 	}
 
 	return nil
