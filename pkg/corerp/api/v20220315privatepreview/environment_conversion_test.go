@@ -13,10 +13,10 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/stretchr/testify/require"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/testutil"
 
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConvertVersionedToDataModel(t *testing.T) {
@@ -42,14 +42,14 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
-						Identity: &rp.IdentitySettings{
-							Kind:       rp.AzureIdentityWorkload,
+						Identity: &rpv1.IdentitySettings{
+							Kind:       rpv1.AzureIdentityWorkload,
 							Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
 							OIDCIssuer: "https://oidcurl/guid",
 						},
@@ -86,9 +86,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -132,9 +132,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -172,9 +172,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: rp.EnvironmentCompute{
+					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: rp.KubernetesComputeProperties{
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -207,7 +207,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &EnvironmentResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
@@ -246,7 +246,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &datamodel.Environment{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
@@ -280,7 +280,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 
 func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("environmentresourcedatamodel-with-workload-identity.json")
+	rawPayload := testutil.ReadFixture("environmentresourcedatamodel-with-workload-identity.json")
 	r := &datamodel.Environment{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -350,11 +350,11 @@ func TestConvertFromValidation(t *testing.T) {
 func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
 		versioned string
-		datamodel rp.EnvironmentComputeKind
+		datamodel rpv1.EnvironmentComputeKind
 		err       error
 	}{
-		{EnvironmentComputeKindKubernetes, rp.KubernetesComputeKind, nil},
-		{"", rp.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
+		{EnvironmentComputeKindKubernetes, rpv1.KubernetesComputeKind, nil},
+		{"", rpv1.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
 	}
 
 	for _, tt := range kindTests {
@@ -368,11 +368,11 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 
 func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
-		datamodel rp.EnvironmentComputeKind
+		datamodel rpv1.EnvironmentComputeKind
 		versioned string
 	}{
-		{rp.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
-		{rp.UnknownComputeKind, EnvironmentComputeKindKubernetes},
+		{rpv1.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
+		{rpv1.UnknownComputeKind, EnvironmentComputeKindKubernetes},
 	}
 
 	for _, tt := range kindTests {

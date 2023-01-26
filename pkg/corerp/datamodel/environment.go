@@ -7,7 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // Environment represents Application environment resource.
@@ -24,7 +24,7 @@ func (e *Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	Compute       rp.EnvironmentCompute                  `json:"compute,omitempty"`
+	Compute       rpv1.EnvironmentCompute                `json:"compute,omitempty"`
 	Recipes       map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
 	Providers     Providers                              `json:"providers,omitempty"`
 	UseDevRecipes bool                                   `json:"useDevRecipes,omitempty"`

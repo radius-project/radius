@@ -14,13 +14,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -30,8 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -140,11 +139,11 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
 
-	outputResources := []outputresource.OutputResource{}
+	outputResources := []rpv1.OutputResource{}
 	dependencies := options.Dependencies
 
 	// Connections might require a role assignment to grant access.
-	roles := []outputresource.OutputResource{}
+	roles := []rpv1.OutputResource{}
 	for _, connection := range resource.Properties.Connections {
 		if !r.isIdentitySupported(connection.IAM.Kind) {
 			continue
@@ -162,7 +161,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, roles...)
 	}
 
-	computedValues := map[string]rp.ComputedValueReference{}
+	computedValues := map[string]rpv1.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
 	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, roles)
@@ -183,7 +182,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rp.ComputedValueReference, resource *datamodel.ContainerResource, roles []outputresource.OutputResource) ([]outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rpv1.ComputedValueReference, resource *datamodel.ContainerResource, roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -200,7 +199,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		if provides := port.Provides; provides != "" {
 			resourceId, err := resources.ParseResource(provides)
 			if err != nil {
-				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
+				return []rpv1.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
 
 			routeName := kubernetes.NormalizeResourceName(resourceId.Name())
@@ -246,13 +245,13 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	if !cc.Container.ReadinessProbe.IsEmpty() {
 		container.ReadinessProbe, err = r.makeHealthProbe(cc.Container.ReadinessProbe)
 		if err != nil {
-			return []outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
 		}
 	}
 	if !cc.Container.LivenessProbe.IsEmpty() {
 		container.LivenessProbe, err = r.makeHealthProbe(cc.Container.LivenessProbe)
 		if err != nil {
-			return []outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
 		}
 	}
 
@@ -270,9 +269,9 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		container.Env = append(container.Env, env[key])
 	}
 
-	outputResources := []outputresource.OutputResource{}
+	outputResources := []rpv1.OutputResource{}
 
-	deps := []outputresource.Dependency{}
+	deps := []rpv1.Dependency{}
 
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 
@@ -296,7 +295,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		case datamodel.Ephemeral:
 			volumeSpec, volumeMountSpec, err := makeEphemeralVolume(volumeName, volumeProperties.Ephemeral)
 			if err != nil {
-				return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
+				return []rpv1.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
 			}
 			// Add the volume mount to the Container spec
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
@@ -308,12 +307,12 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 			properties, ok := dependencies[volumeProperties.Persistent.Source]
 			if !ok {
-				return []outputresource.OutputResource{}, nil, errors.New("volume dependency resource not found")
+				return []rpv1.OutputResource{}, nil, errors.New("volume dependency resource not found")
 			}
 
 			vol, ok := properties.Resource.(*datamodel.VolumeResource)
 			if !ok {
-				return []outputresource.OutputResource{}, nil, errors.New("invalid dependency resource")
+				return []rpv1.OutputResource{}, nil, errors.New("invalid dependency resource")
 			}
 
 			switch vol.Properties.Kind {
@@ -340,24 +339,24 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 				// csiobjectspec must be generated when volume is updated.
 				objectSpec, err := handlers.GetMapValue[string](properties.ComputedValues, azvolrenderer.SPCVolumeObjectSpecKey)
 				if err != nil {
-					return []outputresource.OutputResource{}, nil, err
+					return []rpv1.OutputResource{}, nil, err
 				}
 
 				spcName := kubernetes.NormalizeResourceName(vol.Name)
 				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, vol, objectSpec, &options.Environment)
 				if err != nil {
-					return []outputresource.OutputResource{}, nil, err
+					return []rpv1.OutputResource{}, nil, err
 				}
 				outputResources = append(outputResources, *secretProvider)
-				deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDSecretProviderClass})
+				deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDSecretProviderClass})
 
 				// Create volume spec which associated with secretProviderClass.
 				volumeSpec, volumeMountSpec, err = azrenderer.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent.MountPath, spcName)
 				if err != nil {
-					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
+					return []rpv1.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
 			default:
-				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", vol.Properties.Kind, volumeName, GetSupportedKinds()))
+				return []rpv1.OutputResource{}, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", vol.Properties.Kind, volumeName, GetSupportedKinds()))
 			}
 
 			// Add the volume mount to the Container spec
@@ -369,20 +368,20 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			// These will be added as key-value pairs to the kubernetes secret created for the container
 			// The key values are as per: https://docs.microsoft.com/en-us/azure/aks/azure-files-volume
 			for key, value := range properties.ComputedValues {
-				if value.(string) == outputresource.LocalIDAzureFileShareStorageAccount {
+				if value.(string) == rpv1.LocalIDAzureFileShareStorageAccount {
 					// The storage account was not created when the computed value was rendered
 					// Lookup the actual storage account name from the local id
 					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
 					r, err := resources.ParseResource(id)
 					if err != nil {
-						return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
+						return []rpv1.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 					}
 					value = r.Name()
 				}
 				secretData[key] = []byte(value.(string))
 			}
 		default:
-			return []outputresource.OutputResource{}, secretData, v1.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
+			return []rpv1.OutputResource{}, secretData, v1.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
 		}
 	}
 
@@ -398,7 +397,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		// 1. Create Per-Container managed identity.
 		managedIdentity, err := azrenderer.MakeManagedIdentity(azIdentityName, options.Environment.CloudProviders)
 		if err != nil {
-			return []outputresource.OutputResource{}, nil, err
+			return []rpv1.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *managedIdentity)
 
@@ -406,7 +405,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		serviceAccountName = kubeIdentityName
 		fedIdentity, err := azrenderer.MakeFederatedIdentity(serviceAccountName, &options.Environment)
 		if err != nil {
-			return []outputresource.OutputResource{}, nil, err
+			return []rpv1.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
@@ -414,17 +413,17 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, serviceAccountName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
 
-		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
+		deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDServiceAccount})
 
 		// 4. Add RBAC resources to the dependencies.
 		for _, role := range roles {
-			deps = append(deps, outputresource.Dependency{LocalID: role.LocalID})
+			deps = append(deps, rpv1.Dependency{LocalID: role.LocalID})
 		}
 
-		computedValues[handlers.IdentityProperties] = rp.ComputedValueReference{
+		computedValues[handlers.IdentityProperties] = rpv1.ComputedValueReference{
 			Value: options.Environment.Identity,
 			Transformer: func(r v1.DataModelInterface, cv map[string]any) error {
-				ei, err := handlers.GetMapValue[*rp.IdentitySettings](cv, handlers.IdentityProperties)
+				ei, err := handlers.GetMapValue[*rpv1.IdentitySettings](cv, handlers.IdentityProperties)
 				if err != nil {
 					return err
 				}
@@ -433,7 +432,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return errors.New("resource must be ContainerResource")
 				}
 				if res.Properties.Identity == nil {
-					res.Properties.Identity = &rp.IdentitySettings{}
+					res.Properties.Identity = &rpv1.IdentitySettings{}
 				}
 				res.Properties.Identity.Kind = ei.Kind
 				res.Properties.Identity.OIDCIssuer = ei.OIDCIssuer
@@ -441,8 +440,8 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			},
 		}
 
-		computedValues[handlers.UserAssignedIdentityIDKey] = rp.ComputedValueReference{
-			LocalID:           outputresource.LocalIDUserAssignedManagedIdentity,
+		computedValues[handlers.UserAssignedIdentityIDKey] = rpv1.ComputedValueReference{
+			LocalID:           rpv1.LocalIDUserAssignedManagedIdentity,
 			PropertyReference: handlers.UserAssignedIdentityIDKey,
 			Transformer: func(r v1.DataModelInterface, cv map[string]any) error {
 				resourceID, err := handlers.GetMapValue[string](cv, handlers.UserAssignedIdentityIDKey)
@@ -454,7 +453,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return errors.New("resource must be ContainerResource")
 				}
 				if res.Properties.Identity == nil {
-					res.Properties.Identity = &rp.IdentitySettings{}
+					res.Properties.Identity = &rpv1.IdentitySettings{}
 				}
 				res.Properties.Identity.Resource = resourceID
 				return nil
@@ -465,11 +464,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// Create the role and role bindings for SA.
 	role := makeRBACRole(applicationName, kubeIdentityName, options.Environment.Namespace, resource)
 	outputResources = append(outputResources, *role)
-	deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDKubernetesRole})
+	deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDKubernetesRole})
 
 	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, serviceAccountName, options.Environment.Namespace, resource)
 	outputResources = append(outputResources, *roleBinding)
-	deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDKubernetesRoleBinding})
+	deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDKubernetesRoleBinding})
 
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
@@ -518,12 +517,12 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	if len(secretData) > 0 {
 		hash := r.hashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
-		deps = append(deps, outputresource.Dependency{
-			LocalID: outputresource.LocalIDSecret,
+		deps = append(deps, rpv1.Dependency{
+			LocalID: rpv1.LocalIDSecret,
 		})
 	}
 
-	deploymentOutput := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
+	deploymentOutput := rpv1.NewKubernetesOutputResource(resourcekinds.Deployment, rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)
 	deploymentOutput.Dependencies = deps
 
 	outputResources = append(outputResources, deploymentOutput)
@@ -654,7 +653,7 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) outputresource.OutputResource {
+func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) rpv1.OutputResource {
 	secret := corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -670,7 +669,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 	}
 
 	// Skip registration of the secret resource with the HealthService since health as a concept is not quite applicable to it
-	output := outputresource.NewKubernetesOutputResource(resourcekinds.Secret, outputresource.LocalIDSecret, &secret, secret.ObjectMeta)
+	output := rpv1.NewKubernetesOutputResource(resourcekinds.Secret, rpv1.LocalIDSecret, &secret, secret.ObjectMeta)
 	return output
 }
 
@@ -704,7 +703,7 @@ func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
-func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
+func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]rpv1.OutputResource, error) {
 	var roleNames []string
 	var armResourceIdentifier string
 	if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
@@ -741,10 +740,10 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 		roleNames = roleAssignmentData.RoleNames
 	}
 
-	outputResources := []outputresource.OutputResource{}
+	outputResources := []rpv1.OutputResource{}
 	for _, roleName := range roleNames {
-		localID := outputresource.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
-		roleAssignment := outputresource.OutputResource{
+		localID := rpv1.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
+		roleAssignment := rpv1.OutputResource{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
@@ -755,9 +754,9 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 				handlers.RoleNameKey:         roleName,
 				handlers.RoleAssignmentScope: armResourceIdentifier,
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+					LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
 				},
 			},
 		}

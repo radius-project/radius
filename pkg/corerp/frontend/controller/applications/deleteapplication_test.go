@@ -15,22 +15,22 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	rptest "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
-	tCtx := rptest.NewTestContext(t)
+	tCtx := testutil.NewTestContext(t)
 
 	t.Parallel()
 
 	t.Run("delete non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodDelete, testHeaderfile, nil)
-		ctx := rptest.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodDelete, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		tCtx.MockSC.
 			EXPECT().
@@ -80,10 +80,10 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodDelete, testHeaderfile, nil)
+			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodDelete, testHeaderfile, nil)
 			req.Header.Set("If-Match", tt.ifMatchETag)
 
-			ctx := rptest.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := getTestModels20220315privatepreview()
 
 			tCtx.MockSC.
@@ -111,7 +111,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
-				KubeClient:    rptest.NewFakeKubeClient(nil),
+				KubeClient:    testutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewDeleteApplication(opts)

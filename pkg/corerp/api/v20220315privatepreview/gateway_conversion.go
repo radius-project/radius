@@ -8,7 +8,7 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -63,7 +63,7 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.GatewayProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
 			Hostname: hostname,
@@ -118,7 +118,7 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
 		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(g.Properties.Status.OutputResources),
+			OutputResources: rpv1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(g.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(g.Properties.Application),

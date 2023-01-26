@@ -12,18 +12,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,9 +54,9 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -131,13 +131,13 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			if testcase.inputFile != "" {
 				input = &v20220315privatepreview.MongoDatabaseResource{}
-				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
+				_ = json.Unmarshal(testutil.ReadFixture(testcase.inputFile), input)
 			}
 			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -191,9 +191,9 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				LocalID: rpv1.LocalIDAzureCosmosAccount,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosAccount,
 					Provider: resourcemodel.ProviderAzure,
@@ -201,7 +201,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]rp.SecretValueReference{
+		SecretValues: map[string]rpv1.SecretValueReference{
 			renderers.UsernameStringValue:   {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
@@ -214,9 +214,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				LocalID: rpv1.LocalIDAzureCosmosAccount,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosAccount,
 					Provider: resourcemodel.ProviderAzure,

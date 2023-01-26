@@ -13,11 +13,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,10 +69,10 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			reqModel, reqDataModel, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
+			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
@@ -221,18 +222,18 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			defer teardownTest(t)
 
 			reqModel := &TestResource{}
-			_ = json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), reqModel)
+			_ = json.Unmarshal(testutil.ReadFixture(tt.versionedInputFile), reqModel)
 
 			reqDataModel := &TestResourceDataModel{}
-			_ = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), reqDataModel)
+			_ = json.Unmarshal(testutil.ReadFixture(tt.datamodelFile), reqDataModel)
 
 			reqDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
+			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{
