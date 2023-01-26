@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -50,6 +51,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/telemetry/traces"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -94,6 +96,7 @@ func prettyPrintJSON(o any) (string, error) {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
+// It also initializes the tracer.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 	err := RootCmd.ExecuteContext(ctx)
@@ -104,6 +107,22 @@ func Execute() {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}
+
+	initTracer(ctx)
+
+}
+
+func initTracer(ctx context.Context) {
+	url := "http://localhost:9411/api/v2/spans"
+	shutdown, err := traces.InitTracer(url, "ucp")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+	}()
 }
 
 func init() {
