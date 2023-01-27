@@ -71,7 +71,7 @@ enum CredentialStorageKind {
 }
 
 enum AwsCredentialKind {
-    IAM,
+    AccessKey,
 }
 
 enum AzureCredentialKind {
@@ -176,6 +176,28 @@ enum ProvisioningState {
   Accepted,
 }
 
+@doc("Custom root scope")
+model AWSPlaneNameParameter {
+  @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")
+  @minLength(1)
+  @path
+  @segment("planes/aws")
+  @extension("x-ms-skip-url-encoding", true)
+  @extension("x-ms-parameter-location", "client")
+  planeName: string;
+}
+
+@doc("Custom root scope")
+model AzurePlaneNameParameter {
+  @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")
+  @minLength(1)
+  @path
+  @segment("planes/azure")
+  @extension("x-ms-skip-url-encoding", true)
+  @extension("x-ms-parameter-location", "client")
+  planeName: string;
+}
+
 @armResourceOperations
 interface Planes
   extends Radius.PlaneResourceOperations<
@@ -203,7 +225,7 @@ interface AzureCredential
   extends CredentialResourceOperations<
       AzureCredentialResource,
       AzureCredentialProperties,
-      Root<PlaneResource>
+      AzurePlaneNameParameter
     > {}
 
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
@@ -212,6 +234,6 @@ interface AWSCredential
     extends CredentialResourceOperations<
         AWSCredentialResource,
         AWSCredentialProperties,
-        Root<PlaneResource>
+        AWSPlaneNameParameter
         > {}
 
