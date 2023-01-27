@@ -201,7 +201,7 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetRecipeParamsTableFormats() output.FormatterOptions {
+func GetRecipeParamsTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
