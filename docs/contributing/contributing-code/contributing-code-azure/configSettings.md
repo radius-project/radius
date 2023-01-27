@@ -74,8 +74,8 @@ The following are properties that can be specified for UCP:
 ### secretProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of queue provider | `etcd`, `kubernetes` |
-| etcd | Object containing properties for ETCD store | [**See below**](#etcd)|
+| provider | The type of secret provider | `etcd` or `kubernetes` | 
+| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |  
 
 ### server
 | Key | Description | Example | 
