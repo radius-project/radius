@@ -18,7 +18,7 @@ import (
 
 // Authentication methods
 const (
-	UCPCredentialsAuth   = "UCPCredentialAuth"
+	UCPCredentialAuth    = "UCPCredential"
 	ServicePrincipalAuth = "ServicePrincipal"
 	ManagedIdentityAuth  = "ManagedIdentity"
 	CliAuth              = "CLI"
@@ -57,7 +57,7 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	authMethod := GetAuthMethod()
 
 	switch authMethod {
-	case UCPCredentialsAuth:
+	case UCPCredentialAuth:
 		return aztoken.NewUCPCredential(aztoken.UCPCredentialOptions{
 			Provider: opt.CredentialProvider,
 		})
