@@ -9,7 +9,9 @@ storageProvider:
 queueProvider:
   provider: inmemory
 secretProvider:
-  provider: kubernetes
+  provider: etcd
+  etcd:
+    inmemory: true
 metricsProvider:
   prometheus:
     enabled: true
