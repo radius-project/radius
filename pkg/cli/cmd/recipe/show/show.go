@@ -67,7 +67,7 @@ type Runner struct {
 	Format            string
 }
 
-// NewRunner creates a new instance of the `rad recipe list` runner.
+// NewRunner creates a new instance of the `rad recipe show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
