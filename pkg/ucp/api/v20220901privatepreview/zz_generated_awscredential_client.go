@@ -59,13 +59,12 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// planeType - The plane type.
 // credentialName - The plane type.
 // resource - Resource create parameters.
 // options - AwsCredentialClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialClient.CreateOrUpdate
 // method.
-func (client *AwsCredentialClient) CreateOrUpdate(ctx context.Context, planeType string, credentialName string, resource AWSCredentialResource, options *AwsCredentialClientCreateOrUpdateOptions) (AwsCredentialClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, planeType, credentialName, resource, options)
+func (client *AwsCredentialClient) CreateOrUpdate(ctx context.Context, credentialName string, resource AWSCredentialResource, options *AwsCredentialClientCreateOrUpdateOptions) (AwsCredentialClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, credentialName, resource, options)
 	if err != nil {
 		return AwsCredentialClientCreateOrUpdateResponse{}, err
 	}
@@ -80,12 +79,8 @@ func (client *AwsCredentialClient) CreateOrUpdate(ctx context.Context, planeType
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *AwsCredentialClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, credentialName string, resource AWSCredentialResource, options *AwsCredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
-	if planeType == "" {
-		return nil, errors.New("parameter planeType cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+func (client *AwsCredentialClient) createOrUpdateCreateRequest(ctx context.Context, credentialName string, resource AWSCredentialResource, options *AwsCredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
@@ -122,11 +117,10 @@ func (client *AwsCredentialClient) createOrUpdateHandleResponse(resp *http.Respo
 // Delete - Deletes an existing AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// planeType - The plane type.
 // credentialName - The plane type.
 // options - AwsCredentialClientDeleteOptions contains the optional parameters for the AwsCredentialClient.Delete method.
-func (client *AwsCredentialClient) Delete(ctx context.Context, planeType string, credentialName string, options *AwsCredentialClientDeleteOptions) (AwsCredentialClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, planeType, credentialName, options)
+func (client *AwsCredentialClient) Delete(ctx context.Context, credentialName string, options *AwsCredentialClientDeleteOptions) (AwsCredentialClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, credentialName, options)
 	if err != nil {
 		return AwsCredentialClientDeleteResponse{}, err
 	}
@@ -141,12 +135,8 @@ func (client *AwsCredentialClient) Delete(ctx context.Context, planeType string,
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *AwsCredentialClient) deleteCreateRequest(ctx context.Context, planeType string, credentialName string, options *AwsCredentialClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
-	if planeType == "" {
-		return nil, errors.New("parameter planeType cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+func (client *AwsCredentialClient) deleteCreateRequest(ctx context.Context, credentialName string, options *AwsCredentialClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
@@ -180,11 +170,10 @@ func (client *AwsCredentialClient) deleteHandleResponse(resp *http.Response) (Aw
 // Get - Retrieves information about a AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// planeType - The plane type.
 // credentialName - The plane type.
 // options - AwsCredentialClientGetOptions contains the optional parameters for the AwsCredentialClient.Get method.
-func (client *AwsCredentialClient) Get(ctx context.Context, planeType string, credentialName string, options *AwsCredentialClientGetOptions) (AwsCredentialClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, planeType, credentialName, options)
+func (client *AwsCredentialClient) Get(ctx context.Context, credentialName string, options *AwsCredentialClientGetOptions) (AwsCredentialClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, credentialName, options)
 	if err != nil {
 		return AwsCredentialClientGetResponse{}, err
 	}
@@ -199,12 +188,8 @@ func (client *AwsCredentialClient) Get(ctx context.Context, planeType string, cr
 }
 
 // getCreateRequest creates the Get request.
-func (client *AwsCredentialClient) getCreateRequest(ctx context.Context, planeType string, credentialName string, options *AwsCredentialClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
-	if planeType == "" {
-		return nil, errors.New("parameter planeType cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+func (client *AwsCredentialClient) getCreateRequest(ctx context.Context, credentialName string, options *AwsCredentialClientGetOptions) (*policy.Request, error) {
+	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
@@ -232,10 +217,9 @@ func (client *AwsCredentialClient) getHandleResponse(resp *http.Response) (AwsCr
 
 // NewListByRootScopePager - Lists information about all AWSCredentialResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
-// planeType - The plane type.
 // options - AwsCredentialClientListByRootScopeOptions contains the optional parameters for the AwsCredentialClient.ListByRootScope
 // method.
-func (client *AwsCredentialClient) NewListByRootScopePager(planeType string, options *AwsCredentialClientListByRootScopeOptions) (*runtime.Pager[AwsCredentialClientListByRootScopeResponse]) {
+func (client *AwsCredentialClient) NewListByRootScopePager(options *AwsCredentialClientListByRootScopeOptions) (*runtime.Pager[AwsCredentialClientListByRootScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[AwsCredentialClientListByRootScopeResponse]{
 		More: func(page AwsCredentialClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -244,7 +228,7 @@ func (client *AwsCredentialClient) NewListByRootScopePager(planeType string, opt
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByRootScopeCreateRequest(ctx, planeType, options)
+				req, err = client.listByRootScopeCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -264,12 +248,8 @@ func (client *AwsCredentialClient) NewListByRootScopePager(planeType string, opt
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *AwsCredentialClient) listByRootScopeCreateRequest(ctx context.Context, planeType string, options *AwsCredentialClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials"
-	if planeType == "" {
-		return nil, errors.New("parameter planeType cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+func (client *AwsCredentialClient) listByRootScopeCreateRequest(ctx context.Context, options *AwsCredentialClientListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {

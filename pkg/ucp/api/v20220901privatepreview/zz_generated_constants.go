@@ -17,13 +17,13 @@ const (
 type AwsCredentialKind string
 
 const (
-	AwsCredentialKindIAM AwsCredentialKind = "IAM"
+	AwsCredentialKindAccessKey AwsCredentialKind = "AccessKey"
 )
 
 // PossibleAwsCredentialKindValues returns the possible values for the AwsCredentialKind const type.
 func PossibleAwsCredentialKindValues() []AwsCredentialKind {
 	return []AwsCredentialKind{	
-		AwsCredentialKindIAM,
+		AwsCredentialKindAccessKey,
 	}
 }
 
