@@ -18,24 +18,14 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/zipkin"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func InitTracer(url string, serviceName string) (func(context.Context) error, error) {
-	//Assume zipkin for now
-	exporter, err := zipkin.New(
-		url,
-	)
-	if err != nil || exporter == nil {
-		return nil, err
-	}
-	batcher := sdktrace.NewBatchSpanProcessor(exporter)
+func InitCliTracer(serviceName string) (func(context.Context) error, error) {
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSpanProcessor(batcher),
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(serviceName),
