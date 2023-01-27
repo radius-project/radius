@@ -6,7 +6,6 @@
 package provider
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -28,7 +27,7 @@ type PrometheusExporter struct {
 func NewPrometheusExporter() (*PrometheusExporter, error) {
 	exporter, err := prometheus.New()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
