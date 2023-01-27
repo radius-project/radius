@@ -27,24 +27,39 @@ const (
 
 var _ azcore.TokenCredential = (*UCPCredential)(nil)
 
+// UCPCredentialOptions is the options for UCP credential.
+type UCPCredentialOptions struct {
+	// Provider is an UCP credential provider.
+	Provider sdk.CredentialProvider[sdk.AzureCredential]
+	// Duration is the duration to refresh token client.
+	Duration time.Duration
+
+	// ClientOptions is the options for azure client.
+	ClientOptions *azcore.ClientOptions
+}
+
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
-	provider   sdk.CredentialProvider[sdk.AzureCredential]
+	options    UCPCredentialOptions
 	credential *sdk.AzureCredential
 
 	tokenCred azcore.TokenCredential
 	// tokenCredMu is the read write mutex to protect tokenCred.
 	tokenCredMu sync.RWMutex
 	nextRefresh atomic.Int64
-
-	duration time.Duration
 }
 
 // NewUCPCredential creates a UCPCredential. Pass nil to accept default options.
-func NewUCPCredential(provider sdk.CredentialProvider[sdk.AzureCredential], expireDuration time.Duration) (*UCPCredential, error) {
+func NewUCPCredential(options UCPCredentialOptions) (*UCPCredential, error) {
+	if options.Provider == nil {
+		return nil, errors.New("undefined provider")
+	}
+	if options.Duration == 0 {
+		options.Duration = DefaultExpireDuration
+	}
+
 	return &UCPCredential{
-		provider: provider,
-		duration: expireDuration,
+		options: options,
 	}, nil
 }
 
@@ -61,7 +76,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		return nil
 	}
 
-	s, err := c.provider.Fetch(ctx, sdk.AzureCloud, "default")
+	s, err := c.options.Provider.Fetch(ctx, sdk.AzureCloud, "default")
 	if err != nil {
 		return err
 	}
@@ -77,7 +92,14 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	}
 
 	// Rotate credentials by creating new ClientSecretCredential.
-	azCred, err := azidentity.NewClientSecretCredential(s.TenantID, s.ClientID, s.ClientSecret, nil)
+	var opt *azidentity.ClientSecretCredentialOptions
+	if c.options.ClientOptions != nil {
+		opt = &azidentity.ClientSecretCredentialOptions{
+			ClientOptions: *c.options.ClientOptions,
+		}
+	}
+
+	azCred, err := azidentity.NewClientSecretCredential(s.TenantID, s.ClientID, s.ClientSecret, opt)
 	if err != nil {
 		return err
 	}
@@ -85,7 +107,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	c.tokenCred = azCred
 	c.credential = s
 
-	c.nextRefresh.Store(time.Now().Add(c.duration).Unix())
+	c.nextRefresh.Store(time.Now().Add(c.options.Duration).Unix())
 	return nil
 }
 

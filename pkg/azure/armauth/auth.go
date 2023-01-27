@@ -58,7 +58,9 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 
 	switch authMethod {
 	case UCPCredentialsAuth:
-		return aztoken.NewUCPCredential(opt.CredentialProvider, aztoken.DefaultExpireDuration)
+		return aztoken.NewUCPCredential(aztoken.UCPCredentialOptions{
+			Provider: opt.CredentialProvider,
+		})
 	case ServicePrincipalAuth:
 		return azidentity.NewEnvironmentCredential(nil)
 	case ManagedIdentityAuth:
