@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -50,6 +51,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/telemetry/traces"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -98,7 +100,7 @@ func prettyPrintJSON(o any) (string, error) {
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
-	/*shutdown, err := traces.InitTracer(RadiusTraceProviderURL, "rad.cli")
+	shutdown, err := traces.InitCliTracer("rad.cli")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -106,9 +108,9 @@ func Execute() {
 		if err := shutdown(ctx); err != nil {
 			log.Fatal("failed to shutdown TracerProvider: %w", err)
 		}
-	}()*/
+	}()
 
-	err := RootCmd.ExecuteContext(ctx)
+	err = RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
 		os.Exit(1)
