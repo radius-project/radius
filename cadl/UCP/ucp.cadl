@@ -113,8 +113,8 @@ model AWSCredentialProperties {
 }
 
 @doc("AWS credential storage properties")
-model AWSIamCredentialProperties extends AWSCredentialProperties {
-    kind: "IAM";
+model AWSAccessKeyCredentialProperties extends AWSCredentialProperties {
+    kind: "AccessKey";
     @doc("Access key ID for AWS identity")
     @extension("x-ms-secret", true)
     accessKeyId: string;

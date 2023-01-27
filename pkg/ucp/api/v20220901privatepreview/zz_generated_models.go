@@ -11,10 +11,32 @@ package v20220901privatepreview
 
 import "time"
 
+// AWSAccessKeyCredentialProperties - AWS credential storage properties
+type AWSAccessKeyCredentialProperties struct {
+	// REQUIRED; Access key ID for AWS identity
+	AccessKeyID *string `json:"accessKeyId,omitempty"`
+
+	// REQUIRED; Discriminator property for AWSCredentialProperties.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; Secret Access Key for AWS identity
+	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
+
+	// REQUIRED; The storage properties
+	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
+}
+
+// GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSAccessKeyCredentialProperties.
+func (a *AWSAccessKeyCredentialProperties) GetAWSCredentialProperties() *AWSCredentialProperties {
+	return &AWSCredentialProperties{
+		Kind: a.Kind,
+	}
+}
+
 // AWSCredentialPropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetAWSCredentialProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *AWSCredentialProperties, *AWSIamCredentialProperties
+// - *AWSAccessKeyCredentialProperties, *AWSCredentialProperties
 type AWSCredentialPropertiesClassification interface {
 	// GetAWSCredentialProperties returns the AWSCredentialProperties content of the underlying type.
 	GetAWSCredentialProperties() *AWSCredentialProperties
@@ -60,28 +82,6 @@ type AWSCredentialResourceListResult struct {
 
 	// The link to the next page of items
 	NextLink *string `json:"nextLink,omitempty"`
-}
-
-// AWSIamCredentialProperties - AWS credential storage properties
-type AWSIamCredentialProperties struct {
-	// REQUIRED; Access key ID for AWS identity
-	AccessKeyID *string `json:"accessKeyId,omitempty"`
-
-	// REQUIRED; Discriminator property for AWSCredentialProperties.
-	Kind *string `json:"kind,omitempty"`
-
-	// REQUIRED; Secret Access Key for AWS identity
-	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
-
-	// REQUIRED; The storage properties
-	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
-}
-
-// GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSIamCredentialProperties.
-func (a *AWSIamCredentialProperties) GetAWSCredentialProperties() *AWSCredentialProperties {
-	return &AWSCredentialProperties{
-		Kind: a.Kind,
-	}
 }
 
 // AwsCredentialClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialClient.CreateOrUpdate method.

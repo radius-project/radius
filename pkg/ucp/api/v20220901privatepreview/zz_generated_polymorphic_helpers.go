@@ -21,8 +21,8 @@ func unmarshalAWSCredentialPropertiesClassification(rawMsg json.RawMessage) (AWS
 	}
 	var b AWSCredentialPropertiesClassification
 	switch m["kind"] {
-	case "IAM":
-		b = &AWSIamCredentialProperties{}
+	case "AccessKey":
+		b = &AWSAccessKeyCredentialProperties{}
 	default:
 		b = &AWSCredentialProperties{}
 	}

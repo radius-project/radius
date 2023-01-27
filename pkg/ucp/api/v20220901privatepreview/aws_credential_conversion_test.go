@@ -10,14 +10,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCredentialConvertVersionedToDataModel(t *testing.T) {
+func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		expected *datamodel.AWSCredential
@@ -41,6 +42,7 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: &datamodel.AWSCredentialResourceProperties{
+					Kind: "AccessKey",
 					AWSCredential: &datamodel.AWSCredentialProperties{
 						AccessKeyID:     "00000000-0000-0000-0000-000000000000",
 						SecretAccessKey: "00000000-0000-0000-0000-000000000000",
@@ -54,7 +56,7 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "credentialresource-other.json",
-			err:      &v1.ErrModelConversion{PropertyName: "$.type", ValidValue: AWSCredentialType},
+			err:      v1.ErrInvalidModelConversion,
 		},
 		{
 			filename: "credentialresource-empty-properties.json",
@@ -75,8 +77,8 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 	}
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
-			r := &AWSCredentialResource{}
+			rawPayload := testutil.ReadFixture(tt.filename)
+			r := &AzureCredentialResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
@@ -86,15 +88,14 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 				require.ErrorIs(t, err, tt.err)
 			} else {
 				require.NoError(t, err)
-				ct := dm.(*datamodel.AWSCredential)
+				ct := dm.(*datamodel.AzureCredential)
 				require.Equal(t, tt.expected, ct)
 			}
 		})
 	}
 }
 
-func TestCredentialConvertDataModelToVersioned(t *testing.T) {
-	internalStorageKind := string(CredentialStorageKindInternal)
+func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		expected *AWSCredentialResource
@@ -110,25 +111,29 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				Properties: &AWSCredentialProperties{
-					AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
-					SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
+				Properties: &AWSAccessKeyCredentialProperties{
+					Kind:        to.Ptr("AccessKey"),
+					AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(CredentialStorageKindInternal),
+						Kind:       to.Ptr(string(CredentialStorageKindInternal)),
 						SecretName: to.Ptr("aws-awscloud-default"),
 					},
 				},
 			},
 		},
+		{
+			filename: "credentialresourcedatamodel-default.json",
+			err:      v1.ErrInvalidModelConversion,
+		},
 	}
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
-			r := &datamodel.AWSCredential{}
+			rawPayload := testutil.ReadFixture(tt.filename)
+			r := &datamodel.AzureCredential{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
-			versioned := &AWSCredentialResource{}
+			versioned := &AzureCredentialResource{}
 			err = versioned.ConvertFrom(r)
 
 			if tt.err != nil {

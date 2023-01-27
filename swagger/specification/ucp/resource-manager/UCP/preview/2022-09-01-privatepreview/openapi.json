@@ -793,6 +793,37 @@
     }
   },
   "definitions": {
+    "AWSAccessKeyCredentialProperties": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string",
+          "description": "Access key ID for AWS identity",
+          "x-ms-secret": true
+        },
+        "secretAccessKey": {
+          "type": "string",
+          "description": "Secret Access Key for AWS identity",
+          "x-ms-secret": true
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "description": "AWS credential storage properties",
+      "required": [
+        "accessKeyId",
+        "secretAccessKey",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AWSCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "AccessKey"
+    },
     "AWSCredentialProperties": {
       "type": "object",
       "properties": {
@@ -848,37 +879,6 @@
       "required": [
         "value"
       ]
-    },
-    "AWSIamCredentialProperties": {
-      "type": "object",
-      "properties": {
-        "accessKeyId": {
-          "type": "string",
-          "description": "Access key ID for AWS identity",
-          "x-ms-secret": true
-        },
-        "secretAccessKey": {
-          "type": "string",
-          "description": "Secret Access Key for AWS identity",
-          "x-ms-secret": true
-        },
-        "storage": {
-          "$ref": "#/definitions/CredentialStorageProperties",
-          "description": "The storage properties"
-        }
-      },
-      "description": "AWS credential storage properties",
-      "required": [
-        "accessKeyId",
-        "secretAccessKey",
-        "storage"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/AWSCredentialProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "IAM"
     },
     "AWSPlaneNameParameter": {
       "type": "object",

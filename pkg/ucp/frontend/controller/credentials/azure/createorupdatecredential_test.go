@@ -134,7 +134,7 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
+				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("azure-azurecloud-default"),
 			},
 		},

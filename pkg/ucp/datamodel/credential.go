@@ -9,11 +9,11 @@ import v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
 const (
 	// InternalStorageKind represents ucp credential storage type for internal credential type
-	InternalStorageKind = CredentialStorageKind("Internal")
+	InternalStorageKind = "Internal"
 	// AzureCredentialKind represents ucp credential kind for azure credentials.
-	AzureCredentialKind = "azure.com.serviceprincipal"
+	AzureCredentialKind = "ServicePrincipal"
 	// AWSCredentialKind represents ucp credential kind for aws credentials.
-	AWSCredentialKind = "aws.com.iam"
+	AWSCredentialKind = "AccessKey"
 )
 
 // Credential represents UCP Credential.

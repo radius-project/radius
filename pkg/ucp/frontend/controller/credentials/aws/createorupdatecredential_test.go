@@ -131,11 +131,11 @@ func getAwsResponse() armrpc_rest.Response {
 		Tags: map[string]*string{
 			"env": to.Ptr("dev"),
 		},
-		Properties: &v20220901privatepreview.AWSCredentialProperties{
+		Properties: &v20220901privatepreview.AWSAccessKeyCredentialProperties{
 			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
 			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
+				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("aws-awscloud-default"),
 			},
 		},
