@@ -14,14 +14,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
 	"go.uber.org/atomic"
 
-	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ucpdatamodel "github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	ucpsecretp "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 const (
@@ -33,9 +29,8 @@ var _ azcore.TokenCredential = (*UCPCredential)(nil)
 
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
-	secretProvider    *ucpsecretp.SecretProvider
-	ucpCredClient     *ucpapi.AzureCredentialClient
-	currentCredential ucpdatamodel.AzureCredentialProperties
+	provider   sdk.CredentialProvider[sdk.AzureCredential]
+	credential *sdk.AzureCredential
 
 	tokenCred azcore.TokenCredential
 	// tokenCredMu is the read write mutex to protect tokenCred.
@@ -46,19 +41,10 @@ type UCPCredential struct {
 }
 
 // NewUCPCredential creates a UCPCredential. Pass nil to accept default options.
-func NewUCPCredential(secretProvider *ucpsecretp.SecretProvider, ucpCredClient *ucpapi.AzureCredentialClient, expireDuration time.Duration) (*UCPCredential, error) {
-	if secretProvider == nil {
-		return nil, errors.New("invalid secret store provider")
-	}
-
-	if ucpCredClient == nil {
-		return nil, errors.New("invalid UCP Credential client")
-	}
-
+func NewUCPCredential(provider sdk.CredentialProvider[sdk.AzureCredential], expireDuration time.Duration) (*UCPCredential, error) {
 	return &UCPCredential{
-		ucpCredClient:  ucpCredClient,
-		secretProvider: secretProvider,
-		duration:       expireDuration,
+		provider: provider,
+		duration: expireDuration,
 	}, nil
 }
 
@@ -75,31 +61,9 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		return nil
 	}
 
-	// 1. Fetch the secret name of Azure service principal credentials from UCP.
-	cred, err := c.ucpCredClient.Get(ctx, "azure", "azurecloud", "default", &ucpapi.AzureCredentialClientGetOptions{})
+	s, err := c.provider.Fetch(ctx, sdk.AzureCloud, "default")
 	if err != nil {
 		return err
-	}
-
-	storage, ok := cred.Properties.GetCredentialResourceProperties().Storage.(*ucpapi.InternalCredentialStorageProperties)
-	if !ok {
-		return errors.New("invalid InternalCredentialStorageProperties")
-	}
-
-	secretName := to.String(storage.SecretName)
-	if secretName == "" {
-		return errors.New("unspecified SecretName for internal storage")
-	}
-
-	// 2. Fetch the credential from internal storage (e.g. Kubernetes secret store)
-	cli, err := c.secretProvider.GetClient(ctx)
-	if err != nil {
-		return err
-	}
-
-	s, err := secret.GetSecret[ucpdatamodel.AzureCredentialProperties](ctx, cli, secretName)
-	if err != nil {
-		return errors.New("failed to get credential info: " + err.Error())
 	}
 
 	if s.ClientID == "" || s.ClientSecret == "" || s.TenantID == "" {
@@ -107,9 +71,8 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	}
 
 	// Do not instantiate new client unless the secret is rotated.
-	if c.currentCredential.ClientSecret == s.ClientSecret &&
-		c.currentCredential.ClientID == s.ClientID &&
-		c.currentCredential.TenantID == s.TenantID {
+	if c.credential != nil && c.credential.ClientSecret == s.ClientSecret &&
+		c.credential.ClientID == s.ClientID && c.credential.TenantID == s.TenantID {
 		return nil
 	}
 
@@ -120,7 +83,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	}
 
 	c.tokenCred = azCred
-	c.currentCredential = s
+	c.credential = s
 
 	c.nextRefresh.Store(time.Now().Add(c.duration).Unix())
 	return nil
