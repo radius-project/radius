@@ -8,6 +8,7 @@ package recipes
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -31,9 +32,16 @@ func ShowRecipe(ctx context.Context, recipeDetails *datamodel.EnvironmentRecipeP
 
 		details := ""
 		values := value.(map[string]interface{})
+		keys := make([]string, 0, len(values))
 
-		for k, v := range values {
-			details += k + " : " + v.(string) + "\t"
+		for k := range values {
+			keys = append(keys, k)
+		}
+
+		// to keep order of parameters details consistent - sort.
+		sort.Sort(sort.Reverse(sort.StringSlice(keys)))
+		for _, k := range keys {
+			details += k + " : " + values[k].(string) + "\t"
 		}
 
 		recipeDetails.Parameters[key] = details
