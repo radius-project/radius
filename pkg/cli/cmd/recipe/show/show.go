@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad recipe list` command.
+// NewCommand creates an instance of the command and runner for the `rad recipe show` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
