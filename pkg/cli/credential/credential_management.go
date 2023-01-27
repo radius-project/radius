@@ -27,16 +27,16 @@ type CredentialManagementClient interface {
 	Delete(ctx context.Context, name string) (bool, error)
 }
 
-const (
-	AzureCredential      = "azure"
-	AWSCredential        = "aws"
-	AzurePlaneName       = "azurecloud"
-	AWSPlaneName         = "aws"
-	azureCredentialKind  = "ServicePrincipal"
-	awsCredentialKind    = "AccessKey"
-	ValidInfoTemplate    = "enter valid info for %s"
-	infoRequiredTemplate = "required info %s"
-)
+// const (
+// 	AzureCredential      = "azure"
+// 	AWSCredential        = "aws"
+// 	AzurePlaneName       = "azurecloud"
+// 	AWSPlaneName         = "aws"
+// 	azureCredentialKind  = "ServicePrincipal"
+// 	awsCredentialKind    = "AccessKey"
+// 	ValidInfoTemplate    = "enter valid info for %s"
+// 	infoRequiredTemplate = "required info %s"
+// )
 
 // UCPCredentialManagementClient implements operations to manage credentials on ucp.
 type UCPCredentialManagementClient struct {
