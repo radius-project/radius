@@ -53,8 +53,7 @@ func (s *Service) Run(ctx context.Context) error {
 		StatusManager: s.OperationStatusManager,
 	}
 
-	secretClient := sv.NewSecretValueClient(s.Options.Arm)
-	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, secretClient, s.KubeClient)
+	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, sv.NewSecretValueClient(s.Options.Arm), s.KubeClient)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err = s.Start(ctx, server.Options{

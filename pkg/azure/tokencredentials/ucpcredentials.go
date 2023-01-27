@@ -97,7 +97,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 
 	s, err := secret.GetSecret[ucpdatamodel.AzureCredentialProperties](ctx, cli, secretName)
 	if err != nil {
-		return errors.New("azure service principal credential may not set: " + err.Error())
+		return errors.New("failed to get credential info: " + err.Error())
 	}
 
 	if s.ClientID == "" || s.ClientSecret == "" || s.TenantID == "" {
