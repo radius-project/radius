@@ -54,7 +54,7 @@ var _ Interface = (*Impl)(nil)
 
 type Impl struct {
 	AzureCredentialClient ucp.AzureCredentialClient
-	AWSCredentialClient   ucp.AWSCredentialClient
+	AWSCredentialClient   ucp.AwsCredentialClient
 }
 
 // CreateCredential creates ucp crendential for the supported providers.

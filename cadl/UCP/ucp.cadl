@@ -70,7 +70,7 @@ enum CredentialStorageKind {
     Internal,
 }
 
-enum AwsCredentialKind {
+enum AWSCredentialKind {
     AccessKey,
 }
 

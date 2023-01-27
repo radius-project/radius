@@ -171,14 +171,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	credential := ucp.CredentialResource{
+	credential := ucp.AzureCredentialResource{
 		Name:     to.Ptr("default"),
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AzureCredential),
 		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 			},
 			TenantID:     &r.TenantID,
 			ClientID:     &r.ClientID,

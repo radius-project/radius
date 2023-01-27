@@ -32,8 +32,8 @@ const (
 	AWSCredential        = "aws"
 	AzurePlaneName       = "azurecloud"
 	AWSPlaneName         = "aws"
-	azureCredentialKind  = "azure.com.serviceprincipal"
-	awsCredentialKind    = "aws.com.iam"
+	azureCredentialKind  = "ServicePrincipal"
+	awsCredentialKind    = "AccessKey"
 	ValidInfoTemplate    = "enter valid info for %s"
 	infoRequiredTemplate = "required info %s"
 )

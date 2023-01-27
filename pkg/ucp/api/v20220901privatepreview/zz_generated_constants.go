@@ -14,16 +14,16 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
-type AwsCredentialKind string
+type AWSCredentialKind string
 
 const (
-	AwsCredentialKindAccessKey AwsCredentialKind = "AccessKey"
+	AWSCredentialKindAccessKey AWSCredentialKind = "AccessKey"
 )
 
-// PossibleAwsCredentialKindValues returns the possible values for the AwsCredentialKind const type.
-func PossibleAwsCredentialKindValues() []AwsCredentialKind {
-	return []AwsCredentialKind{	
-		AwsCredentialKindAccessKey,
+// PossibleAWSCredentialKindValues returns the possible values for the AWSCredentialKind const type.
+func PossibleAWSCredentialKindValues() []AWSCredentialKind {
+	return []AWSCredentialKind{	
+		AWSCredentialKindAccessKey,
 	}
 }
 

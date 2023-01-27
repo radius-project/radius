@@ -824,6 +824,16 @@
       ],
       "x-ms-discriminator-value": "AccessKey"
     },
+    "AWSCredentialKind": {
+      "type": "string",
+      "enum": [
+        "AccessKey"
+      ],
+      "x-ms-enum": {
+        "name": "AWSCredentialKind",
+        "modelAsString": true
+      }
+    },
     "AWSCredentialProperties": {
       "type": "object",
       "properties": {
@@ -884,16 +894,6 @@
       "type": "object",
       "properties": {},
       "description": "Custom root scope"
-    },
-    "AwsCredentialKind": {
-      "type": "string",
-      "enum": [
-        "AccessKey"
-      ],
-      "x-ms-enum": {
-        "name": "AwsCredentialKind",
-        "modelAsString": true
-      }
     },
     "AzureCredentialKind": {
       "type": "string",
