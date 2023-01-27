@@ -18,7 +18,6 @@ import (
 	"github.com/go-logr/logr"
 	"go.uber.org/atomic"
 
-	"github.com/project-radius/radius/pkg/sdk"
 	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpdatamodel "github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/secret"
@@ -26,7 +25,8 @@ import (
 )
 
 const (
-	credFetchPeriod = time.Minute * time.Duration(1)
+	// DefaultExpireDuration is the default expiry duration.
+	DefaultExpireDuration = time.Minute * time.Duration(1)
 )
 
 var _ azcore.TokenCredential = (*UCPCredential)(nil)
@@ -34,29 +34,31 @@ var _ azcore.TokenCredential = (*UCPCredential)(nil)
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
 	secretProvider    *ucpsecretp.SecretProvider
-	azUCPClient       *ucpapi.AzureCredentialClient
+	ucpCredClient     *ucpapi.AzureCredentialClient
 	currentCredential ucpdatamodel.AzureCredentialProperties
 
 	tokenCred azcore.TokenCredential
 	// tokenCredMu is the read write mutex to protect tokenCred.
 	tokenCredMu sync.RWMutex
 	nextRefresh atomic.Int64
+
+	duration time.Duration
 }
 
 // NewUCPCredential creates a UCPCredential. Pass nil to accept default options.
-func NewUCPCredential(secretProvider *ucpsecretp.SecretProvider, ucpConn sdk.Connection) (*UCPCredential, error) {
-	cli, err := ucpapi.NewAzureCredentialClient(&AnonymousCredential{}, sdk.NewClientOptions(ucpConn))
-	if err != nil {
-		return nil, err
+func NewUCPCredential(secretProvider *ucpsecretp.SecretProvider, ucpCredClient *ucpapi.AzureCredentialClient, expireDuration time.Duration) (*UCPCredential, error) {
+	if secretProvider == nil {
+		return nil, errors.New("invalid secret store provider")
 	}
 
-	if secretProvider == nil {
-		return nil, errors.New("secretProvider is not ready")
+	if ucpCredClient == nil {
+		return nil, errors.New("invalid UCP Credential client")
 	}
 
 	return &UCPCredential{
-		azUCPClient:    cli,
+		ucpCredClient:  ucpCredClient,
 		secretProvider: secretProvider,
+		duration:       expireDuration,
 	}, nil
 }
 
@@ -74,7 +76,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	}
 
 	// 1. Fetch the secret name of Azure service principal credentials from UCP.
-	cred, err := c.azUCPClient.Get(ctx, "azure", "azurecloud", "default", &ucpapi.AzureCredentialClientGetOptions{})
+	cred, err := c.ucpCredClient.Get(ctx, "azure", "azurecloud", "default", &ucpapi.AzureCredentialClientGetOptions{})
 	if err != nil {
 		return err
 	}
@@ -120,7 +122,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	c.tokenCred = azCred
 	c.currentCredential = s
 
-	c.nextRefresh.Store(time.Now().Add(credFetchPeriod).Unix())
+	c.nextRefresh.Store(time.Now().Add(c.duration).Unix())
 	return nil
 }
 

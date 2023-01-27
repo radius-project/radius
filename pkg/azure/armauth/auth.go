@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/sdk"
+	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpsp "github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
@@ -36,8 +36,8 @@ type Options struct {
 	// SecretProvider is the provider to get the secret client.
 	SecretProvider *ucpsp.SecretProvider
 
-	// UCPConnection is a connection to the UCP endpoint.
-	UCPConnection sdk.Connection
+	// UCPCredentialClient is an UCP credential client for Azure service principal.
+	UCPCredentialClient *ucpapi.AzureCredentialClient
 }
 
 // NewArmConfig gets the configuration we use for managing ARM resources
@@ -62,7 +62,7 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 
 	switch authMethod {
 	case UCPCredentialsAuth:
-		return aztoken.NewUCPCredential(opt.SecretProvider, opt.UCPConnection)
+		return aztoken.NewUCPCredential(opt.SecretProvider, opt.UCPCredentialClient, aztoken.DefaultExpireDuration)
 	case ServicePrincipalAuth:
 		return azidentity.NewEnvironmentCredential(nil)
 	case ManagedIdentityAuth:
