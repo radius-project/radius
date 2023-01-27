@@ -7,8 +7,10 @@ package show
 
 import (
 	"context"
+	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -117,6 +119,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	_, _, err = cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName)
+	if err != nil {
+		return err
+	}
+
 	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, r.RecipeName)
 	if err != nil {
 		return err
@@ -124,19 +132,28 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	var recipeParams []EnvironmentRecipe
 	var index = 0
-	for paramName, param := range recipeDetails.Parameters {
+	keys := make([]string, 0, len(recipeDetails.Parameters))
+
+	for k := range recipeDetails.Parameters {
+		keys = append(keys, k)
+	}
+
+	// to keep order of parameters consistent - sort.
+	sort.Strings(keys)
+	for _, k := range keys {
+		param := recipeDetails.Parameters[k]
 		var recipe EnvironmentRecipe
 		if index == 0 {
 			recipe = EnvironmentRecipe{
 				RecipeName:       r.RecipeName,
 				LinkType:         *recipeDetails.LinkType,
 				TemplatePath:     *recipeDetails.TemplatePath,
-				ParameterName:    paramName,
+				ParameterName:    k,
 				ParameterDetails: param,
 			}
 		} else {
 			recipe = EnvironmentRecipe{
-				ParameterName:    paramName,
+				ParameterName:    k,
 				ParameterDetails: param,
 			}
 		}
