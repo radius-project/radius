@@ -76,7 +76,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad recipe list` command.
+// Validate runs validation for the `rad recipe show` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
