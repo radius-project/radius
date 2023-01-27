@@ -67,6 +67,10 @@ func (c *UCPCredential) isRefreshRequired() bool {
 	return c.nextRefresh.Load() < time.Now().Unix()
 }
 
+func (c *UCPCredential) updateRefresh(duration time.Duration) {
+	c.nextRefresh.Store(time.Now().Add(duration).Unix())
+}
+
 func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	c.tokenCredMu.Lock()
 	defer c.tokenCredMu.Unlock()
@@ -88,6 +92,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	// Do not instantiate new client unless the secret is rotated.
 	if c.credential != nil && c.credential.ClientSecret == s.ClientSecret &&
 		c.credential.ClientID == s.ClientID && c.credential.TenantID == s.TenantID {
+		c.updateRefresh(c.options.Duration)
 		return nil
 	}
 
@@ -107,7 +112,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	c.tokenCred = azCred
 	c.credential = s
 
-	c.nextRefresh.Store(time.Now().Add(c.options.Duration).Unix())
+	c.updateRefresh(c.options.Duration)
 	return nil
 }
 
