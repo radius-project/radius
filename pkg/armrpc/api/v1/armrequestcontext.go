@@ -289,5 +289,4 @@ func GetBaseIndex(path string) int {
 		return idx
 	}
 	return 0
-
 }

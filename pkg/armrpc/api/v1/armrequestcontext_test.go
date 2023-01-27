@@ -34,9 +34,14 @@ func TestFromARMRequest(t *testing.T) {
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
 		},
 		{
-			"With referer path base",
+			"With referer subscription path base ",
 			"https://radius.dev/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
+		},
+		{
+			"With referer local plane path base",
+			"https://radius.dev/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
+			"/planes/radius/local/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 	}
 
