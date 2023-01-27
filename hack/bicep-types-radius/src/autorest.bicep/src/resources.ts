@@ -1,19 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { ChoiceSchema, CodeModel, HttpMethod, HttpParameter, HttpRequest, HttpResponse, ImplementationLocation, ObjectSchema, Operation, Parameter, ParameterLocation, Request, Response, Schema, SchemaResponse, SealedChoiceSchema, Metadata } from "@autorest/codemodel";
+import { ChoiceSchema, CodeModel, ComplexSchema, HttpMethod, HttpParameter, HttpRequest, HttpResponse, ImplementationLocation, isObjectSchema, ObjectSchema, Operation, Parameter, ParameterLocation, Request, Response, Schema, SchemaResponse, SealedChoiceSchema, Metadata } from "@autorest/codemodel";
 import { Channel, AutorestExtensionHost } from "@autorest/extension-base";
-import { keys, Dictionary, values, groupBy, uniqBy } from 'lodash';
+import { keys, Dictionary, values, groupBy, uniqBy, chain, flatten } from 'lodash';
 import { success, failure, Result } from './utils';
-
-export enum ScopeType {
-  Unknown = 0,
-  Tenant = 1 << 0,
-  ManagementGroup = 1 << 1,
-  Subscription = 1 << 2,
-  ResourceGroup = 1 << 3,
-  Extension = 1 << 4,
-}
+import { ScopeType } from "bicep-types";
 
 export interface ResourceDescriptor {
   scopeType: ScopeType;
@@ -21,6 +13,7 @@ export interface ResourceDescriptor {
   typeSegments: string[];
   apiVersion: string;
   constantName?: string;
+  readonlyScopes?: ScopeType;
 }
 
 export interface ProviderDefinition {
@@ -30,12 +23,18 @@ export interface ProviderDefinition {
   resourceActions: ResourceListActionDefinition[];
 }
 
+export interface ResourceOperationDefintion {
+  request: HttpRequest;
+  response?: HttpResponse;
+  parameters: Parameter[];
+  requestSchema?: ObjectSchema;
+  responseSchema?: ObjectSchema;
+}
+
 export interface ResourceDefinition {
   descriptor: ResourceDescriptor;
-  putRequest: HttpRequest;
-  putParameters: Parameter[];
-  putSchema?: ObjectSchema;
-  getSchema?: ObjectSchema;
+  putOperation?: ResourceOperationDefintion;
+  getOperation?: ResourceOperationDefintion;
 }
 
 export interface ResourceListActionDefinition {
@@ -87,7 +86,8 @@ export function isRootType(descriptor: ResourceDescriptor) {
 }
 
 function getHttpRequests(requests: Request[] | undefined) {
-  return requests?.map(x => x.protocol.http as HttpRequest).filter(x => !!x) ?? [];
+  return requests?.map(request => ({request, httpRequest: request.protocol.http as HttpRequest}))
+    .filter(x => !!x.httpRequest) ?? [];
 }
 
 function hasStatusCode(response: Response, statusCode: string) {
@@ -108,11 +108,23 @@ function getNormalizedMethodPath(path: string) {
   return path;
 }
 
-export function getSerializedName(metadata: Metadata) { 
+export function getSerializedName(metadata: Metadata) {
   return metadata.language.default.serializedName ?? metadata.language.default.name;
 }
 
-export function parseNameSchema<T>(request: HttpRequest, parameters: Parameter[], parseType: (schema: Schema) => T, createConstantName: (name: string) => T): Result<T, string> {
+interface ParameterizedName {
+  type: 'parameterized';
+  schema: Schema;
+}
+
+interface ConstantName {
+  type: 'constant';
+  value: string;
+}
+
+type NameSchema = ParameterizedName|ConstantName;
+
+export function getNameSchema(request: HttpRequest, parameters: Parameter[]): Result<NameSchema, string> {
   const path = getNormalizedMethodPath(request.path);
 
   const finalProvidersMatch = path.match(parentScopePrefix)?.slice(-1)[0];
@@ -134,15 +146,49 @@ export function parseNameSchema<T>(request: HttpRequest, parameters: Parameter[]
       return failure(`Unable to locate parameter with name '${resNameParam}'`);
     }
 
-    return success(parseType(param.schema));
+    return success({type: 'parameterized', schema: param.schema});
   }
 
   if (!/^[a-zA-Z0-9]*$/.test(resNameParam)) {
     return failure(`Unable to process non-alphanumeric name '${resNameParam}'`);
   }
 
-  return success(createConstantName(resNameParam));
+  return success({type: 'constant', value: resNameParam});
 }
+
+export function parseNameSchema<T>(request: HttpRequest, parameters: Parameter[], parseType: (schema: Schema) => T, createConstantName: (name: string) => T): Result<T, string> {
+  const nsResult = getNameSchema(request, parameters);
+  if (!nsResult.success) {
+    return nsResult;
+  }
+
+  const {value} = nsResult;
+  if (value.type === 'parameterized') {
+    return success(parseType(value.schema));
+  }
+
+  return success(createConstantName(value.value));
+}
+
+const alwaysAllowedParameterLocations = new Set([
+  ParameterLocation.Path,
+  ParameterLocation.Body,
+  ParameterLocation.Uri,
+  ParameterLocation.Virtual,
+  ParameterLocation.None,
+]);
+
+const allowedRequiredParametersByLocation: Dictionary<Set<string>> = {
+  [ParameterLocation.Header]: new Set([
+    'content-type',
+    'accept',
+    'if-match',
+    'if-none-match',
+  ]),
+  [ParameterLocation.Query]: new Set([
+    'api-version'
+  ])
+};
 
 export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExtensionHost): ProviderDefinition[] {
   function logWarning(message: string) {
@@ -159,6 +205,64 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
       .filter((x, i, a) => a.indexOf(x) === i);
 
     return apiVersions.flatMap(v => getProviderDefinitionsForApiVersion(v));
+  }
+
+  function getExtensions(schema: ComplexSchema) {
+    // extensions are defined as Record<string, any> in autorest
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const extensions: Record<string, any> = {};
+    if (isObjectSchema(schema)) {
+      for (const parent of schema.parents?.all || []) {
+        for (const [key, value] of Object.entries(getExtensions(parent))) {
+          extensions[key] = value;
+        }
+      }
+    }
+
+    for (const [key, value] of Object.entries(schema.extensions || {})) {
+      extensions[key] = value;
+    }
+
+    return extensions;
+  }
+
+  function isResourceSchema(schema?: ComplexSchema) {
+    return schema && getExtensions(schema)['x-ms-azure-resource'];
+  }
+
+  function* gatherParameterWarnings(parameterBearer: string, parameters: Iterable<Parameter>): Iterable<string> {
+    for (const parameter of parameters) {
+      // if the parameter is optional or part of the URL, don't generate a warning
+      const {
+        required,
+        language: {
+          default: {
+            name: parameterDisplayName,
+            serializedName = parameterDisplayName
+          }
+        },
+        protocol: {
+          http: {
+            in: location
+          } = { in: ParameterLocation.None }
+        }
+      } = parameter;
+
+      if (!required || alwaysAllowedParameterLocations.has(location)) {
+        continue;
+      }
+
+      const allowedRequiredParameters = allowedRequiredParametersByLocation[location];
+
+      // there are some required headers and qs params that are part of the ARM RPC contract, such as
+      // `api-version` in the querystring or the `Content-Type` header. If the parameter is one of those,
+      // don't generate a warning
+      if (allowedRequiredParameters.has(serializedName.toLowerCase())) {
+        continue;
+      }
+
+      yield `Skipping ${parameterBearer} due to required ${location} parameter "${parameterDisplayName}"`;
+    }
   }
 
   function getProviderDefinitionsForApiVersion(apiVersion: string) {
@@ -182,48 +286,99 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     }
 
     operations.forEach(operation => {
+      const operationId = operation.operationId ?? operation.language.default.name;
       const requests = getHttpRequests(operation.requests);
-      const getRequest = requests.filter(r => r.method === HttpMethod.Get)[0];
+      const getRequest = requests.filter(r => r.httpRequest.method === HttpMethod.Get)[0];
       if (getRequest) {
-        getOperationsByPath[getRequest.path.toLowerCase()] = operation;
+        const getPath = getRequest.httpRequest.path.toLowerCase();
+        const parameterWarnings = [
+          ...gatherParameterWarnings(operationId, operation.parameters ?? []),
+          ...gatherParameterWarnings(`${getPath}::GET`, getRequest.request.parameters ?? []),
+        ];
+        if (parameterWarnings.length > 0) {
+          for (const warningText of parameterWarnings) {
+            logWarning(warningText);
+          }
+        } else {
+          getOperationsByPath[getPath] = operation;
+        }
       }
-      const putRequest = requests.filter(r => r.method === HttpMethod.Put)[0];
+
+      const putRequest = requests.filter(r => r.httpRequest.method === HttpMethod.Put)[0];
       if (putRequest) {
-        putOperationsByPath[putRequest.path.toLowerCase()] = operation;
+        const putPath = putRequest.httpRequest.path.toLowerCase();
+        const parameterWarnings = [
+          ...gatherParameterWarnings(operationId, operation.parameters ?? []),
+          ...gatherParameterWarnings(`${putPath}::PUT`, putRequest.request.parameters ?? []),
+        ];
+        if (parameterWarnings.length > 0) {
+          for (const warningText of parameterWarnings) {
+            logWarning(warningText);
+          }
+        } else {
+          putOperationsByPath[putPath] = operation;
+        }
       }
-      const postListRequest = requests.filter(r => { 
-        if (r.method !== HttpMethod.Post) {
+
+      const postListRequest = requests.filter(r => {
+        if (r.httpRequest.method !== HttpMethod.Post) {
           return false;
         }
 
-        const parseResult = parseResourceScopes(r.path);
+        const parseResult = parseResourceScopes(r.httpRequest.path);
         if (!parseResult.success) {
           return false;
         }
 
         const { routingScope: actionRoutingScope } = parseResult.value;
         const actionName = actionRoutingScope.substr(actionRoutingScope.lastIndexOf('/') + 1);
-        return actionName.toLowerCase().startsWith('list');
+        if (!actionName.toLowerCase().startsWith('list'))
+        {
+          return false;
+        }
+
+        const parameterWarnings = [
+          ...gatherParameterWarnings(operationId, operation.parameters ?? []),
+          ...gatherParameterWarnings(`${r.httpRequest.path.toLowerCase()}::POST`, r.request.parameters ?? []),
+        ];
+
+        for (const warningText of parameterWarnings) {
+          logWarning(warningText);
+        }
+
+        return parameterWarnings.length === 0;
       })[0];
       if (postListRequest) {
-        postListOperationsByPath[postListRequest.path.toLowerCase()] = operation;
+        postListOperationsByPath[postListRequest.httpRequest.path.toLowerCase()] = operation;
       }
     });
 
     const resourcesByProvider: Dictionary<ResourceDefinition[]> = {};
-    for (const lcPath in putOperationsByPath) {
+    for (const lcPath of new Set<string>([...Object.keys(putOperationsByPath), ...Object.keys(getOperationsByPath)])) {
       const putOperation = putOperationsByPath[lcPath];
       const getOperation = getOperationsByPath[lcPath];
-
       const putData = getPutSchema(putOperation);
-      const getData = getGetSchema(getOperation) ?? putData;
-      if (!putData || !getData) {
+      const getData = getGetSchema(getOperation);
+
+      let parseResult: Result<ResourceDescriptor[], string>;
+      if (putData) {
+        parseResult = parseResourceMethod(
+          putData.request.path,
+          putData.parameters,
+          apiVersion,
+          !!getData,
+          true
+        );
+      } else if (getData && isResourceSchema(getData.responseSchema)) {
+        parseResult = parseResourceMethod(getData.request.path, getData.parameters, apiVersion, true, false);
+      } else {
+        // A non-resource get with no corresponding put is most likely a collection or utility endpoint.
+        // No types should be generated
         continue;
       }
 
-      const parseResult = parseResourceMethod(putData.request.path, putData.parameters, apiVersion);
       if (!parseResult.success) {
-        logWarning(`Skipping path '${putData.request.path}': ${parseResult.error}`);
+        logWarning(`Skipping path '${putData?.request.path ?? getData?.request.path ?? lcPath}': ${parseResult.error}`);
         continue;
       }
 
@@ -232,10 +387,20 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
         const resource: ResourceDefinition = {
           descriptor,
-          putRequest: putData.request,
-          putParameters: putData.parameters,
-          putSchema: (putData.schema instanceof ObjectSchema) ? putData.schema : undefined,
-          getSchema: (getData.schema instanceof ObjectSchema) ? getData.schema : undefined,
+          putOperation: putData
+            ? {
+              ...putData,
+              requestSchema: (putData?.requestSchema instanceof ObjectSchema) ? putData.requestSchema : undefined,
+              responseSchema: (putData?.responseSchema instanceof ObjectSchema) ? putData.responseSchema : undefined,
+            }
+            : undefined,
+          getOperation: getData
+            ? {
+              ...getData,
+              requestSchema: (getData?.requestSchema instanceof ObjectSchema) ? getData.requestSchema : undefined,
+              responseSchema: (getData?.responseSchema instanceof ObjectSchema) ? getData.responseSchema : undefined,
+            }
+            : undefined
         };
 
         const lcNamespace = descriptor.namespace.toLowerCase();
@@ -289,7 +454,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
     return values(providerDefinitions);
   }
-  
+
   function getRequestSchema(operation: Operation | undefined, requests: Request[]) {
     if (!operation || requests.length === 0) {
       return;
@@ -346,14 +511,41 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
   }
 
   function getGetSchema(operation?: Operation) {
-    return getResponseSchema(operation);
+    const requestSchema = getRequestSchema(
+      operation,
+      operation?.requests?.filter(r => r.protocol.http?.method === HttpMethod.Get) ?? []
+    );
+    const responseSchema = getResponseSchema(operation);
+
+    if (!requestSchema || !responseSchema) {
+      return;
+    }
+
+    return {
+      request: requestSchema.request,
+      response: responseSchema.response,
+      parameters: requestSchema.parameters,
+      requestSchema: requestSchema.schema,
+      responseSchema: responseSchema.schema,
+    };
   }
 
   function getPutSchema(operation?: Operation) {
     const requests = operation?.requests ?? [];
     const validRequests = requests.filter(r => (r.protocol.http as HttpRequest)?.method === HttpMethod.Put);
+    const requestSchema = getRequestSchema(operation, validRequests);
+    const responseSchema = getResponseSchema(operation);
+    if (!requestSchema) {
+      return;
+    }
 
-    return getRequestSchema(operation, validRequests);
+    return {
+      request: requestSchema.request,
+      response: responseSchema?.response,
+      parameters: requestSchema.parameters,
+      requestSchema: requestSchema.schema,
+      responseSchema: responseSchema?.schema,
+    };
   }
 
   function getPostSchema(operation?: Operation) {
@@ -369,6 +561,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
     return {
       request: request.request,
+      response: response.response,
       parameters: request.parameters,
       requestSchema: request.schema,
       responseSchema: response.schema,
@@ -391,7 +584,14 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     return success({ scopeType, routingScope });
   }
 
-  function parseResourceDescriptors(parameters: Parameter[], apiVersion: string, scopeType: ScopeType, routingScope: string): Result<ResourceDescriptor[], string> {
+  function parseResourceDescriptors(
+    parameters: Parameter[],
+    apiVersion: string,
+    scopeType: ScopeType,
+    routingScope: string,
+    readable: boolean,
+    writable: boolean
+  ): Result<ResourceDescriptor[], string> {
     const namespace = routingScope.substr(0, routingScope.indexOf('/'));
     if (isPathVariable(namespace)) {
       return failure(`Unable to process parameterized provider namespace "${namespace}"`);
@@ -411,12 +611,19 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
       typeSegments: type,
       apiVersion,
       constantName,
+      readonlyScopes: readable && !writable ? scopeType : undefined,
     }));
 
     return success(descriptors);
   }
 
-  function parseResourceMethod(path: string, parameters: Parameter[], apiVersion: string) {
+  function parseResourceMethod(
+    path: string,
+    parameters: Parameter[],
+    apiVersion: string,
+    readable: boolean,
+    writable: boolean
+  ) {
     const resourceScopeResult = parseResourceScopes(path);
 
     if (!resourceScopeResult.success) {
@@ -425,7 +632,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
     const { scopeType, routingScope } = resourceScopeResult.value;
 
-    return parseResourceDescriptors(parameters, apiVersion, scopeType, routingScope);
+    return parseResourceDescriptors(parameters, apiVersion, scopeType, routingScope, readable, writable);
   }
 
   function parseResourceActionMethod(path: string, parameters: Parameter[], apiVersion: string) {
@@ -440,12 +647,12 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     const routingScope = actionRoutingScope.substr(0, actionRoutingScope.lastIndexOf('/'));
     const actionName = actionRoutingScope.substr(actionRoutingScope.lastIndexOf('/') + 1);
 
-    const resourceDescriptorsResult = parseResourceDescriptors(parameters, apiVersion, scopeType, routingScope);
+    const resourceDescriptorsResult = parseResourceDescriptors(parameters, apiVersion, scopeType, routingScope, false, true);
     if (!resourceDescriptorsResult.success) {
       return failure(resourceDescriptorsResult.error);
     }
 
-    return success({ 
+    return success({
       descriptors: resourceDescriptorsResult.value,
       actionName: actionName,
     });
@@ -478,7 +685,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
         const choiceSchema = parameter.schema;
         if (!(choiceSchema instanceof ChoiceSchema || choiceSchema instanceof SealedChoiceSchema)) {
           return failure(`Parameter reference ${typeSegment} is not defined as an enum`);
-        }        
+        }
 
         if (choiceSchema.choices.length === 0) {
           return failure(`Parameter reference ${typeSegment} is defined as an enum, but doesn't have any specified values`);
@@ -528,6 +735,25 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     return scopeA | scopeB;
   }
 
+  function mergeReadonlyScopes(
+    currentScopes: ScopeType,
+    currentReadonlyScopes: ScopeType|undefined,
+    newScopes: ScopeType,
+    newReadonlyScopes: ScopeType|undefined
+  ) {
+    function writableScopes(scopes: ScopeType, readonlyScopes: ScopeType|undefined) {
+      return readonlyScopes !== undefined ? scopes ^ readonlyScopes : scopes;
+    }
+    const mergedScopes = mergeScopes(currentScopes, newScopes);
+    if (mergedScopes === ScopeType.Unknown) {
+      const writingPermittedSomewhere = currentScopes !== currentReadonlyScopes || newScopes !== newReadonlyScopes;
+      return writingPermittedSomewhere ? undefined : ScopeType.Unknown;
+    }
+
+    const mergedWritableScopes = writableScopes(currentScopes, currentReadonlyScopes) | writableScopes(newScopes, newReadonlyScopes);
+    return mergedScopes === mergedWritableScopes ? undefined : mergedScopes ^ mergedWritableScopes;
+  }
+
   function collapseDefinitionScopes(resources: ResourceDefinition[]) {
     const definitionsByName: Dictionary<ResourceDefinition> = {};
     for (const resource of resources) {
@@ -541,6 +767,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
           descriptor: {
             ...curDescriptor,
             scopeType: mergeScopes(curDescriptor.scopeType, newDescriptor.scopeType),
+            readonlyScopes: mergeReadonlyScopes(curDescriptor.scopeType, curDescriptor.readonlyScopes, newDescriptor.scopeType, newDescriptor.readonlyScopes),
           },
         };
       } else {
@@ -551,9 +778,67 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     return Object.values(definitionsByName);
   }
 
+  function collapsePartiallyConstantNameResources(resources: ResourceDefinition[])
+  {
+    const definitionsByNormalizedPath = resources.reduce((acc, resource) => {
+      const path = resource.putOperation?.request.path ?? resource.getOperation?.request.path ?? '/';
+      const normalizedPath = path.substring(0, path.lastIndexOf('/') + 1);
+      if (acc[normalizedPath]) {
+        acc[normalizedPath].push(resource);
+      } else {
+        acc[normalizedPath] = [resource];
+      }
+
+      return acc;
+    }, {} as Dictionary<ResourceDefinition[]>);
+
+    function hasComparableSchemata(
+      definitions: ResourceDefinition[],
+      schemaExtractor: (r: ResourceDefinition) => ObjectSchema|undefined
+    ) {
+      return chain(definitions)
+        .map(schemaExtractor)
+        .filter()
+        .map(s => s!.language.default.name)
+        .uniq()
+        .value().length < 2;
+    }
+
+    for (const path of Object.keys(definitionsByNormalizedPath)) {
+      const atPath = definitionsByNormalizedPath[path];
+      const parameterized = chain(atPath).map(r => r.descriptor).filter(d => d.constantName === undefined).value();
+
+      if (
+        parameterized.length === 1 &&
+        hasComparableSchemata(atPath, d => d.putOperation?.requestSchema) &&
+        hasComparableSchemata(atPath, d => d.getOperation?.responseSchema)
+      ) {
+        let scopeType = atPath[0].descriptor.scopeType;
+        let readonlyScopes = atPath[0].descriptor.readonlyScopes;
+        for (let i = 1; i < atPath.length; i++) {
+          const {scopeType: newScopes, readonlyScopes: newReadonlyScopes} = atPath[i].descriptor;
+          scopeType = mergeScopes(scopeType, newScopes);
+          readonlyScopes = mergeReadonlyScopes(scopeType, readonlyScopes, newScopes, newReadonlyScopes);
+        }
+
+        definitionsByNormalizedPath[path] = [{
+          descriptor: {
+            ...parameterized[0],
+            scopeType,
+            readonlyScopes,
+          },
+          putOperation: chain(atPath).map(r => r.putOperation).find().value(),
+          getOperation: chain(atPath).map(r => r.getOperation).find().value(),
+        }];
+      }
+    }
+
+    return flatten(Object.values(definitionsByNormalizedPath));
+  }
+
   function collapseDefinitions(resources: ResourceDefinition[]) {
-    const resourcesByType = groupByType(resources);
-    const collapsedResources = Object.values(resourcesByType).flatMap(collapseDefinitionScopes);
+    const deduplicated = Object.values(groupByType(resources)).flatMap(collapsePartiallyConstantNameResources);
+    const collapsedResources = Object.values(groupByType(deduplicated)).flatMap(collapseDefinitionScopes);
 
     return groupByType(collapsedResources);
   }

@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-import { Dictionary } from "lodash";
 
 export interface GeneratorConfig {
   additionalFiles: string[];
@@ -10,7 +9,7 @@ const defaultConfig: GeneratorConfig = {
   additionalFiles: [],
 }
 
-const config: Dictionary<GeneratorConfig> = {
+const config: Record<string, GeneratorConfig> = {
   'keyvault': {
     additionalFiles: [
       'Microsoft.KeyVault/stable/2016-10-01/secrets.json',

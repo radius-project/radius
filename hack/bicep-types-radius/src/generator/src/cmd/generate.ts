@@ -5,8 +5,7 @@ import path from 'path';
 import { existsSync } from 'fs';
 import { mkdir, rm, writeFile, readFile } from 'fs/promises';
 import yargs from 'yargs';
-import { groupBy, keys, orderBy, sortBy, Dictionary } from 'lodash';
-import { TypeBaseKind } from '../types';
+import { TypeFile, buildIndex, writeIndexJson, writeIndexMarkdown, readJson } from "bicep-types";
 import { GeneratorConfig, getConfig } from '../config';
 import * as markdown from '@ts-common/commonmark-to-markdown'
 import * as yaml from 'js-yaml'
@@ -20,17 +19,17 @@ const defaultOutDir = path.resolve(`${rootDir}/generated`);
 
 const argsConfig = yargs
   .strict()
-  .option('specs-dir', { type: 'string', demandOption: true, desc: 'Path to the azure-rest-api-specs dir' })
+  .option('specs-dir', { type: 'string', demandOption: true, desc: 'Path to the specs dir' })
   .option('out-dir', { type: 'string', default: defaultOutDir, desc: 'Output path for generated files' })
   .option('single-path', { type: 'string', default: undefined, desc: 'Only regenerate under a specific file path - e.g. "compute"' })
-  .option('verbose', { type: 'boolean', default: false, desc: 'Enable autorest verbose logging' })
+  .option('logging-level', { type: 'string', default: 'warning', choices: ['debug', 'verbose', 'information', 'warning', 'error', 'fatal'] })
   .option('wait-for-debugger', { type: 'boolean', default: false, desc: 'Wait for a C# debugger to be attached before running the Autorest extension' });
 
 executeSynchronous(async () => {
-  const args = await argsConfig.parseAsync();  
+  const args = await argsConfig.parseAsync();
   const inputBaseDir = path.resolve(args['specs-dir']);
   const outputBaseDir = path.resolve(args['out-dir']);
-  const verbose = args['verbose'];
+  const logLevel = args['logging-level'];
   const waitForDebugger = args['wait-for-debugger'];
   const singlePath = args['single-path'];
 
@@ -38,11 +37,11 @@ executeSynchronous(async () => {
     throw `Unable to find ${extensionDir}/dist. Did you forget to run 'npm run build'?`;
   }
 
-  // find all readme paths in the azure-rest-api-specs repo
+  // find all readme paths in the specs path
   const specsPath = path.join(inputBaseDir, 'specification');
   const readmePaths = await findReadmePaths(specsPath);
   if (readmePaths.length === 0) {
-    throw `Unable to find rest-api-specs in folder ${inputBaseDir}`;
+    throw `Unable to find specs in folder ${inputBaseDir}`;
   }
 
   const tmpOutputPath = `${os.tmpdir()}/_bcp_${new Date().getTime()}`;
@@ -67,13 +66,13 @@ executeSynchronous(async () => {
     // prepare temp dir for output
     await rm(tmpOutputDir, { recursive: true, force: true, });
     await mkdir(tmpOutputDir, { recursive: true });
-    const logger = await getLogger(`${tmpOutputDir}/out.log`);
+    const logger = await getLogger(`${tmpOutputDir}/log.out`);
     const config = getConfig(basePath);
 
     try {
       // autorest readme.bicep.md files are not checked in, so we must generate them before invoking autorest
       await generateAutorestConfig(logger, readmePath, bicepReadmePath, config);
-      await generateSchema(logger, readmePath, tmpOutputDir, verbose, waitForDebugger);
+      await generateSchema(logger, readmePath, tmpOutputDir, logLevel, waitForDebugger);
 
       // remove all previously-generated files and copy over results
       await rm(outputDir, { recursive: true, force: true, });
@@ -81,9 +80,9 @@ executeSynchronous(async () => {
       await copyRecursive(tmpOutputDir, outputDir);
     } catch (err) {
       logErr(logger, err);
-      
+
       // Use markdown formatting as this summary will be included in the PR description
-      logOut(summaryLogger, 
+      logOut(summaryLogger,
 `<details>
   <summary>Failed to generate types for path '${basePath}'</summary>
 
@@ -94,8 +93,9 @@ ${err}
 `);
     }
 
-    // clean up temp dir
+    // clean up temp dirs
     await rm(tmpOutputDir, { recursive: true, force: true, });
+    await clearAutorestTempDir(logger, logLevel, waitForDebugger);
     // clean up autorest readme.bicep.md files
     await rm(bicepReadmePath, { force: true });
   }
@@ -110,10 +110,10 @@ function normalizeJsonPath(jsonPath: string) {
 }
 
 async function generateAutorestConfig(logger: ILogger, readmePath: string, bicepReadmePath: string, config: GeneratorConfig) {
-  // We expect a path format convention of <provider>/(preview|stable)/<yyyy>-<mm>-<dd>(|-preview)/<filename>.json
+  // We expect a path format convention of <provider>/(any/number/of/intervening/folders)/<yyyy>-<mm>-<dd>(|-preview)/<filename>.json
   // This information is used to generate individual tags in the generated autorest configuration
   // eslint-disable-next-line no-useless-escape
-  const pathRegex = /^(\$\(this-folder\)\/|)([^\/]+)\/[^\/]+\/(\d{4}-\d{2}-\d{2}(|-privatepreview))\/.*\.json$/i;
+  const pathRegex = /^(\$\(this-folder\)\/|)([^\/]+)(?:\/[^\/]+)+\/(\d{4}-\d{2}-\d{2}(|-privatepreview))\/.*\.json$/i;
 
   const readmeContents = await readFile(readmePath, { encoding: 'utf8' });
   const readmeMarkdown = markdown.parse(readmeContents);
@@ -131,7 +131,7 @@ async function generateAutorestConfig(logger: ILogger, readmePath: string, bicep
       !node.info.trim().startsWith('yaml')) {
       continue;
     }
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const yamlData = yaml.load(node.literal) as any;
     if (yamlData) {
@@ -147,7 +147,7 @@ async function generateAutorestConfig(logger: ILogger, readmePath: string, bicep
     }
   }
 
-  const filesByTag: Dictionary<string[]> = {};
+  const filesByTag: Record<string, string[]> = {};
   for (const file of inputFiles) {
     const normalizedFile = normalizeJsonPath(file);
     const match = pathRegex.exec(normalizedFile);
@@ -185,27 +185,35 @@ ${yaml.dump({ 'input-file': filesByTag[tag] }, { lineWidth: 1000})}
   await writeFile(bicepReadmePath, generatedContent);
 }
 
-async function generateSchema(logger: ILogger, readme: string, outputBaseDir: string, verbose: boolean, waitForDebugger: boolean) {
+async function generateSchema(logger: ILogger, readme: string, outputBaseDir: string, logLevel: string, waitForDebugger: boolean) {
   let autoRestParams = [
     `--use=@autorest/modelerfour`,
     `--use=${extensionDir}`,
     '--bicep',
     `--output-folder=${outputBaseDir}`,
+    `--level=${logLevel}`,
     `--multiapi`,
     '--title=none',
     // This is necessary to avoid failures such as "ERROR: Semantic violation: Discriminator must be a required property." blocking type generation.
     // In an ideal world, we'd raise issues in https://github.com/Azure/azure-rest-api-specs and force RP teams to fix them, but this isn't very practical
-    // as new validations are added continuously, and there's often quite a lag before teams will fix them - we don't want to be blocked by this in generating types. 
+    // as new validations are added continuously, and there's often quite a lag before teams will fix them - we don't want to be blocked by this in generating types.
     `--skip-semantics-validation`,
     readme,
   ];
 
-  if (verbose) {
-    autoRestParams = autoRestParams.concat([
-      `--debug`,
-      `--verbose`,
-    ]);
-  }
+  autoRestParams = applyCommonAutoRestParameters(autoRestParams, logLevel, waitForDebugger);
+
+  return await executeCmd(logger, isVerboseLoggingLevel(logLevel), __dirname, autorestBinary, autoRestParams);
+}
+
+async function clearAutorestTempDir(logger: ILogger, logLevel: string, waitForDebugger: boolean) {
+  const autoRestParams = applyCommonAutoRestParameters(['--clear-temp', '--allow-no-input'], logLevel, waitForDebugger);
+
+  return await executeCmd(logger, isVerboseLoggingLevel(logLevel), __dirname, autorestBinary, autoRestParams);
+}
+
+function applyCommonAutoRestParameters(autoRestParams: string[], logLevel: string, waitForDebugger: boolean) {
+  autoRestParams = autoRestParams.concat([`--level=${logLevel}`])
 
   if (waitForDebugger) {
     autoRestParams = autoRestParams.concat([
@@ -213,12 +221,12 @@ async function generateSchema(logger: ILogger, readme: string, outputBaseDir: st
     ]);
   }
 
-  return await executeCmd(logger, verbose, __dirname, autorestBinary, autoRestParams);
+  return autoRestParams;
 }
 
 async function findReadmePaths(specsPath: string) {
   return await findRecursive(specsPath, filePath => {
-    if (path.basename(filePath) !== 'readme.md') {
+    if (path.basename(filePath).toLowerCase() !== 'readme.md') {
       return false;
     }
 
@@ -229,113 +237,30 @@ async function findReadmePaths(specsPath: string) {
 }
 
 async function buildTypeIndex(logger: ILogger, baseDir: string) {
-  const indexContent = await buildIndex(logger, baseDir);
-
-  await writeFile(
-    `${baseDir}/index.json`,
-    JSON.stringify(indexContent, null, 0));
-
-  await writeFile(
-    `${baseDir}/index.md`,
-    generateIndexMarkdown(indexContent));
-}
-
-interface TypeIndex {
-  Resources: Dictionary<TypeIndexEntry>;
-  Functions: Dictionary<Dictionary<TypeIndexEntry[]>>;
-}
-
-interface TypeIndexEntry {
-  RelativePath: string;
-  Index: number;
-}
-
-function generateIndexMarkdown(index: TypeIndex) {
-  let markdown = '# Bicep Types\n';
-
-  const byProvider = groupBy(keys(index.Resources), x => x.split('/')[0].toLowerCase());
-  for (const namespace of sortBy(keys(byProvider), x => x.toLowerCase())) {
-    markdown += `## ${namespace}\n`;
-
-    const byResourceType = groupBy(byProvider[namespace], x => x.split('@')[0].toLowerCase());
-    for (const resourceType of sortBy(keys(byResourceType), x => x.toLowerCase())) {
-      markdown += `### ${resourceType}\n`;
-
-      for (const typeString of sortBy(byResourceType[resourceType], x => x.toLowerCase())) {
-        const version = typeString.split('@')[1];
-        const jsonPath = index.Resources[typeString].RelativePath;
-        const anchor = `resource-${typeString.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase()}`
-
-        markdown += `* [${version}](${path.dirname(jsonPath)}/types.md#${anchor})\n`;
-      }
-
-      markdown += '\n';
-    }
-  }
-
-  return markdown;
-}
-
-async function buildIndex(logger: ILogger, baseDir: string): Promise<TypeIndex> {
-  const typeFiles = await findRecursive(baseDir, filePath => {
+  const typesPaths = await findRecursive(baseDir, filePath => {
     return path.basename(filePath) === 'types.json';
   });
-  
-  const resourceTypes = new Set<string>();
-  const resourceFunctions = new Set<string>();
-  const resDictionary: Dictionary<TypeIndexEntry> = {};
-  const funcDictionary: Dictionary<Dictionary<TypeIndexEntry[]>> = {};
 
-  // Use a consistent sort order so that file system differences don't generate changes
-  for (const typeFilePath of orderBy(typeFiles, f => f.toLowerCase(), 'asc')) {
-    const content = await readFile(typeFilePath, { encoding: 'utf8' });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const types = JSON.parse(content) as any[];
-    for (const type of types) {
-      const resourceType = type[TypeBaseKind.ResourceType];
-      if (resourceType) {
-        if (resourceTypes.has(resourceType.Name.toLowerCase())) {
-          logOut(logger, `WARNING: Found duplicate type "${resourceType.Name}"`);
-          continue;
-        }
-        resourceTypes.add(resourceType.Name.toLowerCase());
-  
-        resDictionary[resourceType.Name] = {
-          RelativePath: path.relative(baseDir, typeFilePath),
-          Index: types.indexOf(type),
-        };
-        
-        continue;
-      }
-
-      const resourceFunction = type[TypeBaseKind.ResourceFunctionType];
-      if (resourceFunction) {
-        const funcKey = `${resourceFunction.ResourceType}@${resourceFunction.ApiVersion}:${resourceFunction.Name}`.toLowerCase();
-        
-        const resourceTypeLower = resourceFunction.ResourceType.toLowerCase();
-        const apiVersionLower = resourceFunction.ApiVersion.toLowerCase();
-        if (resourceFunctions.has(funcKey)) {
-          logOut(logger, `WARNING: Found duplicate function "${resourceFunction.Name}" for resource type "${resourceFunction.ResourceType}@${resourceFunction.ApiVersion}"`);
-          continue;
-        }
-        resourceFunctions.add(funcKey);
-
-        funcDictionary[resourceTypeLower] = funcDictionary[resourceTypeLower] || {};
-        funcDictionary[resourceTypeLower][apiVersionLower] = funcDictionary[resourceTypeLower][apiVersionLower] || [];
-
-        funcDictionary[resourceTypeLower][apiVersionLower].push({
-          RelativePath: path.relative(baseDir, typeFilePath),
-          Index: types.indexOf(type),
-        });
-
-        continue;
-      }
-    }
+  const typeFiles: TypeFile[] = [];
+  for (const typePath of typesPaths) {
+    const content = await readFile(typePath, { encoding: 'utf8' });
+    typeFiles.push({
+      relativePath: path.relative(baseDir, typePath),
+      types: readJson(content),
+    });
   }
+  const indexContent = await buildIndex(typeFiles,  ((log: any) => logOut(logger, log)));
 
-  return {
-    Resources: resDictionary,
-    Functions: funcDictionary,
+  await writeFile(`${baseDir}/index.json`, writeIndexJson(indexContent));
+  await writeFile(`${baseDir}/index.md`, writeIndexMarkdown(indexContent));
+}
+
+function isVerboseLoggingLevel(logLevel: string) {
+  switch (logLevel.toLowerCase()) {
+    case 'debug':
+    case 'verbose':
+      return true;
+    default:
+      return false;
   }
 }

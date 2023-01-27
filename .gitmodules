@@ -1,0 +1,3 @@
+[submodule "hack/bicep-types-radius/src/bicep-types"]
+	path = hack/bicep-types-radius/src/bicep-types
+	url = https://github.com/Azure/bicep-types.git

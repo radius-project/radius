@@ -10,25 +10,26 @@
     "lint:fix": "eslint src --ext ts --fix"
   },
   "dependencies": {
-    "@autorest/codemodel": "^4.18.2",
-    "@autorest/extension-base": "^3.4.4",
-    "@types/lodash": "^4.14.181",
-    "autorest": "^3.6.1",
+    "@autorest/codemodel": "^4.19.3",
+    "@autorest/extension-base": "^3.5.1",
+    "@types/lodash": "^4.14.191",
+    "autorest": "^3.6.3",
+    "bicep-types": "file:../bicep-types/src/bicep-types",
     "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@types/jest": "^27.4.1",
-    "@types/node": "^17.0.23",
-    "@typescript-eslint/eslint-plugin": "^5.18.0",
-    "@typescript-eslint/parser": "^5.18.0",
+    "@types/node": "^18.11.18",
+    "@typescript-eslint/eslint-plugin": "^5.48.1",
+    "@typescript-eslint/parser": "^5.48.1",
     "colors": "^1.4.0",
     "dir-compare": "^4.0.0",
-    "eslint": "^8.12.0",
+    "eslint": "^8.32.0",
     "eslint-plugin-header": "^3.1.1",
-    "eslint-plugin-jest": "^26.1.3",
+    "eslint-plugin-jest": "^27.2.1",
     "jest": "^27.5.1",
     "ts-jest": "^27.1.4",
-    "ts-node": "^10.7.0",
-    "typescript": "^4.6.3"
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.4"
   }
 }

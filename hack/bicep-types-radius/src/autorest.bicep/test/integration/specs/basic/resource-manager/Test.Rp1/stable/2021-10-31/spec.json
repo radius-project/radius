@@ -36,14 +36,28 @@
       "properties": {
         "properties": {
           "$ref": "#/definitions/TestType1Properties",
-          "description": "The resource properties.",
           "x-ms-client-flatten": true
         }
       },
       "type": "object",
       "description": "The testType1 resource."
     },
-    "TestType1Properties": {
+    "TestType1Input": {
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TestType1CreateOrUpdateProperties",
+          "description": "The resource properties.",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "TestType1CreateOrUpdateProperties": {
       "properties": {
         "basicString": {
           "type": "string",
@@ -71,8 +85,64 @@
           },
           "description": "Description for a basic enum property.",
           "x-nullable": true
+        },
+        "skuTier": {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/SkuTier"
+        },
+        "encryptionProperties": {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/encryptionProperties",
+          "description": "TestType1 encryption properties"
         }
       }
+    },
+    "TestType1Properties": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TestType1CreateOrUpdateProperties"
+        }
+      ],
+      "properties": {
+        "locationData": {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/locationData"
+        },
+        "base64EncodedBytes": {
+          "type": "string",
+          "format": "base64url"
+        },
+        "binaryBuffer": {
+          "type": "string",
+          "format": "byte"
+        },
+        "subnetId": {
+          "type": "string",
+          "description": "A fully-qualified resource ID",
+          "format": "arm-id",
+          "x-ms-arm-id-details": {
+            "allowedResources": [
+              {
+                "type": "Microsoft.Network/virtualNetworks/subnets"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "ReadOnlyTestType": {
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "properties": {
+            "plan": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/Plan"
+            }
+          }
+          }
+        }
     },
     "FoosResponse": {
       "properties": {
@@ -87,6 +157,9 @@
         "someString": {
           "type": "string",
           "description": "The foo request string"
+        },
+        "locationData": {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/locationData"
         }
       },
       "required": [
@@ -98,6 +171,97 @@
       "items": {
         "$ref": "#/definitions/FoosResponse"
       }
+    },
+    "DiscriminatedUnionTestType": {
+      "allOf": [
+        {"$ref": "#/definitions/DiscriminatedUnionTestTypeAncestor"}
+      ],
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The variant of this type",
+          "enum": [
+            "inherited",
+            "inline",
+            "override"
+          ]
+        },
+        "bar": {
+          "type": "string",
+          "description": "The bar property"
+        }
+      },
+      "discriminator": "type"
+    },
+    "DiscriminatedUnionTestTypeAncestor": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "string",
+          "description": "The foo property"
+        }
+      }
+    },
+    "DiscriminatedUnionTestTypeBranchWithInheritedProps": {
+      "allOf": [
+        {"$ref": "#/definitions/DiscriminatedUnionTestType"},
+        {"$ref": "#/definitions/DiscriminatedUnionTestTypeBranchWithInheritedPropsAncestor" }
+      ],
+      "type": "object",
+      "properties": {
+        "quux": {
+          "type": "string",
+          "description": "A property defined inline"
+        }
+      },
+      "x-ms-discriminator-value": "inherited"
+    },
+    "DiscriminatedUnionTestTypeBranchWithInheritedPropsAncestor": {
+      "type": "object",
+      "properties": {
+        "baz": {
+          "type": "string",
+          "description": "The baz property"
+        }
+      }
+    },
+    "DiscriminatedUnionTestTypeBranchWithAllInlineProps": {
+      "allOf": [
+        {"$ref": "#/definitions/DiscriminatedUnionTestType"}
+      ],
+      "type": "object",
+      "properties": {
+        "fizz": {
+          "type": "string",
+          "description": "The fizz property"
+        },
+        "buzz": {
+          "type": "string",
+          "description": "The buzz property"
+        },
+        "pop": {
+          "type": "string",
+          "description": "The pop property"
+        }
+      },
+      "x-ms-discriminator-value": "inline"
+    },
+    "DiscriminatedUnionTestTypeBranchWithOverride": {
+      "allOf": [
+        {"$ref": "#/definitions/DiscriminatedUnionTestType"}
+      ],
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "integer",
+          "description": "The overridden foo property"
+        }
+      },
+      "x-ms-discriminator-value": "override"
     }
   },
   "paths": {
@@ -197,7 +361,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/TestType1"
+              "$ref": "#/definitions/TestType1Input"
             },
             "description": "The request parameters"
           },
@@ -276,6 +440,387 @@
           }
         },
         "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The testType1 resource name."
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Test.Rp1/readOnlyTestType/{typeName}": {
+      "get": {
+        "summary": "Get a readOnlyTestType resource",
+        "description": "Get a readOnlyTestType resource",
+        "operationId": "ReadOnlyTestType_Get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ReadOnlyTestType"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The readOnlyTestType resource name."
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Test.Rp1/splitPutAndGetType/{typeName}": {
+      "get": {
+        "summary": "Get a splitPutAndGetType resource",
+        "description": "Get a splitPutAndGetType resource",
+        "operationId": "SplitPutAndGetType_Get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TestType1"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The splitPutAndGetType resource name.",
+            "enum": [
+              "constantName",
+              "yetAnotherName"
+            ],
+            "x-ms-enum": {
+              "name": "SplitPutAndGetType_Name",
+              "modelAsString": true
+            }
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Test.Rp1/splitPutAndGetType/constantName": {
+      "put": {
+        "summary": "Create or update a splitPutAndGetType resource",
+        "description": "Create or update a splitPutAndGetType resource",
+        "operationId": "SplitPutAndGetType_CreateOrUpdate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TestType1"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TestType1Input"
+            },
+            "description": "The request parameters"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Test.Rp1/partlyReadonlyType/{typeName}": {
+      "put": {
+        "summary": "Create or update a partlyReadonlyType resource",
+        "description": "Create or update a partlyReadonlyType resource",
+        "operationId": "PartlyReadonlyType_CreateOrUpdate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TestType1"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The partlyReadonlyType resource name."
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TestType1"
+            },
+            "description": "The request parameters"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      },
+      "get": {
+        "summary": "Get a partlyReadonlyType resource",
+        "description": "Get a partlyReadonlyType resource",
+        "operationId": "PartlyReadonlyType_Get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TestType1"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The partlyReadonlyType resource name."
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/providers/Test.Rp1/partlyReadonlyType/{typeName}": {
+      "get": {
+        "summary": "Get a partlyReadonlyType resource at the tenant level",
+        "description": "Get a partlyReadonlyType resource at the tenant level",
+        "operationId": "PartlyReadonlyType_GetAtTenant",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TestType1"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The partlyReadonlyType resource name."
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Test.Rp1/discriminatedUnionTestType/{typeName}": {
+      "get": {
+        "summary": "Get a discriminatedUnionTestType resource",
+        "description": "Get a discriminatedUnionTestType resource",
+        "operationId": "DiscriminatedUnionTestType_Get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/DiscriminatedUnionTestType"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The discriminatedUnionTestType resource name."
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      },
+      "put": {
+        "summary": "Create or update a discriminatedUnionTestType resource",
+        "description": "Create or update a discriminatedUnionTestType resource",
+        "operationId": "DiscriminatedUnionTestType_CreateOrUpdate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/DiscriminatedUnionTestType"
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The discriminatedUnionTestType resource name."
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DiscriminatedUnionTestType"
+            },
+            "description": "The request parameters"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    }
+  },
+  "x-ms-paths": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Test.Rp1/testType1/{typeName}?export=true": {
+      "get": {
+        "summary": "Get a testType1 resource",
+        "description": "Get a testType1 resource",
+        "operationId": "TestType1_Export",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "prop": {"type": "string"}
+              }
+            }
+          },
+          "default": {
+            "description": "Detailed error information.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "export",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "enum": [
+              "true"
+            ],
+            "x-ms-enum": {
+              "name": "ExportApi"
+            },
+            "description": "A description is required to be a `signatureParameter`"
+          },
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
           },

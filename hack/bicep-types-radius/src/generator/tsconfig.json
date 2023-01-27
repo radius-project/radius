@@ -11,12 +11,19 @@
     "stripInternal": true,
     "noEmitHelpers": false,
     "target": "es2019",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "esModuleInterop": true,
-    "lib": ["es2020"],
+    "lib": [
+      "es2020"
+    ],
     "newLine": "LF",
     "outDir": "dist",
     "rootDir": "."
   },
-  "exclude": ["dist", "node_modules"]
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }
