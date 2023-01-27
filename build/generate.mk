@@ -5,20 +5,27 @@
 
 ##@ Generate (Code and Schema Generation)
 
+GOOS ?= $(shell go env GOOS)
+
+ifeq ($(GOOS),windows)
+   CMD_EXT = .cmd
+else
+
 .PHONY: generate
 generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 	
 .PHONY: generate-cadl-installed
 generate-cadl-installed:
 	@echo "$(ARROW) Detecting cadl..."
-	cd cadl/Applications.Link && npx -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
+	cd cadl/Applications.Link && npx$(CMD_EXT) -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
+
 
 .PHONY: generate-openapi-spec
 generate-openapi-spec:
 	@echo  "Generating openapi specs for link resources from cadl models."
-	cd cadl/Applications.Link && npx.cmd cadl compile .
-	cd cadl/UCP/ && npx.cmd cadl compile . --option @azure-tools/cadl-autorest.emitter-output-dir={cwd}/../../swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/
+	cd cadl/Applications.Link && npx$(CMD_EXT) cadl compile .
+	cd cadl/UCP/ && npx$(CMD_EXT) cadl compile . --option @azure-tools/cadl-autorest.emitter-output-dir={cwd}/../../swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/
 
 .PHONY: generate-node-installed
 generate-node-installed:
