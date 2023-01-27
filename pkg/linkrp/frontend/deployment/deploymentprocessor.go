@@ -167,6 +167,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	updatedOutputResources := []rpv1.OutputResource{}
 	computedValues := make(map[string]any)
 	for _, outputResource := range orderedOutputResources {
+		if outputResource.IsRadiusManaged() && rendererOutput.RecipeData.Name == "" {
+			return rpv1.DeploymentOutput{}, fmt.Errorf("resources deployed through recipe must be Radius managed")
+		}
 		// Add resources deployed by recipe to output resource identity
 		for _, id := range rendererOutput.RecipeData.Resources {
 			if rendererOutput.RecipeData.Provider == resourcemodel.ProviderAzure {

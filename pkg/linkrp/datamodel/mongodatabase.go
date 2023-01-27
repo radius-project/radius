@@ -52,6 +52,7 @@ func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	if database, ok := do.ComputedValues[renderers.DatabaseNameValue].(string); ok {
 		r.Properties.Database = database
 	}
+	r.RecipeData = do.RecipeData
 	return nil
 }
 
