@@ -71,7 +71,7 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 	if err != nil {
 		return nil, err
 	}
-	restResponse := armrpc_rest.NewNoContentResponse()
+	restResponse := armrpc_rest.NewOKResponse(nil)
 	logger.Info(fmt.Sprintf("Delete resource group %s successfully", resourceID))
 	return restResponse, nil
 }

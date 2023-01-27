@@ -89,5 +89,5 @@ func Test_AWSPlane_DELETE_Found(t *testing.T) {
 	response.EqualsFixture(200, awsPlaneResponseFixture)
 
 	response = server.MakeRequest("DELETE", awsPlaneResourceURL, nil)
-	response.EqualsResponse(204, nil)
+	response.EqualsResponse(200, nil)
 }
