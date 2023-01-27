@@ -9,7 +9,7 @@ GOOS ?= $(shell go env GOOS)
 
 ifeq ($(GOOS),windows)
    CMD_EXT = .cmd
-else
+endif
 
 .PHONY: generate
 generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.

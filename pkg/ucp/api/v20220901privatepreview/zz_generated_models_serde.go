@@ -277,8 +277,8 @@ func (a *AzureCredentialResourceListResult) UnmarshalJSON(data []byte) error {
 func (a AzureServicePrincipalProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "clientId", a.ClientID)
+	populate(objectMap, "clientSecret", a.ClientSecret)
 	objectMap["kind"] = "ServicePrincipal"
-	populate(objectMap, "secret", a.Secret)
 	populate(objectMap, "storage", a.Storage)
 	populate(objectMap, "tenantId", a.TenantID)
 	return json.Marshal(objectMap)
@@ -296,11 +296,11 @@ func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 		case "clientId":
 				err = unpopulate(val, "ClientID", &a.ClientID)
 				delete(rawMsg, key)
+		case "clientSecret":
+				err = unpopulate(val, "ClientSecret", &a.ClientSecret)
+				delete(rawMsg, key)
 		case "kind":
 				err = unpopulate(val, "Kind", &a.Kind)
-				delete(rawMsg, key)
-		case "secret":
-				err = unpopulate(val, "Secret", &a.Secret)
 				delete(rawMsg, key)
 		case "storage":
 				a.Storage, err = unmarshalCredentialStoragePropertiesClassification(val)

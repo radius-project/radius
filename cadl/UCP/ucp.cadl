@@ -101,7 +101,7 @@ model AzureServicePrincipalProperties extends AzureCredentialProperties {
     clientId: string;
     @doc("secret when the CredentialKind is ServicePrincipal")
     @extension("x-ms-secret", true)
-    secret: string;
+    clientSecret: string;
     @doc("tenantId when the CredentialKind is ServicePrincipal")
     tenantId: string;
     @doc("The storage properties")

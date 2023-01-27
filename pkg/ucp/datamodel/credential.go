@@ -42,6 +42,8 @@ func (c *AWSCredential) ResourceTypeName() string {
 
 // Azure Credential Properties represents UCP Credential Properties.
 type AzureCredentialResourceProperties struct {
+	// Kind is the kind of azure credential resource.
+	Kind string `json:"kind,omitempty"`
 	// AzureCredential is the azure service principal credentials.
 	AzureCredential *AzureCredentialProperties `json:"azureCredential,omitempty"`
 	// Storage contains the properties of the storage associated with the kind.
@@ -50,6 +52,8 @@ type AzureCredentialResourceProperties struct {
 
 // AWS Credential Properties represents UCP Credential Properties.
 type AWSCredentialResourceProperties struct {
+	// Kind is the kind of aws credential resource.
+	Kind string `json:"kind,omitempty"`
 	// AWSCredential is the aws iam credentials.
 	AWSCredential *AWSCredentialProperties `json:"awsCredential,omitempty"`
 	// Storage contains the properties of the storage associated with the kind.

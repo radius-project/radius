@@ -973,7 +973,7 @@
           "type": "string",
           "description": "clientId when the CredentialKind is ServicePrincipal"
         },
-        "secret": {
+        "clientSecret": {
           "type": "string",
           "description": "secret when the CredentialKind is ServicePrincipal",
           "x-ms-secret": true
@@ -990,7 +990,7 @@
       "description": "Service Principal credential storage properties",
       "required": [
         "clientId",
-        "secret",
+        "clientSecret",
         "tenantId",
         "storage"
       ],

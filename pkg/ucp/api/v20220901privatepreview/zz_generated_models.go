@@ -183,11 +183,11 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
 	ClientID *string `json:"clientId,omitempty"`
 
+	// REQUIRED; secret when the CredentialKind is ServicePrincipal
+	ClientSecret *string `json:"clientSecret,omitempty"`
+
 	// REQUIRED; Discriminator property for AzureCredentialProperties.
 	Kind *string `json:"kind,omitempty"`
-
-	// REQUIRED; secret when the CredentialKind is ServicePrincipal
-	Secret *string `json:"secret,omitempty"`
 
 	// REQUIRED; The storage properties
 	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`

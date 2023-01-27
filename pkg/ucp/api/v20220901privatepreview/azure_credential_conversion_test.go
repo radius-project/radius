@@ -19,7 +19,6 @@ import (
 )
 
 func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
-	internalStorageKind := datamodel.CredentialStorageKind(CredentialStorageKindInternal)
 	conversionTests := []struct {
 		filename string
 		expected *datamodel.AzureCredential
@@ -27,7 +26,7 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 	}{
 		{
 			filename: "credentialresource-azure.json",
-			expected: &datamodel.Credential{
+			expected: &datamodel.AzureCredential{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
 						ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
@@ -42,8 +41,8 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 						UpdatedAPIVersion: Version,
 					},
 				},
-				Properties: &datamodel.CredentialResourceProperties{
-					Kind: "azure.com.serviceprincipal",
+				Properties: &datamodel.AzureCredentialResourceProperties{
+					Kind: "ServicePrincipal",
 					AzureCredential: &datamodel.AzureCredentialProperties{
 						TenantID:     "00000000-0000-0000-0000-000000000000",
 						ClientID:     "00000000-0000-0000-0000-000000000000",
@@ -58,7 +57,7 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "credentialresource-other.json",
-			err:      &v1.ErrModelConversion{PropertyName: "$.type", ValidValue: AzureCredentialType},
+			err:      v1.ErrInvalidModelConversion,
 		},
 		{
 			filename: "credentialresource-empty-properties.json",
@@ -74,7 +73,7 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "credentialresource-invalid-storagekind.json",
-			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())},
+			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())},
 		},
 	}
 	for _, tt := range conversionTests {
@@ -98,7 +97,6 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 }
 
 func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
-	internalStorageKind := string(CredentialStorageKindInternal)
 	conversionTests := []struct {
 		filename string
 		expected *AzureCredentialResource
@@ -115,14 +113,19 @@ func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 					"env": to.Ptr("dev"),
 				},
 				Properties: &AzureServicePrincipalProperties{
+					Kind:     to.Ptr("azure.com.serviceprincipal"),
 					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       &internalStorageKind,
-						SecretName: to.Ptr("azure_azurecloud_default"),
+						Kind:       to.Ptr(string(CredentialStorageKindInternal)),
+						SecretName: to.Ptr("azure-azurecloud-default"),
 					},
 				},
 			},
+		},
+		{
+			filename: "credentialresourcedatamodel-default.json",
+			err:      v1.ErrInvalidModelConversion,
 		},
 	}
 	for _, tt := range conversionTests {

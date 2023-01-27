@@ -21,7 +21,7 @@ const (
 
 // ConvertTo converts from the versioned Credential resource to version-agnostic datamodel.
 func (cr *AzureCredentialResource) ConvertTo() (v1.DataModelInterface, error) {
-	crendentialProperties, err := cr.getDataModelCredentialProperties()
+	prop, err := cr.getDataModelCredentialProperties()
 	if err != nil {
 		return nil, err
 	}
@@ -49,68 +49,45 @@ func (cr *AzureCredentialResource) getDataModelCredentialProperties() (*datamode
 	if cr.Properties == nil {
 		return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
 	}
-	crendentialProperties := cr.Properties
 
-	var storage *datamodel.CredentialStorageProperties
+	switch p := cr.Properties.(type) {
+	case *AzureServicePrincipalProperties:
+		var storage *datamodel.CredentialStorageProperties
 
-	storageProperties := crendentialProperties.Storage.GetCredentialStorageProperties()
-	if storageProperties.GetCredentialStorageProperties().Kind == nil {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"}
-	}
-
-	if cr.Type == nil || *cr.Type != AzureCredentialType {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.type", ValidValue: AzureCredentialType}
-	}
-	
-	// Check for storage type value
-	var found bool
-	for _, k := range PossibleCredentialStorageKindValues() {
-		if CredentialStorageKind(*storageProperties.Kind) == k {
-			found = true
-			break
+		switch c := p.Storage.(type) {
+		case *InternalCredentialStorageProperties:
+			if c.Kind == nil {
+				return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
+			}
+			storage = &datamodel.CredentialStorageProperties{
+				Kind: datamodel.InternalStorageKind,
+				InternalCredential: &datamodel.InternalCredentialStorageProperties{
+					SecretName: to.String(c.SecretName),
+				},
+			}
+		case nil:
+			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
+		default:
+			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())}
 		}
-		storage = &datamodel.CredentialStorageProperties{
-			Kind: datamodel.InternalStorageKind,
-			InternalCredential: &datamodel.InternalCredentialStorageProperties{
-				SecretName: to.String(p.SecretName),
+
+		return &datamodel.AzureCredentialResourceProperties{
+			Kind: datamodel.AzureCredentialKind,
+			AzureCredential: &datamodel.AzureCredentialProperties{
+				TenantID:     to.String(p.TenantID),
+				ClientID:     to.String(p.ClientID),
+				ClientSecret: to.String(p.ClientSecret),
 			},
-		}
-	case nil:
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
-	default:
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())}
-	}
-
-	return &datamodel.AzureCredentialResourceProperties{
-		AzureCredential: &datamodel.AzureCredentialProperties{
-			TenantID: crendentialProperties.TenantID,
-			ClientID: crendentialProperties.ClientID,
-		},
-		Storage: storage,
-	}, nil
-
-}
-
-func (cr *AzureCredentialResource) getCredentialStorageProperties() (*datamodel.CredentialStorageProperties, error) {
-	storageKind := datamodel.CredentialStorageKind(*cr.Properties.Storage.GetCredentialStorageProperties().Kind)
-	switch p := cr.Properties.Storage.(type) {
-	case *InternalCredentialStorageProperties:
-		return &datamodel.CredentialStorageProperties{
-			Kind: &storageKind,
-			InternalCredential: &datamodel.InternalCredentialStorageProperties{
-				SecretName: p.SecretName,
-			},
+			Storage: storage,
 		}, nil
 	default:
-		return &datamodel.CredentialStorageProperties{
-			Kind: (*datamodel.CredentialStorageKind)(p.GetCredentialStorageProperties().Kind),
-		}, nil
+		return nil, v1.ErrInvalidModelConversion
 	}
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Credential resource.
 func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
-	credential, ok := src.(*datamodel.AzureCredential)
+	dm, ok := src.(*datamodel.AzureCredential)
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
@@ -121,24 +98,29 @@ func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error
 	dst.Location = &dm.Location
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 
-	dst.Properties = &AzureServicePrincipalProperties{
-		ClientID: credential.Properties.AzureCredential.ClientID,
-		TenantID: credential.Properties.AzureCredential.TenantID,
-		Storage:  getAzureStorage(credential),
+	var storage CredentialStoragePropertiesClassification
+	switch dm.Properties.Storage.Kind {
+	case datamodel.InternalStorageKind:
+		storage = &InternalCredentialStorageProperties{
+			Kind:       azto.Ptr(string(CredentialStorageKindInternal)),
+			SecretName: azto.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
+		}
+	default:
+		return v1.ErrInvalidModelConversion
+	}
+
+	// DO NOT convert any secret values to versioned model.
+	switch dm.Properties.Kind {
+	case datamodel.AzureCredentialKind:
+		dst.Properties = &AzureServicePrincipalProperties{
+			Kind:     azto.Ptr(dm.Properties.Kind),
+			ClientID: azto.Ptr(dm.Properties.AzureCredential.ClientID),
+			TenantID: azto.Ptr(dm.Properties.AzureCredential.TenantID),
+			Storage:  storage,
+		}
+	default:
+		return v1.ErrInvalidModelConversion
 	}
 
 	return nil
-}
-
-func getAzureStorage(credential *datamodel.AzureCredential) CredentialStoragePropertiesClassification {
-	credentialStorageKind := string(*credential.Properties.Storage.Kind)
-	switch *credential.Properties.Storage.Kind {
-	case datamodel.InternalStorageKind:
-		return &InternalCredentialStorageProperties{
-			Kind:       &credentialStorageKind,
-			SecretName: credential.Properties.Storage.InternalCredential.SecretName,
-		}
-	default:
-		return nil
-	}
 }
