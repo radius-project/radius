@@ -26,7 +26,6 @@ import (
 )
 
 func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
-
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 
@@ -77,8 +76,44 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"mongo-put-get-err",
 			linkrp.MongoDatabasesResourceType,
-			"APPLICATIONS.CORE/CONTAINERS|PUT",
-			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo1",
+			"APPLICATIONS.LINK/MONGODATABASES|PUT",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo2",
+			errors.New("error getting object"),
+			false,
+			nil,
+			nil,
+			nil,
+			errors.New("error getting object"),
+		},
+		{
+			"redis-put-success",
+			linkrp.RedisCachesResourceType,
+			"APPLICATIONS.LINK/REDISCACHES|PUT",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0",
+			nil,
+			false,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"redis-put-not-found",
+			linkrp.RedisCachesResourceType,
+			"APPLICATIONS.LINK/REDISCACHES|PUT",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis1",
+			&store.ErrNotFound{},
+			false,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"redis-put-get-err",
+			linkrp.RedisCachesResourceType,
+			"APPLICATIONS.LINK/REDISCACHES|PUT",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis2",
 			errors.New("error getting object"),
 			false,
 			nil,

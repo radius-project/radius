@@ -20,6 +20,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
+const (
+	// defaultAsyncPutTimeout is the default timeout duration of async put operation.
+	defaultAsyncPutTimeout = time.Duration(2) * time.Minute
+)
+
 // Operation is the base operation controller.
 type Operation[P interface {
 	*T
@@ -222,7 +227,7 @@ func (b *Operation[P, T]) UpdateFilters() []UpdateFilter[T] {
 // AsyncOperationTimeout returns the timeput for the operation.
 func (b *Operation[P, T]) AsyncOperationTimeout() time.Duration {
 	if b.resourceOptions.AsyncOperationTimeout == 0 {
-		return time.Duration(2) * time.Minute
+		return defaultAsyncPutTimeout
 	}
 	return b.resourceOptions.AsyncOperationTimeout
 }
