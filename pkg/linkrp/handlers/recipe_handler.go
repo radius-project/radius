@@ -30,7 +30,7 @@ const deploymentPrefix = "recipe"
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/linkrp/handlers github.com/project-radius/radius/pkg/linkrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, recipeContext datamodel.RecipeContext) ([]string, error)
 }
 
 func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
@@ -46,7 +46,7 @@ type azureRecipeHandler struct {
 // DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath using the providers scope.
 // Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
 // Returns resource IDs of the resources deployed by the template
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers) (deployedResources []string, err error) {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, recipeContext datamodel.RecipeContext) (deployedResources []string, err error) {
 	if recipe.TemplatePath == "" {
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
@@ -69,8 +69,10 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
 
-	// get the parameters after resolving the conflict
-	parameters := handleParameterConflict(recipe.Parameters, recipe.EnvParameters)
+	// get the parameters after resolving the conflict between developer and operator parameters
+	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
+	_, isContextParameterDefined := recipeData["parameters"].(map[string]interface{})[datamodel.RecipeContextParameter]
+	parameters := createRecipeParameters(recipe.Parameters, recipe.EnvParameters, isContextParameterDefined, &recipeContext)
 
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
 	client, err := clientv2.NewDeploymentsClient(subscriptionID, &handler.arm.ClientOptions)
@@ -128,21 +130,4 @@ func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID stri
 		return "", "", v1.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy link recipes to Azure")
 	}
 	return
-}
-
-// handleParameterConflict handles conflicts in parameters set by operator and developer
-// In case of conflict the developer parameter takes precedence
-func handleParameterConflict(devParams, operatorParams map[string]any) map[string]any {
-	for k, v := range operatorParams {
-		if _, ok := devParams[k]; !ok {
-			devParams[k] = v
-		}
-	}
-	parameters := map[string]any{}
-	for k, v := range devParams {
-		parameters[k] = map[string]any{
-			"value": v,
-		}
-	}
-	return parameters
 }

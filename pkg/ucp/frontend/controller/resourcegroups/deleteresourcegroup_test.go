@@ -57,7 +57,7 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	require.NoError(t, err)
 	// Issue Delete request
 	response, err := rgCtrl.Run(ctx, nil, request)
-	expectedResponse := armrpc_rest.NewNoContentResponse()
+	expectedResponse := armrpc_rest.NewOKResponse(nil)
 
 	require.NoError(t, err)
 	assert.DeepEqual(t, expectedResponse, response)
