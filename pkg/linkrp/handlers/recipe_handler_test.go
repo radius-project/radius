@@ -127,3 +127,17 @@ func Test_ContextParameterError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, linkContext)
 }
+
+func Test_ACRPathParser(t *testing.T) {
+	repository, tag, err := parseTemplatePath("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0")
+	require.NoError(t, err)
+	require.Equal(t, "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure", repository)
+	require.Equal(t, "1.0", tag)
+}
+
+func Test_ACRPathParserErr(t *testing.T) {
+	repository, tag, err := parseTemplatePath("http://user:passwd@example.com/test/bar:v1")
+	require.Error(t, err)
+	require.Equal(t, "", repository)
+	require.Equal(t, "", tag)
+}
