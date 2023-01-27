@@ -127,3 +127,84 @@ func Test_ContextParameterError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, linkContext)
 }
+
+func Test_RecipeResponseSuccess(t *testing.T) {
+	response := map[string]any{}
+	value := map[string]any{}
+	value["resources"] = []any{"testId1", "testId2"}
+	value["secrets"] = map[string]any{
+		"username":         "testUser",
+		"password":         "testPassword",
+		"connectionString": "test-connection-string",
+	}
+	value["values"] = map[string]any{
+		"host": "myrediscache.redis.cache.windows.net",
+		"port": 6379,
+	}
+	response["result"] = map[string]any{
+		"value": value,
+	}
+	expectedResponse := RecipeResponse{
+		Resources: []string{"outputResourceId", "testId1", "testId2"},
+		Secrets: map[string]any{
+			"username":         "testUser",
+			"password":         "testPassword",
+			"connectionString": "test-connection-string",
+		},
+		Values: map[string]any{
+			"host": "myrediscache.redis.cache.windows.net",
+			"port": 6379,
+		},
+	}
+	actualResp := RecipeResponse{
+		Resources: []string{"outputResourceId"},
+		Secrets:   map[string]any{},
+		Values:    map[string]any{},
+	}
+	prepareRecipeResponse(response, &actualResp)
+	require.Equal(t, expectedResponse, actualResp)
+}
+
+func Test_RecipeResponseWithoutSecret(t *testing.T) {
+	response := map[string]any{}
+	value := map[string]any{}
+	value["resources"] = []any{"testId1", "testId2"}
+	value["values"] = map[string]any{
+		"host": "myrediscache.redis.cache.windows.net",
+		"port": 6379,
+	}
+	response["result"] = map[string]any{
+		"value": value,
+	}
+	expectedResponse := RecipeResponse{
+		Resources: []string{"outputResourceId", "testId1", "testId2"},
+		Secrets:   map[string]any{},
+		Values: map[string]any{
+			"host": "myrediscache.redis.cache.windows.net",
+			"port": 6379,
+		},
+	}
+	actualResp := RecipeResponse{
+		Resources: []string{"outputResourceId"},
+		Secrets:   map[string]any{},
+		Values:    map[string]any{},
+	}
+	prepareRecipeResponse(response, &actualResp)
+	require.Equal(t, expectedResponse, actualResp)
+}
+
+func Test_RecipeResponseWithoutResult(t *testing.T) {
+	response := map[string]any{}
+	expectedResponse := RecipeResponse{
+		Resources: []string{"outputResourceId"},
+		Secrets:   map[string]any{},
+		Values:    map[string]any{},
+	}
+	actualResp := RecipeResponse{
+		Resources: []string{"outputResourceId"},
+		Secrets:   map[string]any{},
+		Values:    map[string]any{},
+	}
+	prepareRecipeResponse(response, &actualResp)
+	require.Equal(t, expectedResponse, actualResp)
+}

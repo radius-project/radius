@@ -37,10 +37,10 @@ func (m *MockRecipeHandler) EXPECT() *MockRecipeHandlerMockRecorder {
 }
 
 // DeployRecipe mocks base method.
-func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1 datamodel0.RecipeProperties, arg2 datamodel.Providers, arg3 datamodel0.RecipeContext) ([]string, error) {
+func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1 datamodel0.RecipeProperties, arg2 datamodel.Providers, arg3 datamodel0.RecipeContext) (*RecipeResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeployRecipe", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].([]string)
+	ret0, _ := ret[0].(*RecipeResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

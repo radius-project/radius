@@ -163,12 +163,14 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	logger.Info("Deploying radius resource")
 
 	// Deploy recipe
+	recipeResponse := &handlers.RecipeResponse{}
+	var err error
 	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.RecipeContext)
+		recipeResponse, err = dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.RecipeContext)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
-		rendererOutput.RecipeData.Resources = deployedRecipeResourceIDs
+		rendererOutput.RecipeData.Resources = recipeResponse.Resources
 	}
 
 	// Order output resources in deployment dependency order
@@ -211,10 +213,29 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		}
 	}
 
+	// Update computedValues fetched from recipe output
+	if recipeResponse.Values != nil {
+		for k, computedValue := range recipeResponse.Values {
+			if computedValue != nil {
+				computedValues[k] = computedValue
+			}
+		}
+	}
 	// Update static values
 	for k, computedValue := range rendererOutput.ComputedValues {
 		if computedValue.Value != nil {
 			computedValues[k] = computedValue.Value
+		}
+	}
+
+	// Update Secrets fetched from recipe
+	if recipeResponse.Secrets != nil {
+		secretValues := map[string]rpv1.SecretValueReference{}
+		for key, val := range recipeResponse.Secrets {
+			value, ok := val.(string)
+			if ok {
+				secretValues[key] = rpv1.SecretValueReference{Value: value}
+			}
 		}
 	}
 

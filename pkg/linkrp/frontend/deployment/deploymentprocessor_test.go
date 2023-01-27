@@ -52,8 +52,8 @@ const (
 	daprLinkName        = "test-state-store"
 	daprLinkID          = "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store"
 	azureTableStorageID = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable"
-
-	recipeName = "testRecipe"
+	redisId             = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"
+	recipeName          = "testRecipe"
 
 	modeRecipe   = "recipe"
 	modeResource = "resource"
@@ -62,6 +62,7 @@ const (
 
 var (
 	mongoLinkResourceID = getResourceID(mongoLinkID)
+	redisLinkResourceId = getResourceID(redisId)
 	recipeParams        = map[string]any{
 		"throughput": 400,
 	}
@@ -155,6 +156,51 @@ func buildOutputResourcesMongo(mode string) []rpv1.OutputResource {
 	}
 }
 
+func buildRendererOutputRedis() (rendererOutput renderers.RendererOutput) {
+	computedValues := map[string]renderers.ComputedValueReference{
+		renderers.Host: {
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/hostName",
+		},
+		renderers.Port: {
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/sslPort",
+		},
+	}
+	secretValues := map[string]rpv1.SecretValueReference{renderers.PasswordStringHolder: {
+		LocalID:       rpv1.LocalIDAzureRedis,
+		Action:        "listKeys",
+		ValueSelector: "/primaryKey",
+	},
+		renderers.ConnectionStringValue: {
+			LocalID:       rpv1.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+			Transformer: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderAzure,
+				Type:     resourcekinds.AzureRedis,
+			},
+		},
+	}
+	recipeData := datamodel.RecipeData{
+		RecipeProperties: datamodel.RecipeProperties{
+			LinkRecipe: datamodel.LinkRecipe{
+				Name: "redis",
+			},
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/redis:v1",
+		},
+		APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
+		Provider:   resourcemodel.ProviderAzure,
+	}
+	rendererOutput = renderers.RendererOutput{
+		SecretValues:   secretValues,
+		ComputedValues: computedValues,
+		RecipeData:     recipeData,
+	}
+
+	return
+
+}
 func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOutput) {
 	computedValues := map[string]renderers.ComputedValueReference{}
 	secretValues := map[string]rpv1.SecretValueReference{}
@@ -720,9 +766,11 @@ func Test_Deploy(t *testing.T) {
 		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", renderers.Host: testRendererOutput.ComputedValues[renderers.Host].Value}, deploymentOutput.ComputedValues)
 	})
 
-	t.Run("Verify deploy success with recipe", func(t *testing.T) {
-		resources := []string{cosmosAccountID, cosmosMongoID}
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+	t.Run("Verify deploy success with mongo recipe", func(t *testing.T) {
+		resources := handlers.RecipeResponse{
+			Resources: []string{cosmosAccountID, cosmosMongoID},
+		}
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&resources, nil)
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(2).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
@@ -730,12 +778,34 @@ func Test_Deploy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
-		require.Equal(t, resources, deploymentOutput.RecipeData.Resources)
+		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
+	})
+	t.Run("Verify deploy success with redis recipe", func(t *testing.T) {
+		resources := handlers.RecipeResponse{
+			Resources: []string{"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"},
+			Secrets: map[string]any{
+				"username":         "testUser",
+				"password":         "testPassword",
+				"connectionString": "test-connection-string",
+			},
+			Values: map[string]any{
+				"host": "myrediscache.redis.cache.windows.net",
+				"port": 6379,
+			},
+		}
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&resources, nil)
+
+		testRendererOutput := buildRendererOutputRedis()
+		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
+		require.NoError(t, err)
+		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
+		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "myrediscache.redis.cache.windows.net"}, deploymentOutput.ComputedValues)
+		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
 
 	t.Run("Verify deploy failure with recipe", func(t *testing.T) {
 		deploymentName := "recipe" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&handlers.RecipeResponse{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
@@ -792,10 +862,12 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Recipe deployment - invalid resource id", func(t *testing.T) {
-		resources := []string{"invalid-id"}
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		resources := handlers.RecipeResponse{
+			Resources: []string{"invalid-id"},
+		}
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&resources, nil)
 
-		expectedErr := v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources[0], mongoLinkResourceID))
+		expectedErr := v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources.Resources[0], mongoLinkResourceID))
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)

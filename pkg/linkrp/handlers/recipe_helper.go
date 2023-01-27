@@ -13,6 +13,14 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+// RecipeResponse is the response from deplying the recipe.
+// It has the list of resourceId's that out deployed and the secrets ant output value
+type RecipeResponse struct {
+	Resources []string
+	Secrets   map[string]any
+	Values    map[string]any
+}
+
 // CreateRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
 func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespace, applicationID, applicationNamespace string) (*datamodel.RecipeContext, error) {
 	recipeContext := datamodel.RecipeContext{}
@@ -76,4 +84,35 @@ func parseTemplatePath(templatePath string) (repository string, tag string, err 
 	repository = reference.Repository()
 	tag = reference.Tag()
 	return
+}
+
+// the function populates the recipe response from parsing the output result object
+func prepareRecipeResponse(outputs any, recipeResp *RecipeResponse) {
+	out, ok := outputs.(map[string]any)
+	if ok {
+		recipeOutput, ok := out["result"].(map[string]any)
+		if ok {
+			output, ok := recipeOutput["value"].(map[string]any)
+			if ok {
+				resources, ok := output["resources"].([]any)
+				if ok {
+					for _, resource := range resources {
+						recipeResp.Resources = append(recipeResp.Resources, resource.(string))
+					}
+				}
+				secrets, ok := output["secrets"].(map[string]any)
+				if ok {
+					for key, value := range secrets {
+						recipeResp.Secrets[key] = value
+					}
+				}
+				values, ok := output["values"].(map[string]any)
+				if ok {
+					for key, value := range values {
+						recipeResp.Values[key] = value
+					}
+				}
+			}
+		}
+	}
 }
