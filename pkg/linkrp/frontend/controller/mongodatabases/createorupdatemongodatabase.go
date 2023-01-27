@@ -78,6 +78,8 @@ func (mongoDatabase *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w htt
 	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
+	newResource.RecipeData = deploymentOutput.RecipeData
+
 	if database, ok := deploymentOutput.ComputedValues[renderers.DatabaseNameValue].(string); ok {
 		newResource.Properties.Database = database
 	}
