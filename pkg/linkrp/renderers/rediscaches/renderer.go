@@ -76,7 +76,7 @@ func renderAzureRecipe(resource *datamodel.RedisCache, options renderers.RenderO
 	recipeData := datamodel.RecipeData{
 		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
-		APIVersion:       clientv2.DocumentDBManagementClientAPIVersion,
+		APIVersion:       clientv2.RedisManagementClientAPIVersion,
 	}
 
 	if _, ok := computedValues[renderers.Host]; !ok {
@@ -144,48 +144,13 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
-	if _, ok := computedValues[renderers.Host]; !ok {
-		computedValues[renderers.Host] = renderers.ComputedValueReference{
-			LocalID:     rpv1.LocalIDAzureRedis,
-			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
-		}
-	}
-
-	if _, ok := computedValues[renderers.Port]; !ok {
-		computedValues[renderers.Port] = renderers.ComputedValueReference{
-			LocalID:     rpv1.LocalIDAzureRedis,
-			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
-		}
-	}
-
-	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
-		secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{
-			LocalID:       rpv1.LocalIDAzureRedis,
-			Action:        "listKeys",
-			ValueSelector: "/primaryKey",
-		}
-	}
-
-	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
-		secretValues[renderers.ConnectionStringValue] = rpv1.SecretValueReference{
-			LocalID:       rpv1.LocalIDAzureRedis,
-			Action:        "listKeys",
-			ValueSelector: "/primaryKey",
-			Transformer: resourcemodel.ResourceType{
-				Provider: resourcemodel.ProviderAzure,
-				Type:     resourcekinds.AzureRedis,
-			},
-		}
-	}
+	// Build computedValues reference
+	buildComputedValuesReference(computedValues)
+	// Build secretValue reference
+	buildSecretValueReference(secretValues)
 
 	// Build output resources
-	redisCacheOutputResource := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureRedis,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRedis,
-			Provider: resourcemodel.ProviderAzure,
-		},
-	}
+	redisCacheOutputResource := buildOutputResource()
 	redisCacheOutputResource.Identity = resourcemodel.NewARMIdentity(&redisCacheOutputResource.ResourceType, redisCacheID.String(), clientv2.RedisManagementClientAPIVersion)
 
 	return renderers.RendererOutput{
@@ -219,4 +184,53 @@ func getProvidedComputedValues(properties datamodel.RedisCacheProperties) map[st
 	}
 
 	return computedValues
+}
+
+func buildSecretValueReference(secretValues map[string]rpv1.SecretValueReference) map[string]rpv1.SecretValueReference {
+	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
+		secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+		}
+	}
+
+	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
+		secretValues[renderers.ConnectionStringValue] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+			Transformer: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderAzure,
+				Type:     resourcekinds.AzureRedis,
+			},
+		}
+	}
+	return secretValues
+}
+
+func buildComputedValuesReference(computedValues map[string]renderers.ComputedValueReference) {
+	if _, ok := computedValues[renderers.Host]; !ok {
+		computedValues[renderers.Host] = renderers.ComputedValueReference{
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
+		}
+	}
+
+	if _, ok := computedValues[renderers.Port]; !ok {
+		computedValues[renderers.Port] = renderers.ComputedValueReference{
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
+		}
+	}
+}
+
+func buildOutputResource() rpv1.OutputResource {
+	return rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureRedis,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRedis,
+			Provider: resourcemodel.ProviderAzure,
+		},
+	}
 }

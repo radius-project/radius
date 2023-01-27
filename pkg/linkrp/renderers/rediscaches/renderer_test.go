@@ -380,7 +380,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	require.Equal(t, redisResource.Properties.Recipe.Name, output.RecipeData.Name)
 	require.Equal(t, redisResource.Properties.Recipe.Parameters, output.RecipeData.Parameters)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/redis:v1", output.RecipeData.TemplatePath)
-	require.Equal(t, clientv2.DocumentDBManagementClientAPIVersion, output.RecipeData.APIVersion)
+	require.Equal(t, clientv2.RedisManagementClientAPIVersion, output.RecipeData.APIVersion)
 
 	// secrets and computed values
 	require.Equal(t, expectedSecretValues, output.SecretValues)
