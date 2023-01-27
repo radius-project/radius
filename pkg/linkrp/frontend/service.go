@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 )
@@ -48,12 +49,11 @@ func (s *Service) Run(ctx context.Context) error {
 
 	opts := ctrl.Options{
 		DataProvider:  s.StorageProvider,
-		SecretClient:  s.SecretClient,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
 	}
 
-	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
+	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, sv.NewSecretValueClient(s.Options.Arm), s.KubeClient)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err = s.Start(ctx, server.Options{
