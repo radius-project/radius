@@ -25,24 +25,24 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "show [recipe-name]",
+		Use:   "show -name [recipe-name]",
 		Short: "Show recipe details",
 		Long: `Show recipe details
 	
-	The recipe show command outputs details about a recipe. This includes the name, resource type, parameters, and template path.
+	The recipe show command outputs details about a recipe. This includes the name, resource type, parameters, parameter details and template path.
 	
 	By default, the command is scoped to the resource group and environment defined in your rad.yaml workspace file. You can optionally override these values through the environment and group flags.
 	
 	By default, the command outputs a human-readable table. You can customize the output format with the output flag.`,
 		Example: `
 	# show the details of a recipe
-	rad recipe show redis-prod
+	rad recipe show -name redis-prod
 	
 	# show the details of a recipe, with a JSON output
-	rad recipe show redis-prod --output json
+	rad recipe show -name redis-prod --output json
 	
 	# show the details of a recipe, with a specified environment and group
-	rad recipe show redis-dev --group dev --environment dev`,
+	rad recipe show -name redis-dev --group dev --environment dev`,
 		RunE: framework.RunCommand(runner),
 		Args: cobra.ExactArgs(0),
 	}
@@ -161,7 +161,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		recipeParams = append(recipeParams, recipe)
 		index += 1
 	}
-	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormats())
+	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormat())
 	if err != nil {
 		return err
 	}
