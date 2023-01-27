@@ -42,7 +42,6 @@ func NewDirectConnection(endpoint string) (Connection, error) {
 // (autorest Track2 Go SDK).
 func (c *directConnection) Client() *http.Client {
 	client := http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
-	//return http.DefaultClient
 	return &client
 }
 
