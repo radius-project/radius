@@ -12,12 +12,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 
-	"github.com/go-logr/logr"
-	"github.com/gorilla/mux"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/middleware"
+	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpaws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -28,6 +31,12 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/go-logr/logr"
+	"github.com/gorilla/mux"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -51,6 +60,7 @@ type ServiceOptions struct {
 type Service struct {
 	options         ServiceOptions
 	storageProvider dataprovider.DataStorageProvider
+	secretProvider  *provider.SecretProvider
 	secretClient    secret.Client
 }
 
@@ -67,6 +77,29 @@ func (s *Service) Name() string {
 	return "api"
 }
 
+func (s *Service) newAWSConfig(ctx context.Context) (*aws.Config, error) {
+	credProviders := []func(*config.LoadOptions) error{}
+
+	switch strings.ToLower(os.Getenv("AWS_AUTH_METHOD")) {
+	case "ucpcredentialauth":
+		ucpCred, err := ucpapi.NewAWSCredentialClient(&aztoken.AnonymousCredential{}, &arm.ClientOptions{})
+		if err != nil {
+			return nil, err
+		}
+		p := ucpaws.NewUCPCredentialProvider(ucpCred, s.secretProvider, ucpaws.DefaultExpireDuration)
+		credProviders = append(credProviders, config.WithCredentialsProvider(p))
+
+	default:
+	}
+
+	awscfg, err := config.LoadDefaultConfig(ctx, credProviders...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &awscfg, nil
+}
+
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 
@@ -80,17 +113,21 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
-	secretClient, err := s.initializeSecretClient(ctx)
+	if err = s.initializeSecretClient(ctx); err != nil {
+		return nil, err
+	}
+
+	awscfg, err := s.newAWSConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.secretClient = secretClient
 
 	ctrlOpts := ctrl.Options{
 		BasePath:     s.options.BasePath,
 		DB:           db,
 		SecretClient: s.secretClient,
 		Address:      s.options.Address,
+		AWSConfig:    *awscfg,
 
 		CommonControllerOptions: armrpc_controller.Options{
 			DataProvider: s.storageProvider,
@@ -144,18 +181,18 @@ func (s *Service) initializeStorageProvider(ctx context.Context) dataprovider.Da
 }
 
 // initializeSecretClient initializes secret client on server startup.
-func (s *Service) initializeSecretClient(ctx context.Context) (secret.Client, error) {
-	var secretClient secret.Client
+func (s *Service) initializeSecretClient(ctx context.Context) error {
 	if s.options.SecretProviderOptions.Provider == provider.TypeETCDSecret {
 		s.options.SecretProviderOptions.ETCD.Client = s.options.ClientConfigSource
 	}
-	secretsProvider := provider.NewSecretProvider(s.options.SecretProviderOptions)
-	secretClient, err := secretsProvider.GetClient(ctx)
-	if err != nil {
-		return nil, err
-	}
+	s.secretProvider = provider.NewSecretProvider(s.options.SecretProviderOptions)
 
-	return secretClient, nil
+	var err error
+	s.secretClient, err = s.secretProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP

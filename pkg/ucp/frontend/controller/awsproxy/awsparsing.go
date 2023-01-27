@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
@@ -23,22 +22,16 @@ import (
 )
 
 func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
-	// Common parsing in AWS plane requests
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return nil, nil, "", resources.ID{}, err
-	}
-
 	var cloudControlClient awsclient.AWSCloudControlClient
 	if opts.AWSCloudControlClient == nil {
-		cloudControlClient = cloudcontrol.NewFromConfig(cfg)
+		cloudControlClient = cloudcontrol.NewFromConfig(opts.AWSConfig)
 	} else {
 		cloudControlClient = opts.AWSCloudControlClient
 	}
 
 	var cloudFormationClient awsclient.AWSCloudFormationClient
 	if opts.AWSCloudControlClient == nil {
-		cloudFormationClient = cloudformation.NewFromConfig(cfg)
+		cloudFormationClient = cloudformation.NewFromConfig(opts.AWSConfig)
 	} else {
 		cloudFormationClient = opts.AWSCloudFormationClient
 	}
