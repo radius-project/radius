@@ -136,7 +136,7 @@ op MongoDatabases_listSecrets(...ApiVersionParameter,
 
 @armResourceOperations
 interface MongoDatabases
-  extends Radius.RootScopeResourceOperations<
+  extends Radius.ResourceOperationWithAsyncDelete<
       MongoDatabaseResource,
       MongoDatabaseProperties,
       RootScopeParam

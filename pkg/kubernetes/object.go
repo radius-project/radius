@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,7 +20,7 @@ import (
 )
 
 // FindDeployment finds deployment in a list of output resources
-func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployment, outputresource.OutputResource) {
+func FindDeployment(resources []rpv1.OutputResource) (*appsv1.Deployment, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Deployment {
 			continue
@@ -34,11 +34,11 @@ func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployme
 		return deployment, r
 	}
 
-	return nil, outputresource.OutputResource{}
+	return nil, rpv1.OutputResource{}
 }
 
 // FindService finds service in a list of output resources
-func FindService(resources []outputresource.OutputResource) (*corev1.Service, outputresource.OutputResource) {
+func FindService(resources []rpv1.OutputResource) (*corev1.Service, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Service {
 			continue
@@ -52,11 +52,11 @@ func FindService(resources []outputresource.OutputResource) (*corev1.Service, ou
 		return service, r
 	}
 
-	return nil, outputresource.OutputResource{}
+	return nil, rpv1.OutputResource{}
 }
 
 // FindSecret finds secret in a list of output resources
-func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outputresource.OutputResource) {
+func FindSecret(resources []rpv1.OutputResource) (*corev1.Secret, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Secret {
 			continue
@@ -70,11 +70,11 @@ func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outp
 		return secret, r
 	}
 
-	return nil, outputresource.OutputResource{}
+	return nil, rpv1.OutputResource{}
 }
 
 // FindHttpRouteByLocalID finds a (non-root) HTTPProxy in a list of output resources, keyed by its localID
-func FindHttpRouteByLocalID(resources []outputresource.OutputResource, localID string) (*contourv1.HTTPProxy, outputresource.OutputResource) {
+func FindHttpRouteByLocalID(resources []rpv1.OutputResource, localID string) (*contourv1.HTTPProxy, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.KubernetesHTTPRoute || r.LocalID != localID {
 			continue
@@ -93,11 +93,11 @@ func FindHttpRouteByLocalID(resources []outputresource.OutputResource, localID s
 		return httpRoute, r
 	}
 
-	return nil, outputresource.OutputResource{}
+	return nil, rpv1.OutputResource{}
 }
 
 // FindGateway finds a root HTTPProxy in a list of output resources
-func FindGateway(resources []outputresource.OutputResource) (*contourv1.HTTPProxy, outputresource.OutputResource) {
+func FindGateway(resources []rpv1.OutputResource) (*contourv1.HTTPProxy, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Gateway {
 			continue
@@ -116,7 +116,7 @@ func FindGateway(resources []outputresource.OutputResource) (*contourv1.HTTPProx
 		return gateway, r
 	}
 
-	return nil, outputresource.OutputResource{}
+	return nil, rpv1.OutputResource{}
 }
 
 // GetShortenedTargetPortName is used to generate a unique port name based on a resource id.

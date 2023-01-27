@@ -12,14 +12,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,10 +58,10 @@ func TestDeleteMongoDatabase_20220315PrivatePreview(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
+			req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
 			req.Header.Set("If-Match", tt.etag)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := getTestModels20220315privatepreview()
 
 			appDataModel.InternalMetadata.AsyncProvisioningState = tt.curState

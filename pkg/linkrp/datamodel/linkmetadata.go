@@ -6,7 +6,7 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // LinkMetadata represents internal DataModel properties common to all link types.
@@ -16,7 +16,7 @@ type LinkMetadata struct {
 	ComputedValues map[string]any `json:"computedValues,omitempty"`
 
 	// Stores action to retrieve secret values. For Azure, connectionstring is accessed through cosmos listConnectionString operation, if secrets are not provided as input
-	SecretValues map[string]rp.SecretValueReference `json:"secretValues,omitempty"`
+	SecretValues map[string]rpv1.SecretValueReference `json:"secretValues,omitempty"`
 
 	RecipeData RecipeData `json:"recipeData,omitempty"`
 }
@@ -50,10 +50,49 @@ type LinkRecipe struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
+// LinkMode specifies how to build a Link. Options are to build automatically via ‘recipe’ or ‘resource’, or build manually via ‘values’. Selection determines which set of fields to additionally require.
 type LinkMode string
 
 const (
-	LinkModeRecipe   LinkMode = "recipe"
+	// LinkModeRecipe is the recipe mode for link deployment
+	LinkModeRecipe LinkMode = "recipe"
+	// LinkModeResource is the resource mode for link deployment
 	LinkModeResource LinkMode = "resource"
-	LinkModeValues   LinkMode = "values"
+	// LinkModeResource is the values mode for link deployment
+	LinkModeValues LinkMode = "values"
+	// RecipeContextParameter is the parameter context for recipe deployment
+	RecipeContextParameter string = "context"
 )
+
+// RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
+// generate name and properties that are unique for the Link calling the recipe.
+type RecipeContext struct {
+	Resource    Resource     `json:"resource,omitempty"`
+	Application ResourceInfo `json:"application,omitempty"`
+	Environment ResourceInfo `json:"environment,omitempty"`
+	Runtime     Runtime      `json:"runtime,omitempty"`
+}
+
+// Resource contains the information needed to deploy a recipe.
+// In the case the resource is a Link, it represents the Link's id, name and type.
+type Resource struct {
+	ResourceInfo
+	Type string `json:"type"`
+}
+
+// ResourceInfo name and id of the resource
+type ResourceInfo struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
+}
+
+type Runtime struct {
+	Kubernetes Kubernetes `json:"kubernetes,omitempty"`
+}
+
+type Kubernetes struct {
+	// Namespace is set to the applicationNamespace when the Link is application-scoped, and set to the environmentNamespace when the Link is environment scoped
+	Namespace string `json:"namespace"`
+	// EnvironmentNamespace is set to environment namespace.
+	EnvironmentNamespace string `json:"environmentNamespace"`
+}

@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/rp/k8sauth"
+	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/etcd"
@@ -44,7 +44,7 @@ func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secr
 
 func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	s := scheme.Scheme
-	config, err := k8sauth.GetConfig()
+	config, err := kube.GetConfig()
 	if err != nil {
 		return nil, err
 	}

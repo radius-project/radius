@@ -7,6 +7,8 @@ package workspaces
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -147,7 +149,15 @@ func (c *KubernetesConnectionConfig) GetKind() string {
 
 func (c *KubernetesConnectionConfig) Connect() (sdk.Connection, error) {
 	if c.Overrides.UCP != "" {
-		return sdk.NewDirectConnection(c.Overrides.UCP)
+		strURL := strings.TrimSuffix(c.Overrides.UCP, "/")
+		strURL = strURL + "/apis/api.ucp.dev/v1alpha3"
+		_, err := url.ParseRequestURI(strURL)
+		if err != nil {
+			return nil, err
+		}
+
+		return sdk.NewDirectConnection(strURL)
+
 	}
 
 	config, err := kubernetes.GetConfig(c.Context)

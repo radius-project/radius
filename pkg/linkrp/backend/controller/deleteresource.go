@@ -69,6 +69,12 @@ func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceDat
 			return deployment.ResourceData{}, err
 		}
 		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
+	case strings.ToLower(linkrp.DaprStateStoresResourceType):
+		d := &datamodel.DaprStateStore{}
+		if err := obj.As(d); err != nil {
+			return deployment.ResourceData{}, err
+		}
+		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
 	default:
 		return deployment.ResourceData{}, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}

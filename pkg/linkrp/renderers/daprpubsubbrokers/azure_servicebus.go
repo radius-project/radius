@@ -6,7 +6,6 @@
 package daprpubsubbrokers
 
 import (
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -14,14 +13,13 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
 	properties := resource.Properties
-	var output outputresource.OutputResource
+	var output rpv1.OutputResource
 
 	if properties.Resource == "" {
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
@@ -45,8 +43,8 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		topicName = resource.Name
 	}
 
-	output = outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
+	output = rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Provider: resourcemodel.ProviderAzure,
@@ -62,7 +60,6 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			handlers.ServiceBusNamespaceNameKey: serviceBusNamespaceName,
 			handlers.ServiceBusTopicNameKey:     topicName,
 		},
-		RadiusManaged: to.BoolPtr(true),
 	}
 
 	values := map[string]renderers.ComputedValueReference{
@@ -71,7 +68,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		},
 		PubSubNameKey: {
 			Value:             kubernetes.NormalizeResourceName(resource.Name),
-			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
+			LocalID:           rpv1.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ResourceName,
 		},
 		TopicNameKey: {
@@ -82,10 +79,10 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		},
 	}
 
-	secrets := map[string]rp.SecretValueReference{}
+	secrets := map[string]rpv1.SecretValueReference{}
 
 	return renderers.RendererOutput{
-		Resources:      []outputresource.OutputResource{output},
+		Resources:      []rpv1.OutputResource{output},
 		ComputedValues: values,
 		SecretValues:   secrets,
 	}, nil

@@ -48,6 +48,7 @@ require (
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/novln/docker-parser v1.0.0
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5

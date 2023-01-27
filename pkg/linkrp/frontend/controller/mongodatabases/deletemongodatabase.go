@@ -20,8 +20,9 @@ import (
 
 var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
 
-var (
-	// AsyncDeleteMongoDatabaseOperationTimeout is the default timeout duration of async delete container operation.
+const (
+	// AsyncDeleteMongoDatabaseOperationTimeout is the default timeout duration of async delete mongodatabase operation.
+	// MongoDatabase deletion take 8-10 mins.
 	AsyncDeleteMongoDatabaseOperationTimeout = time.Duration(900) * time.Second
 )
 

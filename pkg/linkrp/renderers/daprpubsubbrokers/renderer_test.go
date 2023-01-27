@@ -18,8 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	"gotest.tools/assert"
@@ -50,7 +49,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -68,7 +67,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDDaprComponent, output.LocalID)
+	require.Equal(t, rpv1.LocalIDDaprComponent, output.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, output.ResourceType.Type)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
@@ -107,7 +106,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -134,7 +133,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -163,7 +162,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -235,7 +234,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -251,7 +250,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
+	require.Equal(t, rpv1.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
@@ -280,7 +279,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -295,7 +294,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
+	require.Equal(t, rpv1.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
@@ -324,7 +323,7 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -350,7 +349,7 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -376,7 +375,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "invalid-app-id",
 				Environment: environmentID,
 			},
@@ -406,7 +405,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: environmentID,
 			},
 			Mode:    datamodel.LinkModeValues,

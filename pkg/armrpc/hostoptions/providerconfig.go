@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // ProviderConfig includes the resource provider configuration.
@@ -21,6 +22,7 @@ type ProviderConfig struct {
 	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`
 	MetricsProvider provider.MetricsProviderOptions     `yaml:"metricsProvider"`
 	UCP             UCPConfig                           `yaml:"ucp"`
+	Logging         ucplog.LoggingOptions               `yaml:"logging"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
