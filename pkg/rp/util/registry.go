@@ -9,14 +9,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
+	dockerParser "github.com/novln/docker-parser"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
 func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error {
-	registryRepo, tag := strings.Split(path, ":")[0], strings.Split(path, ":")[1]
+	registryRepo, tag, err := parsePath(path)
+	if err != nil {
+		return fmt.Errorf("invalid path %s", err.Error())
+	}
 
 	// get the data from ACR
 	// client to the ACR repository in the path
@@ -96,4 +99,15 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 		return nil, err
 	}
 	return pulledBlob, nil
+}
+
+func parsePath(path string) (repository string, tag string, err error) {
+	reference, err := dockerParser.Parse(path)
+	if err != nil {
+		return "", "", err
+	}
+
+	repository = reference.Repository()
+	tag = reference.Tag()
+	return
 }
