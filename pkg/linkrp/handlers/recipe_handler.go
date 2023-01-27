@@ -7,7 +7,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -22,8 +21,7 @@ import (
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/logging"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry/remote"
+	"github.com/project-radius/radius/pkg/rp/util"
 )
 
 const deploymentPrefix = "recipe"
@@ -65,29 +63,10 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		logging.LogFieldSubscriptionID, subscriptionID,
 	)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
-
-	registryRepo, tag := strings.Split(recipe.TemplatePath, ":")[0], strings.Split(recipe.TemplatePath, ":")[1]
-	// get the recipe from ACR
-	// client to the ACR repository in the templatePath
-	repo, err := remote.NewRepository(registryRepo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
-	}
-
-	digest, err := getDigestFromManifest(ctx, repo, tag)
-	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
-	}
-
-	recipeBytes, err := getRecipeBytes(ctx, repo, digest)
-	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
-	}
-
 	recipeData := make(map[string]any)
-	err = json.Unmarshal(recipeBytes, &recipeData)
+	err = util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
 	if err != nil {
-		return nil, err
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
 
 	// get the parameters after resolving the conflict
@@ -131,61 +110,6 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 	}
 
 	return deployedResources, nil
-}
-
-// getDigestFromManifest gets the layers digest from the manifest
-func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag string) (string, error) {
-	// resolves a manifest descriptor with a Tag reference
-	descriptor, err := repo.Resolve(ctx, tag)
-	if err != nil {
-		return "", err
-	}
-	// get the manifest data
-	rc, err := repo.Fetch(ctx, descriptor)
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-	manifestBlob, err := content.ReadAll(rc, descriptor)
-	if err != nil {
-		return "", err
-	}
-	// create the manifest map to get the digest of the layer
-	var manifest map[string]any
-	err = json.Unmarshal(manifestBlob, &manifest)
-	if err != nil {
-		return "", err
-	}
-	// get the layers digest to fetch the blob
-	layer, ok := manifest["layers"].([]any)[0].(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("failed to decode the layers from manifest")
-	}
-	layerDigest, ok := layer["digest"].(string)
-	if !ok {
-		return "", fmt.Errorf("failed to decode the layers digest from manifest")
-	}
-	return layerDigest, nil
-}
-
-// getRecipeBytes fetches the recipe ARM JSON using the layers digest
-func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest string) ([]byte, error) {
-	// resolves a layer blob descriptor with a digest reference
-	descriptor, err := repo.Blobs().Resolve(ctx, layerDigest)
-	if err != nil {
-		return nil, err
-	}
-	// get the layer data
-	rc, err := repo.Fetch(ctx, descriptor)
-	if err != nil {
-		return nil, err
-	}
-	defer rc.Close()
-	pulledBlob, err := content.ReadAll(rc, descriptor)
-	if err != nil {
-		return nil, err
-	}
-	return pulledBlob, nil
 }
 
 // parseAzureProvider parses the scope to get the subscriptionID and resourceGroup
