@@ -47,5 +47,5 @@ func AddParameterFlag(cmd *cobra.Command) {
 }
 
 func AddRecipeFlag(cmd *cobra.Command) {
-	cmd.Flags().String("name", "", "specify the name of the recipe")
+	cmd.Flags().String("name", "", "The recipe name")
 }
