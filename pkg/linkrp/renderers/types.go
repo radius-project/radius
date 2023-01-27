@@ -41,11 +41,14 @@ type RenderOptions struct {
 }
 
 type RendererOutput struct {
-	Resources            []rpv1.OutputResource
-	ComputedValues       map[string]ComputedValueReference
-	SecretValues         map[string]rpv1.SecretValueReference
-	RecipeData           linkrp.RecipeData
-	EnvironmentProviders coreDatamodel.Providers // represents providers mapped to the linked environment needed to deploy the recipe
+	Resources      []rpv1.OutputResource
+	ComputedValues map[string]ComputedValueReference
+	SecretValues   map[string]rpv1.SecretValueReference
+	RecipeData     linkrp.RecipeData
+	// EnvironmentProviders specifies the providers mapped to the linked environment needed to deploy the recipe
+	EnvironmentProviders coreDatamodel.Providers
+	// RecipeContext specifies the context parameters for the recipe deployment
+	RecipeContext linkrp.RecipeContext
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources

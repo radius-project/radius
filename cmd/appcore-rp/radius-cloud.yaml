@@ -19,6 +19,10 @@ storageProvider:
     masterKey: set-me-in-a-different-way
 queueProvider:
   provider: inmemory
+secretProvider:
+  provider: etcd
+  etcd:
+    inmemory: true
 server:
   host: "0.0.0.0"
   port: 8080

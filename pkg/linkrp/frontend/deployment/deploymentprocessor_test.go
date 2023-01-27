@@ -238,10 +238,7 @@ func buildOutputResourcesDapr(mode string) []rpv1.OutputResource {
 				handlers.ApplicationName:         "testApplication",
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
-
-				handlers.ResourceIDKey:         azureTableStorageID,
-				handlers.StorageAccountNameKey: "test-account",
-				handlers.ResourceName:          daprLinkName,
+				handlers.ResourceName:            daprLinkName,
 			},
 			RadiusManaged: &radiusManaged,
 		},
@@ -250,7 +247,7 @@ func buildOutputResourcesDapr(mode string) []rpv1.OutputResource {
 
 func buildApplicationResource(namespace string) *store.Object {
 	if namespace == "" {
-		namespace = "radius-test"
+		namespace = "radius-test-app"
 	}
 
 	app := corerp_dm.Application{
@@ -291,7 +288,7 @@ func buildEnvironmentResource(recipeName string, providers *corerp_dm.Providers)
 		Properties: corerp_dm.EnvironmentProperties{
 			Compute: rpv1.EnvironmentCompute{
 				KubernetesCompute: rpv1.KubernetesComputeProperties{
-					Namespace: "radius-test",
+					Namespace: "radius-test-env",
 				},
 			},
 		},
@@ -412,7 +409,33 @@ func Test_Render(t *testing.T) {
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := buildInputResourceMongo(modeResource)
 		testRendererOutput := buildRendererOutputMongo(modeResource)
-
+		app, err := resources.ParseResource(testResource.Properties.Application)
+		require.NoError(t, err)
+		env, err := resources.ParseResource(testResource.Properties.Environment)
+		require.NoError(t, err)
+		testRendererOutput.RecipeContext = linkrp.RecipeContext{
+			Resource: linkrp.Resource{
+				ResourceInfo: linkrp.ResourceInfo{
+					ID:   testResource.ID,
+					Name: testResource.Name,
+				},
+				Type: testResource.Type,
+			},
+			Application: linkrp.ResourceInfo{
+				ID:   testResource.Properties.Application,
+				Name: app.Name(),
+			},
+			Environment: linkrp.ResourceInfo{
+				ID:   testResource.Properties.Environment,
+				Name: env.Name(),
+			},
+			Runtime: linkrp.Runtime{
+				Kubernetes: linkrp.Kubernetes{
+					Namespace:            "radius-test-app",
+					EnvironmentNamespace: "radius-test-env",
+				},
+			},
+		}
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildEnvironmentResource("", nil), nil)
@@ -423,6 +446,50 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
 		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
+		require.Equal(t, testRendererOutput.RecipeContext.Resource, rendererOutput.RecipeContext.Resource)
+		require.Equal(t, testRendererOutput.RecipeContext.Application, rendererOutput.RecipeContext.Application)
+		require.Equal(t, testRendererOutput.RecipeContext.Environment, rendererOutput.RecipeContext.Environment)
+		require.Equal(t, testRendererOutput.RecipeContext.Runtime, rendererOutput.RecipeContext.Runtime)
+	})
+
+	t.Run("verify render success with environment scoped link", func(t *testing.T) {
+		testResource := buildInputResourceMongo(modeResource)
+		testResource.Properties.Application = ""
+		testRendererOutput := buildRendererOutputMongo(modeResource)
+		env, err := resources.ParseResource(testResource.Properties.Environment)
+		require.NoError(t, err)
+		testRendererOutput.RecipeContext = linkrp.RecipeContext{
+			Resource: linkrp.Resource{
+				ResourceInfo: linkrp.ResourceInfo{
+					ID:   testResource.ID,
+					Name: testResource.Name,
+				},
+				Type: testResource.Type,
+			},
+			Environment: linkrp.ResourceInfo{
+				ID:   testResource.Properties.Environment,
+				Name: env.Name(),
+			},
+			Runtime: linkrp.Runtime{
+				Kubernetes: linkrp.Kubernetes{
+					Namespace:            "radius-test-env",
+					EnvironmentNamespace: "radius-test-env",
+				},
+			},
+		}
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildEnvironmentResource("", nil), nil)
+
+		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
+		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
+		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
+		require.Equal(t, testRendererOutput.RecipeContext.Resource, rendererOutput.RecipeContext.Resource)
+		require.Equal(t, testRendererOutput.RecipeContext.Application, rendererOutput.RecipeContext.Application)
+		require.Equal(t, testRendererOutput.RecipeContext.Environment, rendererOutput.RecipeContext.Environment)
+		require.Equal(t, testRendererOutput.RecipeContext.Runtime, rendererOutput.RecipeContext.Runtime)
 	})
 
 	t.Run("verify render success with recipe", func(t *testing.T) {
@@ -441,7 +508,6 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
 		require.Equal(t, testRendererOutput.RecipeData, rendererOutput.RecipeData)
 		require.Equal(t, testRendererOutput.EnvironmentProviders, rendererOutput.EnvironmentProviders)
-
 	})
 
 	t.Run("verify render success with mixedcase resourcetype", func(t *testing.T) {
@@ -656,7 +722,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Verify deploy success with recipe", func(t *testing.T) {
 		resources := []string{cosmosAccountID, cosmosMongoID}
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(2).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
@@ -669,7 +735,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Verify deploy failure with recipe", func(t *testing.T) {
 		deploymentName := "recipe" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
@@ -727,7 +793,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Recipe deployment - invalid resource id", func(t *testing.T) {
 		resources := []string{"invalid-id"}
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 
 		expectedErr := v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources[0], mongoLinkResourceID))
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
@@ -872,8 +938,9 @@ func Test_Delete(t *testing.T) {
 
 	testOutputResources := buildOutputResourcesMongo(modeRecipe)
 
-	t.Run("Verify skip resource deletion for resource based links", func(t *testing.T) {
+	t.Run("Verify deletion for mode resource", func(t *testing.T) {
 		outputResources := buildOutputResourcesMongo(modeResource)
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 		err := dp.Delete(ctx, mongoLinkResourceID, outputResources)
 		require.NoError(t, err)
 	})

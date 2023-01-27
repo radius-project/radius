@@ -87,6 +87,8 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Run(ctx context.Context, w h
 	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
+	newResource.RecipeData = deploymentOutput.RecipeData
+
 	if componentName, ok := deploymentOutput.ComputedValues[renderers.ComponentNameKey].(string); ok {
 		newResource.Properties.ComponentName = componentName
 	}

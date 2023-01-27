@@ -76,6 +76,8 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 		return &datamodel.MongoDatabase{}, nil
 	case strings.ToLower(linkrp.RedisCachesResourceType):
 		return &datamodel.RedisCache{}, nil
+	case strings.ToLower(linkrp.DaprStateStoresResourceType):
+		return &datamodel.DaprStateStore{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}

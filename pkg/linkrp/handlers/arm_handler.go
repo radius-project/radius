@@ -54,6 +54,9 @@ func (handler *armHandler) Put(ctx context.Context, resource *rpv1.OutputResourc
 }
 
 func (handler *armHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
+	if resource.RadiusManaged == nil || !*resource.RadiusManaged {
+		return nil
+	}
 	id, apiVersion, err := resource.Identity.RequireARM()
 	if err != nil {
 		return err

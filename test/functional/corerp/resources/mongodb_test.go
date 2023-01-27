@@ -212,18 +212,19 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_MongoDB_Recipe validates:
-// the creation of a mongoDB from recipe
-// container using the mongoDB link to connect to the mongoDB resource
+// Test_MongoDB_Recipe_Parameters validates the creation of a mongoDB from recipe with parameters passed by operator while linking recipe
+// and developer while creating the mongoDatabase link.
+// If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.
+// Container uses the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
 	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
-	// skip the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
+	// Error the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
 	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
 	if rg == "" {
-		t.Skip("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
+		t.Error("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
 	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
@@ -232,33 +233,33 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-recipes-parameters-env",
+						Name: "corerp-resources-environment-recipe-parameters-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-mongodb-recipe-parameters",
+						Name: name,
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-app-ctnr",
+						Name: "mdb-param-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mongo-recipe-param-db",
+						Name: "mdb-recipe-param-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDAzureCosmosAccount,
-								Identity: "acnt-developer-" + rg,
+								Name:     "acnt-developer-" + rg,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
-								Identity: "mdb-developer-" + rg,
+								Name:     "mdb-operator-" + rg,
 							},
 						},
 					},
@@ -267,13 +268,76 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-param-ctnr"),
 					},
 				},
 			},
 		},
 	})
 
-	test.VerifyRecipeResource = true
+	test.Test(t)
+}
+
+// Test_MongoDB_Recipe_ContextParameter validates creation of a mongoDB from
+// recipe using the context parameter generated and set by linkRP,
+// and container using the mongoDB link to connect to the underlying mongoDB resource.
+func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
+	template := "testdata/corerp-resources-mongodb-recipe-context.bicep"
+	name := "corerp-resources-mongodb-recipe-context"
+	appNamespace := "corerp-resources-mongodb-recipe-context-app"
+	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
+	// Error the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
+	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
+	if rg == "" {
+		t.Error("This test needs the env variable INTEGRATION_TEST_RESOURCE_GROUP_NAME to be set")
+	}
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-recipes-context-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "mdb-ctx-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "mdb-ctx",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureCosmosAccount,
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
+								Name:     "mdb-ctx-" + rg,
+							},
+						},
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr"),
+					},
+				},
+			},
+		},
+	})
+
 	test.Test(t)
 }

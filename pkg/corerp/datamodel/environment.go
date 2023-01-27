@@ -38,12 +38,22 @@ type EnvironmentRecipeProperties struct {
 	Parameters   map[string]any `json:"parameters,omitempty"`
 }
 
-// Providers represents configs for providers for the environment, eg azure
+// Providers represents configs for providers for the environment, eg azure,aws
 type Providers struct {
+	// Azure provider information
 	Azure ProvidersAzure `json:"azure,omitempty"`
+	// AWS provider information
+	AWS ProvidersAWS `json:"aws,omitempty"`
 }
 
 // ProvidersAzure represents the azure provider configs
 type ProvidersAzure struct {
+	// Scope is the target level for deploying the azure resources
+	Scope string `json:"scope,omitempty"`
+}
+
+// ProvidersAWS represents the aws provider configs
+type ProvidersAWS struct {
+	// Scope is the target level for deploying the aws resources
 	Scope string `json:"scope,omitempty"`
 }

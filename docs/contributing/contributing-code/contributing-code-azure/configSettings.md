@@ -19,6 +19,7 @@ The following properties can be specified in configuration for all services:
 | identity | AAD APP authentication for the resource provider | [**See below**](#identity) |
 | storageProvider | Configuration options for the data storage provider | [**See below**](#storageprovider) |
 | queueProvider | Configuration options for the provider to create and manage the queue client | [**See below**](#queueprovider) |
+| secretProvider | Configuration options for the provider to manage credential | [**See below**](#secretprovider) |
 | server | Configuration options for the HTTP server bootstrap | [**See below**](#server) |
 | workerServer | Configuration options for the worker server | [**See below**](#workerserver) |
 | metricsProvider | Configuration options of the providers for publishing metrics | [**See below**](#metricsProvider) |
@@ -69,6 +70,12 @@ The following are properties that can be specified for UCP:
 | provider | The type of queue provider | `apiServer` | 
 | apiServer |  Object containing properties for Kubernetes APIServer store | [**See below**](#apiserver) |
 | inMemoryQueue | Object containing properties for InMemory Queue client | |
+
+### secretProvider
+| Key | Description | Example |
+|-----|-------------|---------|
+| provider | The type of secret provider | `etcd` or `kubernetes` | 
+| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |  
 
 ### server
 | Key | Description | Example | 
