@@ -75,7 +75,7 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, w h
 		return nil, err
 	}
 
-	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if queue, ok := deploymentOutput.ComputedValues[rabbitmqmessagequeues.QueueNameKey].(string); ok {
@@ -84,7 +84,7 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, w h
 
 	if old != nil {
 		diff := rpv1.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = rabbitmq.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
+		err = rabbitmq.dp.Delete(ctx, serviceCtx.ResourceID, diff)
 		if err != nil {
 			return nil, err
 		}

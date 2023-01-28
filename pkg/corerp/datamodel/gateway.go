@@ -26,13 +26,14 @@ func (g *Gateway) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (g *Gateway) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (g *Gateway) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.ComputedValues = do.ComputedValues
 	g.SecretValues = do.SecretValues
 	if url, ok := do.ComputedValues["url"].(string); ok {
 		g.Properties.URL = url
 	}
+	return nil
 }
 
 // OutputResources returns the output resources array.

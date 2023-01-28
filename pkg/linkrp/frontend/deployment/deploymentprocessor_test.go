@@ -87,7 +87,7 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 	if mode == modeResource {
 		testResource.Properties.Resource = cosmosMongoID
 	} else if mode == modeRecipe {
-		testResource.Properties.Recipe = datamodel.LinkRecipe{
+		testResource.Properties.Recipe = linkrp.LinkRecipe{
 			Name:       recipeName,
 			Parameters: recipeParams,
 		}
@@ -194,11 +194,11 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 		}
 	}
 
-	recipeData := datamodel.RecipeData{}
+	recipeData := linkrp.RecipeData{}
 	if mode == modeRecipe {
-		recipeData = datamodel.RecipeData{
-			RecipeProperties: datamodel.RecipeProperties{
-				LinkRecipe: datamodel.LinkRecipe{
+		recipeData = linkrp.RecipeData{
+			RecipeProperties: linkrp.RecipeProperties{
+				LinkRecipe: linkrp.LinkRecipe{
 					Name:       recipeName,
 					Parameters: recipeParams,
 				},
@@ -413,24 +413,24 @@ func Test_Render(t *testing.T) {
 		require.NoError(t, err)
 		env, err := resources.ParseResource(testResource.Properties.Environment)
 		require.NoError(t, err)
-		testRendererOutput.RecipeContext = datamodel.RecipeContext{
-			Resource: datamodel.Resource{
-				ResourceInfo: datamodel.ResourceInfo{
+		testRendererOutput.RecipeContext = linkrp.RecipeContext{
+			Resource: linkrp.Resource{
+				ResourceInfo: linkrp.ResourceInfo{
 					ID:   testResource.ID,
 					Name: testResource.Name,
 				},
 				Type: testResource.Type,
 			},
-			Application: datamodel.ResourceInfo{
+			Application: linkrp.ResourceInfo{
 				ID:   testResource.Properties.Application,
 				Name: app.Name(),
 			},
-			Environment: datamodel.ResourceInfo{
+			Environment: linkrp.ResourceInfo{
 				ID:   testResource.Properties.Environment,
 				Name: env.Name(),
 			},
-			Runtime: datamodel.Runtime{
-				Kubernetes: datamodel.Kubernetes{
+			Runtime: linkrp.Runtime{
+				Kubernetes: linkrp.Kubernetes{
 					Namespace:            "radius-test-app",
 					EnvironmentNamespace: "radius-test-env",
 				},
@@ -458,20 +458,20 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 		env, err := resources.ParseResource(testResource.Properties.Environment)
 		require.NoError(t, err)
-		testRendererOutput.RecipeContext = datamodel.RecipeContext{
-			Resource: datamodel.Resource{
-				ResourceInfo: datamodel.ResourceInfo{
+		testRendererOutput.RecipeContext = linkrp.RecipeContext{
+			Resource: linkrp.Resource{
+				ResourceInfo: linkrp.ResourceInfo{
 					ID:   testResource.ID,
 					Name: testResource.Name,
 				},
 				Type: testResource.Type,
 			},
-			Environment: datamodel.ResourceInfo{
+			Environment: linkrp.ResourceInfo{
 				ID:   testResource.Properties.Environment,
 				Name: env.Name(),
 			},
-			Runtime: datamodel.Runtime{
-				Kubernetes: datamodel.Kubernetes{
+			Runtime: linkrp.Runtime{
+				Kubernetes: linkrp.Kubernetes{
 					Namespace:            "radius-test-env",
 					EnvironmentNamespace: "radius-test-env",
 				},
@@ -713,9 +713,9 @@ func Test_Deploy(t *testing.T) {
 
 		deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.NoError(t, err)
-		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.Resources))
-		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[0].Identity)
-		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[1].Identity)
+		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
+		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
+		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[1].Identity)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", renderers.Host: testRendererOutput.ComputedValues[renderers.Host].Value}, deploymentOutput.ComputedValues)
 	})
@@ -853,7 +853,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 		"test-key3": "jsonpointer-value",
 	}
 	require.Equal(t, expected, deploymentOutput.ComputedValues)
-	require.Equal(t, expectedCosmosAccountIdentity, deploymentOutput.Resources[0].Identity)
+	require.Equal(t, expectedCosmosAccountIdentity, deploymentOutput.DeployedOutputResources[0].Identity)
 }
 
 func Test_Deploy_InvalidComputedValues(t *testing.T) {
@@ -937,33 +937,25 @@ func Test_Delete(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testOutputResources := buildOutputResourcesMongo(modeRecipe)
-	testResourceData := ResourceData{
-		ID:              mongoLinkResourceID,
-		OutputResources: testOutputResources,
-	}
 
 	t.Run("Verify deletion for mode resource", func(t *testing.T) {
 		outputResources := buildOutputResourcesMongo(modeResource)
-		resourceData := ResourceData{
-			ID:              mongoLinkResourceID,
-			OutputResources: outputResources,
-		}
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, outputResources)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete success with recipe resources", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, testOutputResources)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, testOutputResources)
 		require.Error(t, err)
 	})
 
@@ -989,12 +981,8 @@ func Test_Delete(t *testing.T) {
 				},
 			},
 		}
-		resourceData := ResourceData{
-			OutputResources: outputResources,
-			ID:              mongoLinkResourceID,
-		}
 
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, outputResources)
 		require.Error(t, err)
 		require.Equal(t, "missing localID for outputresource", err.Error())
 	})
@@ -1009,11 +997,7 @@ func Test_Delete(t *testing.T) {
 				},
 			},
 		}
-		resourceData := ResourceData{
-			OutputResources: outputResources,
-			ID:              mongoLinkResourceID,
-		}
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, mongoLinkResourceID, outputResources)
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
 	})
@@ -1026,22 +1010,18 @@ func Test_Delete_Dapr(t *testing.T) {
 
 	daprLinkResourceID := getResourceID(daprLinkID)
 	testOutputResources := buildOutputResourcesDapr(modeResource)
-	testResourceData := ResourceData{
-		ID:              daprLinkResourceID,
-		OutputResources: testOutputResources,
-	}
 
 	t.Run("Verify handler delete is invoked", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, daprLinkResourceID, testOutputResources)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
-		err := dp.Delete(ctx, testResourceData)
+		err := dp.Delete(ctx, daprLinkResourceID, testOutputResources)
 		require.Error(t, err)
 	})
 }

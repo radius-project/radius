@@ -14,9 +14,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*DeleteResource)(nil)
@@ -43,11 +42,21 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	resourceData, err := getResourceData(id, obj)
+	dataModel, err := getDataModel(id)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	err = c.LinkDeploymentProcessor().Delete(ctx, resourceData)
+
+	if err = obj.As(dataModel); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
+	if !ok {
+		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
+	}
+
+	err = c.LinkDeploymentProcessor().Delete(ctx, id, deploymentDataModel.OutputResources())
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -60,22 +69,16 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	return ctrl.Result{}, err
 }
 
-func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceData, error) {
+func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
 	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		d := &datamodel.MongoDatabase{}
-		if err := obj.As(d); err != nil {
-			return deployment.ResourceData{}, err
-		}
-		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
+		return &datamodel.MongoDatabase{}, nil
+	case strings.ToLower(linkrp.RedisCachesResourceType):
+		return &datamodel.RedisCache{}, nil
 	case strings.ToLower(linkrp.DaprStateStoresResourceType):
-		d := &datamodel.DaprStateStore{}
-		if err := obj.As(d); err != nil {
-			return deployment.ResourceData{}, err
-		}
-		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
+		return &datamodel.DaprStateStore{}, nil
 	default:
-		return deployment.ResourceData{}, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
+		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}
 }

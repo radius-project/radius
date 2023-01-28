@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	datamodel0 "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	linkrp "github.com/project-radius/radius/pkg/linkrp"
 )
 
 // MockRecipeHandler is a mock of RecipeHandler interface.
@@ -37,7 +37,7 @@ func (m *MockRecipeHandler) EXPECT() *MockRecipeHandlerMockRecorder {
 }
 
 // DeployRecipe mocks base method.
-func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1 datamodel0.RecipeProperties, arg2 datamodel.Providers, arg3 datamodel0.RecipeContext) ([]string, error) {
+func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1 linkrp.RecipeProperties, arg2 datamodel.Providers, arg3 linkrp.RecipeContext) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeployRecipe", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]string)

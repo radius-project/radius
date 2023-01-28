@@ -7,6 +7,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -14,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/linkrp"
+	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
@@ -115,7 +117,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return mongo_ctrl.NewCreateOrUpdateMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
+						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
+							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
+						},
+						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+					},
+				)
 			},
 		},
 		{
@@ -123,7 +134,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return mongo_ctrl.NewCreateOrUpdateMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
+						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
+							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
+						},
+						AsyncOperationTimeout: time.Duration(8) * time.Minute,
+					},
+				)
 			},
 		},
 		{
@@ -131,7 +151,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return mongo_ctrl.NewDeleteMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
+						RequestConverter:      converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter:     converter.MongoDatabaseDataModelToVersioned,
+						AsyncOperationTimeout: time.Duration(15) * time.Minute,
+					},
+				)
 			},
 		},
 		{
@@ -361,7 +387,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return redis_ctrl.NewCreateOrUpdateRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter: converter.RedisCacheDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
+							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
+						},
+						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+					},
+				)
 			},
 		},
 		{
@@ -369,7 +404,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return redis_ctrl.NewCreateOrUpdateRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter: converter.RedisCacheDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
+							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
+						},
+						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+					},
+				)
 			},
 		},
 		{
@@ -377,7 +421,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return redis_ctrl.NewDeleteRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:      converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter:     converter.RedisCacheDataModelToVersioned,
+						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+					},
+				)
 			},
 		},
 		{
