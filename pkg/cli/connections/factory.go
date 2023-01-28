@@ -199,10 +199,7 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 		return nil, err
 	}
 
-	return &cli_credential.UCPCredentialManagementClient{
-		CredentialInterface: &cli_credential.Impl{
-			AzureCredentialClient: *azureCredentialClient,
-			AWSCredentialClient:   *awsCredentialClient,
-		},
-	}, nil
+	a := &cli_credential.AzureCredentialManagementClient{
+		*azureCredentialClient,
+	}
 }

@@ -32,7 +32,7 @@ type ProviderCredentialConfiguration struct {
 	CloudProviderStatus
 
 	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AzureCredentials *ucp.AzureServicePrincipalProperties
+	AzureCredentials *ucp.AzureCredentialProperties
 
 	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
 	AWSCredentials *ucp.AWSCredentialProperties
@@ -143,11 +143,6 @@ func (impl *Impl) ListCredential(ctx context.Context, planeType string, planeNam
 // DeleteCredential deletes ucp credential of the given name if present.
 func (impl *Impl) DeleteCredential(ctx context.Context, planeType string, planeName string, name string) error {
 	switch planeType {
-	case AzurePlaneType:
-		// We care about success or failure of delete.
-		_, err := impl.AzureCredentialClient.Delete(ctx, planeType, planeName, name, nil)
-		return err
-	case AWSPlaneType:
 		// We care about success or failure of delete.
 		_, err := impl.AWSCredentialClient.Delete(ctx, planeType, planeName, name, nil)
 		return err

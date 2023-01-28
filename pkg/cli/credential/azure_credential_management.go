@@ -18,29 +18,22 @@ import (
 //go:generate mockgen -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential CredentialManagementClient
 
 // CredentialManagementClient is used to interface with cloud provider configuration and credentials.
-type AWSCredentialManagementClient struct {
-	AWSCredentialClient ucp.AwsCredentialClient
+type AzureCredentialManagementClient struct {
+	AzureCredentialClient ucp.AzureCredentialClient
 }
 
 const (
-	AWSCredential        = "aws"
-	AWSPlaneName         = "aws"
-	awsCredentialKind    = "AccessKey"
-	ValidInfoTemplate    = "enter valid info for %s"
-	infoRequiredTemplate = "required info %s"
+	AzureCredential     = "azure"
+	AzurePlaneName      = "azurecloud"
+	azureCredentialKind = "ServicePrincipal"
 )
-
-// // UCPCredentialManagementClient implements operations to manage credentials on ucp.
-// type AWSCredentialManagementClient struct {
-// 	CredentialInterface Interface
-// }
 
 var _ CredentialManagementClient = (*UCPCredentialManagementClient)(nil)
 
 // Put registers credentials with the provided credential config
-func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential ucp.AWSCredentialResource) error {
-	if strings.EqualFold(*credential.Type, AWSCredential) {
-		_, err := cpm.AWSCredentialClient.CreateOrUpdate(ctx, *credential.Name, credential, nil)
+func (cpm *AzureCredentialManagementClient) Put(ctx context.Context, credential ucp.AzureCredentialResource) error {
+	if strings.EqualFold(*credential.Type, AzureCredential) {
+		_, err := cpm.AzureCredentialClient.CreateOrUpdate(ctx, *credential.Name, credential, nil)
 		return err
 	}
 	return &ErrUnsupportedCloudProvider{}
@@ -48,7 +41,7 @@ func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential uc
 
 // Get, gets the credential from the provided ucp provider plane
 // TODO: get information except secret data from backend and surface it in this response
-func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
+func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
 	var err error
 	providerCredentialConfiguration := ProviderCredentialConfiguration{
 		CloudProviderStatus: CloudProviderStatus{
@@ -57,18 +50,17 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) 
 		},
 	}
 
-	if strings.EqualFold(name, AWSCredential) {
+	if strings.EqualFold(name, AzureCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		// cred, err = cpm.CredentialInterface.GetCredential(ctx, AWSPlaneType, AWSPlaneName, name)
-		resp, err := cpm.AWSCredentialClient.Get(ctx, name, nil)
+		resp, err := cpm.AzureCredentialClient.Get(ctx, name, nil)
 		if err != nil {
 			return ProviderCredentialConfiguration{}, err
 		}
-		awsIAM, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSCredentialProperties)
+		azureServicePrincipal, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureCredentialProperties)
 		if !ok {
 			return ProviderCredentialConfiguration{}, &cli.FriendlyError{Message: fmt.Sprintf("Unable to Find Credentials for %s", name)}
 		}
-		providerCredentialConfiguration.AWSCredentials = awsIAM
+		providerCredentialConfiguration.AzureCredentials = azureServicePrincipal
 	} else {
 		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
 	}
@@ -88,17 +80,17 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) 
 }
 
 // List, lists the credentials registered with all ucp provider planes
-func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
+func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
 	// list azure credential
-	var providerList []*ucp.AWSCredentialResource
+	var providerList []*ucp.AzureCredentialResource
 
-	pager := cpm.AWSCredentialClient.NewListByRootScopePager(nil)
+	pager := cpm.AzureCredentialClient.NewListByRootScopePager(nil)
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
 			return nil, err
 		}
-		credList := nextPage.AWSCredentialResourceListResult.Value
+		credList := nextPage.AzureCredentialResourceListResult.Value
 		for _, resource := range credList {
 			providerList = append(providerList, resource)
 		}
@@ -115,8 +107,8 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 }
 
 // Delete, deletes the credentials from the given ucp provider plane
-func (cpm *AWSCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
-	_, err := cpm.AWSCredentialClient.Delete(ctx, name, nil)
+func (cpm *AzureCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
+	_, err := cpm.AzureCredentialClient.Delete(ctx, name, nil)
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
 		// return true if not found.
