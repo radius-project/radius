@@ -61,7 +61,7 @@ func (daprPubSubBroker *DeleteDaprPubSubBroker) Run(ctx context.Context, w http.
 		return r, err
 	}
 
-	err = daprPubSubBroker.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
+	err = daprPubSubBroker.dp.Delete(ctx, serviceCtx.ResourceID, old.Properties.Status.OutputResources)
 	if err != nil {
 		return nil, err
 	}

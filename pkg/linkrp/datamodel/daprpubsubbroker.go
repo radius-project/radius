@@ -23,8 +23,9 @@ type DaprPubSubBroker struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
@@ -45,11 +46,11 @@ func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 type DaprPubSubBrokerProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Topic    string         `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
-	Mode     LinkMode       `json:"mode"`
-	Metadata map[string]any `json:"metadata,omitempty"`
-	Recipe   LinkRecipe     `json:"recipe"`
-	Resource string         `json:"resource,omitempty"`
-	Type     string         `json:"type,omitempty"`
-	Version  string         `json:"version,omitempty"`
+	Topic    string            `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
+	Mode     LinkMode          `json:"mode"`
+	Metadata map[string]any    `json:"metadata,omitempty"`
+	Recipe   linkrp.LinkRecipe `json:"recipe"`
+	Resource string            `json:"resource,omitempty"`
+	Type     string            `json:"type,omitempty"`
+	Version  string            `json:"version,omitempty"`
 }

@@ -27,6 +27,7 @@ var (
 	// We use this array to generate generic backend controller for each resource.
 	ResourceTypeNames = []string{
 		linkrp.MongoDatabasesResourceType,
+		linkrp.RedisCachesResourceType,
 		linkrp.DaprStateStoresResourceType,
 	}
 )
@@ -69,6 +70,10 @@ func (s *Service) Run(ctx context.Context) error {
 	for _, rt := range ResourceTypeNames {
 		// Register controllers
 		err = s.Controllers.Register(ctx, rt, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
+		if err != nil {
+			panic(err)
+		}
+		err = s.Controllers.Register(ctx, rt, v1.OperationPut, backend_ctrl.NewCreateOrUpdateResource, opts)
 		if err != nil {
 			panic(err)
 		}

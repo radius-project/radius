@@ -23,8 +23,9 @@ type DaprInvokeHttpRoute struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *DaprInvokeHttpRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (r *DaprInvokeHttpRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
@@ -44,6 +45,6 @@ func (httpRoute *DaprInvokeHttpRoute) ResourceTypeName() string {
 // DaprInvokeHttpRouteProperties represents the properties of DaprInvokeHttpRoute resource.
 type DaprInvokeHttpRouteProperties struct {
 	rpv1.BasicResourceProperties
-	Recipe LinkRecipe `json:"recipe,omitempty"`
-	AppId  string     `json:"appId"`
+	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	AppId  string            `json:"appId"`
 }

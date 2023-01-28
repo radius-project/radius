@@ -8,7 +8,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,24 +44,24 @@ func Test_ParameterConflict(t *testing.T) {
 
 func Test_ContextParameter(t *testing.T) {
 	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
-	expectedLinkContext := datamodel.RecipeContext{
-		Resource: datamodel.Resource{
-			ResourceInfo: datamodel.ResourceInfo{
+	expectedLinkContext := linkrp.RecipeContext{
+		Resource: linkrp.Resource{
+			ResourceInfo: linkrp.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "applications.link/mongodatabases",
 		},
-		Application: datamodel.ResourceInfo{
+		Application: linkrp.ResourceInfo{
 			Name: "testApplication",
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 		},
-		Environment: datamodel.ResourceInfo{
+		Environment: linkrp.ResourceInfo{
 			Name: "env0",
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		},
-		Runtime: datamodel.Runtime{
-			Kubernetes: datamodel.Kubernetes{
+		Runtime: linkrp.Runtime{
+			Kubernetes: linkrp.Kubernetes{
 				Namespace:            "radius-test-app",
 				EnvironmentNamespace: "radius-test-env",
 			},
@@ -79,24 +79,24 @@ func Test_DevParameterWithContextParameter(t *testing.T) {
 		"port":       2030,
 		"name":       "test-parameters",
 	}
-	recipeContext := datamodel.RecipeContext{
-		Resource: datamodel.Resource{
-			ResourceInfo: datamodel.ResourceInfo{
+	recipeContext := linkrp.RecipeContext{
+		Resource: linkrp.Resource{
+			ResourceInfo: linkrp.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "Applications.Link/mongoDatabases",
 		},
-		Application: datamodel.ResourceInfo{
+		Application: linkrp.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
 		},
-		Environment: datamodel.ResourceInfo{
+		Environment: linkrp.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
-		Runtime: datamodel.Runtime{
-			Kubernetes: datamodel.Kubernetes{
+		Runtime: linkrp.Runtime{
+			Kubernetes: linkrp.Kubernetes{
 				EnvironmentNamespace: "radius-test-env",
 				Namespace:            "radius-test-app",
 			},

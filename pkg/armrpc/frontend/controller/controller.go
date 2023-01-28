@@ -8,6 +8,7 @@ package controller
 import (
 	"context"
 	"net/http"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -54,6 +55,9 @@ type ResourceOptions[T any] struct {
 
 	// UpdateFilters is a slice of filters that execute prior to updating a resource.
 	UpdateFilters []UpdateFilter[T]
+
+	// AsyncOperationTimeout is the default timeout duration of async put operation.
+	AsyncOperationTimeout time.Duration
 }
 
 // TODO: Remove Controller when all controller uses Operation

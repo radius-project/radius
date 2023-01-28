@@ -34,8 +34,8 @@ import (
 
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
-	Delete(ctx context.Context, resource ResourceData) error
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)
+	Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
 }
 
@@ -51,21 +51,13 @@ type deploymentProcessor struct {
 	secretClient sv.SecretValueClient
 	k8s          client.Client
 }
-
-type DeploymentOutput struct {
-	Resources      []rpv1.OutputResource
-	ComputedValues map[string]any
-	SecretValues   map[string]rpv1.SecretValueReference
-	RecipeData     datamodel.RecipeData
-}
-
 type ResourceData struct {
 	ID              resources.ID
 	Resource        v1.ResourceDataModel
 	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rpv1.SecretValueReference
-	RecipeData      datamodel.RecipeData
+	RecipeData      linkrp.RecipeData
 }
 
 type EnvironmentMetadata struct {
@@ -118,7 +110,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
 		Namespace: kubeNamespace,
-		RecipeProperties: datamodel.RecipeProperties{
+		RecipeProperties: linkrp.RecipeProperties{
 			LinkRecipe:    recipe,
 			LinkType:      envMetadata.RecipeLinkType,
 			TemplatePath:  envMetadata.RecipeTemplatePath,
@@ -157,7 +149,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
-func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceID.String())
 	// Deploy
 	logger.Info("Deploying radius resource")
@@ -166,7 +158,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	if rendererOutput.RecipeData.Name != "" {
 		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.RecipeContext)
 		if err != nil {
-			return DeploymentOutput{}, err
+			return rpv1.DeploymentOutput{}, err
 		}
 		rendererOutput.RecipeData.Resources = deployedRecipeResourceIDs
 	}
@@ -174,7 +166,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := rpv1.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		return DeploymentOutput{}, err
+		return rpv1.DeploymentOutput{}, err
 	}
 
 	// Recipe based links - Add deployed recipe resource IDs to output resource; Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
@@ -183,12 +175,15 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	updatedOutputResources := []rpv1.OutputResource{}
 	computedValues := make(map[string]any)
 	for _, outputResource := range orderedOutputResources {
+		if outputResource.IsRadiusManaged() && rendererOutput.RecipeData.Name == "" {
+			return rpv1.DeploymentOutput{}, fmt.Errorf("resources deployed through recipe must be Radius managed")
+		}
 		// Add resources deployed by recipe to output resource identity
 		for _, id := range rendererOutput.RecipeData.Resources {
 			if rendererOutput.RecipeData.Provider == resourcemodel.ProviderAzure {
 				parsedID, err := resources.ParseResource(id)
 				if err != nil {
-					return DeploymentOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
+					return rpv1.DeploymentOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
 				}
 
 				if outputResource.ProviderResourceType == parsedID.Type() {
@@ -199,7 +194,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 
 		deployedComputedValues, err := dp.deployOutputResource(ctx, resourceID, &outputResource, rendererOutput)
 		if err != nil {
-			return DeploymentOutput{}, err
+			return rpv1.DeploymentOutput{}, err
 		}
 
 		updatedOutputResources = append(updatedOutputResources, outputResource)
@@ -218,11 +213,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		}
 	}
 
-	return DeploymentOutput{
-		Resources:      updatedOutputResources,
-		ComputedValues: computedValues,
-		SecretValues:   rendererOutput.SecretValues,
-		RecipeData:     rendererOutput.RecipeData,
+	return rpv1.DeploymentOutput{
+		DeployedOutputResources: updatedOutputResources,
+		ComputedValues:          computedValues,
+		SecretValues:            rendererOutput.SecretValues,
+		RecipeData:              rendererOutput.RecipeData,
 	}, nil
 }
 
@@ -278,10 +273,10 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return computedValues, nil
 }
 
-func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
-	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceData.ID)
+func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error {
+	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, id)
 
-	orderedOutputResources, err := rpv1.OrderOutputResources(resourceData.OutputResources)
+	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
 	if err != nil {
 		return err
 	}
@@ -290,10 +285,6 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
 		outputResource := orderedOutputResources[i]
 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		if resourceData.RecipeData.Name != "" && !outputResource.IsRadiusManaged() {
-			// If the resource is not Radius managed for a link tied to a recipe, then this is a bug in the output resource initialization in renderer
-			return fmt.Errorf("resources deployed through recipe must be Radius managed")
-		}
 		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 		if err != nil {
 			return err
@@ -337,7 +328,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []rpv1.OutputResource, reference rpv1.SecretValueReference, recipeData datamodel.RecipeData) (any, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []rpv1.OutputResource, reference rpv1.SecretValueReference, recipeData linkrp.RecipeData) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
@@ -359,7 +350,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rpv1.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rpv1.BasicResourceProperties, recipe linkrp.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(linkrp.MongoDatabasesResourceType):

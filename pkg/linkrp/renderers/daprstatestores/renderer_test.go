@@ -362,7 +362,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode: datamodel.LinkModeRecipe,
-			Recipe: datamodel.LinkRecipe{
+			Recipe: linkrp.LinkRecipe{
 				Name: "daprstatestores",
 			},
 		},
@@ -370,8 +370,8 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{
 		Namespace: "radius-test",
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "daprstatestores",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/daprstatestores:v1",
@@ -421,7 +421,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode: datamodel.LinkModeRecipe,
-			Recipe: datamodel.LinkRecipe{
+			Recipe: linkrp.LinkRecipe{
 				Name: "daprstatestores",
 			},
 		},
@@ -429,8 +429,8 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{
 		Namespace: "radius-test",
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "daprstatestores",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/daprstatestores:v1",

@@ -113,7 +113,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mds.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).

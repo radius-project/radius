@@ -13,6 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -73,7 +74,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 		return renderers.RendererOutput{}, err
 	}
 
-	recipeData := datamodel.RecipeData{
+	recipeData := linkrp.RecipeData{
 		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
 		APIVersion:       clientv2.DocumentDBManagementClientAPIVersion,

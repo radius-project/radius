@@ -61,7 +61,7 @@ func (extender *DeleteExtender) Run(ctx context.Context, w http.ResponseWriter, 
 		return r, err
 	}
 
-	err = extender.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
+	err = extender.dp.Delete(ctx, serviceCtx.ResourceID, old.Properties.Status.OutputResources)
 	if err != nil {
 		return nil, err
 	}
