@@ -20,4 +20,20 @@ type UCPConfig struct {
 	SecretProvider  provider.SecretProviderOptions         `yaml:"secretProvider"`
 	MetricsProvider metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
 	Logging         ucplog.LoggingOptions                  `yaml:"logging"`
+	Identity        Identity                               `yaml:"identity,omitempty"`
+}
+
+const (
+	AuthUCPCredential = "UCPCredential"
+	AuthEnvVar        = "Environment"
+)
+
+// Identity includes the identity configuration.
+type Identity struct {
+	// Auth represents the type of authentication.
+	Auth string `yaml:"authentication"`
+
+	// CredentialBaseURL represents the UCP Credential API Base URL.
+	// Used only for dev purpose when Kind is UCPCredential.
+	CredentialBaseURL string `yaml:"credentialUrl,omitempty"`
 }

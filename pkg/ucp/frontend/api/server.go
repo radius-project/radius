@@ -12,14 +12,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
-	"strings"
 
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/middleware"
-	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/sdk"
+	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
 	ucpaws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -27,12 +25,12 @@ import (
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/go-logr/logr"
@@ -55,6 +53,8 @@ type ServiceOptions struct {
 	StorageProviderOptions  dataprovider.StorageProviderOptions
 	SecretProviderOptions   provider.SecretProviderOptions
 	InitialPlanes           []rest.Plane
+	Identity                hostoptions.Identity
+	UCPConnection           sdk.Connection
 }
 
 type Service struct {
@@ -80,13 +80,13 @@ func (s *Service) Name() string {
 func (s *Service) newAWSConfig(ctx context.Context) (*aws.Config, error) {
 	credProviders := []func(*config.LoadOptions) error{}
 
-	switch strings.ToLower(os.Getenv("AWS_AUTH_METHOD")) {
-	case "ucpcredentialauth":
-		ucpCred, err := ucpapi.NewAWSCredentialClient(&aztoken.AnonymousCredential{}, &arm.ClientOptions{})
+	switch s.options.Identity.Auth {
+	case hostoptions.AuthUCPCredential:
+		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection)
 		if err != nil {
 			return nil, err
 		}
-		p := ucpaws.NewUCPCredentialProvider(ucpCred, s.secretProvider, ucpaws.DefaultExpireDuration)
+		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
 
 	default:

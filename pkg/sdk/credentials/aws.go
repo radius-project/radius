@@ -19,29 +19,29 @@ import (
 
 var _ CredentialProvider[AzureCredential] = (*AzureCredentialProvider)(nil)
 
-// AzureCredentialProvider is UCP credential provider for Azure.
-type AzureCredentialProvider struct {
+// AWSCredentialProvider is UCP credential provider for Azure.
+type AWSCredentialProvider struct {
 	secretProvider *provider.SecretProvider
-	client         *ucpapi.AzureCredentialClient
+	client         *ucpapi.AWSCredentialClient
 }
 
-// NewAzureCredentialProvider creates new AzureCredentialProvider.
-func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection) (*AzureCredentialProvider, error) {
-	cli, err := ucpapi.NewAzureCredentialClient(nil, sdk.NewClientOptions(ucpConn))
+// NewAWSCredentialProvider creates new AWSCredentialProvider.
+func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection) (*AWSCredentialProvider, error) {
+	cli, err := ucpapi.NewAWSCredentialClient(nil, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}
 
-	return &AzureCredentialProvider{
+	return &AWSCredentialProvider{
 		secretProvider: provider,
 		client:         cli,
 	}, nil
 }
 
 // Fetch gets the Azure credentials from secret storage.
-func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AzureCredential, error) {
+func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AWSCredential, error) {
 	// 1. Fetch the secret name of Azure service principal credentials from UCP.
-	cred, err := p.client.Get(ctx, "azure", planeName, name, &ucpapi.AzureCredentialClientGetOptions{})
+	cred, err := p.client.Get(ctx, "aws", planeName, name, &ucpapi.AWSCredentialClientGetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name str
 		return nil, err
 	}
 
-	s, err := secret.GetSecret[AzureCredential](ctx, secretClient, secretName)
+	s, err := secret.GetSecret[AWSCredential](ctx, secretClient, secretName)
 	if err != nil {
 		return nil, errors.New("failed to get credential info: " + err.Error())
 	}

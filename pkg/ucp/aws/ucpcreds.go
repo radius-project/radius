@@ -11,12 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ucpdatamodel "github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	ucpsecretp "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 const (
@@ -31,17 +27,22 @@ type UCPCredentialProvider struct {
 
 // UCPCredentialOptions is a configuration for UCPCredentialProvider.
 type UCPCredentialOptions struct {
-	SecretProvider *ucpsecretp.SecretProvider
-	UCPCredClient  *ucpapi.AWSCredentialClient
-	Duration       time.Duration
+	// Provider is an UCP credential provider.
+	Provider sdk.CredentialProvider[sdk.AWSCredential]
+
+	// Duration is the duration for the secret keys.
+	Duration time.Duration
 }
 
 // NewUCPCredentialProvider creates UCPCredentialProvider provider to fetch Secret Access key using UCP credential APIs.
-func NewUCPCredentialProvider(ucpCredClient *ucpapi.AWSCredentialClient, secretProvider *ucpsecretp.SecretProvider, expireDuration time.Duration) *UCPCredentialProvider {
+func NewUCPCredentialProvider(provider sdk.CredentialProvider[sdk.AWSCredential], expireDuration time.Duration) *UCPCredentialProvider {
+	if expireDuration == 0 {
+		expireDuration = DefaultExpireDuration
+	}
+
 	o := UCPCredentialOptions{
-		SecretProvider: secretProvider,
-		UCPCredClient:  ucpCredClient,
-		Duration:       expireDuration,
+		Provider: provider,
+		Duration: expireDuration,
 	}
 
 	return &UCPCredentialProvider{options: o}
@@ -49,31 +50,9 @@ func NewUCPCredentialProvider(ucpCredClient *ucpapi.AWSCredentialClient, secretP
 
 // Retrieve fetches the secret access key using UCP credential API.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
-	// 1. Fetch the secret name of aws from UCP
-	cred, err := c.options.UCPCredClient.Get(ctx, "aws", "public", "default", &ucpapi.AWSCredentialClientGetOptions{})
+	s, err := c.options.Provider.Fetch(ctx, sdk.AWSPublic, "default")
 	if err != nil {
 		return aws.Credentials{}, err
-	}
-
-	storage, ok := cred.Properties.GetCredentialResourceProperties().Storage.(*ucpapi.InternalCredentialStorageProperties)
-	if !ok {
-		return aws.Credentials{}, errors.New("invalid InternalCredentialStorageProperties")
-	}
-
-	secretName := to.String(storage.SecretName)
-	if secretName == "" {
-		return aws.Credentials{}, errors.New("unspecified SecretName for internal storage")
-	}
-
-	// 2. Fetch the credential from internal storage (e.g. Kubernetes secret store)
-	cli, err := c.options.SecretProvider.GetClient(ctx)
-	if err != nil {
-		return aws.Credentials{}, err
-	}
-
-	s, err := secret.GetSecret[ucpdatamodel.AWSCredentialProperties](ctx, cli, secretName)
-	if err != nil {
-		return aws.Credentials{}, errors.New("failed to get credential info: " + err.Error())
 	}
 
 	if s.AccessKeyID == "" || s.SecretAccessKey == "" {
@@ -82,7 +61,6 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 
 	// session name is used to uniquely identify a session. This simply
 	// uses unix time in nanoseconds to uniquely identify sessions.
-	// TODO: Allow to set session name via options.
 	sessionName := strconv.FormatInt(time.Now().UnixNano(), 10)
 
 	value := aws.Credentials{

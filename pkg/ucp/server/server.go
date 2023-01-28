@@ -7,10 +7,13 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/project-radius/radius/pkg/sdk"
 	metricsprovider "github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricsservicehostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
@@ -22,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -38,6 +42,26 @@ type Options struct {
 	TLSCertDir             string
 	BasePath               string
 	InitialPlanes          []rest.Plane
+	Identity               hostoptions.Identity
+	UCPConnection          sdk.Connection
+}
+
+func getUCPConnection(identity *hostoptions.Identity) (sdk.Connection, error) {
+	if identity.Auth != hostoptions.AuthUCPCredential {
+		return nil, nil
+	}
+
+	if identity.CredentialBaseURL != "" {
+		// override direct connection.
+		return sdk.NewDirectConnection(identity.CredentialBaseURL)
+	}
+
+	cfg, err := kube.GetConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
+	}
+
+	return sdk.NewKubernetesConnectionFromConfig(cfg)
 }
 
 func NewServerOptionsFromEnvironment() (Options, error) {
@@ -64,6 +88,14 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	secretOpts := opts.Config.SecretProvider
 	metricsOpts := opts.Config.MetricsProvider
 	loggingOpts := opts.Config.Logging
+	identity := opts.Config.Identity
+	if identity.Auth == "" {
+		identity.Auth = hostoptions.AuthEnvVar
+	}
+	ucpConn, err := getUCPConnection(&opts.Config.Identity)
+	if err != nil {
+		return Options{}, err
+	}
 
 	return Options{
 		Port:                   port,
@@ -74,6 +106,8 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		MetricsProviderOptions: metricsOpts,
 		LoggingOptions:         loggingOpts,
 		InitialPlanes:          planes,
+		Identity:               identity,
+		UCPConnection:          ucpConn,
 	}, nil
 }
 
@@ -88,6 +122,8 @@ func NewServer(options Options) (*hosting.Host, error) {
 			StorageProviderOptions: options.StorageProviderOptions,
 			SecretProviderOptions:  options.SecretProviderOptions,
 			InitialPlanes:          options.InitialPlanes,
+			Identity:               options.Identity,
+			UCPConnection:          options.UCPConnection,
 		}),
 	}
 

@@ -38,7 +38,8 @@ The following are properties that can be specified for UCP:
 |-----|-------------|---------|
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
 | plane | Configuration options for the UCP plane | [**See below**](#plane)
- 
+| identity | Configuration options for UCP identity | [**See below**](#ucp-identity)
+
 
 ### environment
 | Key | Description | Example |
@@ -165,12 +166,18 @@ ucp:
 
 ## Plane properties
 
-## properties
 | Key | Description | Example |
 |-----|-------------|---------|
 | resourceProviders | Resource Providers for UCP Native Plane | `http://appcore-rp.radius-system:5443` |
 | kind | The kind of plane | `Azure` |
 | url | URL to forward requests to for non UCP Native Plane | `http://localhost:7443` |
+
+## ucp-identity
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| authentication | The kind of authentication | `UCPCredential`, `Environment` |
+| credentialUrl | The base url of UCP credential URL. This is used only for development purpose. | `http://localhost:5017` |
 
 ## Example configuration files 
 
