@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
 		SecretValues: map[string]rpv1.SecretValueReference{
 			"secretname": {
@@ -39,15 +39,15 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []rpv1.OutputResource{},
+	deploymentOutput := rpv1.DeploymentOutput{
+		DeployedOutputResources: []rpv1.OutputResource{},
 	}
 
 	return rendererOutput, deploymentOutput
 }
 
 func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, renderers.RendererOutput, deployment.DeploymentOutput) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, renderers.RendererOutput, rpv1.DeploymentOutput) {
 		mctrl := gomock.NewController(t)
 		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 		rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
@@ -178,7 +178,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			if !testcase.shouldFail {
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 				mds.
 					EXPECT().

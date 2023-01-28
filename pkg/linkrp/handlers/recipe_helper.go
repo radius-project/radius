@@ -9,13 +9,13 @@ import (
 	"fmt"
 
 	dockerParser "github.com/novln/docker-parser"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // CreateRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
-func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespace, applicationID, applicationNamespace string) (*datamodel.RecipeContext, error) {
-	recipeContext := datamodel.RecipeContext{}
+func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespace, applicationID, applicationNamespace string) (*linkrp.RecipeContext, error) {
+	recipeContext := linkrp.RecipeContext{}
 
 	parsedLink, err := resources.ParseResource(resourceID)
 	if err != nil {
@@ -48,7 +48,7 @@ func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespac
 
 // createRecipeParameters creates the parameters to be passed for recipe deployment after handling conflicts in parameters set by operator and developer.
 // In case of conflict the developer parameter takes precedence. If recipe has context parameter defined adds the context information to the parameters list
-func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *datamodel.RecipeContext) map[string]any {
+func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *linkrp.RecipeContext) map[string]any {
 	parameters := map[string]any{}
 	for k, v := range operatorParams {
 		if _, ok := devParams[k]; !ok {

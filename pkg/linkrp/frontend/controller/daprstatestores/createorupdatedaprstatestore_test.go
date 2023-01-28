@@ -183,7 +183,7 @@ func TestCreateOrUpdateDaprStateStore_20220315PrivatePreview(t *testing.T) {
 			if !testcase.shouldFail {
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 				mStorageClient.
 					EXPECT().
@@ -239,7 +239,7 @@ func TestCreateOrUpdateDaprStateStore_20220315PrivatePreview(t *testing.T) {
 	}
 }
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
 		Resources: []rpv1.OutputResource{
 			{
@@ -259,8 +259,8 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []rpv1.OutputResource{
+	deploymentOutput := rpv1.DeploymentOutput{
+		DeployedOutputResources: []rpv1.OutputResource{
 			{
 				LocalID: rpv1.LocalIDDaprComponent,
 				ResourceType: resourcemodel.ResourceType{

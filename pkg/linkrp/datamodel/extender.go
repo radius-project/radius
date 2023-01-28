@@ -23,8 +23,9 @@ type Extender struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *Extender) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (r *Extender) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.

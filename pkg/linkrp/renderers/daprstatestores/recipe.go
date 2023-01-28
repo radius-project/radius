@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -28,7 +29,7 @@ func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	recipeData := datamodel.RecipeData{
+	recipeData := linkrp.RecipeData{
 		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
 		APIVersion:       clientv2.StateStoreClientAPIVersion,

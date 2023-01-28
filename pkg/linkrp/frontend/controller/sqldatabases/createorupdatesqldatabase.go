@@ -74,7 +74,7 @@ func (sqlDatabase *CreateOrUpdateSqlDatabase) Run(ctx context.Context, w http.Re
 		return nil, err
 	}
 
-	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if server, ok := deploymentOutput.ComputedValues["server"].(string); ok {
@@ -86,7 +86,7 @@ func (sqlDatabase *CreateOrUpdateSqlDatabase) Run(ctx context.Context, w http.Re
 
 	if old != nil {
 		diff := rpv1.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = sqlDatabase.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
+		err = sqlDatabase.dp.Delete(ctx, serviceCtx.ResourceID, diff)
 		if err != nil {
 			return nil, err
 		}

@@ -65,7 +65,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 			if tt.getErr == nil {
 				mdp.EXPECT().
-					Delete(gomock.Any(), gomock.Any()).
+					Delete(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.dpDelErr).
 					Times(1)
 

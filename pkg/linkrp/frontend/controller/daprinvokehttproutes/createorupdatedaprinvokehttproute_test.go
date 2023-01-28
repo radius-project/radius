@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {
@@ -37,8 +37,8 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []rpv1.OutputResource{},
+	deploymentOutput := rpv1.DeploymentOutput{
+		DeployedOutputResources: []rpv1.OutputResource{},
 	}
 
 	return rendererOutput, deploymentOutput
@@ -196,7 +196,7 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 			if !testcase.shouldFail {
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 				mStorageClient.
 					EXPECT().

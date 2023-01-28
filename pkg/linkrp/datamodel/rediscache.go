@@ -6,8 +6,12 @@
 package datamodel
 
 import (
+	"errors"
+	"strconv"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -23,8 +27,35 @@ type RedisCache struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if host, ok := do.ComputedValues[renderers.Host].(string); ok {
+		r.Properties.Host = host
+	}
+	if port, ok := do.ComputedValues[renderers.Port]; ok {
+		if port != nil {
+			switch p := port.(type) {
+			case float64:
+				r.Properties.Port = int32(p)
+			case int32:
+				r.Properties.Port = p
+			case string:
+				converted, err := strconv.Atoi(p)
+				if err != nil {
+					return err
+				}
+				r.Properties.Port = int32(converted)
+			default:
+				return errors.New("unhandled type for the property port")
+			}
+		}
+	}
+	if username, ok := do.ComputedValues[renderers.UsernameStringValue].(string); ok {
+		r.Properties.Username = username
+	}
+	return nil
 }
 
 // OutputResources returns the output resources array.
@@ -56,7 +87,7 @@ type RedisResourceProperties struct {
 }
 
 type RedisRecipeProperties struct {
-	Recipe LinkRecipe `json:"recipe,omitempty"`
+	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
 }
 type RedisCacheProperties struct {
 	rpv1.BasicResourceProperties

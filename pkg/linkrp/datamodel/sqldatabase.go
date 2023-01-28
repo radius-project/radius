@@ -23,8 +23,9 @@ type SqlDatabase struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
@@ -44,9 +45,9 @@ func (sql *SqlDatabase) ResourceTypeName() string {
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
 	rpv1.BasicResourceProperties
-	Recipe   LinkRecipe `json:"recipe,omitempty"`
-	Resource string     `json:"resource,omitempty"`
-	Database string     `json:"database,omitempty"`
-	Server   string     `json:"server,omitempty"`
-	Mode     LinkMode   `json:"mode,omitempty"`
+	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Resource string            `json:"resource,omitempty"`
+	Database string            `json:"database,omitempty"`
+	Server   string            `json:"server,omitempty"`
+	Mode     LinkMode          `json:"mode,omitempty"`
 }

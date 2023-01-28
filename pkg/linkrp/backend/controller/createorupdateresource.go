@@ -8,17 +8,10 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers/container"
-	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
-	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
-	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -26,7 +19,7 @@ import (
 
 var _ ctrl.Controller = (*CreateOrUpdateResource)(nil)
 
-// CreateOrUpdateResource is the async operation controller to create or update Applications.Core/Containers resource.
+// CreateOrUpdateResource is the async operation controller to create or update Applications.Link resources.
 type CreateOrUpdateResource struct {
 	ctrl.BaseController
 }
@@ -36,24 +29,8 @@ func NewCreateOrUpdateResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
-func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
-	resourceType := strings.ToLower(id.Type())
-	switch resourceType {
-	case strings.ToLower(container.ResourceType):
-		return &datamodel.ContainerResource{}, nil
-	case strings.ToLower(gateway.ResourceType):
-		return &datamodel.Gateway{}, nil
-	case strings.ToLower(httproute.ResourceType):
-		return &datamodel.HTTPRoute{}, nil
-	case strings.ToLower(volume.ResourceType):
-		return &datamodel.VolumeResource{}, nil
-	default:
-		return nil, fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, id.String())
-	}
-}
-
-func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
+func (c *CreateOrUpdateResource) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
+	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return ctrl.Result{}, err
 	}
@@ -63,13 +40,13 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		isNewResource = true
 	}
 
-	opType, _ := v1.ParseOperationType(request.OperationType)
+	opType, _ := v1.ParseOperationType(req.OperationType)
 	if opType.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
 		return ctrl.Result{}, err
 	}
 
 	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
-	id, err := resources.Parse(request.ResourceID)
+	id, err := resources.Parse(req.ResourceID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -83,12 +60,12 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel)
+	rendererOutput, err := c.LinkDeploymentProcessor().Render(ctx, id, dataModel)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
+	deploymentOutput, err := c.LinkDeploymentProcessor().Deploy(ctx, id, rendererOutput)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -99,22 +76,21 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	}
 
 	oldOutputResources := deploymentDataModel.OutputResources()
-
 	err = deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	if !isNewResource {
 		diff := rpv1.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
-		err = c.DeploymentProcessor().Delete(ctx, id, diff)
+		err = c.LinkDeploymentProcessor().Delete(ctx, id, diff)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 	}
-
 	nr := &store.Object{
 		Metadata: store.Metadata{
-			ID: request.ResourceID,
+			ID: req.ResourceID,
 		},
 		Data: deploymentDataModel,
 	}

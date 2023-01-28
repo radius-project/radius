@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
+	v10 "github.com/project-radius/radius/pkg/rp/v1"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -38,24 +39,24 @@ func (m *MockDeploymentProcessor) EXPECT() *MockDeploymentProcessorMockRecorder 
 }
 
 // Delete mocks base method.
-func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 ResourceData) error {
+func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 resources.ID, arg2 []v10.OutputResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeploymentProcessor)(nil).Delete), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeploymentProcessor)(nil).Delete), arg0, arg1, arg2)
 }
 
 // Deploy mocks base method.
-func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (v10.DeploymentOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
-	ret0, _ := ret[0].(DeploymentOutput)
+	ret0, _ := ret[0].(v10.DeploymentOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
