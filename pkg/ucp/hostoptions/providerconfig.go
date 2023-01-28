@@ -6,6 +6,7 @@
 package hostoptions
 
 import (
+	"github.com/project-radius/radius/pkg/sdk"
 	metricsprovider "github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -21,19 +22,18 @@ type UCPConfig struct {
 	MetricsProvider metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
 	Logging         ucplog.LoggingOptions                  `yaml:"logging"`
 	Identity        Identity                               `yaml:"identity,omitempty"`
+	UCP             sdk.UCPOptions                         `yaml:"ucp"`
 }
 
 const (
+	// AuthUCPCredential is the authentication method via UCP Credential API.
 	AuthUCPCredential = "UCPCredential"
-	AuthEnvVar        = "Environment"
+	// AuthDefault is the default authentication method, such as environment variables.
+	AuthDefault = "default"
 )
 
 // Identity includes the identity configuration.
 type Identity struct {
 	// Auth represents the type of authentication.
 	Auth string `yaml:"authentication"`
-
-	// CredentialBaseURL represents the UCP Credential API Base URL.
-	// Used only for dev purpose when Kind is UCPCredential.
-	CredentialBaseURL string `yaml:"credentialUrl,omitempty"`
 }

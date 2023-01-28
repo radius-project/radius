@@ -45,6 +45,12 @@ planes:
     properties:
       kind: "AWS"
 
+identity:
+  authentication: default
+
+ucp:
+  kind: kubernetes
+
 # UCP Metrics Provider
 metricsProvider:
   prometheus:

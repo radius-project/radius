@@ -10,7 +10,6 @@ package hostoptions
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -77,7 +76,7 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	ucp, err := getUCPConnection(conf, k8s)
+	ucp, err := sdk.GetUCPConnection(&conf.UCP, k8s)
 	if err != nil {
 		return HostOptions{}, err
 	}
@@ -154,16 +153,4 @@ func getKubernetes() (*rest.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func getUCPConnection(config *ProviderConfig, k8sConfig *rest.Config) (sdk.Connection, error) {
-	if config.UCP.Kind == UCPConnectionKindDirect {
-		if config.UCP.Direct == nil || config.UCP.Direct.Endpoint == "" {
-			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
-		}
-
-		return sdk.NewDirectConnection(config.UCP.Direct.Endpoint)
-	}
-
-	return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 }

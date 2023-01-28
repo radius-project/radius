@@ -48,8 +48,12 @@ planes:
       kind: "UCPNative"
 
 identity:
-  authentication: Environment
-  # credentialUrl: "http://localhost:5017"
+  authentication: default
+
+ucp:
+  kind: direct
+  direct:
+    endpoint: "http://localhost:5017"
 
 # Metrics configuration
 # port is not the same as metrics configuration in radius-self-hosted.yaml 

@@ -197,7 +197,6 @@ func (s *Service) initializeSecretClient(ctx context.Context) error {
 
 // configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
 func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planes []rest.Plane) error {
-
 	for _, plane := range planes {
 		body, err := json.Marshal(plane)
 		if err != nil {

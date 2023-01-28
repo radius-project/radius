@@ -39,6 +39,7 @@ The following are properties that can be specified for UCP:
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
 | plane | Configuration options for the UCP plane | [**See below**](#plane)
 | identity | Configuration options for UCP identity | [**See below**](#ucp-identity)
+| ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
 
 
 ### environment
@@ -176,8 +177,7 @@ ucp:
 
 | Key | Description | Example |
 |-----|-------------|---------|
-| authentication | The kind of authentication | `UCPCredential`, `Environment` |
-| credentialUrl | The base url of UCP credential URL. This is used only for development purpose. | `http://localhost:5017` |
+| authentication | The kind of authentication | `UCPCredential`, `Default` |
 
 ## Example configuration files 
 

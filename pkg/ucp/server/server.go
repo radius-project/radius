@@ -27,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	etcdclient "go.etcd.io/etcd/client/v3"
+	kube_rest "k8s.io/client-go/rest"
 )
 
 const (
@@ -44,24 +45,6 @@ type Options struct {
 	InitialPlanes          []rest.Plane
 	Identity               hostoptions.Identity
 	UCPConnection          sdk.Connection
-}
-
-func getUCPConnection(identity *hostoptions.Identity) (sdk.Connection, error) {
-	if identity.Auth != hostoptions.AuthUCPCredential {
-		return nil, nil
-	}
-
-	if identity.CredentialBaseURL != "" {
-		// override direct connection.
-		return sdk.NewDirectConnection(identity.CredentialBaseURL)
-	}
-
-	cfg, err := kube.GetConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
-	}
-
-	return sdk.NewKubernetesConnectionFromConfig(cfg)
 }
 
 func NewServerOptionsFromEnvironment() (Options, error) {
@@ -90,9 +73,18 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	loggingOpts := opts.Config.Logging
 	identity := opts.Config.Identity
 	if identity.Auth == "" {
-		identity.Auth = hostoptions.AuthEnvVar
+		identity.Auth = hostoptions.AuthDefault
 	}
-	ucpConn, err := getUCPConnection(&opts.Config.Identity)
+
+	var cfg *kube_rest.Config
+	if opts.Config.UCP.Kind == sdk.UCPConnectionKindKubernetes {
+		cfg, err = kube.GetConfig()
+		if err != nil {
+			return Options{}, fmt.Errorf("failed to get kubernetes config: %w", err)
+		}
+	}
+
+	ucpConn, err := sdk.GetUCPConnection(&opts.Config.UCP, cfg)
 	if err != nil {
 		return Options{}, err
 	}
