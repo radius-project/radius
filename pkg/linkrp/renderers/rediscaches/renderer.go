@@ -13,7 +13,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -186,7 +185,7 @@ func getProvidedComputedValues(properties datamodel.RedisCacheProperties) map[st
 	return computedValues
 }
 
-func buildSecretValueReference(secretValues map[string]rpv1.SecretValueReference) map[string]rpv1.SecretValueReference {
+func buildSecretValueReference(secretValues map[string]rpv1.SecretValueReference) {
 	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
 		secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{
 			LocalID:       rpv1.LocalIDAzureRedis,
@@ -206,7 +205,6 @@ func buildSecretValueReference(secretValues map[string]rpv1.SecretValueReference
 			},
 		}
 	}
-	return secretValues
 }
 
 func buildComputedValuesReference(computedValues map[string]renderers.ComputedValueReference) {
