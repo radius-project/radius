@@ -8,12 +8,11 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
@@ -22,18 +21,11 @@ import (
 )
 
 func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
-	var cloudControlClient awsclient.AWSCloudControlClient
 	if opts.AWSCloudControlClient == nil {
-		cloudControlClient = cloudcontrol.NewFromConfig(opts.AWSConfig)
-	} else {
-		cloudControlClient = opts.AWSCloudControlClient
+		return nil, nil, "", resources.ID{}, errors.New("AWSCloudControlClient is not set.")
 	}
-
-	var cloudFormationClient awsclient.AWSCloudFormationClient
-	if opts.AWSCloudControlClient == nil {
-		cloudFormationClient = cloudformation.NewFromConfig(opts.AWSConfig)
-	} else {
-		cloudFormationClient = opts.AWSCloudFormationClient
+	if opts.AWSCloudFormationClient == nil {
+		return nil, nil, "", resources.ID{}, errors.New("AWSCloudFormationClient is not set.")
 	}
 
 	path := middleware.GetRelativePath(opts.BasePath, r.URL.Path)
@@ -43,7 +35,7 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	}
 
 	resourceType := resources.ToAWSResourceType(id)
-	return cloudControlClient, cloudFormationClient, resourceType, id, nil
+	return opts.AWSCloudControlClient, opts.AWSCloudFormationClient, resourceType, id, nil
 }
 
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the

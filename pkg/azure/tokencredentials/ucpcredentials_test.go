@@ -44,7 +44,7 @@ func TestNewUCPCredential(t *testing.T) {
 	c, err := NewUCPCredential(UCPCredentialOptions{Provider: newMockProvider()})
 	require.NoError(t, err)
 	require.Equal(t, DefaultExpireDuration, c.options.Duration)
-	require.True(t, c.isRefreshRequired())
+	require.True(t, c.isExpired())
 }
 
 func TestRefreshCredentials(t *testing.T) {
@@ -65,7 +65,7 @@ func TestRefreshCredentials(t *testing.T) {
 
 		err = c.refreshCredentials(context.TODO())
 		require.NoError(t, err)
-		require.False(t, c.isRefreshRequired())
+		require.False(t, c.isExpired())
 	})
 
 	t.Run("same credentials", func(t *testing.T) {
@@ -77,13 +77,13 @@ func TestRefreshCredentials(t *testing.T) {
 		require.NoError(t, err)
 
 		// reset next refresh time.
-		c.nextRefresh.Store(0)
-		require.True(t, c.isRefreshRequired())
+		c.nextExpiry.Store(0)
+		require.True(t, c.isExpired())
 		old := c.tokenCred
 
 		err = c.refreshCredentials(context.TODO())
 		require.NoError(t, err)
-		require.False(t, c.isRefreshRequired())
+		require.False(t, c.isExpired())
 		require.Equal(t, old, c.tokenCred)
 	})
 }

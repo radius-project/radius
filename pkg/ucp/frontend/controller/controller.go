@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -32,7 +31,6 @@ type Options struct {
 	SecretClient secret.Client
 	Address      string
 
-	AWSConfig               aws.Config
 	AWSCloudControlClient   ucp_aws.AWSCloudControlClient
 	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
 

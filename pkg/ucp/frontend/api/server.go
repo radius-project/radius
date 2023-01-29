@@ -33,6 +33,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	etcdclient "go.etcd.io/etcd/client/v3"
@@ -77,27 +79,30 @@ func (s *Service) Name() string {
 	return "api"
 }
 
-func (s *Service) newAWSConfig(ctx context.Context) (*aws.Config, error) {
+func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	credProviders := []func(*config.LoadOptions) error{}
 
 	switch s.options.Identity.Auth {
 	case hostoptions.AuthUCPCredential:
 		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection)
 		if err != nil {
-			return nil, err
+			return aws.Config{}, err
 		}
 		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
+		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API.")
 
 	default:
+		logger.Info("Configuring default authentication mode with environment variable.")
 	}
 
 	awscfg, err := config.LoadDefaultConfig(ctx, credProviders...)
 	if err != nil {
-		return nil, err
+		return aws.Config{}, err
 	}
 
-	return &awscfg, nil
+	return awscfg, nil
 }
 
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
@@ -127,7 +132,9 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		DB:           db,
 		SecretClient: s.secretClient,
 		Address:      s.options.Address,
-		AWSConfig:    *awscfg,
+
+		AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
+		AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
 
 		CommonControllerOptions: armrpc_controller.Options{
 			DataProvider: s.storageProvider,
