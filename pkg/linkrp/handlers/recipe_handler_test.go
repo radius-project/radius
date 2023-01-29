@@ -8,7 +8,10 @@ package handlers
 import (
 	"testing"
 
+	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/sdk/clients"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,4 +143,40 @@ func Test_ACRPathParserErr(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "", repository)
 	require.Equal(t, "", tag)
+}
+
+func Test_createDeploymentID(t *testing.T) {
+	expected, err := resources.ParseResource("/planes/deployments/local/resourceGroups/cool-group/providers/Microsoft.Resources/deployments/test-deployment")
+	require.NoError(t, err)
+
+	actual, err := createDeploymentID("/planes/radius/local/resourceGroups/cool-group/providers/Applications.Link/mongoDatabases/test-db", "test-deployment")
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
+func Test_createProviderConfig_defaults(t *testing.T) {
+	expected := clients.NewDefaultProviderConfig("test-rg")
+	actual := createProviderConfig("test-rg", corerp_datamodel.Providers{})
+	require.Equal(t, expected, actual)
+}
+
+func Test_createProviderConfig_hasProviders(t *testing.T) {
+	aws := "/planes/aws/aws/accounts/000/regions/cool-region"
+	azure := "/subscriptions/000/resourceGroups/cool-azure-group"
+	providers := corerp_datamodel.Providers{
+		Azure: corerp_datamodel.ProvidersAzure{Scope: azure},
+		AWS:   corerp_datamodel.ProvidersAWS{Scope: aws},
+	}
+
+	expected := clients.NewDefaultProviderConfig("test-rg")
+	expected.Az = &clients.Az{
+		Type:  clients.ProviderTypeAzure,
+		Value: clients.Value{Scope: azure},
+	}
+	expected.AWS = &clients.AWS{
+		Type:  clients.ProviderTypeAWS,
+		Value: clients.Value{Scope: aws},
+	}
+	actual := createProviderConfig("test-rg", providers)
+	require.Equal(t, expected, actual)
 }
