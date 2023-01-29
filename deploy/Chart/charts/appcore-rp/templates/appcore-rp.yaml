@@ -117,7 +117,10 @@ metadata:
     app: appcore-rp
 stringData:
 # Configuration for 'Azure' provider functionality
-{{ if .Values.global.rp.provider.azure.servicePrincipal }}
+{{ if eq .Values.global.identity.azure.kind "UCPCredential" }}
+  SKIP_ARM: 'false' 
+  ARM_AUTH_METHOD: 'UCPCredential'
+{{ else if .Values.global.rp.provider.azure.servicePrincipal }}
   # Enable ARM with explicit credentials
   SKIP_ARM: 'false' 
   ARM_AUTH_METHOD: 'ServicePrincipal'
