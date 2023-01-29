@@ -21,12 +21,13 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/sdk"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (ApplicationModel, error) {
+func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection sdk.Connection) (ApplicationModel, error) {
 	// Configure the providers supported by the appmodel
 	supportedProviders := map[string]bool{
 		resourcemodel.ProviderKubernetes: true,
@@ -152,7 +153,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 	}
 
 	recipeModel := RecipeModel{
-		RecipeHandler: handlers.NewRecipeHandler(arm),
+		RecipeHandler: handlers.NewRecipeHandler(connection),
 	}
 
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
