@@ -42,7 +42,7 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient)
+	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient, s.Options.UCPConnection)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
