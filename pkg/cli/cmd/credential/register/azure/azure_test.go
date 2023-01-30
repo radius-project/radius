@@ -214,6 +214,7 @@ func Test_Run(t *testing.T) {
 					ClientID:     to.Ptr("cool-client-id"),
 					ClientSecret: to.Ptr("cool-client-secret"),
 					TenantID:     to.Ptr("cool-tenant-id"),
+					Kind:         to.Ptr("ServicePrincipal"),
 				},
 			}
 

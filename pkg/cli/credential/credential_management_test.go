@@ -203,7 +203,7 @@ func Test_Credential_Get(t *testing.T) {
 			setupMocks: setupNotFoundAWSGetMocks,
 		},
 		{
-			name: "credential get failure",
+			name: "credential get failure azure",
 			credentialResource: ProviderCredentialConfiguration{
 				CloudProviderStatus: CloudProviderStatus{
 					Name:    azureProviderName,
@@ -216,15 +216,15 @@ func Test_Credential_Get(t *testing.T) {
 			setupMocks: setupErrorAzureGetMocks,
 		},
 		{
-			name: "credential get failure",
+			name: "credential get failure aws",
 			credentialResource: ProviderCredentialConfiguration{
 				CloudProviderStatus: CloudProviderStatus{
-					Name:    azureProviderName,
+					Name:    awsProviderName,
 					Enabled: false,
 				},
 			},
-			planeType:  AzurePlaneType,
-			planeName:  AzurePlaneName,
+			planeType:  AWSPlaneType,
+			planeName:  AWSPlaneName,
 			err:        errInternalServer,
 			setupMocks: setupErrorAWSGetMocks,
 		},
@@ -321,7 +321,7 @@ func Test_Credential_Delete(t *testing.T) {
 			setupMocks:     setupSuccessAWSDeleteMocks,
 		},
 		{
-			name:           "delete unsupported credential",
+			name:           "delete unsupported azure credential",
 			credentialName: AzureCredential,
 			planeType:      AzurePlaneType,
 			planeName:      AzurePlaneName,
@@ -329,7 +329,7 @@ func Test_Credential_Delete(t *testing.T) {
 			setupMocks:     setupErrAzureDeleteMocks,
 		},
 		{
-			name:           "delete unsupported credential",
+			name:           "delete unsupported aws credential",
 			credentialName: AWSCredential,
 			planeType:      AWSPlaneType,
 			planeName:      AWSPlaneName,
@@ -345,7 +345,7 @@ func Test_Credential_Delete(t *testing.T) {
 			setupMocks:     setupNotFoundAzureDeleteMocks,
 		},
 		{
-			name:           "delete non existent azure credential",
+			name:           "delete non existent aws credential",
 			credentialName: AWSCredential,
 			planeType:      AWSPlaneType,
 			planeName:      AWSPlaneName,
@@ -445,35 +445,35 @@ func setupErrorAWSGetMocks(mockAzure MockAzureCredentialManagementClientInterfac
 func setupSuccessAzureDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAzure.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(nil).Times(1)
+		Return(true, nil).Times(1)
 }
 
 func setupSuccessAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAWS.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(nil).Times(1)
+		Return(true, nil).Times(1)
 }
 
 func setupNotFoundAzureDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAzure.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(errCredentialNotFound).Times(1)
+		Return(true, nil).Times(1)
 }
 
 func setupNotFoundAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAWS.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(errCredentialNotFound).Times(1)
+		Return(true, nil).Times(1)
 }
 
 func setupErrAzureDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAzure.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(errInternalServer).Times(1)
+		Return(false, errInternalServer).Times(1)
 }
 
 func setupErrAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAWS.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(errInternalServer).Times(1)
+		Return(false, errInternalServer).Times(1)
 }

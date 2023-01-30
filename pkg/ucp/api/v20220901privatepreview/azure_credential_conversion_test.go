@@ -64,15 +64,15 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-empty-storage.json",
+			filename: "credentialresource-empty-storage-azure.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-empty-storage-kind.json",
+			filename: "credentialresource-empty-storage-kind-azure.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-invalid-storagekind.json",
+			filename: "credentialresource-invalid-storagekind-azure.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())},
 		},
 	}

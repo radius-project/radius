@@ -63,22 +63,22 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-empty-storage.json",
+			filename: "credentialresource-empty-storage-aws.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-empty-storage-kind.json",
+			filename: "credentialresource-empty-storage-kind-aws.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-invalid-storagekind.json",
+			filename: "credentialresource-invalid-storagekind-aws.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())},
 		},
 	}
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(tt.filename)
-			r := &AzureCredentialResource{}
+			r := &AWSCredentialResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
@@ -88,7 +88,7 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 				require.ErrorIs(t, err, tt.err)
 			} else {
 				require.NoError(t, err)
-				ct := dm.(*datamodel.AzureCredential)
+				ct := dm.(*datamodel.AWSCredential)
 				require.Equal(t, tt.expected, ct)
 			}
 		})
@@ -129,11 +129,11 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(tt.filename)
-			r := &datamodel.AzureCredential{}
+			r := &datamodel.AWSCredential{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
-			versioned := &AzureCredentialResource{}
+			versioned := &AWSCredentialResource{}
 			err = versioned.ConvertFrom(r)
 
 			if tt.err != nil {
