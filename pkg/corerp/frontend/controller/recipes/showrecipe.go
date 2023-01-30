@@ -31,7 +31,10 @@ func ShowRecipe(ctx context.Context, recipeDetails *datamodel.EnvironmentRecipeP
 		}
 
 		details := ""
-		values := value.(map[string]interface{})
+		values, ok := value.(map[string]interface{})
+		if !ok {
+		     return v1.NewClientErrInvalidRequest("failed to fetch parameters")
+		}
 		keys := make([]string, 0, len(values))
 
 		for k := range values {
