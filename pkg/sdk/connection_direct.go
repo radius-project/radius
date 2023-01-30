@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var _ Connection = (*directConnection)(nil)
@@ -39,7 +41,7 @@ func NewDirectConnection(endpoint string) (Connection, error) {
 // autorest.Sender interface (autorest Track1 Go SDK) and policy.Transporter interface
 // (autorest Track2 Go SDK).
 func (c *directConnection) Client() *http.Client {
-	return http.DefaultClient
+	return &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 }
 
 // Endpoint returns the endpoint (aka. base URL) of the Radius API. This definitely includes
