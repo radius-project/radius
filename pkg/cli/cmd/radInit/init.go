@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -444,6 +445,7 @@ func (r *Runner) Run(ctx context.Context) error {
 func (r *Runner) getAzureCredential() ucp.CredentialResource {
 	return ucp.CredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
+		Type:     to.Ptr(cli_credential.AzureCredential),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
@@ -458,6 +460,7 @@ func (r *Runner) getAzureCredential() ucp.CredentialResource {
 func (r *Runner) getAWSCredential() ucp.CredentialResource {
 	return ucp.CredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
+		Type:     to.Ptr(cli_credential.AWSCredential),
 		Properties: &ucp.AWSCredentialProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),

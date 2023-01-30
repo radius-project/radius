@@ -81,7 +81,7 @@ func parseAWSProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) 
 		return nil, &cli.FriendlyError{Message: fmt.Sprintf(errNotEmptyTemplate, "aws region")}
 	}
 
-	keyID, err := prompter.GetTextInput("Enter the IAM Access Key ID:", "Enter KeyId...")
+	keyID, err := prompter.GetTextInput("Enter the IAM Access Key ID:", "Enter IAM access KeyId...")
 	if err != nil {
 		return nil, err
 	}
