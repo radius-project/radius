@@ -25,26 +25,26 @@ func Test_Azure_Credential_Operations(t *testing.T) {
 		resourceTypePath := "/planes/azure/azurecloud/providers/System.Azure/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
 		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
-		runAzureCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureCredentialObject())
+		runAzureCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureCredentialObject(), getExpectedAzureCredentialObject())
 	})
 
 	test.Test(t)
 }
 
-func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, credential ucp.AzureCredentialResource) {
+func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AzureCredentialResource, expectedCredential ucp.AzureCredentialResource) {
 	// Create credential operation
-	createAzureCredential(t, roundTripper, resourceUrl, credential)
+	createAzureCredential(t, roundTripper, resourceUrl, createCredential)
 	// Create duplicate credential
-	createAzureCredential(t, roundTripper, resourceUrl, credential)
+	createAzureCredential(t, roundTripper, resourceUrl, createCredential)
 	// List credential operation
 	credentialList := listAzureCredential(t, roundTripper, collectionUrl)
 	require.Equal(t, len(credentialList), 1)
-	assert.DeepEqual(t, credentialList[0], credential)
+	assert.DeepEqual(t, credentialList[0], expectedCredential)
 
 	// Check for correctness of credential
 	createdCredential, statusCode := getAzureCredential(t, roundTripper, resourceUrl)
 	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, createdCredential, credential)
+	assert.DeepEqual(t, createdCredential, expectedCredential)
 
 	// Delete credential operation
 	statusCode, err := deleteAzureCredential(t, roundTripper, resourceUrl)
@@ -141,6 +141,27 @@ func getAzureCredentialObject() ucp.AzureCredentialResource {
 			TenantID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
 			ClientSecret: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:         to.Ptr("ServicePrincipal"),
+			Storage: &ucp.InternalCredentialStorageProperties{
+				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
+				SecretName: to.Ptr("azure-azurecloud-default"),
+			},
+		},
+	}
+}
+
+func getExpectedAzureCredentialObject() ucp.AzureCredentialResource {
+	return ucp.AzureCredentialResource{
+		Location: to.Ptr("west-us-2"),
+		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+		Name:     to.Ptr("default"),
+		Type:     to.Ptr("System.Azure/credentials"),
+		Tags: map[string]*string{
+			"env": to.Ptr("dev"),
+		},
+		Properties: &ucp.AzureServicePrincipalProperties{
+			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:     to.Ptr("ServicePrincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("azure-azurecloud-default"),

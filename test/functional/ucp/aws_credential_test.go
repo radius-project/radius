@@ -25,25 +25,26 @@ func Test_AWS_Credential_Operations(t *testing.T) {
 		resourceTypePath := "/planes/aws/awscloud/providers/System.AWS/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
 		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
-		runAWSCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSCredentialObject())
+		runAWSCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSCredentialObject(), getExpectedAWSCredentialObject())
 	})
 
 	test.Test(t)
 }
-func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, credential ucp.AWSCredentialResource) {
+func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AWSCredentialResource, expectedCredential ucp.AWSCredentialResource) {
 	// Create credential operation
-	createAWSCredential(t, roundTripper, resourceUrl, credential)
+	createAWSCredential(t, roundTripper, resourceUrl, createCredential)
 	// Create duplicate credential
-	createAWSCredential(t, roundTripper, resourceUrl, credential)
+	createAWSCredential(t, roundTripper, resourceUrl, createCredential)
 	// List credential operation
 	credentialList := listAWSCredential(t, roundTripper, collectionUrl)
 	require.Equal(t, len(credentialList), 1)
-	assert.DeepEqual(t, credentialList[0], credential)
+	assert.DeepEqual(t, credentialList[0], expectedCredential)
 
 	// Check for correctness of credential
 	createdCredential, statusCode := getAWSCredential(t, roundTripper, resourceUrl)
+
 	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, createdCredential, credential)
+	assert.DeepEqual(t, createdCredential, expectedCredential)
 
 	// Delete credential operation
 	statusCode, err := deleteAWSCredential(t, roundTripper, resourceUrl)
@@ -139,6 +140,26 @@ func getAWSCredentialObject() ucp.AWSCredentialResource {
 			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
 			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:            to.Ptr("AccessKey"),
+			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
+				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
+				SecretName: to.Ptr("aws-awscloud-default"),
+			},
+		},
+	}
+}
+
+func getExpectedAWSCredentialObject() ucp.AWSCredentialResource {
+	return ucp.AWSCredentialResource{
+		Location: to.Ptr("west-us-2"),
+		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+		Name:     to.Ptr("default"),
+		Type:     to.Ptr("System.AWS/credentials"),
+		Tags: map[string]*string{
+			"env": to.Ptr("dev"),
+		},
+		Properties: &v20220901privatepreview.AWSAccessKeyCredentialProperties{
+			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:        to.Ptr("AccessKey"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("aws-awscloud-default"),
