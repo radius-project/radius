@@ -99,8 +99,10 @@ func prettyPrintJSON(o any) (string, error) {
 // It also initializes the traceprovider for cli.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
-
-	shutdown, err := traces.InitCliTracer("rad.cli")
+	tracerOpts := traces.TracerOptions{
+		ServiceName: "cli",
+	}
+	shutdown, err := traces.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
