@@ -102,13 +102,14 @@ func Execute() {
 
 	tracerOpts := trace.TracerOptions{
 		ServiceName: "cli",
-		//URL:         "http://localhost:9411/api/v2/spans",
 	}
 	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer trace.ShutdownTracer(shutdown, ctx)
+	defer func() {
+		_ = shutdown(ctx)
+	}()
 
 	err = RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
