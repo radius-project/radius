@@ -45,7 +45,6 @@ func Test_Credential_Put(t *testing.T) {
 			planeType: AzurePlaneType,
 			planeName: AzurePlaneName,
 			credential: ucp.CredentialResource{
-				Name:     to.Ptr(azureProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(AzureCredential),
 				Properties: &ucp.AzureServicePrincipalProperties{
@@ -65,7 +64,6 @@ func Test_Credential_Put(t *testing.T) {
 			planeType: AWSPlaneType,
 			planeName: AWSPlaneName,
 			credential: ucp.CredentialResource{
-				Name:     to.Ptr(awsProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(AWSCredential),
 				Properties: &ucp.AWSCredentialProperties{
@@ -82,7 +80,6 @@ func Test_Credential_Put(t *testing.T) {
 		{
 			name: "create unsupported provider credential",
 			credential: ucp.CredentialResource{
-				Name:     to.Ptr(awsProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(""),
 			},

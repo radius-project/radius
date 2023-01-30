@@ -24,11 +24,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	azureCredentialID = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
-	awsCredentialID   = "/planes/aws/awscloud/providers/System.AWS/credentials/%s"
-)
-
 // NewCommand creates an instance of the command and runner for the `rad provider create azure` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
@@ -170,7 +165,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// 2) Update local config (all matching workspaces) to remove the scope
 
 	r.Output.LogInfo("Configuring credential for cloud provider %q for Radius installation %q...", "azure", r.Workspace.FmtConnection())
-	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
+	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -179,7 +174,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		Name:     to.Ptr("default"),
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AzureCredential),
-		ID:       to.Ptr(fmt.Sprintf(azureCredentialID, "azure")),
+		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),

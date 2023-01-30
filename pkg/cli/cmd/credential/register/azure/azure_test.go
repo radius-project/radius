@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -205,7 +206,7 @@ func Test_Run(t *testing.T) {
 				Name:     to.Ptr("default"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AzureCredential),
-				ID:       to.Ptr(fmt.Sprintf(azureCredentialID, "azure")),
+				ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
@@ -229,7 +230,7 @@ func Test_Run(t *testing.T) {
 					Config:         config,
 					ConfigFilePath: configPath,
 				},
-				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
 				Output:            outputSink,
 				Workspace: &workspaces.Workspace{
 					Connection: map[string]any{
