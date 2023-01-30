@@ -76,12 +76,12 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	ucp, err := sdk.GetUCPConnection(&conf.UCP, k8s)
+	ucp_conn, err := sdk.GetUCPConnection(&conf.UCP, k8s)
 	if err != nil {
 		return HostOptions{}, err
 	}
 
-	arm, err := getArmConfig(conf, ucp)
+	arm, err := getArmConfig(conf, ucp_conn)
 	if err != nil {
 		return HostOptions{}, err
 	}
@@ -90,7 +90,7 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		Config:        conf,
 		K8sConfig:     k8s,
 		Arm:           arm,
-		UCPConnection: ucp,
+		UCPConnection: ucp_conn,
 	}, nil
 }
 

@@ -17,7 +17,7 @@ import (
 	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
-var _ CredentialProvider[AzureCredential] = (*AzureCredentialProvider)(nil)
+var _ CredentialProvider[AWSCredential] = (*AWSCredentialProvider)(nil)
 
 // AWSCredentialProvider is UCP credential provider for Azure.
 type AWSCredentialProvider struct {
@@ -38,9 +38,9 @@ func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Con
 	}, nil
 }
 
-// Fetch gets the Azure credentials from secret storage.
+// Fetch gets the AWS IAM credentials from secret storage.
 func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AWSCredential, error) {
-	// 1. Fetch the secret name of Azure service principal credentials from UCP.
+	// 1. Fetch the secret name of AWS IAM access keys from UCP.
 	cred, err := p.client.Get(ctx, "aws", planeName, name, &ucpapi.AWSCredentialClientGetOptions{})
 	if err != nil {
 		return nil, err
