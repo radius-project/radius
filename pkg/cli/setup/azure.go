@@ -423,5 +423,5 @@ func (i *Impl) ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prom
 
 // Parses user input from the CLI for Azure Provider arguments
 func (i *Impl) ParseAWSProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*cli_aws.Provider, error) {
-	return ParseAWSProviderFromArgs(cmd, interactive, prompter)
+	return ParseAWSProviderArgs(cmd, interactive, prompter)
 }

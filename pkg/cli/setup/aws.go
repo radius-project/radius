@@ -53,7 +53,8 @@ func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 	)
 }
 
-func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*radAWS.Provider, error) {
+// ParseAWSProviderArgs parses AWS args from user cmd line and returns an aws provider.
+func ParseAWSProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*radAWS.Provider, error) {
 	if interactive {
 		return parseAWSProviderInteractive(cmd, prompter)
 	}

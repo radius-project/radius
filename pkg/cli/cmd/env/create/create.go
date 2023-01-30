@@ -154,9 +154,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
 	var providers corerp.Providers
+	var er error
 	if r.Workspace.ProviderConfig != (workspaces.ProviderConfig{}) && r.Workspace.ProviderConfig.Azure != nil &&
 		(r.Workspace.ProviderConfig.Azure.SubscriptionID != "" && r.Workspace.ProviderConfig.Azure.ResourceGroup != "") {
-		providers = cmd.CreateEnvProviders(r.Workspace.ProviderConfig.Azure.SubscriptionID, r.Workspace.ProviderConfig.Azure.ResourceGroup, "", "")
+		providers, er = cmd.CreateEnvProviders([]interface{}{r.Workspace.ProviderConfig.Azure, nil})
+		if er != nil {
+			return er
+		}
 	}
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)

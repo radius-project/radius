@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -371,13 +370,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		// create the providers scope to the environment and register credentials at provider plane
-		var providers corerp.Providers
-		if r.AzureCloudProvider != nil && r.AwsCloudProvider != nil {
-			providers = cmd.CreateEnvProviders(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup, r.AwsCloudProvider.AccountId, r.AwsCloudProvider.TargetRegion)
-		} else if r.AzureCloudProvider != nil {
-			providers = cmd.CreateEnvProviders(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup, "", "")
-		} else if r.AwsCloudProvider != nil {
-			providers = cmd.CreateEnvProviders("", "", r.AwsCloudProvider.AccountId, r.AwsCloudProvider.TargetRegion)
+		providers, err := cmd.CreateEnvProviders([]interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
+		if err != nil {
+			return err
 		}
 
 		r.Output.LogInfo("Configuring Cloud providers")
@@ -395,7 +390,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			credential := r.getAzureCredential()
 			err := credentialClient.Put(ctx, credential)
 			if err != nil {
-				return &cli.FriendlyError{Message: "Failed to configure azure credential"}
+				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure azure credential with error %s", err)}
 			}
 		}
 		if r.AwsCloudProvider != nil {
@@ -403,12 +398,12 @@ func (r *Runner) Run(ctx context.Context) error {
 			credential := r.getAWSCredential()
 			err := credentialClient.Put(ctx, credential)
 			if err != nil {
-				return &cli.FriendlyError{Message: "Failed to configure aws credential"}
+				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure aws credential with error %s", err)}
 			}
 		}
 	}
 
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, r.AzureCloudProvider, r.AwsCloudProvider)
+	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, []interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
 	if err != nil {
 		return err
 	}
@@ -448,10 +443,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 func (r *Runner) getAzureCredential() ucp.CredentialResource {
 	return ucp.CredentialResource{
-		Name:     to.Ptr("default"),
 		Location: to.Ptr(v1.LocationGlobal),
-		Type:     to.Ptr(cli_credential.AzureCredential),
-		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
@@ -465,10 +457,7 @@ func (r *Runner) getAzureCredential() ucp.CredentialResource {
 
 func (r *Runner) getAWSCredential() ucp.CredentialResource {
 	return ucp.CredentialResource{
-		Name:     to.Ptr("default"),
 		Location: to.Ptr(v1.LocationGlobal),
-		Type:     to.Ptr(cli_credential.AWSCredential),
-		ID:       to.Ptr(fmt.Sprintf(common.AWSCredentialID, "default")),
 		Properties: &ucp.AWSCredentialProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
