@@ -15,6 +15,7 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
+	t.Skipf("Enable this test once test flakiness is fixed. - https://github.com/project-radius/radius/issues/5053")
 
 	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
 	name := "corerp-resources-volume-azure-keyvault"

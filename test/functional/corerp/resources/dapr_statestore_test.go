@@ -59,6 +59,8 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 }
 
 func Test_DaprStateStoreTableStorage(t *testing.T) {
+	t.Skipf("Enable this test once test flakiness is fixed. - https://github.com/project-radius/radius/issues/5053")
+
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
 	appNamespace := "default-corerp-resources-dapr-statestore-tablestorage"
