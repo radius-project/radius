@@ -24,7 +24,11 @@ func ShowRecipe(ctx context.Context, recipeDetails *datamodel.EnvironmentRecipeP
 
 	recipeDetails.Parameters = make(map[string]any)
 
-	for key, value := range recipeData["parameters"].(map[string]interface{}) {
+        recipeParam, ok := recipeData["parameters"].(map[string]interface{})
+        if !ok {
+        	v1.NewClientErrInvalidRequest("failed to fetch parameters")
+        }
+	for key, value := range recipeParam {
 		if key == "context" {
 			// context parameter is only revelant to operator.
 			continue
