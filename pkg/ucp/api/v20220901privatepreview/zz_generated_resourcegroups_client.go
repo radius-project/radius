@@ -55,7 +55,7 @@ pl: pl,
 
 // CreateOrUpdate - Creates or updates a ResourceGroupResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resourceGroupName - DaprSecretStore name
@@ -94,7 +94,7 @@ func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Cont
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, resource)
@@ -119,7 +119,7 @@ func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Resp
 
 // Delete - Deletes an existing ResourceGroupResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resourceGroupName - DaprSecretStore name
@@ -156,7 +156,7 @@ func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, pla
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -178,7 +178,7 @@ func (client *ResourceGroupsClient) deleteHandleResponse(resp *http.Response) (R
 
 // Get - Retrieves information about a ResourceGroupResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resourceGroupName - DaprSecretStore name
@@ -215,7 +215,7 @@ func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, planeT
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -231,7 +231,7 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 }
 
 // NewListByRootScopePager - Lists information about all ResourceGroupResources in the given root scope
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // options - ResourceGroupsClientListByRootScopeOptions contains the optional parameters for the ResourceGroupsClient.ListByRootScope
@@ -277,7 +277,7 @@ func (client *ResourceGroupsClient) listByRootScopeCreateRequest(ctx context.Con
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil

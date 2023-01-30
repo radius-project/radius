@@ -55,7 +55,7 @@ pl: pl,
 
 // CreateOrUpdate - Creates or updates a PlaneResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resource - Resource create parameters.
@@ -88,7 +88,7 @@ func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, pla
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, resource)
@@ -113,7 +113,7 @@ func (client *PlanesClient) createOrUpdateHandleResponse(resp *http.Response) (P
 
 // Delete - Deletes an existing PlaneResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // options - PlanesClientDeleteOptions contains the optional parameters for the PlanesClient.Delete method.
@@ -145,7 +145,7 @@ func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType s
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -167,7 +167,7 @@ func (client *PlanesClient) deleteHandleResponse(resp *http.Response) (PlanesCli
 
 // Get - Retrieves information about a PlaneResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // options - PlanesClientGetOptions contains the optional parameters for the PlanesClient.Get method.
@@ -199,7 +199,7 @@ func (client *PlanesClient) getCreateRequest(ctx context.Context, planeType stri
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -215,7 +215,7 @@ func (client *PlanesClient) getHandleResponse(resp *http.Response) (PlanesClient
 }
 
 // NewListByRootScopePager - Lists information about all PlaneResources in the given root scope
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // options - PlanesClientListByRootScopeOptions contains the optional parameters for the PlanesClient.ListByRootScope method.
 func (client *PlanesClient) NewListByRootScopePager(options *PlanesClientListByRootScopeOptions) (*runtime.Pager[PlanesClientListByRootScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[PlanesClientListByRootScopeResponse]{
@@ -253,7 +253,7 @@ func (client *PlanesClient) listByRootScopeCreateRequest(ctx context.Context, op
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil

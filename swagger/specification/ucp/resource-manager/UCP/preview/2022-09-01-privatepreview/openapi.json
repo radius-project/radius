@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "UCP Management APIs",
-    "version": "2022-03-15-privatepreview",
+    "version": "2022-09-01-privatepreview",
     "description": "REST APIs for UCP",
     "x-cadl-generated": [
       {

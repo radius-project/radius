@@ -55,7 +55,7 @@ pl: pl,
 
 // CreateOrUpdate - Creates or updates a AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credentialName - The plane type.
 // resource - Resource create parameters.
@@ -89,7 +89,7 @@ func (client *AwsCredentialClient) createOrUpdateCreateRequest(ctx context.Conte
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, resource)
@@ -114,7 +114,7 @@ func (client *AwsCredentialClient) createOrUpdateHandleResponse(resp *http.Respo
 
 // Delete - Deletes an existing AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credentialName - The plane type.
 // options - AwsCredentialClientDeleteOptions contains the optional parameters for the AwsCredentialClient.Delete method.
@@ -146,7 +146,7 @@ func (client *AwsCredentialClient) deleteCreateRequest(ctx context.Context, plan
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -168,7 +168,7 @@ func (client *AwsCredentialClient) deleteHandleResponse(resp *http.Response) (Aw
 
 // Get - Retrieves information about a AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credentialName - The plane type.
 // options - AwsCredentialClientGetOptions contains the optional parameters for the AwsCredentialClient.Get method.
@@ -200,7 +200,7 @@ func (client *AwsCredentialClient) getCreateRequest(ctx context.Context, planeNa
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -216,7 +216,7 @@ func (client *AwsCredentialClient) getHandleResponse(resp *http.Response) (AwsCr
 }
 
 // NewListByRootScopePager - Lists information about all AWSCredentialResources in the given root scope
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // options - AwsCredentialClientListByRootScopeOptions contains the optional parameters for the AwsCredentialClient.ListByRootScope
 // method.
@@ -257,7 +257,7 @@ func (client *AwsCredentialClient) listByRootScopeCreateRequest(ctx context.Cont
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
