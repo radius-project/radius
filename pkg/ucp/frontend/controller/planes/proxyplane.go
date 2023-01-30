@@ -88,7 +88,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		_, err = p.GetResource(ctx, rgID.String(), &existingRG)
 		if err != nil {
 			if errors.Is(err, &store.ErrNotFound{}) {
-				logger.Error(err, "resource group %q does not exist", rgID.String())
+				logger.Error(err, fmt.Sprintf("resource group %q does not exist", rgID.String()))
 				return armrpc_rest.NewNotFoundResponse(rgID), nil
 			}
 			return nil, err

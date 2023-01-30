@@ -70,6 +70,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
 	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)
@@ -102,8 +103,10 @@ func main() {
 		logger.Info("Enabled in-memory etcd")
 		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
+		options.Config.SecretProvider.ETCD.Client = client
 		if linkOpts != nil {
 			linkOpts.Config.StorageProvider.ETCD.Client = client
+			linkOpts.Config.SecretProvider.ETCD.Client = client
 		}
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
@@ -117,6 +120,7 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
+
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	exitCh := make(chan os.Signal, 2)

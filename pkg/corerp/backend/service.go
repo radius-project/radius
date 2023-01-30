@@ -13,6 +13,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 
 	backend_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
@@ -65,12 +66,12 @@ func (w *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
+	secretClient := sv.NewSecretValueClient(w.Options.Arm)
 	opts := ctrl.Options{
 		DataProvider: w.StorageProvider,
-		SecretClient: w.SecretClient,
 		KubeClient:   w.KubeClient,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.SecretClient, w.KubeClient, w.KubeClientSet)
+			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, secretClient, w.KubeClient, w.KubeClientSet)
 		},
 	}
 

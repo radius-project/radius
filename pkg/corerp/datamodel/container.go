@@ -27,10 +27,11 @@ func (c ContainerResource) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (c *ContainerResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (c *ContainerResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 	c.ComputedValues = do.ComputedValues
 	c.SecretValues = do.SecretValues
+	return nil
 }
 
 // OutputResources returns the output resources array.

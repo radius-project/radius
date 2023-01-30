@@ -23,8 +23,9 @@ type DaprStateStore struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
@@ -45,10 +46,10 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Mode     LinkMode       `json:"mode,omitempty"`
-	Metadata map[string]any `json:"metadata,omitempty"`
-	Recipe   LinkRecipe     `json:"recipe,omitempty"`
-	Resource string         `json:"resource,omitempty"`
-	Type     string         `json:"type,omitempty"`
-	Version  string         `json:"version,omitempty"`
+	Mode     LinkMode          `json:"mode,omitempty"`
+	Metadata map[string]any    `json:"metadata,omitempty"`
+	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Resource string            `json:"resource,omitempty"`
+	Type     string            `json:"type,omitempty"`
+	Version  string            `json:"version,omitempty"`
 }

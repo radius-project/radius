@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -50,6 +51,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -94,9 +96,22 @@ func prettyPrintJSON(o any) (string, error) {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
+// It also initializes the traceprovider for cli.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
-	err := RootCmd.ExecuteContext(ctx)
+
+	tracerOpts := trace.TracerOptions{
+		ServiceName: "cli",
+	}
+	shutdown, err := trace.InitTracer(tracerOpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		_ = shutdown(ctx)
+	}()
+
+	err = RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -104,6 +119,7 @@ func Execute() {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}
+
 }
 
 func init() {

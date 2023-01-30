@@ -19,6 +19,9 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/sdk/credentials"
+	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
@@ -42,13 +45,29 @@ type HostOptions struct {
 	UCPConnection sdk.Connection
 }
 
-func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
-	conf, err := loadConfig(configPath)
-	if err != nil {
-		return HostOptions{}, err
+func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConfig, error) {
+	skipARM, ok := os.LookupEnv("SKIP_ARM")
+	if ok && strings.EqualFold(skipARM, "true") {
+		return nil, nil
 	}
 
-	arm, err := getArm()
+	provider, err := credentials.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn)
+	if err != nil {
+		return nil, err
+	}
+
+	arm, err := armauth.NewArmConfig(&armauth.Options{
+		CredentialProvider: provider,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to build ARM config: %w", err)
+	}
+
+	return arm, nil
+}
+
+func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
+	conf, err := loadConfig(configPath)
 	if err != nil {
 		return HostOptions{}, err
 	}
@@ -63,10 +82,15 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
+	arm, err := getArmConfig(conf, ucp)
+	if err != nil {
+		return HostOptions{}, err
+	}
+
 	return HostOptions{
 		Config:        conf,
-		Arm:           arm,
 		K8sConfig:     k8s,
+		Arm:           arm,
 		UCPConnection: ucp,
 	}, nil
 }
@@ -108,24 +132,6 @@ func FromContext(ctx context.Context) *ProviderConfig {
 // WithContext injects ProviderConfig into the given http context.
 func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
-}
-
-func getArm() (*armauth.ArmConfig, error) {
-	skipARM, ok := os.LookupEnv("SKIP_ARM")
-	if ok && strings.EqualFold(skipARM, "true") {
-		return nil, nil
-	}
-
-	arm, err := armauth.GetArmConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build ARM config: %w", err)
-	}
-
-	if arm != nil {
-		fmt.Println("Initializing RP with the provided ARM credentials")
-	}
-
-	return arm, nil
 }
 
 func getKubernetes() (*rest.Config, error) {

@@ -17,7 +17,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     providers: {
       azure: {
-        scope: '/subcriptions/${sub}/resourceGroup/${rg}'
+        scope: '/subscriptions/${sub}/resourceGroups/${rg}'
       }
     }
     recipes: {

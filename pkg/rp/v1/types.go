@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
@@ -78,7 +79,7 @@ type KubernetesComputeProperties struct {
 type RadiusResourceModel interface {
 	v1.ResourceDataModel
 
-	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput) error
 	OutputResources() []OutputResource
 
 	ResourceMetadata() *BasicResourceProperties
@@ -89,14 +90,15 @@ type DeploymentOutput struct {
 	DeployedOutputResources []OutputResource
 	ComputedValues          map[string]any
 	SecretValues            map[string]SecretValueReference
+	RecipeData              linkrp.RecipeData
 }
 
 // DeploymentDataModel is the interface that wraps existing data models
 // and enables us to use in generic deployment backend controllers.
 type DeploymentDataModel interface {
-	v1.DataModelInterface
+	v1.ResourceDataModel
 
-	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput) error
 
 	OutputResources() []OutputResource
 }

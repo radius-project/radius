@@ -23,8 +23,9 @@ type RabbitMQMessageQueue struct {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) {
+func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
@@ -44,10 +45,10 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
 type RabbitMQMessageQueueProperties struct {
 	rpv1.BasicResourceProperties
-	Queue   string          `json:"queue"`
-	Recipe  LinkRecipe      `json:"recipe,omitempty"`
-	Secrets RabbitMQSecrets `json:"secrets,omitempty"`
-	Mode    LinkMode        `json:"mode,omitempty"`
+	Queue   string            `json:"queue"`
+	Recipe  linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Secrets RabbitMQSecrets   `json:"secrets,omitempty"`
+	Mode    LinkMode          `json:"mode,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
