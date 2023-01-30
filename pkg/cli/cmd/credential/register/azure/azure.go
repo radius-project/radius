@@ -183,11 +183,12 @@ func (r *Runner) Run(ctx context.Context) error {
 			TenantID:     &r.TenantID,
 			ClientID:     &r.ClientID,
 			ClientSecret: &r.ClientSecret,
+			Kind:         to.Ptr("ServicePrincipal"),
 		},
 	}
 
 	// 1) Update server-side to add/change credentials
-	err = client.Put(ctx, credential)
+	err = client.PutAzure(ctx, credential)
 	if err != nil {
 		return err
 	}

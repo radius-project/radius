@@ -28,15 +28,13 @@ import (
 // Don't use this type directly, use NewResourceGroupsClient() instead.
 type ResourceGroupsClient struct {
 	host string
-	planeName string
 	pl runtime.Pipeline
 }
 
 // NewResourceGroupsClient creates a new instance of ResourceGroupsClient with the specified values.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewResourceGroupsClient(planeName string, credential azcore.TokenCredential, options *arm.ClientOptions) (*ResourceGroupsClient, error) {
+func NewResourceGroupsClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*ResourceGroupsClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -49,7 +47,6 @@ func NewResourceGroupsClient(planeName string, credential azcore.TokenCredential
 		return nil, err
 	}
 	client := &ResourceGroupsClient{
-		planeName: planeName,
 		host: ep,
 pl: pl,
 	}
@@ -60,12 +57,13 @@ pl: pl,
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // planeType - The plane type.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resourceGroupName - DaprSecretStore name
 // resource - Resource create parameters.
 // options - ResourceGroupsClientCreateOrUpdateOptions contains the optional parameters for the ResourceGroupsClient.CreateOrUpdate
 // method.
-func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeType string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (ResourceGroupsClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, planeType, resourceGroupName, resource, options)
+func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (ResourceGroupsClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, planeType, planeName, resourceGroupName, resource, options)
 	if err != nil {
 		return ResourceGroupsClientCreateOrUpdateResponse{}, err
 	}
@@ -80,13 +78,13 @@ func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeTyp
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
@@ -123,10 +121,11 @@ func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Resp
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // planeType - The plane type.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resourceGroupName - DaprSecretStore name
 // options - ResourceGroupsClientDeleteOptions contains the optional parameters for the ResourceGroupsClient.Delete method.
-func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, planeType, resourceGroupName, options)
+func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, planeType, planeName, resourceGroupName, options)
 	if err != nil {
 		return ResourceGroupsClientDeleteResponse{}, err
 	}
@@ -141,13 +140,13 @@ func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, planeType string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (*policy.Request, error) {
+func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
@@ -181,10 +180,11 @@ func (client *ResourceGroupsClient) deleteHandleResponse(resp *http.Response) (R
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // planeType - The plane type.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resourceGroupName - DaprSecretStore name
 // options - ResourceGroupsClientGetOptions contains the optional parameters for the ResourceGroupsClient.Get method.
-func (client *ResourceGroupsClient) Get(ctx context.Context, planeType string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, planeType, resourceGroupName, options)
+func (client *ResourceGroupsClient) Get(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, planeType, planeName, resourceGroupName, options)
 	if err != nil {
 		return ResourceGroupsClientGetResponse{}, err
 	}
@@ -199,13 +199,13 @@ func (client *ResourceGroupsClient) Get(ctx context.Context, planeType string, r
 }
 
 // getCreateRequest creates the Get request.
-func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, planeType string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (*policy.Request, error) {
+func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
@@ -233,9 +233,10 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 // NewListByRootScopePager - Lists information about all ResourceGroupResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
 // planeType - The plane type.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // options - ResourceGroupsClientListByRootScopeOptions contains the optional parameters for the ResourceGroupsClient.ListByRootScope
 // method.
-func (client *ResourceGroupsClient) NewListByRootScopePager(planeType string, options *ResourceGroupsClientListByRootScopeOptions) (*runtime.Pager[ResourceGroupsClientListByRootScopeResponse]) {
+func (client *ResourceGroupsClient) NewListByRootScopePager(planeType string, planeName string, options *ResourceGroupsClientListByRootScopeOptions) (*runtime.Pager[ResourceGroupsClientListByRootScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[ResourceGroupsClientListByRootScopeResponse]{
 		More: func(page ResourceGroupsClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -244,7 +245,7 @@ func (client *ResourceGroupsClient) NewListByRootScopePager(planeType string, op
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByRootScopeCreateRequest(ctx, planeType, options)
+				req, err = client.listByRootScopeCreateRequest(ctx, planeType, planeName, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -264,13 +265,13 @@ func (client *ResourceGroupsClient) NewListByRootScopePager(planeType string, op
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *ResourceGroupsClient) listByRootScopeCreateRequest(ctx context.Context, planeType string, options *ResourceGroupsClientListByRootScopeOptions) (*policy.Request, error) {
+func (client *ResourceGroupsClient) listByRootScopeCreateRequest(ctx context.Context, planeType string, planeName string, options *ResourceGroupsClientListByRootScopeOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}/resourcegroups"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err

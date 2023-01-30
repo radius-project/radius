@@ -28,15 +28,13 @@ import (
 // Don't use this type directly, use NewPlanesClient() instead.
 type PlanesClient struct {
 	host string
-	planeName string
 	pl runtime.Pipeline
 }
 
 // NewPlanesClient creates a new instance of PlanesClient with the specified values.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewPlanesClient(planeName string, credential azcore.TokenCredential, options *arm.ClientOptions) (*PlanesClient, error) {
+func NewPlanesClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*PlanesClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -49,7 +47,6 @@ func NewPlanesClient(planeName string, credential azcore.TokenCredential, option
 		return nil, err
 	}
 	client := &PlanesClient{
-		planeName: planeName,
 		host: ep,
 pl: pl,
 	}
@@ -60,10 +57,11 @@ pl: pl,
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // planeType - The plane type.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // resource - Resource create parameters.
 // options - PlanesClientCreateOrUpdateOptions contains the optional parameters for the PlanesClient.CreateOrUpdate method.
-func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (PlanesClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, planeType, resource, options)
+func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (PlanesClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, planeType, planeName, resource, options)
 	if err != nil {
 		return PlanesClientCreateOrUpdateResponse{}, err
 	}
@@ -78,13 +76,13 @@ func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -117,9 +115,10 @@ func (client *PlanesClient) createOrUpdateHandleResponse(resp *http.Response) (P
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // planeType - The plane type.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // options - PlanesClientDeleteOptions contains the optional parameters for the PlanesClient.Delete method.
-func (client *PlanesClient) Delete(ctx context.Context, planeType string, options *PlanesClientDeleteOptions) (PlanesClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, planeType, options)
+func (client *PlanesClient) Delete(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (PlanesClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, planeType, planeName, options)
 	if err != nil {
 		return PlanesClientDeleteResponse{}, err
 	}
@@ -134,13 +133,13 @@ func (client *PlanesClient) Delete(ctx context.Context, planeType string, option
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType string, options *PlanesClientDeleteOptions) (*policy.Request, error) {
+func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -170,9 +169,10 @@ func (client *PlanesClient) deleteHandleResponse(resp *http.Response) (PlanesCli
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // planeType - The plane type.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // options - PlanesClientGetOptions contains the optional parameters for the PlanesClient.Get method.
-func (client *PlanesClient) Get(ctx context.Context, planeType string, options *PlanesClientGetOptions) (PlanesClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, planeType, options)
+func (client *PlanesClient) Get(ctx context.Context, planeType string, planeName string, options *PlanesClientGetOptions) (PlanesClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, planeType, planeName, options)
 	if err != nil {
 		return PlanesClientGetResponse{}, err
 	}
@@ -187,13 +187,13 @@ func (client *PlanesClient) Get(ctx context.Context, planeType string, options *
 }
 
 // getCreateRequest creates the Get request.
-func (client *PlanesClient) getCreateRequest(ctx context.Context, planeType string, options *PlanesClientGetOptions) (*policy.Request, error) {
+func (client *PlanesClient) getCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientGetOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err

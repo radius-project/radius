@@ -160,7 +160,7 @@ model PlaneNameParameter {
   @minLength(1)
   @path
   @extension("x-ms-skip-url-encoding", true)
-  @extension("x-ms-parameter-location", "client")
+  @extension("x-ms-parameter-location", "method")
   planeName: string;
 }
 
@@ -183,7 +183,7 @@ model AWSPlaneNameParameter {
   @path
   @segment("planes/aws")
   @extension("x-ms-skip-url-encoding", true)
-  @extension("x-ms-parameter-location", "client")
+  @extension("x-ms-parameter-location", "method")
   planeName: string;
 }
 
@@ -194,7 +194,7 @@ model AzurePlaneNameParameter {
   @path
   @segment("planes/azure")
   @extension("x-ms-skip-url-encoding", true)
-  @extension("x-ms-parameter-location", "client")
+  @extension("x-ms-parameter-location", "method")
   planeName: string;
 }
 

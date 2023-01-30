@@ -15,7 +15,7 @@ import (
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
-//go:generate mockgen -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential CredentialManagementClient
+//go:generate mockgen -destination=./mock_aws_credential_management.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential AWSCredentialManagementClientInterface
 
 // CredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClient struct {
@@ -30,17 +30,22 @@ const (
 	infoRequiredTemplate = "required info %s"
 )
 
-// // UCPCredentialManagementClient implements operations to manage credentials on ucp.
-// type AWSCredentialManagementClient struct {
-// 	CredentialInterface Interface
-// }
-
-var _ CredentialManagementClient = (*UCPCredentialManagementClient)(nil)
+// CredentialManagementClient is used to interface with cloud provider configuration and credentials.
+type AWSCredentialManagementClientInterface interface {
+	// Get gets the credential registered with the given ucp provider plane.
+	Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error)
+	// List lists the credentials registered with all ucp provider planes.
+	List(ctx context.Context) ([]CloudProviderStatus, error)
+	// Put registers an AWS credential with the respective ucp provider plane.
+	Put(ctx context.Context, credential_config ucp.AWSCredentialResource) error
+	// Delete unregisters credential from the given ucp provider plane.
+	Delete(ctx context.Context, name string) (bool, error)
+}
 
 // Put registers credentials with the provided credential config
 func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential ucp.AWSCredentialResource) error {
 	if strings.EqualFold(*credential.Type, AWSCredential) {
-		_, err := cpm.AWSCredentialClient.CreateOrUpdate(ctx, *credential.Name, credential, nil)
+		_, err := cpm.AWSCredentialClient.CreateOrUpdate(ctx, AWSPlaneName, *credential.Name, credential, nil)
 		return err
 	}
 	return &ErrUnsupportedCloudProvider{}
@@ -59,8 +64,7 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) 
 
 	if strings.EqualFold(name, AWSCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		// cred, err = cpm.CredentialInterface.GetCredential(ctx, AWSPlaneType, AWSPlaneName, name)
-		resp, err := cpm.AWSCredentialClient.Get(ctx, name, nil)
+		resp, err := cpm.AWSCredentialClient.Get(ctx, AWSPlaneName, name, nil)
 		if err != nil {
 			return ProviderCredentialConfiguration{}, err
 		}
@@ -92,7 +96,7 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 	// list azure credential
 	var providerList []*ucp.AWSCredentialResource
 
-	pager := cpm.AWSCredentialClient.NewListByRootScopePager(nil)
+	pager := cpm.AWSCredentialClient.NewListByRootScopePager(AWSPlaneName, nil)
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
@@ -116,7 +120,7 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 
 // Delete, deletes the credentials from the given ucp provider plane
 func (cpm *AWSCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
-	_, err := cpm.AWSCredentialClient.Delete(ctx, name, nil)
+	_, err := cpm.AWSCredentialClient.Delete(ctx, AWSPlaneName, name, nil)
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
 		// return true if not found.

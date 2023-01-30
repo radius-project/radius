@@ -31,12 +31,12 @@ var (
 	errInternalServer     = errors.New("internal server error")
 )
 
-func Test_Credential_Put(t *testing.T) {
+func Test_AzureCredential_Put(t *testing.T) {
 	tests := []struct {
 		name       string
 		planeType  string
 		planeName  string
-		credential ucp.CredentialResource
+		credential ucp.AzureCredentialResource
 		err        error
 		setupMocks func(mockCredentialClient MockInterface, planeType string, planeName string)
 	}{
@@ -44,12 +44,13 @@ func Test_Credential_Put(t *testing.T) {
 			name:      "create azure credential success",
 			planeType: AzurePlaneType,
 			planeName: AzurePlaneName,
-			credential: ucp.CredentialResource{
+			credential: ucp.AzureCredentialResource{
+				Name:     to.Ptr(azureProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(AzureCredential),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
-						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+						Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 					},
 					ClientID:     to.Ptr(clientID),
 					ClientSecret: to.Ptr("cool-client-secret"),
@@ -59,11 +60,46 @@ func Test_Credential_Put(t *testing.T) {
 			err:        nil,
 			setupMocks: setupSuccessPutMocks,
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := testcontext.New(t)
+			defer cancel()
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			mockCredentialClient := NewMockInterface(mockCtrl)
+			if tt.setupMocks != nil {
+				tt.setupMocks(*mockCredentialClient, tt.planeType, tt.planeName)
+			}
+			cliCredentialClient := UCPCredentialManagementClient{
+				CredentialInterface: mockCredentialClient,
+			}
+			err := cliCredentialClient.Put(ctx, tt.credential)
+			if tt.err == nil {
+				require.NoError(t, err)
+			} else {
+				require.Equal(t, tt.err, err)
+			}
+		})
+	}
+}
+
+func Test_AWSCredential_Put(t *testing.T) {
+	tests := []struct {
+		name       string
+		planeType  string
+		planeName  string
+		credential ucp.AWSCredentialResource
+		err        error
+		setupMocks func(mockCredentialClient MockInterface, planeType string, planeName string)
+	}{
 		{
 			name:      "create aws credential success",
 			planeType: AWSPlaneType,
 			planeName: AWSPlaneName,
-			credential: ucp.CredentialResource{
+			credential: ucp.AWSCredentialResource{
+				Name:     to.Ptr(awsProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(AWSCredential),
 				Properties: &ucp.AWSCredentialProperties{
@@ -76,15 +112,6 @@ func Test_Credential_Put(t *testing.T) {
 			},
 			err:        nil,
 			setupMocks: setupSuccessPutMocks,
-		},
-		{
-			name: "create unsupported provider credential",
-			credential: ucp.CredentialResource{
-				Location: to.Ptr(v1.LocationGlobal),
-				Type:     to.Ptr(""),
-			},
-			err:        &ErrUnsupportedCloudProvider{},
-			setupMocks: nil,
 		},
 	}
 

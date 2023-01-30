@@ -80,16 +80,30 @@ func (mr *MockCredentialManagementClientMockRecorder) List(arg0 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockCredentialManagementClient)(nil).List), arg0)
 }
 
-// Put mocks base method.
-func (m *MockCredentialManagementClient) Put(arg0 context.Context, arg1 v20220901privatepreview.CredentialResource) error {
+// PutAWS mocks base method.
+func (m *MockCredentialManagementClient) PutAWS(arg0 context.Context, arg1 v20220901privatepreview.AWSCredentialResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Put", arg0, arg1)
+	ret := m.ctrl.Call(m, "PutAWS", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Put indicates an expected call of Put.
-func (mr *MockCredentialManagementClientMockRecorder) Put(arg0, arg1 interface{}) *gomock.Call {
+// PutAWS indicates an expected call of PutAWS.
+func (mr *MockCredentialManagementClientMockRecorder) PutAWS(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockCredentialManagementClient)(nil).Put), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutAWS", reflect.TypeOf((*MockCredentialManagementClient)(nil).PutAWS), arg0, arg1)
+}
+
+// PutAzure mocks base method.
+func (m *MockCredentialManagementClient) PutAzure(arg0 context.Context, arg1 v20220901privatepreview.AzureCredentialResource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PutAzure", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PutAzure indicates an expected call of PutAzure.
+func (mr *MockCredentialManagementClientMockRecorder) PutAzure(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutAzure", reflect.TypeOf((*MockCredentialManagementClient)(nil).PutAzure), arg0, arg1)
 }
