@@ -317,7 +317,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			},
 			Mode: datamodel.LinkModeRecipe,
 			RedisRecipeProperties: datamodel.RedisRecipeProperties{
-				Recipe: datamodel.LinkRecipe{
+				Recipe: linkrp.LinkRecipe{
 					Name: "redis",
 					Parameters: map[string]any{
 						"throughput": 400,
@@ -364,8 +364,8 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 
 	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "redis",
 				Parameters: map[string]any{
 					"throughput": 400,
@@ -410,7 +410,7 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			},
 			Mode: datamodel.LinkModeRecipe,
 			RedisRecipeProperties: datamodel.RedisRecipeProperties{
-				Recipe: datamodel.LinkRecipe{
+				Recipe: linkrp.LinkRecipe{
 					Name: "redis",
 					Parameters: map[string]any{
 						"throughput": 400,
@@ -421,8 +421,8 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 	}
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "redis",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
