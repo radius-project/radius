@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
 	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 
 	"gopkg.in/yaml.v3"
@@ -50,7 +50,7 @@ func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConf
 		return nil, nil
 	}
 
-	provider, err := credentials.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn)
+	provider, err := sdk_cred.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn)
 	if err != nil {
 		return nil, err
 	}

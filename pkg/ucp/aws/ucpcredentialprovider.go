@@ -12,15 +12,18 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
 )
+
+var _ aws.CredentialsProvider = (*UCPCredentialProvider)(nil)
 
 const (
 	// DefaultExpireDuration is the default access key expiry duration.
 	DefaultExpireDuration = time.Minute * time.Duration(1)
 )
 
-// UCPCredentialProvider is used to retrieve credentials via UCP credentials
+// UCPCredentialProvider is the implementation of aws.CredentialsProvider
+// to retrieve credentials for AWS SDK via UCP credentials.
 type UCPCredentialProvider struct {
 	options UCPCredentialOptions
 }
@@ -28,14 +31,14 @@ type UCPCredentialProvider struct {
 // UCPCredentialOptions is a configuration for UCPCredentialProvider.
 type UCPCredentialOptions struct {
 	// Provider is an UCP credential provider.
-	Provider sdk.CredentialProvider[sdk.AWSCredential]
+	Provider sdk_cred.CredentialProvider[sdk_cred.AWSCredential]
 
 	// Duration is the duration for the secret keys.
 	Duration time.Duration
 }
 
 // NewUCPCredentialProvider creates UCPCredentialProvider provider to fetch Secret Access key using UCP credential APIs.
-func NewUCPCredentialProvider(provider sdk.CredentialProvider[sdk.AWSCredential], expireDuration time.Duration) *UCPCredentialProvider {
+func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSCredential], expireDuration time.Duration) *UCPCredentialProvider {
 	if expireDuration == 0 {
 		expireDuration = DefaultExpireDuration
 	}
@@ -50,7 +53,7 @@ func NewUCPCredentialProvider(provider sdk.CredentialProvider[sdk.AWSCredential]
 
 // Retrieve fetches the secret access key using UCP credential API.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
-	s, err := c.options.Provider.Fetch(ctx, sdk.AWSPublic, "default")
+	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
 	if err != nil {
 		return aws.Credentials{}, err
 	}
@@ -69,7 +72,8 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		Source:          "Radius UCP",
 		SessionToken:    sessionName,
 		CanExpire:       true,
-		Expires:         time.Now().Add(c.options.Duration),
+		// Enables AWS SDK to fetch (rotate) access keys by calling Retrieve() after Expires.
+		Expires: time.Now().Add(c.options.Duration),
 	}
 
 	return value, nil

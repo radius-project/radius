@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 // Authentication methods
@@ -33,7 +33,7 @@ type ArmConfig struct {
 // Options represents the options of ArmConfig.
 type Options struct {
 	// CredentialProvider is an UCP credential client for Azure service principal.
-	CredentialProvider sdk.CredentialProvider[sdk.AzureCredential]
+	CredentialProvider sdk_cred.CredentialProvider[sdk_cred.AzureCredential]
 }
 
 // NewArmConfig gets the configuration we use for managing ARM resources

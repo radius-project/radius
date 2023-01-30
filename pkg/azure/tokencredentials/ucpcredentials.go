@@ -14,10 +14,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
+
 	"github.com/go-logr/logr"
 	"go.uber.org/atomic"
-
-	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 const (
@@ -30,7 +30,7 @@ var _ azcore.TokenCredential = (*UCPCredential)(nil)
 // UCPCredentialOptions is the options for UCP credential.
 type UCPCredentialOptions struct {
 	// Provider is an UCP credential provider.
-	Provider sdk.CredentialProvider[sdk.AzureCredential]
+	Provider sdk_cred.CredentialProvider[sdk_cred.AzureCredential]
 	// Duration is the duration to refresh token client.
 	Duration time.Duration
 
@@ -41,7 +41,7 @@ type UCPCredentialOptions struct {
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
 	options    UCPCredentialOptions
-	credential *sdk.AzureCredential
+	credential *sdk_cred.AzureCredential
 
 	tokenCred azcore.TokenCredential
 	// tokenCredMu is the read write mutex to protect tokenCred.
@@ -83,7 +83,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		return nil
 	}
 
-	s, err := c.options.Provider.Fetch(ctx, sdk.AzureCloud, "default")
+	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AzureCloud, "default")
 	if err != nil {
 		return err
 	}

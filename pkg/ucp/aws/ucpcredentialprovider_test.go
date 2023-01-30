@@ -13,15 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/time"
 
-	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 type mockProvider struct {
-	fakeCredential *sdk.AWSCredential
+	fakeCredential *sdk_cred.AWSCredential
 }
 
 // Fetch gets the AWS credentials from secret storage.
-func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk.AWSCredential, error) {
+func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_cred.AWSCredential, error) {
 	if p.fakeCredential == nil {
 		return nil, errors.New("failed to fetch credential")
 	}
@@ -30,7 +30,7 @@ func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk.
 
 func newMockProvider() *mockProvider {
 	return &mockProvider{
-		fakeCredential: &sdk.AWSCredential{
+		fakeCredential: &sdk_cred.AWSCredential{
 			AccessKeyID:     "fakeid",
 			SecretAccessKey: "fakesecretkey",
 		},

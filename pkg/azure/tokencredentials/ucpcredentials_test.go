@@ -12,15 +12,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 type mockProvider struct {
-	fakeCredential *sdk.AzureCredential
+	fakeCredential *sdk_cred.AzureCredential
 }
 
 // Fetch gets the Azure credentials from secret storage.
-func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk.AzureCredential, error) {
+func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_cred.AzureCredential, error) {
 	if p.fakeCredential == nil {
 		return nil, errors.New("failed to fetch credential")
 	}
@@ -29,7 +29,7 @@ func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk.
 
 func newMockProvider() *mockProvider {
 	return &mockProvider{
-		fakeCredential: &sdk.AzureCredential{
+		fakeCredential: &sdk_cred.AzureCredential{
 			ClientID:     "fakeid",
 			TenantID:     "fakeid",
 			ClientSecret: "fakeSecret",
