@@ -155,3 +155,41 @@ func getTestHTTPRequest(headerFile string) (*http.Request, error) {
 	}
 	return req, nil
 }
+
+func TestBaseIndex(t *testing.T) {
+	prefixTests := []struct {
+		desc        string
+		refererPath string
+		baseIndex   int
+		prefix      string
+		resourceID  string
+	}{
+		{
+			"With api prefix",
+			"/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
+			26,
+			"/apis/api.ucp.dev/v1alpha3",
+			"/planes/radius/local/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
+		},
+		{
+			"Without api prefix header",
+			"/planes/radius/local/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
+			0,
+			"",
+			"/planes/radius/local/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
+		},
+	}
+
+	for _, tt := range prefixTests {
+		t.Run(tt.desc, func(t *testing.T) {
+			pathIndex := GetBaseIndex(tt.refererPath)
+			require.Equal(t, pathIndex, tt.baseIndex)
+
+			pathPrefix := tt.refererPath[:pathIndex]
+			require.Equal(t, pathPrefix, tt.prefix)
+
+			path := strings.TrimPrefix(tt.refererPath, pathPrefix)
+			require.Equal(t, path, tt.resourceID)
+		})
+	}
+}
