@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package traces
+package trace
 
 type TracerOptions struct {
 	ServiceName string

@@ -51,7 +51,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
-	"github.com/project-radius/radius/pkg/telemetry/traces"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -99,18 +99,16 @@ func prettyPrintJSON(o any) (string, error) {
 // It also initializes the traceprovider for cli.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
-	tracerOpts := traces.TracerOptions{
+
+	tracerOpts := trace.TracerOptions{
 		ServiceName: "cli",
+		//URL:         "http://localhost:9411/api/v2/spans",
 	}
-	shutdown, err := traces.InitTracer(tracerOpts)
+	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		if err := shutdown(ctx); err != nil {
-			log.Fatal("failed to shutdown TracerProvider: %w", err)
-		}
-	}()
+	defer trace.ShutdownTracer(shutdown, ctx)
 
 	err = RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
