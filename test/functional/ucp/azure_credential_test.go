@@ -137,9 +137,10 @@ func getAzureCredentialObject() ucp.AzureCredentialResource {
 			"env": to.Ptr("dev"),
 		},
 		Properties: &ucp.AzureServicePrincipalProperties{
-			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:     to.Ptr("ServicePrincipal"),
+			ClientID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+			TenantID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+			ClientSecret: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:         to.Ptr("ServicePrincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("azure-azurecloud-default"),

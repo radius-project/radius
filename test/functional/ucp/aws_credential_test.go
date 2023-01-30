@@ -136,8 +136,9 @@ func getAWSCredentialObject() ucp.AWSCredentialResource {
 			"env": to.Ptr("dev"),
 		},
 		Properties: &v20220901privatepreview.AWSAccessKeyCredentialProperties{
-			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:        to.Ptr("AccessKey"),
+			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:            to.Ptr("AccessKey"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("aws-awscloud-default"),
