@@ -30,7 +30,7 @@ func ShowRecipe(ctx context.Context, recipeDetails *datamodel.EnvironmentRecipeP
         }
 	for key, value := range recipeParam {
 		if key == "context" {
-			// context parameter is only revelant to operator.
+			// Context parameter is only relevant to operator.
 			continue
 		}
 
