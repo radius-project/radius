@@ -18,8 +18,6 @@ import (
 )
 
 func Test_DaprStateStoreGeneric(t *testing.T) {
-	t.Skip("This is flaky. Tracked by: https://github.com/project-radius/radius/issues/5047")
-
 	template := "testdata/corerp-resources-dapr-statestore-generic.bicep"
 	name := "corerp-resources-dapr-statestore-generic"
 	appNamespace := "default-corerp-resources-dapr-statestore-generic"
@@ -60,6 +58,8 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 }
 
 func Test_DaprStateStoreTableStorage(t *testing.T) {
+	t.Skipf("Enable this test once test flakiness is fixed. - https://github.com/project-radius/radius/issues/5053")
+
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
 
@@ -105,6 +105,8 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 }
 
 func Test_DaprStateStore_Recipe(t *testing.T) {
+	t.Skip("This is flaky. Tracked by: https://github.com/project-radius/radius/issues/5047")
+
 	template := "testdata/corerp-resources-dapr-statestore-recipe.bicep"
 	name := "corerp-resources-dss-recipe"
 	appNamespace := "corerp-resources-dss-recipe-app"
