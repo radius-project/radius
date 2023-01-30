@@ -103,9 +103,7 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 			return nil, err
 		}
 		credList := nextPage.AWSCredentialResourceListResult.Value
-		for _, resource := range credList {
-			providerList = append(providerList, resource)
-		}
+		providerList = append(providerList, credList...)
 	}
 
 	res := make([]CloudProviderStatus, 0)

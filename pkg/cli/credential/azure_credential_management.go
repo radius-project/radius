@@ -135,9 +135,7 @@ func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudPr
 			return nil, err
 		}
 		credList := nextPage.AzureCredentialResourceListResult.Value
-		for _, resource := range credList {
-			providerList = append(providerList, resource)
-		}
+		providerList = append(providerList, credList...)
 	}
 
 	res := make([]CloudProviderStatus, 0)
