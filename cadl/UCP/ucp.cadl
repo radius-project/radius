@@ -22,6 +22,8 @@ using Azure.ResourceManager.Radius;
 using Azure.ResourceManager.Foundations;
 using OpenAPI;
 
+// Don't need operation APIs.
+#suppress "@azure-tools/cadl-azure-resource-manager/missing-operations-endpoint"
 @armProviderNamespace
 @service({
     title: "UCP Management APIs",
@@ -33,7 +35,7 @@ namespace Ucp;
 
 @doc("UCP ResourceGroup.")
 model ResourceGroupResource is TrackedResource<BasicResourceProperties> {
-    @doc("DaprSecretStore name")
+    @doc("Resource Group name")
     @maxLength(63)
     @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
     @key("resourceGroupName")
@@ -66,14 +68,17 @@ enum PlaneKind {
     AWS
 }
 
+@doc("Credential store kinds supported.")
 enum CredentialStorageKind {
     Internal,
 }
 
+@doc("AWS credential kinds supported.")
 enum AWSCredentialKind {
     AccessKey,
 }
 
+@doc("Azure credential kinds supported.")
 enum AzureCredentialKind {
     ServicePrincipal,
 }
@@ -91,29 +96,35 @@ model PlaneResourceProperties extends BasicResourceProperties {
 }
 
 @discriminator("kind")
-model AzureCredentialProperties {
+@doc("Azure Credential properties")
+model AzureCredentialProperties extends BasicResourceProperties {
 }
 
 @doc("Service Principal credential storage properties")
 model AzureServicePrincipalProperties extends AzureCredentialProperties {
+    @doc("Service principal kind")
     kind: "ServicePrincipal";
-    @doc("clientId when the CredentialKind is ServicePrincipal")
+    @doc("clientId for ServicePrincipal")
     clientId: string;
-    @doc("secret when the CredentialKind is ServicePrincipal")
+    @doc("secret for ServicePrincipal")
     @extension("x-ms-secret", true)
     clientSecret: string;
-    @doc("tenantId when the CredentialKind is ServicePrincipal")
+    @doc("tenantId for ServicePrincipal")
     tenantId: string;
     @doc("The storage properties")
     storage: CredentialStorageProperties;
 }
 
+#suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @discriminator("kind")
-model AWSCredentialProperties {
+@doc("AWS Credential properties")
+model AWSCredentialProperties extends BasicResourceProperties {
 }
 
+#suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @doc("AWS credential storage properties")
 model AWSAccessKeyCredentialProperties extends AWSCredentialProperties {
+    @doc("Access Key kind")
     kind: "AccessKey";
     @doc("Access key ID for AWS identity")
     @extension("x-ms-secret", true)
@@ -125,6 +136,8 @@ model AWSAccessKeyCredentialProperties extends AWSCredentialProperties {
     storage: CredentialStorageProperties;
 }
 
+#suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
+#suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 model AWSCredentialResource is TrackedResource<AWSCredentialProperties> {
     @key("credentialName")
     @doc("The plane type.")
@@ -133,6 +146,7 @@ model AWSCredentialResource is TrackedResource<AWSCredentialProperties> {
     name: string;
 }
 
+#suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 model AzureCredentialResource is TrackedResource<AzureCredentialProperties> {
     @key("credentialName")
     @doc("The plane type.")
@@ -148,6 +162,7 @@ model CredentialStorageProperties {
 
 @doc("Internal credential storage properties")
 model InternalCredentialStorageProperties extends CredentialStorageProperties {
+    @doc("Internal kind")
     kind: "Internal";
     @doc("The name of secret stored.")
     @visibility("read")
@@ -176,6 +191,7 @@ enum ProvisioningState {
   Accepted,
 }
 
+#suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @doc("Custom root scope")
 model AWSPlaneNameParameter {
   @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")

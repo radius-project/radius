@@ -58,7 +58,7 @@ pl: pl,
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-// resourceGroupName - DaprSecretStore name
+// resourceGroupName - Resource Group name
 // resource - Resource create parameters.
 // options - ResourceGroupsClientCreateOrUpdateOptions contains the optional parameters for the ResourceGroupsClient.CreateOrUpdate
 // method.
@@ -122,7 +122,7 @@ func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Resp
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-// resourceGroupName - DaprSecretStore name
+// resourceGroupName - Resource Group name
 // options - ResourceGroupsClientDeleteOptions contains the optional parameters for the ResourceGroupsClient.Delete method.
 func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, planeType, planeName, resourceGroupName, options)
@@ -181,7 +181,7 @@ func (client *ResourceGroupsClient) deleteHandleResponse(resp *http.Response) (R
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-// resourceGroupName - DaprSecretStore name
+// resourceGroupName - Resource Group name
 // options - ResourceGroupsClientGetOptions contains the optional parameters for the ResourceGroupsClient.Get method.
 func (client *ResourceGroupsClient) Get(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, planeType, planeName, resourceGroupName, options)

@@ -14,6 +14,7 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
+// AWSCredentialKind - AWS credential kinds supported.
 type AWSCredentialKind string
 
 const (
@@ -27,6 +28,7 @@ func PossibleAWSCredentialKindValues() []AWSCredentialKind {
 	}
 }
 
+// AzureCredentialKind - Azure credential kinds supported.
 type AzureCredentialKind string
 
 const (
@@ -60,6 +62,7 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
+// CredentialStorageKind - Credential store kinds supported.
 type CredentialStorageKind string
 
 const (

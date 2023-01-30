@@ -24,12 +24,16 @@ type AWSAccessKeyCredentialProperties struct {
 
 	// REQUIRED; The storage properties
 	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSAccessKeyCredentialProperties.
 func (a *AWSAccessKeyCredentialProperties) GetAWSCredentialProperties() *AWSCredentialProperties {
 	return &AWSCredentialProperties{
 		Kind: a.Kind,
+		ProvisioningState: a.ProvisioningState,
 	}
 }
 
@@ -42,9 +46,13 @@ type AWSCredentialPropertiesClassification interface {
 	GetAWSCredentialProperties() *AWSCredentialProperties
 }
 
+// AWSCredentialProperties - AWS Credential properties
 type AWSCredentialProperties struct {
 	// REQUIRED; Discriminator property for AWSCredentialProperties.
 	Kind *string `json:"kind,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSCredentialProperties.
@@ -136,9 +144,13 @@ type AzureCredentialPropertiesClassification interface {
 	GetAzureCredentialProperties() *AzureCredentialProperties
 }
 
+// AzureCredentialProperties - Azure Credential properties
 type AzureCredentialProperties struct {
 	// REQUIRED; Discriminator property for AzureCredentialProperties.
 	Kind *string `json:"kind,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureCredentialProperties.
@@ -180,10 +192,10 @@ type AzureCredentialResourceListResult struct {
 
 // AzureServicePrincipalProperties - Service Principal credential storage properties
 type AzureServicePrincipalProperties struct {
-	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
+	// REQUIRED; clientId for ServicePrincipal
 	ClientID *string `json:"clientId,omitempty"`
 
-	// REQUIRED; secret when the CredentialKind is ServicePrincipal
+	// REQUIRED; secret for ServicePrincipal
 	ClientSecret *string `json:"clientSecret,omitempty"`
 
 	// REQUIRED; Discriminator property for AzureCredentialProperties.
@@ -192,14 +204,18 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; The storage properties
 	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
 
-	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
+	// REQUIRED; tenantId for ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureServicePrincipalProperties.
 func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureCredentialProperties {
 	return &AzureCredentialProperties{
 		Kind: a.Kind,
+		ProvisioningState: a.ProvisioningState,
 	}
 }
 

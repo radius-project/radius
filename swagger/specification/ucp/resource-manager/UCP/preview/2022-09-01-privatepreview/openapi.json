@@ -292,7 +292,7 @@
             "name": "resourceGroupName",
             "in": "path",
             "required": true,
-            "description": "DaprSecretStore name",
+            "description": "Resource Group name",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -338,7 +338,7 @@
             "name": "resourceGroupName",
             "in": "path",
             "required": true,
-            "description": "DaprSecretStore name",
+            "description": "Resource Group name",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -406,7 +406,7 @@
             "name": "resourceGroupName",
             "in": "path",
             "required": true,
-            "description": "DaprSecretStore name",
+            "description": "Resource Group name",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -826,6 +826,7 @@
     },
     "AWSCredentialKind": {
       "type": "string",
+      "description": "AWS credential kinds supported.",
       "enum": [
         "AccessKey"
       ],
@@ -842,9 +843,15 @@
           "description": "Discriminator property for AWSCredentialProperties."
         }
       },
+      "description": "AWS Credential properties",
       "discriminator": "kind",
       "required": [
         "kind"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
       ]
     },
     "AWSCredentialResource": {
@@ -897,6 +904,7 @@
     },
     "AzureCredentialKind": {
       "type": "string",
+      "description": "Azure credential kinds supported.",
       "enum": [
         "ServicePrincipal"
       ],
@@ -913,9 +921,15 @@
           "description": "Discriminator property for AzureCredentialProperties."
         }
       },
+      "description": "Azure Credential properties",
       "discriminator": "kind",
       "required": [
         "kind"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
       ]
     },
     "AzureCredentialResource": {
@@ -971,16 +985,16 @@
       "properties": {
         "clientId": {
           "type": "string",
-          "description": "clientId when the CredentialKind is ServicePrincipal"
+          "description": "clientId for ServicePrincipal"
         },
         "clientSecret": {
           "type": "string",
-          "description": "secret when the CredentialKind is ServicePrincipal",
+          "description": "secret for ServicePrincipal",
           "x-ms-secret": true
         },
         "tenantId": {
           "type": "string",
-          "description": "tenantId when the CredentialKind is ServicePrincipal"
+          "description": "tenantId for ServicePrincipal"
         },
         "storage": {
           "$ref": "#/definitions/CredentialStorageProperties",
@@ -1014,6 +1028,7 @@
     },
     "CredentialStorageKind": {
       "type": "string",
+      "description": "Credential store kinds supported.",
       "enum": [
         "Internal"
       ],

@@ -21,6 +21,7 @@ func (a AWSAccessKeyCredentialProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "accessKeyId", a.AccessKeyID)
 	objectMap["kind"] = "AccessKey"
+	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "secretAccessKey", a.SecretAccessKey)
 	populate(objectMap, "storage", a.Storage)
 	return json.Marshal(objectMap)
@@ -41,6 +42,9 @@ func (a *AWSAccessKeyCredentialProperties) UnmarshalJSON(data []byte) error {
 		case "kind":
 				err = unpopulate(val, "Kind", &a.Kind)
 				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
+				delete(rawMsg, key)
 		case "secretAccessKey":
 				err = unpopulate(val, "SecretAccessKey", &a.SecretAccessKey)
 				delete(rawMsg, key)
@@ -59,6 +63,7 @@ func (a *AWSAccessKeyCredentialProperties) UnmarshalJSON(data []byte) error {
 func (a AWSCredentialProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	objectMap["kind"] = a.Kind
+	populate(objectMap, "provisioningState", a.ProvisioningState)
 	return json.Marshal(objectMap)
 }
 
@@ -73,6 +78,9 @@ func (a *AWSCredentialProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "kind":
 				err = unpopulate(val, "Kind", &a.Kind)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -168,6 +176,7 @@ func (a *AWSCredentialResourceListResult) UnmarshalJSON(data []byte) error {
 func (a AzureCredentialProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	objectMap["kind"] = a.Kind
+	populate(objectMap, "provisioningState", a.ProvisioningState)
 	return json.Marshal(objectMap)
 }
 
@@ -182,6 +191,9 @@ func (a *AzureCredentialProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "kind":
 				err = unpopulate(val, "Kind", &a.Kind)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -279,6 +291,7 @@ func (a AzureServicePrincipalProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "clientId", a.ClientID)
 	populate(objectMap, "clientSecret", a.ClientSecret)
 	objectMap["kind"] = "ServicePrincipal"
+	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "storage", a.Storage)
 	populate(objectMap, "tenantId", a.TenantID)
 	return json.Marshal(objectMap)
@@ -301,6 +314,9 @@ func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "kind":
 				err = unpopulate(val, "Kind", &a.Kind)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
 				delete(rawMsg, key)
 		case "storage":
 				a.Storage, err = unmarshalCredentialStoragePropertiesClassification(val)
