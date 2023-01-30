@@ -42,7 +42,7 @@ const (
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/linkrp/handlers github.com/project-radius/radius/pkg/linkrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe linkrp.RecipeProperties, envProviders coreDatamodel.Providers, recipeContext linkrp.RecipeContext) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe linkrp.RecipeProperties, envProviders coreDatamodel.Providers, recipeContext linkrp.RecipeContext) (*RecipeResponse, error)
 }
 
 func NewRecipeHandler(connection sdk.Connection) RecipeHandler {
@@ -58,7 +58,7 @@ type recipeHandler struct {
 // DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath using the providers scope.
 // Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
 // Returns resource IDs of the resources deployed by the template
-func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.RecipeProperties, envProviders coreDatamodel.Providers, recipeContext linkrp.RecipeContext) (deployedResources []string, err error) {
+func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.RecipeProperties, envProviders coreDatamodel.Providers, recipeContext linkrp.RecipeContext) (*RecipeResponse, error) {
 	if recipe.TemplatePath == "" {
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
@@ -151,11 +151,17 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 		return nil, fmt.Errorf("failed to deploy the recipe %q, template path: %q, deployment: %q", recipe.Name, recipe.TemplatePath, deploymentID.Name())
 	}
 
+	recipeResponse := RecipeResponse{}
+	recipeResponse.Secrets = map[string]any{}
+	recipeResponse.Values = map[string]any{}
+
 	for _, id := range resp.Properties.OutputResources {
-		deployedResources = append(deployedResources, *id.ID)
+		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
 	}
 
-	return deployedResources, nil
+	prepareRecipeResponse(resp.Properties.Outputs, &recipeResponse)
+
+	return &recipeResponse, nil
 }
 
 // getDigestFromManifest gets the layers digest from the manifest
