@@ -219,7 +219,7 @@ func Test_Run(t *testing.T) {
 
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
-				Put(gomock.Any(), expectedPut).
+				PutAzure(gomock.Any(), expectedPut).
 				Return(nil).
 				Times(1)
 
