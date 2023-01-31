@@ -6,8 +6,12 @@
 package store
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/go-logr/logr"
 )
 
 func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
@@ -38,6 +42,10 @@ func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
 			value = value.MapIndex(reflect.ValueOf(field))
 			if i < len(fields)-1 {
 				// Need to go further into the nested fields
+				fmt.Println("#### TRYING TO DEBUG")
+				fmt.Println(value.String())
+				logger := logr.FromContextOrDiscard(context.Background())
+				logger.Info("#### reflect value: " + value.String())
 				value = reflect.ValueOf(value.Interface())
 			}
 		}
