@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -66,16 +65,12 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		return aws.Credentials{}, errors.New("invalid access key info")
 	}
 
-	// session name is used to uniquely identify a session. This simply
-	// uses unix time in nanoseconds to uniquely identify sessions.
-	sessionName := strconv.FormatInt(time.Now().UnixNano(), 10)
-
-	logger.Info(fmt.Sprintf("Retreived AWS Credential - AccessKeyID: %s, SessionName: %s", s.AccessKeyID, sessionName))
+	logger.Info(fmt.Sprintf("Retreived AWS Credential - AccessKeyID: %s", s.AccessKeyID))
 
 	value := aws.Credentials{
 		AccessKeyID:     s.AccessKeyID,
 		SecretAccessKey: s.SecretAccessKey,
-		SessionToken:    sessionName,
+		Source:          "radiusucp",
 		CanExpire:       true,
 		// Enables AWS SDK to fetch (rotate) access keys by calling Retrieve() after Expires.
 		Expires: time.Now().UTC().Add(c.options.Duration),

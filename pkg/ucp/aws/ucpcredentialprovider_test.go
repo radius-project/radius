@@ -62,7 +62,7 @@ func TestRetrieve(t *testing.T) {
 
 		require.Equal(t, "fakeid", cred.AccessKeyID)
 		require.Equal(t, "fakesecretkey", cred.SecretAccessKey)
-		//require.Equal(t, "RadiusUCPCredential", cred.Source)
+		require.Equal(t, "radiusucp", cred.Source)
 		require.Equal(t, "fakeid", cred.AccessKeyID)
 		require.True(t, cred.CanExpire)
 		require.GreaterOrEqual(t, cred.Expires.Unix(), expectedExpiry.Unix())

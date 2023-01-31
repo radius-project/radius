@@ -17,11 +17,6 @@ global:
     provider:
       azure: {}
     publicEndpointOverride: ""
-  identity:
-    azure:
-      kind: ServicePrincipal
-      # Uncomment the below to use UCP credential API.
-      # kind: UCPCredential
   prometheus:
     enabled: true
     path: "/metrics"
