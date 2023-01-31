@@ -48,12 +48,10 @@ planes:
       kind: "UCPNative"
 
 identity:
-  authMethod: default
+  authMethod: UCPCredential
 
 ucp:
-  kind: direct
-  direct:
-    endpoint: "http://localhost:5017"
+  kind: kubernetes
 
 # Metrics configuration
 # port is not the same as metrics configuration in radius-self-hosted.yaml 

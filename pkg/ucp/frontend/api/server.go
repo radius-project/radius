@@ -15,6 +15,7 @@ import (
 
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucpaws "github.com/project-radius/radius/pkg/ucp/aws"
@@ -85,12 +86,15 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 
 	switch s.options.Identity.AuthMethod {
 	case hostoptions.AuthUCPCredential:
-		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection)
+		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection, &aztoken.AnonymousCredential{})
 		if err != nil {
 			return aws.Config{}, err
 		}
 		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
+
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
+		c, err := p.Retrieve(ctx)
+		logger.Info(c.AccessKeyID)
 		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API with UCP Endpoint - " + s.options.UCPConnection.Endpoint())
 
 	default:
