@@ -228,7 +228,7 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 }
 
 // AsLogValues returns log values as key-value pairs from this ResourceIdentifier.
-func (r ResourceIdentity) AsLogValues() []interface{} {
+func (r ResourceIdentity) AsLogValues() []any {
 	if r.ResourceType == nil {
 		return nil
 	}
@@ -238,10 +238,10 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 		data := r.Data.(ARMIdentity)
 		id, err := resources.ParseResource(data.ID)
 		if err != nil {
-			return []interface{}{ucplog.LogFieldResourceID, data.ID}
+			return []any{ucplog.LogFieldResourceID, data.ID}
 		}
 
-		return []interface{}{
+		return []any{
 			logging.LogFieldResourceID, data.ID,
 			logging.LogFieldSubscriptionID, id.FindScope(resources.SubscriptionsSegment),
 			logging.LogFieldResourceGroup, id.FindScope(resources.ResourceGroupsSegment),
@@ -254,10 +254,10 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 		data := r.Data.(UCPIdentity)
 		id, err := resources.ParseResource(data.ID)
 		if err != nil {
-			return []interface{}{ucplog.LogFieldResourceID, data.ID}
+			return []any{ucplog.LogFieldResourceID, data.ID}
 		}
 
-		return []interface{}{
+		return []any{
 			logging.LogFieldResourceID, data.ID,
 			logging.LogFieldResourceType, id.Type(),
 			logging.LogFieldResourceName, id.QualifiedName(),
@@ -265,7 +265,7 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 
 	case ProviderKubernetes:
 		data := r.Data.(KubernetesIdentity)
-		return []interface{}{
+		return []any{
 			logging.LogFieldResourceName, data.Name,
 			logging.LogFieldNamespace, data.Namespace,
 			logging.LogFieldKind, data.Kind,

@@ -6,6 +6,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	dockerParser "github.com/novln/docker-parser"
@@ -13,12 +15,21 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// RecipeResponse is the response from deplying the recipe.
-// It has the list of resourceId's that out deployed and the secrets ant output value
+const (
+	ResultPropertyName = "result"
+)
+
+// RecipeResponse is the output provided by deploying the recipe and reading its 'Result' output.
+// It has the list of resourceId's that are deployed as well as the connection secrets and values.
 type RecipeResponse struct {
-	Resources []string
-	Secrets   map[string]any
-	Values    map[string]any
+	// Resources is the list of deployed resources.
+	Resources []string `json:"resources"`
+
+	// Secrets is a map of secret values.
+	Secrets map[string]any `json:"secrets"`
+
+	// Values is the map of connection values (non-secret).
+	Values map[string]any `json:"values"`
 }
 
 // CreateRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
@@ -86,33 +97,29 @@ func parseTemplatePath(templatePath string) (repository string, tag string, err 
 	return
 }
 
-// the function populates the recipe response from parsing the output result object
-func prepareRecipeResponse(outputs any, recipeResp *RecipeResponse) {
+// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object.
+func prepareRecipeResponse(outputs any, recipeResp *RecipeResponse) error {
 	out, ok := outputs.(map[string]any)
 	if ok {
-		recipeOutput, ok := out["result"].(map[string]any)
+		recipeOutput, ok := out[ResultPropertyName].(map[string]any)
 		if ok {
 			output, ok := recipeOutput["value"].(map[string]any)
 			if ok {
-				resources, ok := output["resources"].([]any)
-				if ok {
-					for _, resource := range resources {
-						recipeResp.Resources = append(recipeResp.Resources, resource.(string))
-					}
+				b, err := json.Marshal(&output)
+				if err != nil {
+					return err
 				}
-				secrets, ok := output["secrets"].(map[string]any)
-				if ok {
-					for key, value := range secrets {
-						recipeResp.Secrets[key] = value
-					}
-				}
-				values, ok := output["values"].(map[string]any)
-				if ok {
-					for key, value := range values {
-						recipeResp.Values[key] = value
-					}
+
+				// Using a decoder to block unknown fields.
+				decoder := json.NewDecoder(bytes.NewBuffer(b))
+				decoder.DisallowUnknownFields()
+				err = decoder.Decode(recipeResp)
+				if err != nil {
+					return err
 				}
 			}
 		}
 	}
+
+	return nil
 }

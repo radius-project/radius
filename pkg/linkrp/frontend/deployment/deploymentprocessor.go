@@ -201,6 +201,10 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 
 	computedValues := make(map[string]any)
 	for i, outputResource := range outputResources {
+		if outputResource.IsRadiusManaged() && rendererOutput.RecipeData.Name == "" {
+			return rpv1.DeploymentOutput{}, fmt.Errorf("resources deployed through recipe must be Radius managed")
+		}
+
 		deployedComputedValues, err := dp.deployOutputResource(ctx, resourceID, &outputResource, rendererOutput)
 		if err != nil {
 			return rpv1.DeploymentOutput{}, err
@@ -218,7 +222,21 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		}
 	}
 
-	// Update computedValues fetched from recipe output
+	// Now we need to update the computed values and secrets. It's intended that the recipe outputs
+	// can override whatever the renderer specified.
+	//
+	// Right now the computed values hold whatever dynamic values the renderer provided ...
+	// as long as they match one of the output resources.
+
+	// Update static values provided by the renderer.
+	for k, computedValue := range rendererOutput.ComputedValues {
+		if computedValue.Value != nil {
+			computedValues[k] = computedValue.Value
+		}
+	}
+
+	// Update computedValues fetched from recipe output. Since this is last, any values set
+	// in the recipe will win.
 	if recipeResponse.Values != nil {
 		for k, computedValue := range recipeResponse.Values {
 			if computedValue != nil {
@@ -226,28 +244,37 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 			}
 		}
 	}
-	// Update static values
-	for k, computedValue := range rendererOutput.ComputedValues {
-		if computedValue.Value != nil {
-			computedValues[k] = computedValue.Value
-		}
-	}
 
-	// Current state:
+	// Now it's time to update the secrets.
 	//
-	// - Secret reference TO Azure redis are current stored in secret-values
-	// - If the recipes provides a value for a secret, it will override and replace the secret reference
-	//
+	// First we copy secrets provided by the renderer.
 	// We need to remove secret references, if they are not applicable.
-
 	secretValues := map[string]rpv1.SecretValueReference{}
 	for key, reference := range rendererOutput.SecretValues {
-		if reference.LocalID != "" {
-			// Make sure local ID exists in output resources, otherwise discard.
+		// IFF this is a recipe, make sure local ID exists in output resources, otherwise discard.
+		//
+		// For a non-recipe we don't do this check, recipes are the only case where discard things
+		// from the renderer. Letting it fail later in the non-recipe case will help catch bugs.
+		if rendererOutput.RecipeData.Name != "" && reference.LocalID != "" {
+			found := false
+			for _, outputResource := range outputResources {
+				if outputResource.LocalID == reference.LocalID {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				continue // This is the case the comments warned you about! Skip this one.
+			}
 		}
+
+		// Either a non-recipe, or an output resource created by the renderer for a recipe.
+		secretValues[key] = reference
 	}
 
-	// Update Secrets fetched from recipe
+	// Update secrets fetched from recipe output. Since this is last, any secrets set
+	// in the recipe will win.
 	if recipeResponse.Secrets != nil {
 		for key, val := range recipeResponse.Secrets {
 			value, ok := val.(string)
@@ -260,7 +287,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	return rpv1.DeploymentOutput{
 		DeployedOutputResources: outputResources,
 		ComputedValues:          computedValues,
-		SecretValues:            rendererOutput.SecretValues,
+		SecretValues:            secretValues,
 		RecipeData:              rendererOutput.RecipeData,
 	}, nil
 }

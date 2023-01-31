@@ -379,6 +379,17 @@ func buildEnvironmentResource(recipeName string, providers *corerp_dm.Providers)
 	}
 }
 
+// transformRecipeResponseToSecrets converts a map[string]any from a RecipeResponse
+// to a map[string]SecretValueReference. This is useful for comparing against deployment output.
+func transformRecipeResponseToSecrets(secrets map[string]any) map[string]rpv1.SecretValueReference {
+	result := map[string]rpv1.SecretValueReference{}
+	for key, value := range secrets {
+		result[key] = rpv1.SecretValueReference{Value: value.(string)}
+	}
+
+	return result
+}
+
 type SharedMocks struct {
 	model              model.ApplicationModel
 	db                 *store.MockStorageClient
@@ -440,7 +451,7 @@ func setup(t *testing.T) SharedMocks {
 			{
 				// Handles all AWS types
 				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.Wildcard,
+					Type:     resourcekinds.AnyResourceType,
 					Provider: resourcemodel.ProviderAWS,
 				},
 				ResourceHandler: mockResourceHandler,
@@ -448,7 +459,7 @@ func setup(t *testing.T) SharedMocks {
 			{
 				// Handles all Kubernetes types
 				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.Wildcard,
+					Type:     resourcekinds.AnyResourceType,
 					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: mockResourceHandler,
@@ -881,6 +892,36 @@ func Test_Deploy(t *testing.T) {
 		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
 
+	t.Run("Verify recipe can override values and secrets with redis recipe (azure resource binding)", func(t *testing.T) {
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
+
+		resources := handlers.RecipeResponse{
+			Resources: []string{"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"},
+			Secrets: map[string]any{
+				renderers.PasswordStringHolder: "override",
+			},
+			Values: map[string]any{
+				renderers.Host: "override.example.com",
+			},
+		}
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&resources, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
+
+		testRendererOutput := buildRendererOutputRedis()
+
+		expectedSecrets := map[string]rpv1.SecretValueReference{
+			renderers.ConnectionStringValue: testRendererOutput.SecretValues[renderers.ConnectionStringValue],
+			renderers.PasswordStringHolder:  {Value: "override"},
+		}
+
+		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
+		require.NoError(t, err)
+		require.Equal(t, expectedSecrets, deploymentOutput.SecretValues)
+		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "override.example.com"}, deploymentOutput.ComputedValues)
+		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
+	})
+
 	t.Run("Verify deploy success with redis recipe (kubernetes value-based)", func(t *testing.T) {
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
@@ -906,7 +947,7 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := buildRendererOutputRedis()
 		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
 		require.NoError(t, err)
-		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
+		require.Equal(t, transformRecipeResponseToSecrets(resources.Secrets), deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "redis.mynamespace.svc.cluster.local"}, deploymentOutput.ComputedValues)
 		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
@@ -933,7 +974,7 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := buildRendererOutputRedis()
 		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
 		require.NoError(t, err)
-		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
+		require.Equal(t, transformRecipeResponseToSecrets(resources.Secrets), deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "mycluster.us-west-2.amazonaws.com"}, deploymentOutput.ComputedValues)
 		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})

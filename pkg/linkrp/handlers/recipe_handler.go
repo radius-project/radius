@@ -159,7 +159,10 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
 	}
 
-	prepareRecipeResponse(resp.Properties.Outputs, &recipeResponse)
+	err = prepareRecipeResponse(resp.Properties.Outputs, &recipeResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read the recipe output %q: %w", ResultPropertyName, err)
+	}
 
 	return &recipeResponse, nil
 }

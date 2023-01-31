@@ -214,7 +214,8 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 		Secrets:   map[string]any{},
 		Values:    map[string]any{},
 	}
-	prepareRecipeResponse(response, &actualResp)
+	err := prepareRecipeResponse(response, &actualResp)
+	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResp)
 }
 
@@ -242,7 +243,8 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 		Secrets:   map[string]any{},
 		Values:    map[string]any{},
 	}
-	prepareRecipeResponse(response, &actualResp)
+	err := prepareRecipeResponse(response, &actualResp)
+	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResp)
 }
 
@@ -258,6 +260,7 @@ func Test_RecipeResponseWithoutResult(t *testing.T) {
 		Secrets:   map[string]any{},
 		Values:    map[string]any{},
 	}
-	prepareRecipeResponse(response, &actualResp)
+	err := prepareRecipeResponse(response, &actualResp)
+	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResp)
 }

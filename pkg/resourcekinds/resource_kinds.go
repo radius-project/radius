@@ -39,7 +39,7 @@ const (
 	AzureFileShare                   = "azure.fileshare"
 	AzureFileShareStorageAccount     = "azure.fileshare.account"
 
-	// Wildcard is used to designate a resource handler that can handle any type that belongs to a provider. Wildcard
+	// AnyResourceType is used to designate a resource handler that can handle any type that belongs to a provider. AnyResourceType
 	// should only be used to register handlers, and not as part of an output resource.
-	Wildcard = "*"
+	AnyResourceType = "*"
 )

@@ -101,7 +101,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			// Handles any Kubernetes resource type
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Wildcard,
+				Type:     resourcekinds.AnyResourceType,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),
@@ -110,7 +110,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			// Handles any AWS resource type
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Wildcard,
+				Type:     resourcekinds.AnyResourceType,
 				Provider: resourcemodel.ProviderAWS,
 			},
 			ResourceHandler: handlers.NewAWSHandler(connection),
