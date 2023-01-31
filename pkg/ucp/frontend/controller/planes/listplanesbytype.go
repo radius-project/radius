@@ -44,7 +44,7 @@ func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *
 		ResourceType: planeType,
 	}
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Listing planes in scope %s%s", query.RootScope, planeType))
+	logger.Info(fmt.Sprintf("Listing planes in scope %s/%s", query.RootScope, planeType))
 	result, err := e.StorageClient().Query(ctx, query)
 	if err != nil {
 		return nil, err
