@@ -81,15 +81,16 @@ type Runner struct {
 	Format            string
 	Workspace         *workspaces.Workspace
 
-	ClientID       string
-	ClientSecret   string
-	TenantID       string
+	ClientID     string
+	ClientSecret string
+	TenantID     string
+	//TODO: move scope components out to provider commands
 	SubscriptionID string
 	ResourceGroup  string
 	KubeContext    string
 }
 
-// NewRunner creates a new instance of the `rad provider create azure` runner.
+// NewRunner creates a new instance of the `rad credential register azure` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -98,7 +99,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad provider create azure` command.
+// Validate runs validation for the `rad credential register azure` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -158,7 +159,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad provider create azure` command.
+// Run runs the `rad credential register azure` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// There are two steps to perform here:
 	// 1) Update server-side to add/change credentials
@@ -192,6 +193,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// 2) Update local config (all matching workspaces) to remove the scope
+	// TODO: move updating scope to provider commands
 	err = cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
 		cli.UpdateAzProvider(section, workspaces.AzureProvider{SubscriptionID: r.SubscriptionID, ResourceGroup: r.ResourceGroup}, r.KubeContext)
 		return nil
