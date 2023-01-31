@@ -271,6 +271,54 @@
           }
         }
       }
+    },
+    "/{rootScope}/providers/Applications.Core/environments/getrecipedetails": {
+      "get": {
+        "description": "Gets recipe details including parameters and any constraints on the parameters.",
+        "operationId": "Environments_GetRecipeDetails",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsGetRecipeDetails": {
+            "$ref": "./examples/EnvironmentsGetRecipeDetails.json"
+          }
+        },
+        "tags": [
+          "Environments"
+        ],
+        "parameters": [
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "EnvironmentResource",
+            "description": "environment details",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recipe details",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {

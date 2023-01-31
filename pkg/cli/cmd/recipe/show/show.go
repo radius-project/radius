@@ -120,12 +120,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	_, _, err = cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName)
+	envResource, recipeProperties, err := cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName)
 	if err != nil {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, r.RecipeName)
+	recipeDetails, err := client.ShowRecipe(ctx, envResource, recipeProperties[r.RecipeName], r.RecipeName)
 	if err != nil {
 		return err
 	}

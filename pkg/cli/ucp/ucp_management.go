@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -548,6 +549,23 @@ func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 	return resourceGroupResources, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, recipeName string, environmentName string) (corerpv20220315.EnvironmentRecipeProperties, error) {
-	return corerpv20220315.EnvironmentRecipeProperties{}, nil
+func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentResource corerpv20220315.EnvironmentResource, recipe *corerpv20220315.EnvironmentRecipeProperties, recipeName string) (corerpv20220315.EnvironmentRecipeProperties, error) {
+	environmentResource.Properties.Recipes = make(map[string]*corerpv20220315.EnvironmentRecipeProperties)
+	environmentResource.Properties.Recipes[recipeName] = recipe
+
+	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return corerpv20220315.EnvironmentRecipeProperties{}, err
+	}
+
+	resp, err := client.GetRecipeDetails(ctx, environmentResource, &corerpv20220315.EnvironmentsClientGetRecipeDetailsOptions{})
+	if err != nil {
+		return corerpv20220315.EnvironmentRecipeProperties{}, err
+	}
+
+	if ret, exists := resp.Properties.Recipes[recipeName]; exists {
+		return *ret, nil
+	}
+
+	return corerpv20220315.EnvironmentRecipeProperties{}, fmt.Errorf("recipe details not found")
 }

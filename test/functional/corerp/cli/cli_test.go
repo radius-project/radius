@@ -64,6 +64,21 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Contains(t, output, "Successfully unregistered recipe")
 
 	})
+	t.Run("Validate rad recipe show", func(t *testing.T) {
+		showRecipeName := "mongodbtest"
+		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+		showRecipeLinkType := "Applications.Link/mongoDatabases"
+		output, err := cli.RecipeRegister(ctx, showRecipeName, showRecipeTemplate, showRecipeLinkType)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully linked recipe")
+		output, err = cli.RecipeShow(ctx, "mongodbtest")
+		require.NoError(t, err)
+		require.Regexp(t, showRecipeName, output)
+		require.Regexp(t, showRecipeTemplate, output)
+		require.Regexp(t, showRecipeLinkType, output)
+		require.Regexp(t, "mongodbName : type : string\t", output)
+		require.Regexp(t, "documentdbName : type : string\t", output)
+	})
 }
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {

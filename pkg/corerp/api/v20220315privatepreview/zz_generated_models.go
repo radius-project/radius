@@ -611,6 +611,12 @@ type EnvironmentsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
+// EnvironmentsClientGetRecipeDetailsOptions contains the optional parameters for the EnvironmentsClient.GetRecipeDetails
+// method.
+type EnvironmentsClientGetRecipeDetailsOptions struct {
+	// placeholder for future optional parameters
+}
+
 // EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.ListByScope method.
 type EnvironmentsClientListByScopeOptions struct {
 	// placeholder for future optional parameters

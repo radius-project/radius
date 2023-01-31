@@ -69,6 +69,11 @@ type EnvironmentsClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
+// EnvironmentsClientGetRecipeDetailsResponse contains the response from method EnvironmentsClient.GetRecipeDetails.
+type EnvironmentsClientGetRecipeDetailsResponse struct {
+	EnvironmentResource
+}
+
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.
 type EnvironmentsClientGetResponse struct {
 	EnvironmentResource
