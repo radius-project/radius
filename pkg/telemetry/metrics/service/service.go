@@ -15,7 +15,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 type Service struct {
@@ -40,10 +39,8 @@ func (s *Service) Run(ctx context.Context) error {
 
 	pme, err := provider.NewPrometheusExporter()
 	if err != nil {
-		logger.Error(err, "Failed to configure prometheus metrics client")
-		panic(err)
+		return err
 	}
-	global.SetMeterProvider(pme.MeterProvider)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
