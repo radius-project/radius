@@ -46,7 +46,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	hostingSvc := []hosting.Service{frontend.NewService(options)}
+
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
+	if metricOptions.Config.Prometheus.Enabled {
+		hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
+	}
 
 	logger, flush, err := ucplog.NewLogger(logging.AppLinkLoggerName, &options.Config.Logging)
 	if err != nil {
@@ -54,7 +59,6 @@ func main() {
 	}
 	defer flush()
 
-	hostingSvc := []hosting.Service{frontend.NewService(options), metricsservice.NewService(metricOptions)}
 	if enableAsyncWorker {
 		logger.Info("Enable AsyncRequestProcessWorker.")
 		hostingSvc = append(hostingSvc, backend.NewService(options))
