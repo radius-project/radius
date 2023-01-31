@@ -8,6 +8,9 @@ package environments
 const (
 	ResourceTypeName  = "Applications.Core/environments"
 	DevRecipesACRPath = "radiusdev.azurecr.io"
+
+	// User defined operation names
+	OperationGetRecipeDetails = "GETRECIPEDETAILS"
 )
 
 func supportedProviders() []string {

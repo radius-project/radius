@@ -366,6 +366,12 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 				)
 			},
 		},
+		{
+			ParentRouter:   envRTSubrouter.PathPrefix("/getrecipedetails").Subrouter(),
+			ResourceType:   env_ctrl.ResourceTypeName,
+			Method:         env_ctrl.OperationGetRecipeDetails,
+			HandlerFactory: env_ctrl.NewGetRecipDetails,
+		},
 	}
 	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {

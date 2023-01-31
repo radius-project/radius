@@ -27,7 +27,7 @@ type GetRecipeDetails struct {
 }
 
 // NewGetRecipe creates a new CreateOrUpdateEnvironment.
-func NewGetRecipDetailse(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetRecipDetails(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetRecipeDetails{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Environment]{

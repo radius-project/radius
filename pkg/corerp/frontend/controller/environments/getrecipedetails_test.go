@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -31,9 +30,9 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe details run", func(t *testing.T) {
 		envInput, expectedOutput := getTestModelsGetRecipeDetails20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
-		ctl, err := NewGetRecipDetailse(ctrl.Options{})
+		ctl, err := NewGetRecipDetails(ctrl.Options{})
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -57,9 +56,9 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe details run with multiple recipes", func(t *testing.T) {
 		envInput := getTestModelsGetRecipeDetailsWithMultipleRecipes20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
-		ctl, err := NewGetRecipDetailse(ctrl.Options{})
+		ctl, err := NewGetRecipDetails(ctrl.Options{})
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
