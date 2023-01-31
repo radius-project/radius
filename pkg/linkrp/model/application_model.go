@@ -31,6 +31,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 	// Configure the providers supported by the appmodel
 	supportedProviders := map[string]bool{
 		resourcemodel.ProviderKubernetes: true,
+		resourcemodel.ProviderAWS:        true,
 	}
 	if arm != nil {
 		supportedProviders[resourcemodel.ProviderAzure] = true
@@ -95,6 +96,24 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewDaprComponentHandler(k8s),
+		},
+
+		{
+			// Handles any Kubernetes resource type
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AnyResourceType,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+
+		{
+			// Handles any AWS resource type
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AnyResourceType,
+				Provider: resourcemodel.ProviderAWS,
+			},
+			ResourceHandler: handlers.NewAWSHandler(connection),
 		},
 	}
 
