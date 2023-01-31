@@ -8,6 +8,7 @@ package register
 import (
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	credential_register_azure "github.com/project-radius/radius/pkg/cli/cmd/credential/register/azure"
+	credential_register_aws "github.com/project-radius/radius/pkg/cli/cmd/credential/register/aws"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
@@ -27,6 +28,9 @@ rad credential register azure --client-id <client id> --client-secret <client se
 
 	azure, _ := credential_register_azure.NewCommand(factory)
 	cmd.AddCommand(azure)
+
+	aws, _ := credential_register_aws.NewCommand(factory)
+	cmd.AddCommand(aws)
 
 	return cmd
 }

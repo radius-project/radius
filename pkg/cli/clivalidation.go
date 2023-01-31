@@ -424,3 +424,12 @@ func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, e
 		return "", &FriendlyError{Message: "no resource group set, use `--group` to pass in a resource group name"}
 	}
 }
+
+func RequireRecipeName(cmd *cobra.Command) (string, error) {
+	recipeName, err := cmd.Flags().GetString("name")
+	if err != nil {
+		return "", err
+	}
+
+	return recipeName, nil
+}
