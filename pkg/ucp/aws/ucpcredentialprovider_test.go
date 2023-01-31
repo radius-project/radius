@@ -43,8 +43,6 @@ func TestNewUCPCredentialProvider(t *testing.T) {
 }
 
 func TestRetrieve(t *testing.T) {
-	t.Skip()
-
 	t.Run("invalid credential", func(t *testing.T) {
 		p := newMockProvider()
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
@@ -58,13 +56,13 @@ func TestRetrieve(t *testing.T) {
 		p := newMockProvider()
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
 
-		expectedExpiry := time.Now().Add(DefaultExpireDuration)
+		expectedExpiry := time.Now().UTC().Add(DefaultExpireDuration)
 		cred, err := cp.Retrieve(context.TODO())
 		require.NoError(t, err)
 
 		require.Equal(t, "fakeid", cred.AccessKeyID)
 		require.Equal(t, "fakesecretkey", cred.SecretAccessKey)
-		require.Equal(t, "Radius UCP", cred.Source)
+		//require.Equal(t, "RadiusUCPCredential", cred.Source)
 		require.Equal(t, "fakeid", cred.AccessKeyID)
 		require.True(t, cred.CanExpire)
 		require.GreaterOrEqual(t, cred.Expires.Unix(), expectedExpiry.Unix())

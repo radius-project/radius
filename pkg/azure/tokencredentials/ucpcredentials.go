@@ -22,7 +22,7 @@ import (
 
 const (
 	// DefaultExpireDuration is the default expiry duration.
-	DefaultExpireDuration = time.Minute * time.Duration(1)
+	DefaultExpireDuration = time.Minute * time.Duration(15)
 )
 
 var _ azcore.TokenCredential = (*UCPCredential)(nil)
