@@ -96,3 +96,34 @@ func Test_RedisAzure(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_RedisValueBackedRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-redis-value-backed-recipe.bicep"
+	name := "corerp-resources-redis-value-backed-recipe"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-value-backed-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "rds-value-backed-recipe",
+						Type: validation.RedisCachesResource,
+						App:  name,
+					},
+				},
+			},
+			SkipObjectValidation: true,
+		},
+	})
+
+	test.Test(t)
+}

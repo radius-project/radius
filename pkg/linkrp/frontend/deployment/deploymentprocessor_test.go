@@ -870,7 +870,6 @@ func Test_Deploy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
-		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
 	t.Run("Verify deploy success with redis recipe (azure resource binding)", func(t *testing.T) {
 		mocks := setup(t)
@@ -889,7 +888,6 @@ func Test_Deploy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "myrediscache.redis.cache.windows.net"}, deploymentOutput.ComputedValues)
-		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
 
 	t.Run("Verify recipe can override values and secrets with redis recipe (azure resource binding)", func(t *testing.T) {
@@ -949,7 +947,6 @@ func Test_Deploy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, transformRecipeResponseToSecrets(resources.Secrets), deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "redis.mynamespace.svc.cluster.local"}, deploymentOutput.ComputedValues)
-		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
 
 	t.Run("Verify deploy success with redis recipe (aws value-based)", func(t *testing.T) {
@@ -976,7 +973,6 @@ func Test_Deploy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, transformRecipeResponseToSecrets(resources.Secrets), deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "mycluster.us-west-2.amazonaws.com"}, deploymentOutput.ComputedValues)
-		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
 
 	t.Run("Verify deploy failure with recipe", func(t *testing.T) {

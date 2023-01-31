@@ -287,8 +287,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	return rpv1.DeploymentOutput{
 		DeployedOutputResources: outputResources,
 		ComputedValues:          computedValues,
-		SecretValues:            secretValues,
-		RecipeData:              rendererOutput.RecipeData,
+		SecretValues:            rendererOutput.SecretValues,
 	}, nil
 }
 
