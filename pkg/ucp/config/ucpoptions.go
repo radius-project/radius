@@ -3,12 +3,14 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package hostoptions
+package config
 
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+import (
+	"errors"
+
+	"github.com/project-radius/radius/pkg/sdk"
+	"k8s.io/client-go/rest"
+)
 
 type UCPConnectionKind = string
 
@@ -20,19 +22,30 @@ const (
 	UCPConnectionKindKubernetes UCPConnectionKind = "kubernetes"
 )
 
-// Config represents the configuration for a UCP connection inside our host
+// UCPOptions represents the configuration for a UCP connection inside our host
 // configuration file.
-type UCPConfig struct {
+type UCPOptions struct {
 	// Kind describes the kind of connection. Use UCPConnectionKindKubernetes for production and UCPConnectionKindDirect for testing with
 	// a standalone UCP process.
 	Kind UCPConnectionKind `yaml:"kind"`
 
 	// Direct describes the connection options for a direct connection.
-	Direct *UCPDirectConnectionConfig `yaml:"direct,omitempty"`
+	Direct *UCPDirectConnectionOptions `yaml:"direct,omitempty"`
 }
 
-// DirectConnectionConfig describes the connection options for a direct connection.
-type UCPDirectConnectionConfig struct {
+// UCPDirectConnectionOptions describes the connection options for a direct connection.
+type UCPDirectConnectionOptions struct {
 	// Endpoint is the URL endpoint for the connection.
 	Endpoint string `yaml:"endpoint"`
+}
+
+// NewConnectionFromUCPConfig creates a Connection for UCP endpoint.
+func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config) (sdk.Connection, error) {
+	if option.Kind == UCPConnectionKindDirect {
+		if option.Direct == nil || option.Direct.Endpoint == "" {
+			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
+		}
+		return sdk.NewDirectConnection(option.Direct.Endpoint)
+	}
+	return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 }

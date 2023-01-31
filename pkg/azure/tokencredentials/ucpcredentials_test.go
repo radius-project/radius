@@ -12,15 +12,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
 
 type mockProvider struct {
-	fakeCredential *sdk.AzureCredential
+	fakeCredential *sdk_cred.AzureCredential
 }
 
 // Fetch gets the Azure credentials from secret storage.
-func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk.AzureCredential, error) {
+func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_cred.AzureCredential, error) {
 	if p.fakeCredential == nil {
 		return nil, errors.New("failed to fetch credential")
 	}
@@ -29,7 +29,7 @@ func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk.
 
 func newMockProvider() *mockProvider {
 	return &mockProvider{
-		fakeCredential: &sdk.AzureCredential{
+		fakeCredential: &sdk_cred.AzureCredential{
 			ClientID:     "fakeid",
 			TenantID:     "fakeid",
 			ClientSecret: "fakeSecret",
@@ -44,7 +44,7 @@ func TestNewUCPCredential(t *testing.T) {
 	c, err := NewUCPCredential(UCPCredentialOptions{Provider: newMockProvider()})
 	require.NoError(t, err)
 	require.Equal(t, DefaultExpireDuration, c.options.Duration)
-	require.True(t, c.isRefreshRequired())
+	require.True(t, c.isExpired())
 }
 
 func TestRefreshCredentials(t *testing.T) {
@@ -65,7 +65,7 @@ func TestRefreshCredentials(t *testing.T) {
 
 		err = c.refreshCredentials(context.TODO())
 		require.NoError(t, err)
-		require.False(t, c.isRefreshRequired())
+		require.False(t, c.isExpired())
 	})
 
 	t.Run("same credentials", func(t *testing.T) {
@@ -77,13 +77,13 @@ func TestRefreshCredentials(t *testing.T) {
 		require.NoError(t, err)
 
 		// reset next refresh time.
-		c.nextRefresh.Store(0)
-		require.True(t, c.isRefreshRequired())
+		c.nextExpiry.Store(0)
+		require.True(t, c.isExpired())
 		old := c.tokenCred
 
 		err = c.refreshCredentials(context.TODO())
 		require.NoError(t, err)
-		require.False(t, c.isRefreshRequired())
+		require.False(t, c.isExpired())
 		require.Equal(t, old, c.tokenCred)
 	})
 }
