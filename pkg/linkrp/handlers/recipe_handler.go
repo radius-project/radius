@@ -65,7 +65,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 
 	recipeData := make(map[string]any)
-	err = util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
