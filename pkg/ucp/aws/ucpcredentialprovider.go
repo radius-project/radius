@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
 
