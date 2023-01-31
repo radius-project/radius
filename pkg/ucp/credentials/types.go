@@ -14,6 +14,9 @@ import (
 const (
 	// AzureCloud represents the public cloud plane name for UCP.
 	AzureCloud = "azurecloud"
+
+	// AWSPublic represents the aws public cloud plane name for UCP.
+	AWSPublic = "aws"
 )
 
 type (

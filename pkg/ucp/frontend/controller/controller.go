@@ -17,7 +17,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -26,12 +26,13 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	BasePath                string
-	DB                      store.StorageClient
-	SecretClient            secret.Client
-	Address                 string
-	AWSCloudControlClient   aws.AWSCloudControlClient
-	AWSCloudFormationClient aws.AWSCloudFormationClient
+	BasePath     string
+	DB           store.StorageClient
+	SecretClient secret.Client
+	Address      string
+
+	AWSCloudControlClient   ucp_aws.AWSCloudControlClient
+	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
 
 	// CommonControllerOptions is the set of options used by most of our controllers.
 	//

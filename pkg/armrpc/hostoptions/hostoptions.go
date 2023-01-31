@@ -10,7 +10,6 @@ package hostoptions
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -19,7 +18,8 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/sdk/credentials"
+	"github.com/project-radius/radius/pkg/ucp/config"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 
 	"gopkg.in/yaml.v3"
@@ -51,7 +51,7 @@ func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConf
 		return nil, nil
 	}
 
-	provider, err := credentials.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn)
+	provider, err := sdk_cred.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn)
 	if err != nil {
 		return nil, err
 	}
@@ -77,12 +77,12 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	ucp, err := getUCPConnection(conf, k8s)
+	ucp_conn, err := config.NewConnectionFromUCPConfig(&conf.UCP, k8s)
 	if err != nil {
 		return HostOptions{}, err
 	}
 
-	arm, err := getArmConfig(conf, ucp)
+	arm, err := getArmConfig(conf, ucp_conn)
 	if err != nil {
 		return HostOptions{}, err
 	}
@@ -91,7 +91,7 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		Config:        conf,
 		K8sConfig:     k8s,
 		Arm:           arm,
-		UCPConnection: ucp,
+		UCPConnection: ucp_conn,
 	}, nil
 }
 
@@ -154,16 +154,4 @@ func getKubernetes() (*rest.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func getUCPConnection(config *ProviderConfig, k8sConfig *rest.Config) (sdk.Connection, error) {
-	if config.UCP.Kind == UCPConnectionKindDirect {
-		if config.UCP.Direct == nil || config.UCP.Direct.Endpoint == "" {
-			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
-		}
-
-		return sdk.NewDirectConnection(config.UCP.Direct.Endpoint)
-	}
-
-	return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 }

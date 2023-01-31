@@ -60,6 +60,11 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, req *ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
+	if !ok {
+		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), err
+	}
+
 	rendererOutput, err := c.LinkDeploymentProcessor().Render(ctx, id, dataModel)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -68,11 +73,6 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, req *ctrl.Request) (ct
 	deploymentOutput, err := c.LinkDeploymentProcessor().Deploy(ctx, id, rendererOutput)
 	if err != nil {
 		return ctrl.Result{}, err
-	}
-
-	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
-	if !ok {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), err
 	}
 
 	oldOutputResources := deploymentDataModel.OutputResources()

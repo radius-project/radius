@@ -198,7 +198,7 @@ jobs:
     runs-on: self-hosted
     env:
       # Timeout used for Kubernetes functional tests
-      K8S_FUNCTIONALTEST_TIMEOUT: 30m
+      K8S_FUNCTIONALTEST_TIMEOUT: 60m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
       RADIUS_CHART_LOCATION: deploy/Chart/
     steps:

@@ -45,12 +45,18 @@ planes:
     properties:
       kind: "AWS"
 
+identity:
+  authMethod: default
+
+ucp:
+  kind: kubernetes
+
 # UCP Metrics Provider
 metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
 
  # Logging configuration   
 logging:
