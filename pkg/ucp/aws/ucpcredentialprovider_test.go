@@ -9,9 +9,9 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/time"
 
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
