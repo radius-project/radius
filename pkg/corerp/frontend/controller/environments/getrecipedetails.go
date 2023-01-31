@@ -67,7 +67,11 @@ func (e *GetRecipeDetails) Run(ctx context.Context, w http.ResponseWriter, req *
 		recipe = v
 	}
 
-	GetRecipeDetailsFromRegistry(ctx, &recipe, recipeName)
+	err = GetRecipeDetailsFromRegistry(ctx, &recipe, recipeName)
+	if err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	res.Properties.Recipes[recipeName] = recipe
 	versioned, err := e.ResponseConverter()(res, serviceCtx.APIVersion)
 	if err != nil {
@@ -137,7 +141,7 @@ func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 		details := ""
 		values, ok := value.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("failed to fetch parameters")
+			return fmt.Errorf("failed to fetch parameter names")
 		}
 
 		keys := make([]string, 0, len(values))
