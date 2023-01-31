@@ -101,7 +101,7 @@ The following are properties that can be specified for UCP:
 |-----|-------------|---------|
 | enabled | Specified whether to publish metrics (must be `true`/`false`) | `true` |
 | port | The connection port | `/metrics` |
-| path | The endpoint name where the metrics are posted | `2222` |
+| path | The endpoint name where the metrics are posted | `9090` |
 
 ### ucp
 
@@ -204,7 +204,7 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
 server:
   host: "0.0.0.0"
   port: 5443
@@ -244,5 +244,5 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
 ```
