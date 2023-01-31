@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package tokencredentials
+package credential
 
 import (
 	"context"
@@ -75,6 +75,8 @@ func (c *UCPCredential) refreshExpiry() {
 }
 
 func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	c.tokenCredMu.Lock()
 	defer c.tokenCredMu.Unlock()
 
@@ -98,6 +100,8 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		c.refreshExpiry()
 		return nil
 	}
+
+	logger.Info("Retreived Azure Credential - ClientID: " + s.ClientID)
 
 	// Rotate credentials by creating new ClientSecretCredential.
 	var opt *azidentity.ClientSecretCredentialOptions
