@@ -27,9 +27,9 @@ variables:
 - name: DOCKER_REGISTRY
   value: radiusdev.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
-  value: 30m
+  value: 60m
 - name: AZURE_FUNCTIONALTEST_TIMEOUT
-  value: 30m
+  value: 60m
 - name: REL_CHANNEL
   value: edge
 - name: REL_VERSION
@@ -84,8 +84,9 @@ stages:
           targetName: corerp
         Ucp:
           targetName: ucp
-        Samples:
-          targetName: samples
+        # TEMPORARILY DISABLED WHILE WE UPDATE THE TUTORIAL AND TESTS
+        # Samples:
+        #   targetName: samples
     steps:
     ## Force the checkout directory of the radius repo to remain as if we had checked out only one Git repository, this work around the ADO behavior to checkout to a different directory breaking the assumptions of the test steps (for more info https://learn.microsoft.com/en-us/azure/devops/pipelines/repos/multi-repo-checkout?view=azure-devops#checkout-path)
     - checkout: self

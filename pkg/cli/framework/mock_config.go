@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	azure "github.com/project-radius/radius/pkg/cli/azure"
 	workspaces "github.com/project-radius/radius/pkg/cli/workspaces"
 	viper "github.com/spf13/viper"
 )
@@ -66,7 +65,7 @@ func (mr *MockConfigFileInterfaceMockRecorder) DeleteWorkspace(arg0, arg1, arg2 
 }
 
 // EditWorkspaces mocks base method.
-func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *viper.Viper, arg2 *workspaces.Workspace, arg3 *azure.Provider) error {
+func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *viper.Viper, arg2 *workspaces.Workspace, arg3 []interface{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EditWorkspaces", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

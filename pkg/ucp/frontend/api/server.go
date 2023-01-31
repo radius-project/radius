@@ -13,21 +13,30 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/go-logr/logr"
-	"github.com/gorilla/mux"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/sdk"
+	ucpaws "github.com/project-radius/radius/pkg/ucp/aws"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/go-logr/logr"
+	"github.com/gorilla/mux"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -46,11 +55,14 @@ type ServiceOptions struct {
 	StorageProviderOptions  dataprovider.StorageProviderOptions
 	SecretProviderOptions   provider.SecretProviderOptions
 	InitialPlanes           []rest.Plane
+	Identity                hostoptions.Identity
+	UCPConnection           sdk.Connection
 }
 
 type Service struct {
 	options         ServiceOptions
 	storageProvider dataprovider.DataStorageProvider
+	secretProvider  *provider.SecretProvider
 	secretClient    secret.Client
 }
 
@@ -67,6 +79,32 @@ func (s *Service) Name() string {
 	return "api"
 }
 
+func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+	credProviders := []func(*config.LoadOptions) error{}
+
+	switch s.options.Identity.AuthMethod {
+	case hostoptions.AuthUCPCredential:
+		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection)
+		if err != nil {
+			return aws.Config{}, err
+		}
+		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
+		credProviders = append(credProviders, config.WithCredentialsProvider(p))
+		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API.")
+
+	default:
+		logger.Info("Configuring default authentication mode with environment variable.")
+	}
+
+	awscfg, err := config.LoadDefaultConfig(ctx, credProviders...)
+	if err != nil {
+		return aws.Config{}, err
+	}
+
+	return awscfg, nil
+}
+
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 
@@ -80,17 +118,23 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
-	secretClient, err := s.initializeSecretClient(ctx)
+	if err = s.initializeSecretClient(ctx); err != nil {
+		return nil, err
+	}
+
+	awscfg, err := s.newAWSConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.secretClient = secretClient
 
 	ctrlOpts := ctrl.Options{
 		BasePath:     s.options.BasePath,
 		DB:           db,
 		SecretClient: s.secretClient,
 		Address:      s.options.Address,
+
+		AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
+		AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
 
 		CommonControllerOptions: armrpc_controller.Options{
 			DataProvider: s.storageProvider,
@@ -144,23 +188,22 @@ func (s *Service) initializeStorageProvider(ctx context.Context) dataprovider.Da
 }
 
 // initializeSecretClient initializes secret client on server startup.
-func (s *Service) initializeSecretClient(ctx context.Context) (secret.Client, error) {
-	var secretClient secret.Client
+func (s *Service) initializeSecretClient(ctx context.Context) error {
 	if s.options.SecretProviderOptions.Provider == provider.TypeETCDSecret {
 		s.options.SecretProviderOptions.ETCD.Client = s.options.ClientConfigSource
 	}
-	secretsProvider := provider.NewSecretProvider(s.options.SecretProviderOptions)
-	secretClient, err := secretsProvider.GetClient(ctx)
-	if err != nil {
-		return nil, err
-	}
+	s.secretProvider = provider.NewSecretProvider(s.options.SecretProviderOptions)
 
-	return secretClient, nil
+	var err error
+	s.secretClient, err = s.secretProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
 func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planes []rest.Plane) error {
-
 	for _, plane := range planes {
 		body, err := json.Marshal(plane)
 		if err != nil {

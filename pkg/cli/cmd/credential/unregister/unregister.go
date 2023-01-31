@@ -94,7 +94,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad provider delete` command.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Unregistering %q cloud provider credential for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
-	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
+	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}

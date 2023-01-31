@@ -320,6 +320,21 @@ func (mr *MockApplicationsManagementClientMockRecorder) ShowApplication(arg0, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowApplication), arg0, arg1)
 }
 
+// ShowRecipe mocks base method.
+func (m *MockApplicationsManagementClient) ShowRecipe(arg0 context.Context, arg1, arg2 string) (v20220315privatepreview.EnvironmentRecipeProperties, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShowRecipe", arg0, arg1, arg2)
+	ret0, _ := ret[0].(v20220315privatepreview.EnvironmentRecipeProperties)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ShowRecipe indicates an expected call of ShowRecipe.
+func (mr *MockApplicationsManagementClientMockRecorder) ShowRecipe(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowRecipe", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowRecipe), arg0, arg1, arg2)
+}
+
 // ShowResource mocks base method.
 func (m *MockApplicationsManagementClient) ShowResource(arg0 context.Context, arg1, arg2 string) (generated.GenericResource, error) {
 	m.ctrl.T.Helper()

@@ -3,11 +3,9 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package trace
 
-// ServicePrincipal specifies the properties of an Azure service principal
-type ServicePrincipal struct {
-	ClientID     string
-	ClientSecret string
-	TenantID     string
+type TracerOptions struct {
+	ServiceName string
+	URL         string
 }

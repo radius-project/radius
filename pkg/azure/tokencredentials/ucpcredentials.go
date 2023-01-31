@@ -14,10 +14,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
+
 	"github.com/go-logr/logr"
 	"go.uber.org/atomic"
-
-	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 const (
@@ -30,7 +30,7 @@ var _ azcore.TokenCredential = (*UCPCredential)(nil)
 // UCPCredentialOptions is the options for UCP credential.
 type UCPCredentialOptions struct {
 	// Provider is an UCP credential provider.
-	Provider sdk.CredentialProvider[sdk.AzureCredential]
+	Provider sdk_cred.CredentialProvider[sdk_cred.AzureCredential]
 	// Duration is the duration to refresh token client.
 	Duration time.Duration
 
@@ -41,12 +41,15 @@ type UCPCredentialOptions struct {
 // UCPCredential authenticates service principal using UCP credential APIs.
 type UCPCredential struct {
 	options    UCPCredentialOptions
-	credential *sdk.AzureCredential
+	credential *sdk_cred.AzureCredential
 
 	tokenCred azcore.TokenCredential
 	// tokenCredMu is the read write mutex to protect tokenCred.
 	tokenCredMu sync.RWMutex
-	nextRefresh atomic.Int64
+
+	// nextExpiry represents the time when the current UCP credential expires
+	// or when it checks if credential is updated.
+	nextExpiry atomic.Int64
 }
 
 // NewUCPCredential creates a UCPCredential. Pass nil to accept default options.
@@ -63,12 +66,12 @@ func NewUCPCredential(options UCPCredentialOptions) (*UCPCredential, error) {
 	}, nil
 }
 
-func (c *UCPCredential) isRefreshRequired() bool {
-	return c.nextRefresh.Load() < time.Now().Unix()
+func (c *UCPCredential) isExpired() bool {
+	return c.nextExpiry.Load() < time.Now().Unix()
 }
 
-func (c *UCPCredential) updateRefresh(duration time.Duration) {
-	c.nextRefresh.Store(time.Now().Add(duration).Unix())
+func (c *UCPCredential) refreshExpiry() {
+	c.nextExpiry.Store(time.Now().Add(c.options.Duration).Unix())
 }
 
 func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
@@ -76,11 +79,11 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	defer c.tokenCredMu.Unlock()
 
 	// Ensure if credential refresh is not done by the previous request.
-	if !c.isRefreshRequired() {
+	if !c.isExpired() {
 		return nil
 	}
 
-	s, err := c.options.Provider.Fetch(ctx, sdk.AzureCloud, "default")
+	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AzureCloud, "default")
 	if err != nil {
 		return err
 	}
@@ -92,7 +95,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	// Do not instantiate new client unless the secret is rotated.
 	if c.credential != nil && c.credential.ClientSecret == s.ClientSecret &&
 		c.credential.ClientID == s.ClientID && c.credential.TenantID == s.TenantID {
-		c.updateRefresh(c.options.Duration)
+		c.refreshExpiry()
 		return nil
 	}
 
@@ -112,7 +115,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	c.tokenCred = azCred
 	c.credential = s
 
-	c.updateRefresh(c.options.Duration)
+	c.refreshExpiry()
 	return nil
 }
 
@@ -120,7 +123,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	if c.isRefreshRequired() {
+	if c.isExpired() {
 		err := c.refreshCredentials(ctx)
 		if err != nil {
 			logger.Error(err, "failed to refresh Azure service principal credential.")
@@ -128,11 +131,12 @@ func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOp
 	}
 
 	c.tokenCredMu.RLock()
-	defer c.tokenCredMu.RUnlock()
+	credentialAuth := c.tokenCred
+	c.tokenCredMu.RUnlock()
 
-	if c.tokenCred == nil {
+	if credentialAuth == nil {
 		return azcore.AccessToken{}, errors.New("azure service principal credential is not ready")
 	}
 
-	return c.tokenCred.GetToken(ctx, opts)
+	return credentialAuth.GetToken(ctx, opts)
 }

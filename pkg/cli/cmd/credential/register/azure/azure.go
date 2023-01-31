@@ -24,11 +24,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	azureCredentialID = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
-	awsCredentialID   = "/planes/aws/awscloud/providers/System.AWS/credentials/%s"
-)
-
 // NewCommand creates an instance of the command and runner for the `rad provider create azure` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
@@ -86,15 +81,16 @@ type Runner struct {
 	Format            string
 	Workspace         *workspaces.Workspace
 
-	ClientID       string
-	ClientSecret   string
-	TenantID       string
+	ClientID     string
+	ClientSecret string
+	TenantID     string
+	//TODO: move scope components out to provider commands
 	SubscriptionID string
 	ResourceGroup  string
 	KubeContext    string
 }
 
-// NewRunner creates a new instance of the `rad provider create azure` runner.
+// NewRunner creates a new instance of the `rad credential register azure` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -103,7 +99,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad provider create azure` command.
+// Validate runs validation for the `rad credential register azure` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -163,14 +159,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad provider create azure` command.
+// Run runs the `rad credential register azure` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// There are two steps to perform here:
 	// 1) Update server-side to add/change credentials
 	// 2) Update local config (all matching workspaces) to remove the scope
 
 	r.Output.LogInfo("Configuring credential for cloud provider %q for Radius installation %q...", "azure", r.Workspace.FmtConnection())
-	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
+	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -179,7 +175,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		Name:     to.Ptr("default"),
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AzureCredential),
-		ID:       to.Ptr(fmt.Sprintf(azureCredentialID, "azure")),
+		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
@@ -197,6 +193,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// 2) Update local config (all matching workspaces) to remove the scope
+	// TODO: move updating scope to provider commands
 	err = cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
 		cli.UpdateAzProvider(section, workspaces.AzureProvider{SubscriptionID: r.SubscriptionID, ResourceGroup: r.ResourceGroup}, r.KubeContext)
 		return nil
