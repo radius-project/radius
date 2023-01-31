@@ -23,9 +23,9 @@ spec:
         - --kubernetes=true
         env:
         - name: SKIP_ARM
-          value: false
+          value: "false"
         - name: ARM_AUTH_METHOD
-          value: UCPCredential
+          value: "UCPCredential"
         - name: ASPNETCORE_URLS
           value: http://+:6443
         - name: kubernetes

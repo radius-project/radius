@@ -32,9 +32,9 @@ spec:
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         env:
         - name: SKIP_ARM
-          value: false
+          value: 'false'
         - name: ARM_AUTH_METHOD
-          value: UCPCredential
+          value: 'UCPCredential'
         - name: RADIUS_ENV
           value: 'self-hosted'
         - name: K8S_CLUSTER
