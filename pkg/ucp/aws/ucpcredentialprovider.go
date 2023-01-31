@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
 
 var _ aws.CredentialsProvider = (*UCPCredentialProvider)(nil)

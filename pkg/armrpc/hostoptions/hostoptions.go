@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
-	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 
 	"gopkg.in/yaml.v3"

@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	sdk_cred "github.com/project-radius/radius/pkg/sdk/credentials"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
 
 // Authentication methods
