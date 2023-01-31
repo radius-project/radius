@@ -80,7 +80,7 @@ func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 	recipeData := make(map[string]any)
 	err := util.ReadFromRegistry(ctx, recipeDetails.TemplatePath, &recipeData)
 	if err != nil {
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipeDetails.TemplatePath, recipeName, err.Error()))
+		return fmt.Errorf("failed to fetch template from the path %q for recipe %q: %s", recipeDetails.TemplatePath, recipeName, err.Error())
 	}
 
 	recipeDetails.Parameters = make(map[string]any)
@@ -125,7 +125,7 @@ func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 
 	recipeParam, ok := recipeData["parameters"].(map[string]interface{})
 	if !ok {
-		v1.NewClientErrInvalidRequest("failed to fetch parameters")
+		return fmt.Errorf("failed to fetch parameters")
 	}
 
 	for key, value := range recipeParam {
@@ -137,7 +137,7 @@ func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 		details := ""
 		values, ok := value.(map[string]interface{})
 		if !ok {
-			return v1.NewClientErrInvalidRequest("failed to fetch parameters")
+			return fmt.Errorf("failed to fetch parameters")
 		}
 
 		keys := make([]string, 0, len(values))
