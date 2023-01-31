@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/jsonpointer"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -155,41 +156,53 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	logger.Info("Deploying radius resource")
 
 	// Deploy recipe
+	recipeResponse := &handlers.RecipeResponse{}
+	var err error
 	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.RecipeContext)
+		recipeResponse, err = dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.RecipeContext)
 		if err != nil {
 			return rpv1.DeploymentOutput{}, err
 		}
-		rendererOutput.RecipeData.Resources = deployedRecipeResourceIDs
+		rendererOutput.RecipeData.Resources = recipeResponse.Resources
 	}
 
-	// Order output resources in deployment dependency order
-	orderedOutputResources, err := rpv1.OrderOutputResources(rendererOutput.Resources)
+	// Recipe based links
+	// - Add deployed recipe resource IDs to output resource
+	// - Validate that the resource exists by doing a GET on the resource
+	// - Populate expected computed values from response of the GET request.
+	//
+	// Resource id based links
+	// - Validate that the resource exists by doing a GET on the resource
+	// - Populate expected computed values from response of the GET request.
+	//
+	// Dapr links
+	// - Validate that the resource exists (if resource id is provided)
+	// - Apply dapr spec from output resource
+	// - Populate expected computed values from response of the GET request.
+
+	outputResources := []rpv1.OutputResource{}
+	if rendererOutput.RecipeData.Name == "" {
+		// Not a recipe, use the rendered output resources
+		outputResources = append(outputResources, rendererOutput.Resources...)
+	} else {
+		// This is a recipe, we need to do some processing on the output resources.
+		processed, err := dp.processRecipeOutputResources(resourceID, rendererOutput.Resources, rendererOutput.RecipeData)
+		if err != nil {
+			return rpv1.DeploymentOutput{}, err
+		}
+		outputResources = append(outputResources, processed...)
+	}
+
+	// Now we have the combined set of output resources so we can process them.
+	outputResources, err = rpv1.OrderOutputResources(outputResources)
 	if err != nil {
 		return rpv1.DeploymentOutput{}, err
 	}
 
-	// Recipe based links - Add deployed recipe resource IDs to output resource; Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
-	// Resource id based links - Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
-	// Dapr links - Validate that the resource exists (if resource id is provided); Apply dapr spec from output resource; Populate expected computed values from response of the GET request.
-	updatedOutputResources := []rpv1.OutputResource{}
 	computedValues := make(map[string]any)
-	for _, outputResource := range orderedOutputResources {
+	for i, outputResource := range outputResources {
 		if outputResource.IsRadiusManaged() && rendererOutput.RecipeData.Name == "" {
 			return rpv1.DeploymentOutput{}, fmt.Errorf("resources deployed through recipe must be Radius managed")
-		}
-		// Add resources deployed by recipe to output resource identity
-		for _, id := range rendererOutput.RecipeData.Resources {
-			if rendererOutput.RecipeData.Provider == resourcemodel.ProviderAzure {
-				parsedID, err := resources.ParseResource(id)
-				if err != nil {
-					return rpv1.DeploymentOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
-				}
-
-				if outputResource.ProviderResourceType == parsedID.Type() {
-					outputResource.Identity = resourcemodel.NewARMIdentity(&outputResource.ResourceType, id, rendererOutput.RecipeData.APIVersion)
-				}
-			}
 		}
 
 		deployedComputedValues, err := dp.deployOutputResource(ctx, resourceID, &outputResource, rendererOutput)
@@ -197,8 +210,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 			return rpv1.DeploymentOutput{}, err
 		}
 
-		updatedOutputResources = append(updatedOutputResources, outputResource)
+		// Running the handler may update the output resource in place, make sure to store the updates.
+		outputResources[i] = outputResource
 
+		// Note: deployedComputedValues will likely have some values for resources that were returned
+		// by the renderer, and by empty for other cases.
 		for k, computedValue := range deployedComputedValues {
 			if computedValue != nil {
 				computedValues[k] = computedValue
@@ -206,19 +222,147 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		}
 	}
 
-	// Update static values
+	// Now we need to update the computed values and secrets. It's intended that the recipe outputs
+	// can override whatever the renderer specified.
+	//
+	// Right now the computed values hold whatever dynamic values the renderer provided ...
+	// as long as they match one of the output resources.
+
+	// Update static values provided by the renderer.
 	for k, computedValue := range rendererOutput.ComputedValues {
 		if computedValue.Value != nil {
 			computedValues[k] = computedValue.Value
 		}
 	}
 
+	// Update computedValues fetched from recipe output. Since this is last, any values set
+	// in the recipe will win.
+	if recipeResponse.Values != nil {
+		for k, computedValue := range recipeResponse.Values {
+			if computedValue != nil {
+				computedValues[k] = computedValue
+			}
+		}
+	}
+
+	// Now it's time to update the secrets.
+	//
+	// First we copy secrets provided by the renderer.
+	// We need to remove secret references, if they are not applicable.
+	secretValues := map[string]rpv1.SecretValueReference{}
+	for key, reference := range rendererOutput.SecretValues {
+		// IFF this is a recipe, make sure local ID exists in output resources, otherwise discard.
+		//
+		// For a non-recipe we don't do this check, recipes are the only case where discard things
+		// from the renderer. Letting it fail later in the non-recipe case will help catch bugs.
+		if rendererOutput.RecipeData.Name != "" && reference.LocalID != "" {
+			found := false
+			for _, outputResource := range outputResources {
+				if outputResource.LocalID == reference.LocalID {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				continue // This is the case the comments warned you about! Skip this one.
+			}
+		}
+
+		// Either a non-recipe, or an output resource created by the renderer for a recipe.
+		secretValues[key] = reference
+	}
+
+	// Update secrets fetched from recipe output. Since this is last, any secrets set
+	// in the recipe will win.
+	if recipeResponse.Secrets != nil {
+		for key, val := range recipeResponse.Secrets {
+			value, ok := val.(string)
+			if ok {
+				secretValues[key] = rpv1.SecretValueReference{Value: value}
+			}
+		}
+	}
+
 	return rpv1.DeploymentOutput{
-		DeployedOutputResources: updatedOutputResources,
+		DeployedOutputResources: outputResources,
 		ComputedValues:          computedValues,
-		SecretValues:            rendererOutput.SecretValues,
+		SecretValues:            secretValues,
 		RecipeData:              rendererOutput.RecipeData,
 	}, nil
+}
+
+func (dp *deploymentProcessor) processRecipeOutputResources(resourceID resources.ID, rendererOutputResources []rpv1.OutputResource, recipeData linkrp.RecipeData) ([]rpv1.OutputResource, error) {
+	// Because the design of renderers + value-based recipes we have a fairly complex scenario
+	// to deal with to support both the old style (resource binding) and new style (value-based)
+	// recipes.
+	//
+	// Links that are coded to the old style (resource binding) will initialize an output resource
+	// and computed values/secrets.
+	//
+	// Links that are coded to the new style (value-based) will not initialize an output resource
+	// and expect the recipe to provide the values/secrets.
+	//
+	// To *really* make it spicy, this isn't binary. For example the Redis link supports
+	// resource binding for Azure resources and value-based for everything else.
+	//
+	// This is transitional and we have plans to simplify the design.
+
+	// The algorithm to deal with this goes like follows:
+	//
+	// - Iterate output resources and match them (by type) against the deployed resources
+	// - Iterate deployed resources and create output resources (skipping those matched in previous step)
+	outputResources := []rpv1.OutputResource{}
+	matchedDeployedResources := map[string]bool{}
+	for _, outputResource := range rendererOutputResources {
+		for _, deployedResourceID := range recipeData.Resources {
+			parsedID, err := resources.ParseResource(deployedResourceID)
+			if err != nil {
+				return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", deployedResourceID, recipeData.Name, resourceID.String(), err.Error()))
+			}
+
+			// Since this is a resource we "know" then use the preferred API version.
+			identity := resourcemodel.FromUCPID(parsedID, recipeData.APIVersion)
+
+			// We actually want to match the ProviderResourceType here. That's the ARM/UCP type.
+			// Since deployedResourceID was parsed from an ARM/UCP Resource ID that's the right comparison.
+			if outputResource.ResourceType.Provider == identity.ResourceType.Provider &&
+				strings.EqualFold(outputResource.ProviderResourceType, identity.ResourceType.Type) {
+				// This is a match!
+				//
+				// - Make sure we assign the identity
+				// - Make sure this output resource gets processed for computed values and secrets
+				// - Make sure we don't synthesize an extra output resource for this.
+				outputResource.Identity = identity
+				outputResources = append(outputResources, outputResource)
+				matchedDeployedResources[deployedResourceID] = true
+			}
+		}
+	}
+
+	for i, id := range recipeData.Resources {
+		if _, ok := matchedDeployedResources[id]; ok {
+			// This was already matched to an output resource
+			continue
+		}
+
+		parsedID, err := resources.ParseResource(id)
+		if err != nil {
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, recipeData.Name, parsedID.String(), err.Error()))
+		}
+
+		// Since this isn't a resource we "know" then ignore the preferred API version
+		identity := resourcemodel.FromUCPID(parsedID, "")
+		outputResource := rpv1.OutputResource{
+			LocalID:       fmt.Sprintf("Resource%d", i), // The dependency sorting code requires unique LocalIDs
+			Identity:      identity,
+			ResourceType:  *identity.ResourceType,
+			RadiusManaged: to.Ptr(true),
+		}
+		outputResources = append(outputResources, outputResource)
+	}
+
+	return outputResources, nil
 }
 
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *rpv1.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]any, err error) {

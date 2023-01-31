@@ -7,9 +7,13 @@ package rediscaches
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -38,21 +42,62 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 		return renderers.RendererOutput{}, err
 	}
 
-	if resource.Properties.Resource == "" {
-		return renderers.RendererOutput{
-			Resources:      []rpv1.OutputResource{},
-			ComputedValues: computedValues,
-			SecretValues:   secretValues,
-		}, nil
-	} else {
+	switch resource.Properties.Mode {
+
+	case datamodel.LinkModeRecipe:
+		rendererOutput, err := renderAzureRecipe(resource, options, secretValues, computedValues)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		return rendererOutput, nil
+	case datamodel.LinkModeResource:
 		// Source resource identifier is provided. Currently only Azure resources are expected with non empty resource id
 		rendererOutput, err := renderAzureResource(properties, secretValues, computedValues)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
 		return rendererOutput, nil
+	case datamodel.LinkModeValues:
+		return renderers.RendererOutput{
+			Resources:      []rpv1.OutputResource{},
+			ComputedValues: computedValues,
+			SecretValues:   secretValues,
+		}, nil
+	default:
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s", resource.Properties.Mode))
 	}
+
+}
+
+func renderAzureRecipe(resource *datamodel.RedisCache, options renderers.RenderOptions, secretValues map[string]rpv1.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
+	if options.RecipeProperties.LinkType != resource.ResourceTypeName() {
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("link type %q of provided recipe %q is incompatible with %q resource type. Recipe link type must match link resource type.",
+			options.RecipeProperties.LinkType, options.RecipeProperties.Name, linkrp.RedisCachesResourceType))
+	}
+
+	recipeData := linkrp.RecipeData{
+		RecipeProperties: options.RecipeProperties,
+		APIVersion:       clientv2.RedisManagementClientAPIVersion,
+	}
+
+	// Build computedValues reference
+	buildComputedValuesReference(computedValues)
+	// Build secretValue reference
+	buildSecretValueReference(secretValues)
+
+	// Build output resources
+	redisCacheOutputResource := buildOutputResource()
+	redisCacheOutputResource.ProviderResourceType = azresources.CacheRedis
+	// Set the RadiusManaged to true for resources deployed by recipe
+	redisCacheOutputResource.RadiusManaged = to.Ptr(true)
+
+	return renderers.RendererOutput{
+		Resources:            []rpv1.OutputResource{redisCacheOutputResource},
+		ComputedValues:       computedValues,
+		SecretValues:         secretValues,
+		RecipeData:           recipeData,
+		EnvironmentProviders: options.EnvironmentProviders,
+	}, nil
 }
 
 func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rpv1.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
@@ -67,48 +112,13 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
-	if _, ok := computedValues[renderers.Host]; !ok {
-		computedValues[renderers.Host] = renderers.ComputedValueReference{
-			LocalID:     rpv1.LocalIDAzureRedis,
-			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
-		}
-	}
-
-	if _, ok := computedValues[renderers.Port]; !ok {
-		computedValues[renderers.Port] = renderers.ComputedValueReference{
-			LocalID:     rpv1.LocalIDAzureRedis,
-			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
-		}
-	}
-
-	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
-		secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{
-			LocalID:       rpv1.LocalIDAzureRedis,
-			Action:        "listKeys",
-			ValueSelector: "/primaryKey",
-		}
-	}
-
-	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
-		secretValues[renderers.ConnectionStringValue] = rpv1.SecretValueReference{
-			LocalID:       rpv1.LocalIDAzureRedis,
-			Action:        "listKeys",
-			ValueSelector: "/primaryKey",
-			Transformer: resourcemodel.ResourceType{
-				Provider: resourcemodel.ProviderAzure,
-				Type:     resourcekinds.AzureRedis,
-			},
-		}
-	}
+	// Build computedValues reference
+	buildComputedValuesReference(computedValues)
+	// Build secretValue reference
+	buildSecretValueReference(secretValues)
 
 	// Build output resources
-	redisCacheOutputResource := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureRedis,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRedis,
-			Provider: resourcemodel.ProviderAzure,
-		},
-	}
+	redisCacheOutputResource := buildOutputResource()
 	redisCacheOutputResource.Identity = resourcemodel.NewARMIdentity(&redisCacheOutputResource.ResourceType, redisCacheID.String(), clientv2.RedisManagementClientAPIVersion)
 
 	return renderers.RendererOutput{
@@ -142,4 +152,53 @@ func getProvidedComputedValues(properties datamodel.RedisCacheProperties) map[st
 	}
 
 	return computedValues
+}
+
+func buildSecretValueReference(secretValues map[string]rpv1.SecretValueReference) map[string]rpv1.SecretValueReference {
+	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
+		secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+		}
+	}
+
+	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
+		secretValues[renderers.ConnectionStringValue] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+			Transformer: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderAzure,
+				Type:     resourcekinds.AzureRedis,
+			},
+		}
+	}
+	return secretValues
+}
+
+func buildComputedValuesReference(computedValues map[string]renderers.ComputedValueReference) {
+	if _, ok := computedValues[renderers.Host]; !ok {
+		computedValues[renderers.Host] = renderers.ComputedValueReference{
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
+		}
+	}
+
+	if _, ok := computedValues[renderers.Port]; !ok {
+		computedValues[renderers.Port] = renderers.ComputedValueReference{
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
+		}
+	}
+}
+
+func buildOutputResource() rpv1.OutputResource {
+	return rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureRedis,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRedis,
+			Provider: resourcemodel.ProviderAzure,
+		},
+	}
 }
