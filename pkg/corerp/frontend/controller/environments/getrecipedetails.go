@@ -85,14 +85,61 @@ func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 
 	recipeDetails.Parameters = make(map[string]any)
 
-	for key, value := range recipeData["parameters"].(map[string]interface{}) {
+	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
+	// {
+	//     "parameters": {
+	//         <parameter-name>: {
+	//				<parameter-constraint-name> : <parameter-constraint-value>
+	//            }
+	//        }
+	// }
+	// For example:
+	// {
+	//     "parameters": {
+	//         "location": {
+	//				"type" : "string",
+	//              "tdefaultValue" : "[resourceGroup().location]"
+	//            }
+	//     }
+	// }
+	// We want to extract the parameters with their constraints and return the following:
+	// {
+	// 		<recipe-name>: {
+	// 			"linkType": <link-type>,
+	// 			"templatePath": <template-path>,
+	// 			"parameters": {
+	// 				<parameter-name>: <parameter-constraint-name> : <parameter-constraint-value>\t<parameter-constraint-name> : <parameter-constraint-value>
+	//         	}
+	// 		}
+	// }
+	// For example:
+	// {
+	// 		mongodb: {
+	// 			"linkType": "Applications.Link/mongoDatabases",
+	// 			"templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+	// 			"parameters": {
+	// 				"location": "type : string\tdefaultValue : [resourceGroup().location]\t"
+	//        	 }
+	// 		}
+	// }
+
+	recipeParam, ok := recipeData["parameters"].(map[string]interface{})
+	if !ok {
+		v1.NewClientErrInvalidRequest("failed to fetch parameters")
+	}
+
+	for key, value := range recipeParam {
 		if key == "context" {
 			// context parameter is only revelant to operator.
 			continue
 		}
 
 		details := ""
-		values := value.(map[string]interface{})
+		values, ok := value.(map[string]interface{})
+		if !ok {
+			return v1.NewClientErrInvalidRequest("failed to fetch parameters")
+		}
+
 		keys := make([]string, 0, len(values))
 
 		for k := range values {

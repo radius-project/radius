@@ -15,6 +15,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
+// ReadFromRegistry reads content from an OCI compliant registry.
 func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error {
 	registryRepo, tag, err := ParsePath(path)
 	if err != nil {
@@ -101,6 +102,7 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
+// ParsePath parses a path in the form of registry/repository:tag
 func ParsePath(path string) (repository string, tag string, err error) {
 	reference, err := dockerParser.Parse(path)
 	if err != nil {
