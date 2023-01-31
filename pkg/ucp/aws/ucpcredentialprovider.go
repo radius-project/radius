@@ -76,9 +76,9 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		AccessKeyID:     s.AccessKeyID,
 		SecretAccessKey: s.SecretAccessKey,
 		SessionToken:    "",
-		CanExpire:       false,
+		CanExpire:       true,
 		// Enables AWS SDK to fetch (rotate) access keys by calling Retrieve() after Expires.
-		//Expires: time.Now().Add(c.options.Duration),
+		Expires: time.Now().UTC().Add(DefaultExpireDuration),
 	}
 
 	return value, nil

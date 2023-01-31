@@ -153,7 +153,7 @@ func getAzureCredentialObject() ucp.CredentialResource {
 			Kind:     to.Ptr("azure.com.serviceprincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure-awstest-default"),
+				SecretName: to.Ptr("azure-azuretest-default"),
 			},
 		},
 	}

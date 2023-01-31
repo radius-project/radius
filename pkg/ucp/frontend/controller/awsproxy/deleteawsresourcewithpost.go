@@ -88,7 +88,6 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if err != nil {
-		logger.Error(err, "AWS DeletePOST error")
 		return awsclient.HandleAWSError(err)
 	}
 
