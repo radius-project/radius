@@ -6,11 +6,31 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
+
+const (
+	ResultPropertyName = "result"
+)
+
+// RecipeResponse is the output provided by deploying the recipe and reading its 'Result' output.
+// It has the list of resourceId's that are deployed as well as the connection secrets and values.
+type RecipeResponse struct {
+	// Resources is the list of deployed resources.
+	Resources []string `json:"resources"`
+
+	// Secrets is a map of secret values.
+	Secrets map[string]any `json:"secrets"`
+
+	// Values is the map of connection values (non-secret).
+	Values map[string]any `json:"values"`
+}
 
 // CreateRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
 func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespace, applicationID, applicationNamespace string) (*linkrp.RecipeContext, error) {
@@ -65,4 +85,56 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	return parameters
+}
+
+// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
+// resources created by the template.
+func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (RecipeResponse, error) {
+	// We populate the recipe response from the 'result' output (if set)
+	// and the resources created by the template.
+	//
+	// Note that there are two ways a resource can be returned:
+	// - Implicitly when it is created in the template (it will be in 'resources').
+	// - Explicitly as part of the 'result' output.
+	//
+	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
+	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+	recipeResponse := RecipeResponse{}
+
+	out, ok := outputs.(map[string]any)
+	if ok {
+		recipeOutput, ok := out[ResultPropertyName].(map[string]any)
+		if ok {
+			output, ok := recipeOutput["value"].(map[string]any)
+			if ok {
+				b, err := json.Marshal(&output)
+				if err != nil {
+					return RecipeResponse{}, err
+				}
+
+				// Using a decoder to block unknown fields.
+				decoder := json.NewDecoder(bytes.NewBuffer(b))
+				decoder.DisallowUnknownFields()
+				err = decoder.Decode(&recipeResponse)
+				if err != nil {
+					return RecipeResponse{}, err
+				}
+			}
+		}
+	}
+
+	// process the 'resources' created by the template
+	for _, id := range resources {
+		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
+	}
+
+	// Make sure our maps are non-nil (it's just friendly).
+	if recipeResponse.Secrets == nil {
+		recipeResponse.Secrets = map[string]any{}
+	}
+	if recipeResponse.Values == nil {
+		recipeResponse.Values = map[string]any{}
+	}
+
+	return recipeResponse, nil
 }
