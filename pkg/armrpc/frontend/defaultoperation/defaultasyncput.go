@@ -8,16 +8,10 @@ package defaultoperation
 import (
 	"context"
 	"net/http"
-	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-)
-
-var (
-	// defaultAsyncPutTimeout is the default timeout duration of async put operation.
-	defaultAsyncPutTimeout = time.Duration(120) * time.Second
 )
 
 // DefaultAsyncPut is the controller implementation to create or update async resource.
@@ -59,7 +53,7 @@ func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, 
 		}
 	}
 
-	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, defaultAsyncPutTimeout, &etag); r != nil || err != nil {
+	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, e.AsyncOperationTimeout(), &etag); r != nil || err != nil {
 		return r, err
 	}
 

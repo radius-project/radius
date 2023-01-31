@@ -11,3 +11,10 @@ type Provider struct {
 	ResourceGroup    string
 	ServicePrincipal *ServicePrincipal
 }
+
+// ServicePrincipal specifies the properties of an Azure service principal
+type ServicePrincipal struct {
+	ClientID     string
+	ClientSecret string
+	TenantID     string
+}

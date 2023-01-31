@@ -6,18 +6,19 @@
 package armauth
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	sdk "github.com/project-radius/radius/pkg/sdk/credentials"
 )
 
 // Authentication methods
 const (
+	UCPCredentialAuth    = "UCPCredential"
 	ServicePrincipalAuth = "ServicePrincipal"
 	ManagedIdentityAuth  = "ManagedIdentity"
 	CliAuth              = "CLI"
@@ -25,144 +26,48 @@ const (
 
 // ArmConfig is the configuration we use for managing ARM resources
 type ArmConfig struct {
-	// Auth is the old azure client authenticator.
-	// TODO: Migrate authenticator and clients to new azure sdk - https://github.com/project-radius/radius/issues/4268
-	Auth autorest.Authorizer
-
-	// ClientOptions is the client v2 options including new client credentials.
+	// ClientOptions is the client options for Azure SDK client.
 	ClientOptions clientv2.Options
 }
 
-// GetArmConfig gets the configuration we use for managing ARM resources
-func GetArmConfig() (*ArmConfig, error) {
-	auth, err := GetArmAuthorizer()
-	if err != nil {
-		return &ArmConfig{}, err
+// Options represents the options of ArmConfig.
+type Options struct {
+	// CredentialProvider is an UCP credential client for Azure service principal.
+	CredentialProvider sdk.CredentialProvider[sdk.AzureCredential]
+}
+
+// NewArmConfig gets the configuration we use for managing ARM resources
+func NewArmConfig(opt *Options) (*ArmConfig, error) {
+	if opt == nil {
+		opt = &Options{}
 	}
 
-	// Create Client v2 Credential object.
-	cred, err := NewARMCredential()
+	cred, err := NewARMCredential(opt)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ArmConfig{
-		Auth:          auth,
 		ClientOptions: clientv2.Options{Cred: cred},
 	}, nil
 }
 
-// GetArmAuthorizerFromValues returns an ARM authorizer and the client ID for the current process from the provided service principal values
-func GetArmAuthorizerFromValues(clientID string, clientSecret string, tenantID string) (autorest.Authorizer, error) {
-	clientcfg := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
-	auth, err := clientcfg.Authorizer()
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := clientcfg.ServicePrincipalToken()
-	if err != nil {
-		return nil, err
-	}
-
-	err = token.EnsureFresh()
-	if err != nil {
-		return nil, err
-	}
-
-	return auth, nil
-}
-
 // NewARMCredential returns new azure client credential
-func NewARMCredential() (azcore.TokenCredential, error) {
+func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	authMethod := GetAuthMethod()
 
-	if authMethod == ServicePrincipalAuth {
-		return azidentity.NewClientSecretCredential(
-			os.Getenv("AZURE_TENANT_ID"),
-			os.Getenv("AZURE_CLIENT_ID"),
-			os.Getenv("AZURE_CLIENT_SECRET"), nil)
-	} else if authMethod == ManagedIdentityAuth {
+	switch authMethod {
+	case UCPCredentialAuth:
+		return aztoken.NewUCPCredential(aztoken.UCPCredentialOptions{
+			Provider: opt.CredentialProvider,
+		})
+	case ServicePrincipalAuth:
+		return azidentity.NewEnvironmentCredential(nil)
+	case ManagedIdentityAuth:
 		return azidentity.NewManagedIdentityCredential(nil)
-	} else {
+	default:
 		return azidentity.NewAzureCLICredential(nil)
 	}
-}
-
-// GetArmAuthorizer returns an ARM authorizer and the client ID for the current process
-func GetArmAuthorizer() (autorest.Authorizer, error) {
-	authMethod := GetAuthMethod()
-
-	var auth autorest.Authorizer
-	var err error
-	if authMethod == ServicePrincipalAuth {
-		auth, err = authServicePrincipal()
-	} else if authMethod == ManagedIdentityAuth {
-		auth, err = authMSI()
-	} else {
-		auth, err = authCLI()
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to authorize with auth type %q: %w", authMethod, err)
-	}
-
-	return auth, nil
-}
-
-func authServicePrincipal() (autorest.Authorizer, error) {
-	clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
-	auth, err := clientcfg.Authorizer()
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := clientcfg.ServicePrincipalToken()
-	if err != nil {
-		return nil, err
-	}
-
-	err = token.EnsureFresh()
-	if err != nil {
-		return nil, err
-	}
-
-	return auth, nil
-}
-
-func authMSI() (autorest.Authorizer, error) {
-	config := auth.NewMSIConfig()
-	token, err := config.ServicePrincipalToken()
-	if err != nil {
-		return nil, err
-	}
-
-	err = token.EnsureFresh()
-	if err != nil {
-		return nil, err
-	}
-
-	auth, err := config.Authorizer()
-	if err != nil {
-		return nil, err
-	}
-
-	return auth, nil
-}
-
-func authCLI() (autorest.Authorizer, error) {
-	settings, err := auth.GetSettingsFromEnvironment()
-	if err != nil {
-		return nil, err
-	}
-
-	auth, err := auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return auth, nil
 }
 
 // GetAuthMethod returns the authentication method used by the RP

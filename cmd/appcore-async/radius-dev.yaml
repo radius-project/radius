@@ -36,6 +36,10 @@ storageProvider:
 
 queueProvider:
   provider: inmemory
+secretProvider:
+  provider: etcd
+  etcd:
+    inmemory: true
 workerServer:
   port: 2222
 metricsProvider:

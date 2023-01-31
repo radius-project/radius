@@ -60,3 +60,4 @@ metricsProvider:
 logging:
   level: "info"
   json: true
+  

@@ -84,7 +84,7 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, w
 		return nil, err
 	}
 
-	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if componentName, ok := deploymentOutput.ComputedValues[renderers.ComponentNameKey].(string); ok {
@@ -93,7 +93,7 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, w
 
 	if old != nil {
 		diff := rpv1.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = daprSecretStore.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
+		err = daprSecretStore.dp.Delete(ctx, serviceCtx.ResourceID, diff)
 		if err != nil {
 			return nil, err
 		}

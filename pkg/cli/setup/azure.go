@@ -23,6 +23,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	cli_aws "github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -54,7 +55,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 		return nil, nil
 	}
 
-	armConfig, err := armauth.GetArmConfig()
+	armConfig, err := armauth.NewArmConfig(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +155,7 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		return nil, err
 	}
 
-	armConfig, err := armauth.GetArmConfig()
+	armConfig, err := armauth.NewArmConfig(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -409,6 +410,7 @@ func generateRandomName(prefix string, affixes ...string) string {
 //go:generate mockgen -destination=./mock_setup.go -package=setup -self_package github.com/project-radius/radius/pkg/cli/setup github.com/project-radius/radius/pkg/cli/setup Interface
 type Interface interface {
 	ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error)
+	ParseAWSProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*cli_aws.Provider, error)
 }
 
 type Impl struct {
@@ -417,4 +419,9 @@ type Impl struct {
 // Parses user input from the CLI for Azure Provider arguments
 func (i *Impl) ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error) {
 	return ParseAzureProviderArgs(cmd, interactive, prompter)
+}
+
+// Parses user input from the CLI for Azure Provider arguments
+func (i *Impl) ParseAWSProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*cli_aws.Provider, error) {
+	return ParseAWSProviderArgs(cmd, interactive, prompter)
 }
