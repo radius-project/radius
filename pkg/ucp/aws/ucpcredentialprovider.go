@@ -8,10 +8,12 @@ package aws
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/go-logr/logr"
 
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
@@ -54,6 +56,7 @@ func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSC
 
 // Retrieve fetches the secret access key using UCP credential API.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
 	if err != nil {
 		return aws.Credentials{}, err
@@ -66,6 +69,8 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 	// session name is used to uniquely identify a session. This simply
 	// uses unix time in nanoseconds to uniquely identify sessions.
 	sessionName := strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	logger.Info(fmt.Sprintf("Retreived AWS Credential - AccessKeyID: %s, SessionName: %s", s.AccessKeyID, sessionName))
 
 	value := aws.Credentials{
 		AccessKeyID:     s.AccessKeyID,

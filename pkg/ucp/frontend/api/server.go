@@ -91,13 +91,8 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 			return aws.Config{}, err
 		}
 		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
-
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
-		c, err := p.Retrieve(ctx)
-		if err != nil {
-			logger.Error(err, "Failed to retrieve AWS credentials")
-		}
-		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API - AWS AccessKeyID: " + c.AccessKeyID)
+		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
 
 	default:
 		logger.Info("Configuring default authentication mode with environment variable.")
