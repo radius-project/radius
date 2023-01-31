@@ -32,8 +32,8 @@ const (
 	AuthDefault = "default"
 )
 
-// Identity includes the identity configuration.
+// Identity represents configuration options for authenticating with external systems like Azure and AWS.
 type Identity struct {
-	// Auth represents the type of authentication.
+	// Auth represents the type of authentication for authenticating with external systems like Azure and AWS.
 	Auth string `yaml:"authentication"`
 }

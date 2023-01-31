@@ -38,7 +38,7 @@ The following are properties that can be specified for UCP:
 |-----|-------------|---------|
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
 | plane | Configuration options for the UCP plane | [**See below**](#plane)
-| identity | Configuration options for UCP identity | [**See below**](#ucp-identity)
+| identity | Configuration options for authenticating with external systems like Azure and AWS | [**See below**](#external identity)
 | ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
 
 
@@ -173,7 +173,7 @@ ucp:
 | kind | The kind of plane | `Azure` |
 | url | URL to forward requests to for non UCP Native Plane | `http://localhost:7443` |
 
-## ucp-identity
+## external identity
 
 | Key | Description | Example |
 |-----|-------------|---------|

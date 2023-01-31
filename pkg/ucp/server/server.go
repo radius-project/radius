@@ -84,7 +84,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		}
 	}
 
-	ucpConn, err := sdk.GetUCPConnection(&opts.Config.UCP, cfg)
+	ucpConn, err := sdk.NewConnectionFromUCPConfig(&opts.Config.UCP, cfg)
 	if err != nil {
 		return Options{}, err
 	}

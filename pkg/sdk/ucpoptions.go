@@ -38,8 +38,8 @@ type UCPDirectConnectionOptions struct {
 	Endpoint string `yaml:"endpoint"`
 }
 
-// GetUCPConnection creates a Connection for UCP endpoint.
-func GetUCPConnection(option *UCPOptions, k8sConfig *rest.Config) (Connection, error) {
+// NewConnectionFromUCPConfig creates a Connection for UCP endpoint.
+func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config) (Connection, error) {
 	if option.Kind == UCPConnectionKindDirect {
 		if option.Direct == nil || option.Direct.Endpoint == "" {
 			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
