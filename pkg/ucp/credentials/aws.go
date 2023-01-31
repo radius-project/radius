@@ -23,12 +23,12 @@ var _ CredentialProvider[AWSCredential] = (*AWSCredentialProvider)(nil)
 // AWSCredentialProvider is UCP credential provider for Azure.
 type AWSCredentialProvider struct {
 	secretProvider *provider.SecretProvider
-	client         *ucpapi.AWSCredentialClient
+	client         *ucpapi.AwsCredentialClient
 }
 
 // NewAWSCredentialProvider creates new AWSCredentialProvider.
 func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AWSCredentialProvider, error) {
-	cli, err := ucpapi.NewAWSCredentialClient(credential, sdk.NewClientOptions(ucpConn))
+	cli, err := ucpapi.NewAwsCredentialClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}
@@ -42,14 +42,24 @@ func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Con
 // Fetch gets the AWS IAM credentials from secret storage.
 func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AWSCredential, error) {
 	// 1. Fetch the secret name of AWS IAM access keys from UCP.
-	cred, err := p.client.Get(ctx, "aws", planeName, name, &ucpapi.AWSCredentialClientGetOptions{})
+	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AwsCredentialClientGetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// We support only kubernetes secret, but we may support multiple secret stores.
-	storage, ok := cred.Properties.GetCredentialResourceProperties().Storage.(*ucpapi.InternalCredentialStorageProperties)
-	if !ok {
+	var storage *ucpapi.InternalCredentialStorageProperties
+
+	switch p := cred.Properties.(type) {
+	case *ucpapi.AWSAccessKeyCredentialProperties:
+
+		switch c := p.Storage.(type) {
+		case *ucpapi.InternalCredentialStorageProperties:
+			storage = c
+		default:
+			return nil, errors.New("invalid InternalCredentialStorageProperties")
+		}
+	default:
 		return nil, errors.New("invalid InternalCredentialStorageProperties")
 	}
 

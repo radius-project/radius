@@ -389,7 +389,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		if r.AzureCloudProvider != nil {
 			r.Output.LogInfo("Registering azure credentials")
 			credential := r.getAzureCredential()
-			err := credentialClient.Put(ctx, credential)
+			err := credentialClient.PutAzure(ctx, credential)
 			if err != nil {
 				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure azure credential with error %s", err)}
 			}
@@ -397,7 +397,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		if r.AwsCloudProvider != nil {
 			r.Output.LogInfo("Registering aws credentials")
 			credential := r.getAWSCredential()
-			err := credentialClient.Put(ctx, credential)
+			err := credentialClient.PutAWS(ctx, credential)
 			if err != nil {
 				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure aws credential with error %s", err)}
 			}
@@ -442,13 +442,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) getAzureCredential() ucp.CredentialResource {
-	return ucp.CredentialResource{
+func (r *Runner) getAzureCredential() ucp.AzureCredentialResource {
+	return ucp.AzureCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AzureCredential),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 			},
 			TenantID:     &r.AzureCloudProvider.ServicePrincipal.TenantID,
 			ClientID:     &r.AzureCloudProvider.ServicePrincipal.ClientID,
@@ -457,13 +457,13 @@ func (r *Runner) getAzureCredential() ucp.CredentialResource {
 	}
 }
 
-func (r *Runner) getAWSCredential() ucp.CredentialResource {
-	return ucp.CredentialResource{
+func (r *Runner) getAWSCredential() ucp.AWSCredentialResource {
+	return ucp.AWSCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AWSCredential),
-		Properties: &ucp.AWSCredentialProperties{
+		Properties: &ucp.AWSAccessKeyCredentialProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 			},
 			AccessKeyID:     &r.AwsCloudProvider.AccessKeyId,
 			SecretAccessKey: &r.AwsCloudProvider.SecretAccessKey,
