@@ -45,3 +45,7 @@ func AddNamespaceFlag(cmd *cobra.Command) {
 func AddParameterFlag(cmd *cobra.Command) {
 	cmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 }
+
+func AddRecipeFlag(cmd *cobra.Command) {
+	cmd.Flags().String("name", "", "The recipe name")
+}

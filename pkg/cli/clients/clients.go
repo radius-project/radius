@@ -151,6 +151,9 @@ type ApplicationsManagementClient interface {
 	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
 	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220901privatepreview.ResourceGroupResource, error)
 	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)
+
+	// ShowRecipe shows recipe details including list of all parameters for a given recipe registered to an environment
+	ShowRecipe(ctx context.Context, environmentName string, recipeName string) (corerp.EnvironmentRecipeProperties, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
