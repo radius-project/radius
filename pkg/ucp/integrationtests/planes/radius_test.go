@@ -61,8 +61,6 @@ func Test_RadiusPlane_GET_Found(t *testing.T) {
 }
 
 func Test_RadiusPlane_LIST(t *testing.T) {
-	t.Skip("This functionality is currently broken. See https://github.com/project-radius/radius/issues/4878")
-
 	server := testserver.Start(t)
 	defer server.Close()
 
