@@ -110,11 +110,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			// Handles any AWS resource type
 			ResourceType: resourcemodel.ResourceType{
-<<<<<<< HEAD
 				Type:     resourcekinds.AnyResourceType,
-=======
-				Type:     resourcekinds.Wildcard,
->>>>>>> 0a7e1192 (Enable value-based recipes)
 				Provider: resourcemodel.ProviderAWS,
 			},
 			ResourceHandler: handlers.NewAWSHandler(connection),
