@@ -62,8 +62,9 @@ func Test_ListAWSResources(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -109,8 +110,9 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -137,8 +139,9 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -169,8 +172,9 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

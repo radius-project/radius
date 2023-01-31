@@ -54,8 +54,9 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

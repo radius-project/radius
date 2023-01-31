@@ -47,6 +47,14 @@ planes:
         Microsoft.Resources: "http://localhost:5017"
       kind: "UCPNative"
 
+identity:
+  authMethod: default
+
+ucp:
+  kind: direct
+  direct:
+    endpoint: "http://localhost:5017"
+
 # Metrics configuration
 # port is not the same as metrics configuration in radius-self-hosted.yaml 
 # so that we can run both services in debug mode. 
