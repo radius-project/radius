@@ -91,7 +91,7 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 		}
 		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
-		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API.")
+		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API with UCP Endpoint - " + s.options.UCPConnection.Endpoint())
 
 	default:
 		logger.Info("Configuring default authentication mode with environment variable.")

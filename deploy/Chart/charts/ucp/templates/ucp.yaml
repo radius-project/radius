@@ -36,7 +36,7 @@ spec:
         - name: PORT
           value: '9443'
         - name: AWS_REGION
-          value: {{ .Values.global.rp.provider.aws.region | quote }}
+          value: {{ .Values.global.rp.provider.aws.region }}
         name: ucp
         ports:
         - containerPort: 9443
