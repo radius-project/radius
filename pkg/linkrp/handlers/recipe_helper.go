@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	dockerParser "github.com/novln/docker-parser"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -97,8 +98,20 @@ func parseTemplatePath(templatePath string) (repository string, tag string, err 
 	return
 }
 
-// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object.
-func prepareRecipeResponse(outputs any, recipeResp *RecipeResponse) error {
+// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
+// resources created by the template.
+func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (RecipeResponse, error) {
+	// We populate the recipe response from the 'result' output (if set)
+	// and the resources created by the template.
+	//
+	// Note that there are two ways a resource can be returned:
+	// - Implicitly when it is created in the template (it will be in 'resources').
+	// - Explicitly as part of the 'result' output.
+	//
+	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
+	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+	recipeResponse := RecipeResponse{}
+
 	out, ok := outputs.(map[string]any)
 	if ok {
 		recipeOutput, ok := out[ResultPropertyName].(map[string]any)
@@ -107,19 +120,32 @@ func prepareRecipeResponse(outputs any, recipeResp *RecipeResponse) error {
 			if ok {
 				b, err := json.Marshal(&output)
 				if err != nil {
-					return err
+					return RecipeResponse{}, err
 				}
 
 				// Using a decoder to block unknown fields.
 				decoder := json.NewDecoder(bytes.NewBuffer(b))
 				decoder.DisallowUnknownFields()
-				err = decoder.Decode(recipeResp)
+				err = decoder.Decode(&recipeResponse)
 				if err != nil {
-					return err
+					return RecipeResponse{}, err
 				}
 			}
 		}
 	}
 
-	return nil
+	// process the 'resources' created by the template
+	for _, id := range resources {
+		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
+	}
+
+	// Make sure our maps are non-nil (it's just friendly).
+	if recipeResponse.Secrets == nil {
+		recipeResponse.Secrets = map[string]any{}
+	}
+	if recipeResponse.Values == nil {
+		recipeResponse.Values = map[string]any{}
+	}
+
+	return recipeResponse, nil
 }

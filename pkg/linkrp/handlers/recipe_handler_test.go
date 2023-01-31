@@ -8,6 +8,8 @@ package handlers
 import (
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/sdk/clients"
@@ -182,6 +184,12 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 }
 
 func Test_RecipeResponseSuccess(t *testing.T) {
+	resources := []*armresources.ResourceReference{
+		{
+			ID: to.Ptr("outputResourceId"),
+		},
+	}
+
 	response := map[string]any{}
 	value := map[string]any{}
 	value["resources"] = []any{"testId1", "testId2"}
@@ -192,13 +200,13 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 	}
 	value["values"] = map[string]any{
 		"host": "myrediscache.redis.cache.windows.net",
-		"port": 6379,
+		"port": float64(6379), // This will be a float64 not an int in real scenarios, it's read from JSON.
 	}
 	response["result"] = map[string]any{
 		"value": value,
 	}
 	expectedResponse := RecipeResponse{
-		Resources: []string{"outputResourceId", "testId1", "testId2"},
+		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets: map[string]any{
 			"username":         "testUser",
 			"password":         "testPassword",
@@ -206,61 +214,60 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 		},
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
-			"port": 6379,
+			"port": float64(6379),
 		},
 	}
-	actualResp := RecipeResponse{
-		Resources: []string{"outputResourceId"},
-		Secrets:   map[string]any{},
-		Values:    map[string]any{},
-	}
-	err := prepareRecipeResponse(response, &actualResp)
+
+	actualResponse, err := prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
-	require.Equal(t, expectedResponse, actualResp)
+	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_RecipeResponseWithoutSecret(t *testing.T) {
+	resources := []*armresources.ResourceReference{
+		{
+			ID: to.Ptr("outputResourceId"),
+		},
+	}
+
 	response := map[string]any{}
 	value := map[string]any{}
 	value["resources"] = []any{"testId1", "testId2"}
 	value["values"] = map[string]any{
 		"host": "myrediscache.redis.cache.windows.net",
-		"port": 6379,
+		"port": float64(6379), // This will be a float64 not an int in real scenarios, it's read from JSON.
 	}
 	response["result"] = map[string]any{
 		"value": value,
 	}
 	expectedResponse := RecipeResponse{
-		Resources: []string{"outputResourceId", "testId1", "testId2"},
+		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets:   map[string]any{},
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
-			"port": 6379,
+			"port": float64(6379),
 		},
 	}
-	actualResp := RecipeResponse{
-		Resources: []string{"outputResourceId"},
-		Secrets:   map[string]any{},
-		Values:    map[string]any{},
-	}
-	err := prepareRecipeResponse(response, &actualResp)
+
+	actualResponse, err := prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
-	require.Equal(t, expectedResponse, actualResp)
+	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_RecipeResponseWithoutResult(t *testing.T) {
+	resources := []*armresources.ResourceReference{
+		{
+			ID: to.Ptr("outputResourceId"),
+		},
+	}
 	response := map[string]any{}
 	expectedResponse := RecipeResponse{
 		Resources: []string{"outputResourceId"},
 		Secrets:   map[string]any{},
 		Values:    map[string]any{},
 	}
-	actualResp := RecipeResponse{
-		Resources: []string{"outputResourceId"},
-		Secrets:   map[string]any{},
-		Values:    map[string]any{},
-	}
-	err := prepareRecipeResponse(response, &actualResp)
+
+	actualResponse, err := prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
-	require.Equal(t, expectedResponse, actualResp)
+	require.Equal(t, expectedResponse, actualResponse)
 }

@@ -151,15 +151,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 		return nil, fmt.Errorf("failed to deploy the recipe %q, template path: %q, deployment: %q", recipe.Name, recipe.TemplatePath, deploymentID.Name())
 	}
 
-	recipeResponse := RecipeResponse{}
-	recipeResponse.Secrets = map[string]any{}
-	recipeResponse.Values = map[string]any{}
-
-	for _, id := range resp.Properties.OutputResources {
-		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
-	}
-
-	err = prepareRecipeResponse(resp.Properties.Outputs, &recipeResponse)
+	recipeResponse, err := prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the recipe output %q: %w", ResultPropertyName, err)
 	}
