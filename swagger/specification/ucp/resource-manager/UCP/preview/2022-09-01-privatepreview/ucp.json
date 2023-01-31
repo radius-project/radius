@@ -63,6 +63,43 @@
         "deprecated": false
       }
     },
+    "/planes/{planeType}": {
+      "get": {
+        "description": "List all planes of {planeType}.",
+        "operationId": "PlanesType_List",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusPlanesList": {
+            "$ref": "./examples/PlanesTypeList.json"
+          }
+        },
+        "tags": [
+          "PlanesType"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plane list.",
+            "schema": {
+              "$ref": "#/definitions/PlaneResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
     "/planes/{planeType}/{planeName}": {
       "get": {
         "description": "Gets the properties of a UCP Plane.",
