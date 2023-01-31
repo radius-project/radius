@@ -104,3 +104,23 @@ func getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepre
 
 	return envExistingDataModel, envInput
 }
+
+func getTestModelsGetRecipeDetails20220315privatepreview() (*v20220315privatepreview.EnvironmentResource, *v20220315privatepreview.EnvironmentResource) {
+	rawInput := testutil.ReadFixture("environmentgetrecipedetails20220315privatepreview_input.json")
+	envInput := &v20220315privatepreview.EnvironmentResource{}
+	_ = json.Unmarshal(rawInput, envInput)
+
+	rawExpectedOutput := testutil.ReadFixture("environmentgetrecipedetails20220315privatepreview_output.json")
+	expectedOutput := &v20220315privatepreview.EnvironmentResource{}
+	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
+
+	return envInput, expectedOutput
+}
+
+func getTestModelsGetRecipeDetailsWithMultipleRecipes20220315privatepreview() *v20220315privatepreview.EnvironmentResource {
+	rawInput := testutil.ReadFixture("environmentgetrecipedetailswithmultiplerecipes20220315privatepreview_input.json")
+	envInput := &v20220315privatepreview.EnvironmentResource{}
+	_ = json.Unmarshal(rawInput, envInput)
+
+	return envInput
+}

@@ -1,0 +1,23 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+    "name": "env0",
+    "properties": {
+        "compute": {
+          "kind": "kubernetes",
+          "resourceId": "fakeid",
+          "namespace": "default"
+        },
+        "recipes": {
+            "mongodb": {
+                "linkType": "Applications.Link/mongoDatabases",
+                "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+            },
+
+            "mongodb2": {
+                "linkType": "Applications.Link/mongoDatabases",
+                "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/mongodatabases/azure:1.0"
+            }
+        },
+        "useDevRecipes": false
+    }
+}
