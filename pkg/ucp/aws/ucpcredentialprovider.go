@@ -22,7 +22,7 @@ var _ aws.CredentialsProvider = (*UCPCredentialProvider)(nil)
 
 const (
 	// DefaultExpireDuration is the default access key expiry duration.
-	DefaultExpireDuration = time.Minute * time.Duration(1)
+	DefaultExpireDuration = time.Minute * time.Duration(15)
 )
 
 // UCPCredentialProvider is the implementation of aws.CredentialsProvider
