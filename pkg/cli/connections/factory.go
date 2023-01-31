@@ -34,7 +34,7 @@ type Factory interface {
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
-	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error)
+	CreateCredentialManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error)
 }
 
 var _ Factory = (*impl)(nil)
@@ -173,8 +173,8 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 	}, nil
 }
 
-//nolint:all
-func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error) {
+// Creates Credential management client to interact with server side credentials.
+func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
 		return nil, err

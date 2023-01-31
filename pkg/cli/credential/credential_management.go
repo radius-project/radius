@@ -48,10 +48,10 @@ var _ CredentialManagementClient = (*UCPCredentialManagementClient)(nil)
 // Put registers credentials with the provided credential config
 func (cpm *UCPCredentialManagementClient) Put(ctx context.Context, credential ucp.CredentialResource) error {
 	if strings.EqualFold(*credential.Type, AzureCredential) {
-		err := cpm.CredentialInterface.CreateCredential(ctx, AzurePlaneType, AzurePlaneName, *credential.Name, credential)
+		err := cpm.CredentialInterface.CreateCredential(ctx, AzurePlaneType, AzurePlaneName, "default", credential)
 		return err
 	} else if strings.EqualFold(*credential.Type, AWSCredential) {
-		err := cpm.CredentialInterface.CreateCredential(ctx, AWSPlaneType, AWSPlaneName, *credential.Name, credential)
+		err := cpm.CredentialInterface.CreateCredential(ctx, AWSPlaneType, AWSPlaneName, "default", credential)
 		return err
 	}
 	return &ErrUnsupportedCloudProvider{}

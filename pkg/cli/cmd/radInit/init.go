@@ -15,11 +15,13 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	cli_aws "github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -29,6 +31,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -84,6 +87,7 @@ type Runner struct {
 
 	Format                  string
 	AzureCloudProvider      *azure.Provider
+	AwsCloudProvider        *cli_aws.Provider
 	ExistingEnvironment     bool
 	EnvName                 string
 	KubeContext             string
@@ -218,18 +222,30 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			// Grab any provider info we found on the environment resource so we can store it locally.
 			for _, env := range environments {
 				if strings.EqualFold(r.EnvName, *env.Name) {
-					if env.Properties != nil &&
-						env.Properties.Providers != nil &&
-						env.Properties.Providers.Azure != nil &&
-						env.Properties.Providers.Azure.Scope != nil {
-						scope, err := resources.ParseScope(*env.Properties.Providers.Azure.Scope)
-						if err != nil {
-							return err
-						}
+					if env.Properties != nil && env.Properties.Providers != nil {
+						if env.Properties.Providers.Azure != nil &&
+							env.Properties.Providers.Azure.Scope != nil {
+							scope, err := resources.ParseScope(*env.Properties.Providers.Azure.Scope)
+							if err != nil {
+								return err
+							}
 
-						r.AzureCloudProvider = &azure.Provider{
-							SubscriptionID: scope.FindScope(resources.SubscriptionsSegment),
-							ResourceGroup:  scope.FindScope(resources.ResourceGroupsSegment),
+							r.AzureCloudProvider = &azure.Provider{
+								SubscriptionID: scope.FindScope(resources.SubscriptionsSegment),
+								ResourceGroup:  scope.FindScope(resources.ResourceGroupsSegment),
+							}
+						}
+						if env.Properties.Providers.Aws != nil &&
+							env.Properties.Providers.Aws.Scope != nil {
+							scope, err := resources.ParseScope(*env.Properties.Providers.Aws.Scope)
+							if err != nil {
+								return err
+							}
+
+							r.AwsCloudProvider = &cli_aws.Provider{
+								TargetRegion: scope.FindScope(resources.RegionsSegment),
+								AccountId:    scope.FindScope(resources.AccountsSegment),
+							}
 						}
 					}
 					break
@@ -276,7 +292,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				case awsCloudProvider:
-					r.Output.LogInfo("AWS is not supported")
+					r.AwsCloudProvider, err = r.SetupInterface.ParseAWSProviderArgs(cmd, true, r.Prompter)
+					if err != nil {
+						return err
+					}
 				case backNavigator:
 					break
 				default:
@@ -315,10 +334,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Creates radius resources, azure resources if required based on the user input, command flags
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
-	//TODO: Initialize cloud providers separately once providers commands are in
 	// If the user prompts for re-install, re-install and init providers
 	// If the user says no, then use the provider create/update operations to update the provider config.
-	// issue: https://github.com/project-radius/radius/issues/3440
 	if r.Reinstall || !r.RadiusInstalled {
 		// Install radius control plane
 		err := installRadius(ctx, r)
@@ -353,19 +370,41 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		// create the providers scope from the AzureCloudProvider properties for creating the environment
-		var providers corerp.Providers
-		if r.AzureCloudProvider != nil {
-			providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
+		// create the providers scope to the environment and register credentials at provider plane
+		providers, err := cmd.CreateEnvProviders([]interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
+		if err != nil {
+			return err
 		}
 
-		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.Namespace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
+		r.Output.LogInfo("Configuring Cloud providers")
+		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.Namespace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, false)
 		if err != nil || !isEnvCreated {
 			return &cli.FriendlyError{Message: "Failed to create radius environment"}
 		}
+
+		credentialClient, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
+		if err != nil {
+			return err
+		}
+		if r.AzureCloudProvider != nil {
+			r.Output.LogInfo("Registering azure credentials")
+			credential := r.getAzureCredential()
+			err := credentialClient.Put(ctx, credential)
+			if err != nil {
+				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure azure credential with error %s", err)}
+			}
+		}
+		if r.AwsCloudProvider != nil {
+			r.Output.LogInfo("Registering aws credentials")
+			credential := r.getAWSCredential()
+			err := credentialClient.Put(ctx, credential)
+			if err != nil {
+				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure aws credential with error %s", err)}
+			}
+		}
 	}
 
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, r.AzureCloudProvider)
+	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, []interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
 	if err != nil {
 		return err
 	}
@@ -401,6 +440,35 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *Runner) getAzureCredential() ucp.CredentialResource {
+	return ucp.CredentialResource{
+		Location: to.Ptr(v1.LocationGlobal),
+		Type:     to.Ptr(cli_credential.AzureCredential),
+		Properties: &ucp.AzureServicePrincipalProperties{
+			Storage: &ucp.CredentialStorageProperties{
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+			},
+			TenantID:     &r.AzureCloudProvider.ServicePrincipal.TenantID,
+			ClientID:     &r.AzureCloudProvider.ServicePrincipal.ClientID,
+			ClientSecret: &r.AzureCloudProvider.ServicePrincipal.ClientSecret,
+		},
+	}
+}
+
+func (r *Runner) getAWSCredential() ucp.CredentialResource {
+	return ucp.CredentialResource{
+		Location: to.Ptr(v1.LocationGlobal),
+		Type:     to.Ptr(cli_credential.AWSCredential),
+		Properties: &ucp.AWSCredentialProperties{
+			Storage: &ucp.CredentialStorageProperties{
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+			},
+			AccessKeyID:     &r.AwsCloudProvider.AccessKeyId,
+			SecretAccessKey: &r.AwsCloudProvider.SecretAccessKey,
+		},
+	}
 }
 
 func installRadius(ctx context.Context, r *Runner) error {
