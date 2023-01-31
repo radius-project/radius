@@ -46,7 +46,7 @@ planes:
       kind: "AWS"
 
 identity:
-  authMethod: default
+  authMethod: UCPCredential
 
 ucp:
   kind: kubernetes
@@ -58,13 +58,7 @@ metricsProvider:
     path: "/metrics"
     port: 2222
 
-identity:
-  authentication: UCPCredential
-
  # Logging configuration   
 logging:
   level: "info"
   json: true
-
-ucp:
-  kind: kubernetes
