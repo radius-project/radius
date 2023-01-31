@@ -48,7 +48,7 @@ planes:
       kind: "UCPNative"
 
 identity:
-  authentication: default
+  authMethod: default
 
 ucp:
   kind: direct

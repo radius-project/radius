@@ -17,6 +17,7 @@ import (
 	metricsprovider "github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricsservicehostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
@@ -72,19 +73,20 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	metricsOpts := opts.Config.MetricsProvider
 	loggingOpts := opts.Config.Logging
 	identity := opts.Config.Identity
-	if identity.Auth == "" {
-		identity.Auth = hostoptions.AuthDefault
+	// Set the default authentication method if AuthMethod is not set.
+	if identity.AuthMethod == "" {
+		identity.AuthMethod = hostoptions.AuthDefault
 	}
 
 	var cfg *kube_rest.Config
-	if opts.Config.UCP.Kind == sdk.UCPConnectionKindKubernetes {
+	if opts.Config.UCP.Kind == config.UCPConnectionKindKubernetes {
 		cfg, err = kube.GetConfig()
 		if err != nil {
 			return Options{}, fmt.Errorf("failed to get kubernetes config: %w", err)
 		}
 	}
 
-	ucpConn, err := sdk.NewConnectionFromUCPConfig(&opts.Config.UCP, cfg)
+	ucpConn, err := config.NewConnectionFromUCPConfig(&opts.Config.UCP, cfg)
 	if err != nil {
 		return Options{}, err
 	}

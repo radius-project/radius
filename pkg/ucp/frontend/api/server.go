@@ -83,7 +83,7 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	credProviders := []func(*config.LoadOptions) error{}
 
-	switch s.options.Identity.Auth {
+	switch s.options.Identity.AuthMethod {
 	case hostoptions.AuthUCPCredential:
 		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection)
 		if err != nil {

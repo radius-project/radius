@@ -3,11 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package sdk
+package config
 
 import (
 	"errors"
 
+	"github.com/project-radius/radius/pkg/sdk"
 	"k8s.io/client-go/rest"
 )
 
@@ -39,12 +40,12 @@ type UCPDirectConnectionOptions struct {
 }
 
 // NewConnectionFromUCPConfig creates a Connection for UCP endpoint.
-func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config) (Connection, error) {
+func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config) (sdk.Connection, error) {
 	if option.Kind == UCPConnectionKindDirect {
 		if option.Direct == nil || option.Direct.Endpoint == "" {
 			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
 		}
-		return NewDirectConnection(option.Direct.Endpoint)
+		return sdk.NewDirectConnection(option.Direct.Endpoint)
 	}
-	return NewKubernetesConnectionFromConfig(k8sConfig)
+	return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 }

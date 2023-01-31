@@ -46,7 +46,7 @@ planes:
       kind: "AWS"
 
 identity:
-  authentication: default
+  authMethod: default
 
 ucp:
   kind: kubernetes
