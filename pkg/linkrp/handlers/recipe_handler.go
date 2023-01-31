@@ -63,6 +63,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
+
 	recipeData := make(map[string]any)
 	err = util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
 	if err != nil {
@@ -131,30 +132,6 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 	}
 
 	return deployedResources, nil
-}
-
-func createDeploymentID(resourceID string, deploymentName string) (resources.ID, error) {
-	parsed, err := resources.ParseResource(resourceID)
-	if err != nil {
-		return resources.ID{}, err
-	}
-
-	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
-	raw := fmt.Sprintf("/planes/deployments/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName)
-	return resources.ParseResource(raw)
-}
-
-func createProviderConfig(resourceGroup string, envProviders coreDatamodel.Providers) clients.ProviderConfig {
-	config := clients.NewDefaultProviderConfig(resourceGroup)
-
-	if envProviders.Azure != (coreDatamodel.ProvidersAzure{}) {
-		config.Az = &clients.Az{
-			Type: clients.ProviderTypeAzure,
-			Value: clients.Value{
-				Scope: envProviders.Azure.Scope,
-			},
-		}
-	}
 }
 
 func createDeploymentID(resourceID string, deploymentName string) (resources.ID, error) {

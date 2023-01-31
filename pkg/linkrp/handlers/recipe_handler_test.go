@@ -10,6 +10,7 @@ import (
 
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -132,14 +133,14 @@ func Test_ContextParameterError(t *testing.T) {
 }
 
 func Test_ACRPathParser(t *testing.T) {
-	repository, tag, err := parseTemplatePath("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0")
+	repository, tag, err := util.ParsePath("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0")
 	require.NoError(t, err)
 	require.Equal(t, "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure", repository)
 	require.Equal(t, "1.0", tag)
 }
 
 func Test_ACRPathParserErr(t *testing.T) {
-	repository, tag, err := parseTemplatePath("http://user:passwd@example.com/test/bar:v1")
+	repository, tag, err := util.ParsePath("http://user:passwd@example.com/test/bar:v1")
 	require.Error(t, err)
 	require.Equal(t, "", repository)
 	require.Equal(t, "", tag)
