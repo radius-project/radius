@@ -1,0 +1,24 @@
+Deploying AWS resource
+
+participant CLI
+participant Bicep
+participant UCP
+participant DE
+participant AWS
+
+CLI->Bicep:rad app deploy
+Bicep->Bicep:JSON Template generation
+CLI->UCP:PUT /planes/deployments/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+UCP->DE: PUT /planes/deployments/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+note over DE: Deployment orchestration
+DE->UCP: POST /planes/aws/aws/accounts/{account}/regions/{region}/providers/AWS.Kinesis/Stream:put
+DE-->DE:Poll operation completion
+UCP-->UCP: Translate UCP request to AWS request
+UCP->AWS: Create/Update AWS.Kinesis stream
+AWS-->AWS: Create Kinesis stream
+AWS -->UCP:Kinesis stream created
+UCP-->DE:Success
+DE-->UCP: Deployment complete
+UCP-->CLI: Success
+
+
