@@ -34,7 +34,6 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -130,9 +129,6 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 				}
 
 				match, err := converted.MatchesFilters(query.Filters)
-				logger := logr.FromContextOrDiscard(ctx)
-				logger.Info("### Match: " + strconv.FormatBool(match))
-				logger.Info("### Filters" + query.Filters[0].Field)
 				if err != nil {
 					return nil, err
 				} else if !match {
