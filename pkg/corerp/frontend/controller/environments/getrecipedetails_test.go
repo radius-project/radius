@@ -32,7 +32,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe details run", func(t *testing.T) {
 		envDataModel, expectedOutput := getTestModelsGetRecipeDetails20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfilegetrecipedetails, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipedetails, nil)
 
 		mStorageClient.
 			EXPECT().
@@ -62,7 +62,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("get recipe details run non existing environment", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfilegetrecipedetails, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipedetails, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -98,7 +98,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe details non existing recipe", func(t *testing.T) {
 		envDataModel, _ := getTestModelsGetRecipeDetails20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfilegetrecipedetailsnotexisting, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipedetailsnotexisting, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.

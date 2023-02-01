@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -42,22 +43,21 @@ func NewGetRecipeDetails(opts ctrl.Options) (ctrl.Controller, error) {
 func (e *GetRecipeDetails) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	// Request route for getrecipedetails has name of the operation as suffix which should be removed to get the resource id.
+	// Request route for getrecipedetails has name of the recipe as suffix.
 	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Core/environments/<environment_name>/getrecipedetails/<recipe_name>
-	parsedResourceID := serviceCtx.ResourceID.Truncate()
-	recipeName := serviceCtx.ResourceID.FindType("getrecipedetails")
-	resource, _, err := e.GetResource(ctx, parsedResourceID)
+	recipeName := strings.Split(serviceCtx.OrignalURL.Path, "getrecipedetails/")[1]
+	resource, _, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 
 	if resource == nil {
-		return rest.NewNotFoundResponse(parsedResourceID), nil
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
 	recipe, exists := resource.Properties.Recipes[recipeName]
 	if !exists {
-		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Recipe with name %q not found on environment with id %q", recipeName, parsedResourceID)), nil
+		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Recipe with name %q not found on environment with id %q", recipeName, serviceCtx.ResourceID)), nil
 	}
 
 	err = getRecipeDetailsFromRegistry(ctx, &recipe, recipeName)

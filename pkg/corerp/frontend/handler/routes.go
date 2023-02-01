@@ -122,7 +122,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: env_ctrl.NewDeleteEnvironment,
 		},
 		{
-			ParentRouter:   envResourceRouter.PathPrefix("/getrecipedetails/{recipeName}").Subrouter(),
+			ParentRouter:   envRTSubrouter.Path("/{environmentName}/getrecipedetails/{recipeName}").Subrouter(),
 			ResourceType:   env_ctrl.ResourceTypeName,
 			Method:         env_ctrl.OperationGetRecipeDetails,
 			HandlerFactory: env_ctrl.NewGetRecipeDetails,
