@@ -58,7 +58,6 @@ type ResourceData struct {
 	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rpv1.SecretValueReference
-	RecipeData      linkrp.RecipeData
 }
 
 type EnvironmentMetadata struct {
@@ -287,7 +286,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	return rpv1.DeploymentOutput{
 		DeployedOutputResources: outputResources,
 		ComputedValues:          computedValues,
-		SecretValues:            rendererOutput.SecretValues,
+		SecretValues:            secretValues,
 	}, nil
 }
 

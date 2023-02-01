@@ -917,7 +917,6 @@ func Test_Deploy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expectedSecrets, deploymentOutput.SecretValues)
 		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "override.example.com"}, deploymentOutput.ComputedValues)
-		require.Equal(t, resources.Resources, deploymentOutput.RecipeData.Resources)
 	})
 
 	t.Run("Verify deploy success with redis recipe (kubernetes value-based)", func(t *testing.T) {
