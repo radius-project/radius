@@ -96,7 +96,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
-	_, isContextParameterDefined := recipeData["parameters"].(map[string]interface{})[datamodel.RecipeContextParameter]
+	_, isContextParameterDefined := recipeData["parameters"].(map[string]any)[datamodel.RecipeContextParameter]
 	parameters := createRecipeParameters(recipe.Parameters, recipe.EnvParameters, isContextParameterDefined, &recipeContext)
 
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
