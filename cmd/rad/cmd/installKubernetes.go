@@ -29,7 +29,6 @@ func init() {
 	installKubernetesCmd.PersistentFlags().BoolP("interactive", "i", false, "Collect values for required command arguments through command line interface prompts")
 	installKubernetesCmd.Flags().String("kubecontext", "", "the Kubernetes context to use, will use the default if unset")
 	setup.RegisterPersistentChartArgs(installKubernetesCmd)
-	setup.RegisterPersistentAzureProviderArgs(installKubernetesCmd)
 }
 
 func installKubernetes(cmd *cobra.Command, args []string) error {
