@@ -1,8 +1,8 @@
 import radius as radius
 
-param rg string = resourceGroup().name
+param scope string = resourceGroup().id
 
-param sub string = subscription().subscriptionId
+//param sub string = subscription().subscriptionId
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-environment-value-backed-recipe-env'
@@ -15,7 +15,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     providers: {
       azure: {
-        scope: '/subscriptions/${sub}/resourceGroups/${rg}'
+        scope: scope
       }
     }
     recipes: {
