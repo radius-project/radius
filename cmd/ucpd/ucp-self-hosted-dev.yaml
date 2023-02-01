@@ -53,7 +53,7 @@ identity:
 ucp:
   kind: direct
   direct:
-    endpoint: "http://localhost:5107"
+    endpoint: "http://localhost:5017"
 
 # Metrics configuration
 # port is not the same as metrics configuration in radius-self-hosted.yaml 
