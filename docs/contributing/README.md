@@ -92,7 +92,7 @@ Azure environments have some notable limitations for now to work as a **user-mod
 - Each resource group where the user wants to deploy Radius applications must have our hosting platform and control-plane running in them. This is performed by our environment setup.
 - We support a very limited set of Azure regions based on the availability of resources we use.
 
-Our environment setup is driven by an ARM template and a deployment script (used to initialize AKS). These operations are part of `rad env init azure`. This is needed today because each environment is self-contained (single-tenant) and does not share resources with other subscriptions or other environments in the same subscription.
+Our environment setup is driven by an ARM template and a deployment script (used to initialize AKS). These operations are part of `rad init`. This is needed today because each environment is self-contained (single-tenant) and does not share resources with other subscriptions or other environments in the same subscription.
 
 > 🚀 Future State 🚀 <br>
 When we have built a fully-managed Azure service it will remove the need for environment setup to create resources in Azure. It will simply add configuration locally. The control-plane and hosting platform will be centrally-managed as multitenant services like other production Azure services.

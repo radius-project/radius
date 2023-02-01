@@ -2,7 +2,7 @@
 
 This is to help local development setup for quickly iterating on changes in the app core RP. 
 
-Note, this only applies when we want to update the app core image, if we need to update the deployment/environment, a rerun of `rad env init` may need to happen.
+Note, this only applies when we want to update the app core image, if we need to update the deployment/environment, a rerun of `rad init` may need to happen.
 
 1. Create a new Azure Container Registry. [link to Azure Docs](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-portal?tabs=azure-cli)
 
@@ -43,7 +43,7 @@ The above steps will not configure the ability for radius to talk with azure res
     ```
 1. Use these values in the following command:
     ```
-    go run ./cmd/rad/main.go env init kubernetes --chart ./deploy/Chart/ --force --provider-azure --provider-azure-resource-group <resourcegroupName> --provider-azure-subscription <subscriptionId> --provider-azure-client-id <appId> --provider-azure-client-secret <pwd> --provider-azure-tenant-id <tenantId> --appcore-image <registry>.azurecr.io/appcore-rp --appcore-tag latest
+    go run ./cmd/rad/main.go install kubernetes --chart ./deploy/Chart/ --force --provider-azure --provider-azure-resource-group <resourcegroupName> --provider-azure-subscription <subscriptionId> --provider-azure-client-id <appId> --provider-azure-client-secret <pwd> --provider-azure-tenant-id <tenantId> --appcore-image <registry>.azurecr.io/appcore-rp --appcore-tag latest
     ```
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
