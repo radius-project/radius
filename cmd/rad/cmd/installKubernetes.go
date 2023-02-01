@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -34,11 +33,6 @@ func init() {
 }
 
 func installKubernetes(cmd *cobra.Command, args []string) error {
-	interactive, err := cmd.Flags().GetBool("interactive")
-	if err != nil {
-		return err
-	}
-
 	// It's ok if this is blank.
 	kubeContext, err := cmd.Flags().GetString("kubecontext")
 	if err != nil {
@@ -46,12 +40,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	chartArgs, err := setup.ParseChartArgs(cmd)
-	if err != nil {
-		return err
-	}
-
-	// Configure Azure provider for cloud resources if specified
-	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -65,7 +53,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 			AppCoreImage:           chartArgs.AppCoreImage,
 			AppCoreTag:             chartArgs.AppCoreTag,
 			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
-			AzureProvider:          azureProvider,
 		},
 	}
 
@@ -78,7 +65,8 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	//installation completed. update workspaces, if any.
 	if !alreadyInstalled {
-		err = updateWorkspaces(cmd.Context(), azureProvider)
+		// install doesn't configure providers, user init to configure providers.
+		err = updateWorkspaces(cmd.Context(), nil)
 		if err != nil {
 			return err
 		}
