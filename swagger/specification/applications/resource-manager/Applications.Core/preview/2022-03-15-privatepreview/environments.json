@@ -272,8 +272,8 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Core/environments/getrecipedetails": {
-      "post": {
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipedetails/{recipeName}": {
+      "get": {
         "description": "Gets recipe details including parameters and any constraints on the parameters.",
         "operationId": "Environments_GetRecipeDetails",
         "produces": [
@@ -295,13 +295,10 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "name": "EnvironmentResource",
-            "description": "environment details",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
-            }
+            "$ref": "#/parameters/EnvironmentNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RecipeNameParameter"
           }
         ],
         "responses": {
@@ -493,6 +490,16 @@
       "required": true,
       "type": "string",
       "description": "The name of the environment",
+      "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+      "maxLength": 63,
+      "x-ms-parameter-location": "method"
+    },
+    "RecipeNameParameter": {
+      "name": "recipeName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the recipe",
       "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
       "maxLength": 63,
       "x-ms-parameter-location": "method"

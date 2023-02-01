@@ -129,7 +129,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(envRecipes, nil).Times(1)
 
 			outputSink := &output.MockOutput{}

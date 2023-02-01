@@ -195,11 +195,12 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 // GetRecipeDetails - Gets recipe details including parameters and any constraints on the parameters.
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// environmentResource - environment details
+// environmentName - The name of the environment
+// recipeName - The name of the recipe
 // options - EnvironmentsClientGetRecipeDetailsOptions contains the optional parameters for the EnvironmentsClient.GetRecipeDetails
 // method.
-func (client *EnvironmentsClient) GetRecipeDetails(ctx context.Context, environmentResource EnvironmentResource, options *EnvironmentsClientGetRecipeDetailsOptions) (EnvironmentsClientGetRecipeDetailsResponse, error) {
-	req, err := client.getRecipeDetailsCreateRequest(ctx, environmentResource, options)
+func (client *EnvironmentsClient) GetRecipeDetails(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeDetailsOptions) (EnvironmentsClientGetRecipeDetailsResponse, error) {
+	req, err := client.getRecipeDetailsCreateRequest(ctx, environmentName, recipeName, options)
 	if err != nil {
 		return EnvironmentsClientGetRecipeDetailsResponse{}, err
 	}
@@ -214,10 +215,18 @@ func (client *EnvironmentsClient) GetRecipeDetails(ctx context.Context, environm
 }
 
 // getRecipeDetailsCreateRequest creates the GetRecipeDetails request.
-func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Context, environmentResource EnvironmentResource, options *EnvironmentsClientGetRecipeDetailsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/environments/getrecipedetails"
+func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeDetailsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipedetails/{recipeName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	if environmentName == "" {
+		return nil, errors.New("parameter environmentName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{environmentName}", url.PathEscape(environmentName))
+	if recipeName == "" {
+		return nil, errors.New("parameter recipeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{recipeName}", url.PathEscape(recipeName))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +234,7 @@ func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Cont
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, environmentResource)
+	return req, nil
 }
 
 // getRecipeDetailsHandleResponse handles the GetRecipeDetails response.

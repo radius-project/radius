@@ -11,13 +11,13 @@ import (
 	"io"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -25,46 +25,62 @@ import (
 func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
-
+	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
+
+	t.Parallel()
 	t.Run("get recipe details run", func(t *testing.T) {
-		envInput, expectedOutput := getTestModelsGetRecipeDetails20220315privatepreview()
+		envDataModel, expectedOutput := getTestModelsGetRecipeDetails20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfile, envInput)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfilegetrecipedetails, nil)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "etag"},
+					Data:     envDataModel,
+				}, nil
+			})
 		ctx := testutil.ARMTestContextFromRequest(req)
-		ctl, err := NewGetRecipDetails(ctrl.Options{})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+		ctl, err := NewGetRecipDetails(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		// Set system data to be new and empty.
-		expectedOutput.SystemData = new(v20220315privatepreview.SystemData)
-		expectedOutput.SystemData.LastModifiedAt = new(time.Time)
-		expectedOutput.SystemData.LastModifiedBy = new(string)
-		expectedOutput.SystemData.LastModifiedByType = new(v20220315privatepreview.CreatedByType)
-		expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
-		expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
-		expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
-
 		actualOutput := &v20220315privatepreview.EnvironmentResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
 
-	t.Run("get recipe details run with multiple recipes", func(t *testing.T) {
-		envInput := getTestModelsGetRecipeDetailsWithMultipleRecipes20220315privatepreview()
+	t.Run("get recipe details run non existing environment", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfile, envInput)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfilegetrecipedetails, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
-		ctl, err := NewGetRecipDetails(ctrl.Options{})
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return nil, &store.ErrNotFound{}
+			})
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+		ctl, err := NewGetRecipDetails(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		result := w.Result()
-		require.Equal(t, 400, result.StatusCode)
+		require.Equal(t, 404, result.StatusCode)
 
 		body := result.Body
 		defer body.Close()
@@ -74,8 +90,48 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		armerr := v1.ErrorResponse{}
 		err = json.Unmarshal(payload, &armerr)
 		require.NoError(t, err)
-		require.Equal(t, v1.CodeInvalid, armerr.Error.Code)
-		require.Equal(t, "Only one recipe should be specified in the request.", armerr.Error.Message)
+		require.Equal(t, v1.CodeNotFound, armerr.Error.Code)
+		require.Contains(t, armerr.Error.Message, "the resource with id")
+		require.Contains(t, armerr.Error.Message, "was not found")
+	})
+
+	t.Run("get recipe details non existing recipe", func(t *testing.T) {
+		envDataModel, _ := getTestModelsGetRecipeDetails20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, OperationGetRecipeDetails, testHeaderfilegetrecipedetailsnotexisting, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "etag"},
+					Data:     envDataModel,
+				}, nil
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+		ctl, err := NewGetRecipDetails(opts)
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, w, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		result := w.Result()
+		require.Equal(t, 404, result.StatusCode)
+
+		body := result.Body
+		defer body.Close()
+		payload, err := io.ReadAll(body)
+		require.NoError(t, err)
+
+		armerr := v1.ErrorResponse{}
+		err = json.Unmarshal(payload, &armerr)
+		require.NoError(t, err)
+		require.Equal(t, v1.CodeNotFound, armerr.Error.Code)
+		require.Contains(t, armerr.Error.Message, "Recipe with name \"mongodb\" not found on environment with id")
 	})
 }
 

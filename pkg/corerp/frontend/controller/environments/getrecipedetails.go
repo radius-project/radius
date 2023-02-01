@@ -40,31 +40,23 @@ func NewGetRecipDetails(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (e *GetRecipeDetails) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	res, err := e.GetResourceFromRequest(ctx, req)
+
+	// Request route for getrecipedetails has name of the operation as suffix which should be removed to get the resource id.
+	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Core/environments/<environment_name>/getrecipedetails/<recipe_name>
+	parsedResourceID := serviceCtx.ResourceID.Truncate()
+	recipeName := serviceCtx.ResourceID.FindType("getrecipedetails")
+	resource, _, err := e.GetResource(ctx, parsedResourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Expected input:
-	// {
-	//  <required-attributes>
-	// 	"properties": {
-	// 		"recipes": {
-	// 			<recipe-name>: {
-	// 				"linkType": <link-type>,
-	// 				"templatePath": <template-path>,
-	// 			}
-	// 		},
-	// 	},
-	// }
-	var recipe datamodel.EnvironmentRecipeProperties
-	var recipeName = ""
-	for k, v := range res.Properties.Recipes {
-		if recipeName != "" {
-			return rest.NewBadRequestResponse("Only one recipe should be specified in the request."), nil
-		}
-		recipeName = k
-		recipe = v
+	if resource == nil {
+		return rest.NewNotFoundResponse(parsedResourceID), nil
+	}
+
+	recipe, exists := resource.Properties.Recipes[recipeName]
+	if !exists {
+		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Recipe with name %q not found on environment with id %q", recipeName, parsedResourceID)), nil
 	}
 
 	err = GetRecipeDetailsFromRegistry(ctx, &recipe, recipeName)
@@ -72,8 +64,8 @@ func (e *GetRecipeDetails) Run(ctx context.Context, w http.ResponseWriter, req *
 		return nil, v1.NewClientErrInvalidRequest(err.Error())
 	}
 
-	res.Properties.Recipes[recipeName] = recipe
-	versioned, err := e.ResponseConverter()(res, serviceCtx.APIVersion)
+	resource.Properties.Recipes[recipeName] = recipe
+	versioned, err := e.ResponseConverter()(resource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}

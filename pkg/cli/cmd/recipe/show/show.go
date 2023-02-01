@@ -10,7 +10,6 @@ import (
 	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -120,12 +119,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	envResource, recipeProperties, err := cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName)
-	if err != nil {
-		return err
-	}
-
-	recipeDetails, err := client.ShowRecipe(ctx, envResource, recipeProperties[r.RecipeName], r.RecipeName)
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, r.RecipeName)
 	if err != nil {
 		return err
 	}
