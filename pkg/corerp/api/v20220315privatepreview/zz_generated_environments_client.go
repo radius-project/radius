@@ -217,7 +217,7 @@ func (client *EnvironmentsClient) GetRecipeDetails(ctx context.Context, environm
 func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Context, environmentResource EnvironmentResource, options *EnvironmentsClientGetRecipeDetailsOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/getrecipedetails"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}

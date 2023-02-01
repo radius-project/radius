@@ -273,7 +273,7 @@
       }
     },
     "/{rootScope}/providers/Applications.Core/environments/getrecipedetails": {
-      "get": {
+      "post": {
         "description": "Gets recipe details including parameters and any constraints on the parameters.",
         "operationId": "Environments_GetRecipeDetails",
         "produces": [

@@ -101,7 +101,7 @@ var handlerTests = []struct {
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/environments/getrecipedetails?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
+		method:     http.MethodPost,
 		isAzureAPI: false,
 	},
 }
