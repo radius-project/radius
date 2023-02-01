@@ -76,8 +76,11 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Regexp(t, showRecipeName, output)
 		require.Regexp(t, showRecipeTemplate, output)
 		require.Regexp(t, showRecipeLinkType, output)
-		require.Regexp(t, "mongodbName : type : string\t", output)
-		require.Regexp(t, "documentdbName : type : string\t", output)
+		require.Regexp(t, "mongodbName", output)
+		require.Regexp(t, "documentdbName", output)
+		require.Regexp(t, "location", output)
+		require.Regexp(t, "type : string", output)
+		require.Regexp(t, "defaultValue : [resourceGroup().location]", output)
 	})
 }
 
