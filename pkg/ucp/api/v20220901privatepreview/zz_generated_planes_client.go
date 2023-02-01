@@ -214,7 +214,7 @@ func (client *PlanesClient) getHandleResponse(resp *http.Response) (PlanesClient
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all PlaneResources in the given root scope
+// NewListByRootScopePager - Lists information about all PlaneResources in the given plane
 // Generated from API version 2022-09-01-privatepreview
 // options - PlanesClientListByRootScopeOptions contains the optional parameters for the PlanesClient.ListByRootScope method.
 func (client *PlanesClient) NewListByRootScopePager(options *PlanesClientListByRootScopeOptions) (*runtime.Pager[PlanesClientListByRootScopeResponse]) {
