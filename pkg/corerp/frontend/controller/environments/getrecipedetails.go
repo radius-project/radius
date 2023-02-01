@@ -115,7 +115,7 @@ func getRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 	//		}
 	// }
 
-	recipeParam, ok := recipeData["parameters"].(map[string]interface{})
+	recipeParam, ok := recipeData["parameters"].(map[string]any)
 	if !ok {
 		return fmt.Errorf("failed to fetch parameters")
 	}
@@ -127,24 +127,31 @@ func getRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 		}
 
 		details := ""
-		paramDetails, ok := value.(map[string]interface{})
+		paramDetails, ok := value.(map[string]any)
 		if !ok {
 			return fmt.Errorf("failed to fetch parameter names")
 		}
 
-		keys := make([]string, 0, len(paramDetails))
+		if len(paramDetails) > 0 {
+			keys := make([]string, 0, len(paramDetails))
 
-		for k := range paramDetails {
-			keys = append(keys, k)
+			for k := range paramDetails {
+				keys = append(keys, k)
+			}
+
+			// to keep order of parameters details consistent - sort.
+			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
+			for _, k := range keys {
+				if k == "metadata" {
+					// skip metadata details for now as it is the description of the parameter.
+					continue
+				}
+
+				details += k + " : " + paramDetails[k].(string) + "\t"
+			}
+
+			recipeDetails.Parameters[key] = details
 		}
-
-		// to keep order of parameters details consistent - sort.
-		sort.Sort(sort.Reverse(sort.StringSlice(keys)))
-		for _, k := range keys {
-			details += k + " : " + paramDetails[k].(string) + "\t"
-		}
-
-		recipeDetails.Parameters[key] = details
 	}
 	return nil
 }

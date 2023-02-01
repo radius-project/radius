@@ -775,6 +775,6 @@ func TestFindHighestVersion(t *testing.T) {
 	t.Run("Version tags are not all float values", func(t *testing.T) {
 		versions := []string{"1.0", "otherTag", "3.0", "4.0"}
 		_, err := findHighestVersion(versions)
-		require.ErrorContains(t, err, "Unable to convert tag otherTag into valid version.")
+		require.ErrorContains(t, err, "unable to convert tag otherTag into valid version.")
 	})
 }

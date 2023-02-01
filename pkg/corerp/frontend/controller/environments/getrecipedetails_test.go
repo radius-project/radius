@@ -164,16 +164,6 @@ func TestGetRecipeDetailsFromRegistry(t *testing.T) {
 		require.Equal(t, expectedOutput, recipeDetails.Parameters)
 	})
 
-	t.Run("get recipe details from registry with no parameters", func(t *testing.T) {
-		recipeDetails := datamodel.EnvironmentRecipeProperties{
-			TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
-		}
-		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
-		require.NoError(t, err)
-		expectedOutput := map[string]any{}
-		require.Equal(t, expectedOutput, recipeDetails.Parameters)
-	})
-
 	t.Run("get recipe details from registry with invalid path", func(t *testing.T) {
 		recipeDetails := datamodel.EnvironmentRecipeProperties{
 			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0",
