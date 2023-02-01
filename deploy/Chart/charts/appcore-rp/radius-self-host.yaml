@@ -24,6 +24,8 @@ metricsProvider:
     enabled: true
     path: "/metrics"
     port: 9090
+secretProvider:
+  provider: kubernetes
 server:
   host: "0.0.0.0"
   port: 5443
@@ -32,4 +34,3 @@ workerServer:
   maxOperationRetryCount: 2
 ucp:
   kind: kubernetes
-

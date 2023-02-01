@@ -19,6 +19,8 @@ queueProvider:
     incluster: true
     context: ""
     namespace: "radius-system"
+secretProvider:
+  provider: kubernetes
 metricsProvider:
   prometheus:
     enabled: true
