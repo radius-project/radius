@@ -476,6 +476,7 @@ func installRadius(ctx context.Context, r *Runner) error {
 		Radius: helm.RadiusOptions{
 			Reinstall:     r.Reinstall,
 			AzureProvider: r.AzureCloudProvider,
+			AWSProvider:   r.AwsCloudProvider,
 		},
 	}
 
