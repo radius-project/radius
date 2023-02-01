@@ -2,8 +2,6 @@ import radius as radius
 
 param scope string = resourceGroup().id
 
-//param sub string = subscription().subscriptionId
-
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-environment-value-backed-recipe-env'
   location: 'global'
