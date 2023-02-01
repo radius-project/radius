@@ -37,7 +37,7 @@ namespace Ucp;
 model ResourceGroupResource is TrackedResource<BasicResourceProperties> {
     @doc("Resource Group name")
     @maxLength(63)
-    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
     @key("resourceGroupName")
     @path
     @segment("resourcegroups")
@@ -143,6 +143,8 @@ model AWSCredentialResource is TrackedResource<AWSCredentialProperties> {
     @doc("The plane type.")
     @path
     @segment("providers/System.AWS/credentials")
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @maxLength(63)
     name: string;
 }
 
@@ -152,6 +154,8 @@ model AzureCredentialResource is TrackedResource<AzureCredentialProperties> {
     @doc("The plane type.")
     @path
     @segment("providers/System.Azure/credentials")
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @maxLength(63)
     name: string;
 }
 
@@ -171,9 +175,10 @@ model InternalCredentialStorageProperties extends CredentialStorageProperties {
 
 @doc("Custom root scope")
 model PlaneNameParameter {
-  @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")
-  @minLength(1)
+  @doc("The name of the plane")
+  @maxLength(63)
   @path
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
   @extension("x-ms-skip-url-encoding", true)
   @extension("x-ms-parameter-location", "method")
   planeName: string;
@@ -194,9 +199,10 @@ enum ProvisioningState {
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @doc("Custom root scope")
 model AWSPlaneNameParameter {
-  @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")
-  @minLength(1)
+  @doc("The name of the plane")
+  @maxLength(63)
   @path
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
   @segment("planes/aws")
   @extension("x-ms-skip-url-encoding", true)
   @extension("x-ms-parameter-location", "method")
@@ -205,9 +211,10 @@ model AWSPlaneNameParameter {
 
 @doc("Custom root scope")
 model AzurePlaneNameParameter {
-  @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")
-  @minLength(1)
+  @doc("The name of the plane")
+  @maxLength(63)
   @path
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
   @segment("planes/azure")
   @extension("x-ms-skip-url-encoding", true)
   @extension("x-ms-parameter-location", "method")
@@ -235,7 +242,6 @@ interface ResourceGroups
       Root<PlaneResource>
     > {}
 
-// TODO remove resource group from these APIS
 @armResourceOperations
 interface AzureCredential
   extends CredentialResourceOperations<

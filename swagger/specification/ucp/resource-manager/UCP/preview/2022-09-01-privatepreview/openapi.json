@@ -293,7 +293,7 @@
             "in": "path",
             "required": true,
             "description": "Resource Group name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -339,7 +339,7 @@
             "in": "path",
             "required": true,
             "description": "Resource Group name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -407,7 +407,7 @@
             "in": "path",
             "required": true,
             "description": "Resource Group name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -492,6 +492,8 @@
             "in": "path",
             "required": true,
             "description": "The plane type.",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
             "type": "string"
           }
         ],
@@ -528,6 +530,8 @@
             "in": "path",
             "required": true,
             "description": "The plane type.",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
             "type": "string"
           },
           {
@@ -586,6 +590,8 @@
             "in": "path",
             "required": true,
             "description": "The plane type.",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
             "type": "string"
           }
         ],
@@ -668,6 +674,8 @@
             "in": "path",
             "required": true,
             "description": "The plane type.",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
             "type": "string"
           }
         ],
@@ -704,6 +712,8 @@
             "in": "path",
             "required": true,
             "description": "The plane type.",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
             "type": "string"
           },
           {
@@ -762,6 +772,8 @@
             "in": "path",
             "required": true,
             "description": "The plane type.",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
             "type": "string"
           }
         ],
@@ -1228,8 +1240,9 @@
       "name": "planeName",
       "in": "path",
       "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
+      "description": "The name of the plane",
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method",
       "x-ms-skip-url-encoding": true,
       "type": "string"
@@ -1238,8 +1251,9 @@
       "name": "planeName",
       "in": "path",
       "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
+      "description": "The name of the plane",
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method",
       "x-ms-skip-url-encoding": true,
       "type": "string"
@@ -1248,8 +1262,9 @@
       "name": "planeName",
       "in": "path",
       "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
+      "description": "The name of the plane",
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method",
       "x-ms-skip-url-encoding": true,
       "type": "string"

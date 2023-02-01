@@ -57,7 +57,7 @@ pl: pl,
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // resourceGroupName - Resource Group name
 // resource - Resource create parameters.
 // options - ResourceGroupsClientCreateOrUpdateOptions contains the optional parameters for the ResourceGroupsClient.CreateOrUpdate
@@ -121,7 +121,7 @@ func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Resp
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // resourceGroupName - Resource Group name
 // options - ResourceGroupsClientDeleteOptions contains the optional parameters for the ResourceGroupsClient.Delete method.
 func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
@@ -180,7 +180,7 @@ func (client *ResourceGroupsClient) deleteHandleResponse(resp *http.Response) (R
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // resourceGroupName - Resource Group name
 // options - ResourceGroupsClientGetOptions contains the optional parameters for the ResourceGroupsClient.Get method.
 func (client *ResourceGroupsClient) Get(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
@@ -233,7 +233,7 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 // NewListByRootScopePager - Lists information about all ResourceGroupResources in the given root scope
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // options - ResourceGroupsClientListByRootScopeOptions contains the optional parameters for the ResourceGroupsClient.ListByRootScope
 // method.
 func (client *ResourceGroupsClient) NewListByRootScopePager(planeType string, planeName string, options *ResourceGroupsClientListByRootScopeOptions) (*runtime.Pager[ResourceGroupsClientListByRootScopeResponse]) {

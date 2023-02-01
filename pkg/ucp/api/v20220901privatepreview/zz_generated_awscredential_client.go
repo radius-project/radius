@@ -56,7 +56,7 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // credentialName - The plane type.
 // resource - Resource create parameters.
 // options - AwsCredentialClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialClient.CreateOrUpdate
@@ -115,7 +115,7 @@ func (client *AwsCredentialClient) createOrUpdateHandleResponse(resp *http.Respo
 // Delete - Deletes an existing AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // credentialName - The plane type.
 // options - AwsCredentialClientDeleteOptions contains the optional parameters for the AwsCredentialClient.Delete method.
 func (client *AwsCredentialClient) Delete(ctx context.Context, planeName string, credentialName string, options *AwsCredentialClientDeleteOptions) (AwsCredentialClientDeleteResponse, error) {
@@ -169,7 +169,7 @@ func (client *AwsCredentialClient) deleteHandleResponse(resp *http.Response) (Aw
 // Get - Retrieves information about a AWSCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // credentialName - The plane type.
 // options - AwsCredentialClientGetOptions contains the optional parameters for the AwsCredentialClient.Get method.
 func (client *AwsCredentialClient) Get(ctx context.Context, planeName string, credentialName string, options *AwsCredentialClientGetOptions) (AwsCredentialClientGetResponse, error) {
@@ -217,7 +217,7 @@ func (client *AwsCredentialClient) getHandleResponse(resp *http.Response) (AwsCr
 
 // NewListByRootScopePager - Lists information about all AWSCredentialResources in the given root scope
 // Generated from API version 2022-09-01-privatepreview
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // options - AwsCredentialClientListByRootScopeOptions contains the optional parameters for the AwsCredentialClient.ListByRootScope
 // method.
 func (client *AwsCredentialClient) NewListByRootScopePager(planeName string, options *AwsCredentialClientListByRootScopeOptions) (*runtime.Pager[AwsCredentialClientListByRootScopeResponse]) {

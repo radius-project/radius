@@ -57,7 +57,7 @@ pl: pl,
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // resource - Resource create parameters.
 // options - PlanesClientCreateOrUpdateOptions contains the optional parameters for the PlanesClient.CreateOrUpdate method.
 func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (PlanesClientCreateOrUpdateResponse, error) {
@@ -115,7 +115,7 @@ func (client *PlanesClient) createOrUpdateHandleResponse(resp *http.Response) (P
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // options - PlanesClientDeleteOptions contains the optional parameters for the PlanesClient.Delete method.
 func (client *PlanesClient) Delete(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (PlanesClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, planeType, planeName, options)
@@ -169,7 +169,7 @@ func (client *PlanesClient) deleteHandleResponse(resp *http.Response) (PlanesCli
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
-// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// planeName - The name of the plane
 // options - PlanesClientGetOptions contains the optional parameters for the PlanesClient.Get method.
 func (client *PlanesClient) Get(ctx context.Context, planeType string, planeName string, options *PlanesClientGetOptions) (PlanesClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, planeType, planeName, options)
