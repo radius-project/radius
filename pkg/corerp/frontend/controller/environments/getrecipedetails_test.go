@@ -48,7 +48,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
-		ctl, err := NewGetRecipDetails(opts)
+		ctl, err := NewGetRecipeDetails(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
-		ctl, err := NewGetRecipDetails(opts)
+		ctl, err := NewGetRecipeDetails(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
-		ctl, err := NewGetRecipDetails(opts)
+		ctl, err := NewGetRecipeDetails(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)

@@ -273,7 +273,7 @@
       }
     },
     "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipedetails/{recipeName}": {
-      "get": {
+      "post": {
         "description": "Gets recipe details including parameters and any constraints on the parameters.",
         "operationId": "Environments_GetRecipeDetails",
         "produces": [
@@ -305,7 +305,7 @@
           "200": {
             "description": "Recipe details",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/EnvironmentRecipeProperties"
             }
           },
           "default": {

@@ -226,7 +226,7 @@ func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Cont
 		return nil, errors.New("parameter recipeName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{recipeName}", url.PathEscape(recipeName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Cont
 // getRecipeDetailsHandleResponse handles the GetRecipeDetails response.
 func (client *EnvironmentsClient) getRecipeDetailsHandleResponse(resp *http.Response) (EnvironmentsClientGetRecipeDetailsResponse, error) {
 	result := EnvironmentsClientGetRecipeDetailsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentRecipeProperties); err != nil {
 		return EnvironmentsClientGetRecipeDetailsResponse{}, err
 	}
 	return result, nil

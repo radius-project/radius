@@ -1,0 +1,7 @@
+{
+  "linkType": "Applications.Link/mongoDatabases",
+  "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
+  "parameters":{
+    "throughput": 400
+  }
+}

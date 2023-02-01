@@ -7,7 +7,6 @@ package ucp
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -560,9 +559,5 @@ func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, envi
 		return corerpv20220315.EnvironmentRecipeProperties{}, err
 	}
 
-	if ret, exists := resp.Properties.Recipes[recipeName]; exists {
-		return *ret, nil
-	}
-
-	return corerpv20220315.EnvironmentRecipeProperties{}, fmt.Errorf("recipe details not found")
+	return resp.EnvironmentRecipeProperties, nil
 }

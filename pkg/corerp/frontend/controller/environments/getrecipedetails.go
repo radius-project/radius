@@ -21,13 +21,13 @@ import (
 
 var _ ctrl.Controller = (*GetRecipeDetails)(nil)
 
-// GetRecipe is the controller implementation to create or update environment resource.
+// GetRecipe is the controller implementation to get recipe details.
 type GetRecipeDetails struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
 }
 
-// NewGetRecipe creates a new CreateOrUpdateEnvironment.
-func NewGetRecipDetails(opts ctrl.Options) (ctrl.Controller, error) {
+// NewGetRecipeDetails creates a new GetRecipeDetails.
+func NewGetRecipeDetails(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetRecipeDetails{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Environment]{
@@ -64,8 +64,7 @@ func (e *GetRecipeDetails) Run(ctx context.Context, w http.ResponseWriter, req *
 		return nil, v1.NewClientErrInvalidRequest(err.Error())
 	}
 
-	resource.Properties.Recipes[recipeName] = recipe
-	versioned, err := e.ResponseConverter()(resource, serviceCtx.APIVersion)
+	versioned, err := converter.EnvironmentRecipePropertiesDataModelToVersioned(&recipe, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
