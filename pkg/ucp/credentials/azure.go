@@ -9,12 +9,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/go-autorest/autorest/to"
+
 	"github.com/project-radius/radius/pkg/sdk"
+	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
-
-	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 var _ CredentialProvider[AzureCredential] = (*AzureCredentialProvider)(nil)
@@ -26,8 +27,8 @@ type AzureCredentialProvider struct {
 }
 
 // NewAzureCredentialProvider creates new AzureCredentialProvider.
-func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection) (*AzureCredentialProvider, error) {
-	cli, err := ucpapi.NewAzureCredentialClient(nil, sdk.NewClientOptions(ucpConn))
+func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AzureCredentialProvider, error) {
+	cli, err := ucpapi.NewAzureCredentialClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}

@@ -26,9 +26,6 @@ spec:
       serviceAccountName: ucp
       containers:
       - image: "{{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}"
-        envFrom:
-        - secretRef: 
-            name: ucp-aws-provider-credentials
         env:
         - name: UCP_CONFIG
           value: /etc/config/ucp-config.yaml
@@ -38,6 +35,8 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
+        - name: AWS_REGION
+          value: {{ .Values.global.rp.provider.aws.region }}
         name: ucp
         ports:
         - containerPort: 9443
@@ -100,18 +99,3 @@ metadata:
 data:
   ucp-config.yaml: |-
 {{ .Files.Get "ucp-config.yaml" | indent 4}}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ucp-aws-provider-credentials
-  namespace: "{{ .Release.Namespace }}"
-  labels:
-    app: ucp
-stringData:
-# Configuration for 'AWS' provider functionality
-{{ if .Values.global.rp.provider.aws }}
-  AWS_ACCESS_KEY_ID: {{ .Values.global.rp.provider.aws.accessKeyId }} 
-  AWS_SECRET_ACCESS_KEY: {{ .Values.global.rp.provider.aws.secretAccessKey }}
-  AWS_REGION: {{ .Values.global.rp.provider.aws.region }}
-{{ end }}

@@ -21,10 +21,11 @@ spec:
       containers:
       - args:
         - --kubernetes=true
-        envFrom:
-        - secretRef: 
-            name: bicep-de
         env:
+        - name: SKIP_ARM
+          value: "false"
+        - name: ARM_AUTH_METHOD
+          value: "UCPCredential"
         - name: ASPNETCORE_URLS
           value: http://+:6443
         - name: kubernetes
@@ -42,27 +43,6 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
       terminationGracePeriodSeconds: 10
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: bicep-de
-  namespace: {{ .Release.Namespace }}
-  labels:
-    control-plane: de
-stringData:
-# Configuration for 'Azure' provider functionality
-{{ if .Values.global.rp.provider.azure.servicePrincipal }}
-  # Enable ARM with explicit credentials
-  SKIP_ARM: 'false' 
-  ARM_AUTH_METHOD: 'ServicePrincipal'
-  AZURE_CLIENT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.clientId }}
-  AZURE_CLIENT_SECRET: {{ .Values.global.rp.provider.azure.servicePrincipal.clientSecret }}
-  AZURE_TENANT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.tenantId }}
-{{ else }}
-  # Skip ARM by default. Overwriting this secret will let you set this to false as well as configure credentials
-  SKIP_ARM: 'true' 
-{{ end }}
 ---
 apiVersion: v1
 kind: Service

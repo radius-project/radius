@@ -16,6 +16,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/config"
@@ -51,7 +52,7 @@ func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConf
 		return nil, nil
 	}
 
-	provider, err := sdk_cred.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn)
+	provider, err := sdk_cred.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn, &aztoken.AnonymousCredential{})
 	if err != nil {
 		return nil, err
 	}

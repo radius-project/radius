@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/secret"
@@ -26,8 +27,8 @@ type AWSCredentialProvider struct {
 }
 
 // NewAWSCredentialProvider creates new AWSCredentialProvider.
-func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection) (*AWSCredentialProvider, error) {
-	cli, err := ucpapi.NewAWSCredentialClient(nil, sdk.NewClientOptions(ucpConn))
+func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AWSCredentialProvider, error) {
+	cli, err := ucpapi.NewAWSCredentialClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}

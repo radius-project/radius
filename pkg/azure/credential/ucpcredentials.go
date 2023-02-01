@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package tokencredentials
+package credential
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 
 const (
 	// DefaultExpireDuration is the default expiry duration.
-	DefaultExpireDuration = time.Minute * time.Duration(1)
+	DefaultExpireDuration = time.Minute * time.Duration(15)
 )
 
 var _ azcore.TokenCredential = (*UCPCredential)(nil)
@@ -75,6 +75,8 @@ func (c *UCPCredential) refreshExpiry() {
 }
 
 func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	c.tokenCredMu.Lock()
 	defer c.tokenCredMu.Unlock()
 
@@ -98,6 +100,8 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		c.refreshExpiry()
 		return nil
 	}
+
+	logger.Info("Retreived Azure Credential - ClientID: " + s.ClientID)
 
 	// Rotate credentials by creating new ClientSecretCredential.
 	var opt *azidentity.ClientSecretCredentialOptions

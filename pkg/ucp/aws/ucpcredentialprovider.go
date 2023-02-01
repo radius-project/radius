@@ -8,10 +8,11 @@ package aws
 import (
 	"context"
 	"errors"
-	"strconv"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/go-logr/logr"
 
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
@@ -20,7 +21,7 @@ var _ aws.CredentialsProvider = (*UCPCredentialProvider)(nil)
 
 const (
 	// DefaultExpireDuration is the default access key expiry duration.
-	DefaultExpireDuration = time.Minute * time.Duration(1)
+	DefaultExpireDuration = time.Minute * time.Duration(15)
 )
 
 // UCPCredentialProvider is the implementation of aws.CredentialsProvider
@@ -54,6 +55,7 @@ func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSC
 
 // Retrieve fetches the secret access key using UCP credential API.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
 	if err != nil {
 		return aws.Credentials{}, err
@@ -63,18 +65,15 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		return aws.Credentials{}, errors.New("invalid access key info")
 	}
 
-	// session name is used to uniquely identify a session. This simply
-	// uses unix time in nanoseconds to uniquely identify sessions.
-	sessionName := strconv.FormatInt(time.Now().UnixNano(), 10)
+	logger.Info(fmt.Sprintf("Retreived AWS Credential - AccessKeyID: %s", s.AccessKeyID))
 
 	value := aws.Credentials{
 		AccessKeyID:     s.AccessKeyID,
 		SecretAccessKey: s.SecretAccessKey,
-		Source:          "Radius UCP",
-		SessionToken:    sessionName,
+		Source:          "radiusucp",
 		CanExpire:       true,
 		// Enables AWS SDK to fetch (rotate) access keys by calling Retrieve() after Expires.
-		Expires: time.Now().Add(c.options.Duration),
+		Expires: time.Now().UTC().Add(c.options.Duration),
 	}
 
 	return value, nil
