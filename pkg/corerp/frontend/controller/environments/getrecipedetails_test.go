@@ -154,12 +154,13 @@ func TestGetRecipeDetailsFromRegistry(t *testing.T) {
 
 	t.Run("get recipe details from registry with context parameter", func(t *testing.T) {
 		recipeDetails := datamodel.EnvironmentRecipeProperties{
-			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/mongodatabases/azure:1.0",
+			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/context/mongodatabases/azure:1.0",
 		}
 		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
 		require.NoError(t, err)
 		expectedOutput := map[string]any{
 			"location": "type : string\tdefaultValue : [resourceGroup().location]\t",
+			"rg":       "type : string\tdefaultValue : [resourceGroup().name]\t",
 		}
 		require.Equal(t, expectedOutput, recipeDetails.Parameters)
 	})
