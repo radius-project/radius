@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	linkrp "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/util"
 )
 
@@ -59,9 +60,9 @@ func (e *GetRecipeDetails) Run(ctx context.Context, w http.ResponseWriter, req *
 		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Recipe with name %q not found on environment with id %q", recipeName, parsedResourceID)), nil
 	}
 
-	err = GetRecipeDetailsFromRegistry(ctx, &recipe, recipeName)
+	err = getRecipeDetailsFromRegistry(ctx, &recipe, recipeName)
 	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(err.Error())
+		return nil, err
 	}
 
 	versioned, err := converter.EnvironmentRecipePropertiesDataModelToVersioned(&recipe, serviceCtx.APIVersion)
@@ -71,11 +72,11 @@ func (e *GetRecipeDetails) Run(ctx context.Context, w http.ResponseWriter, req *
 	return rest.NewOKResponse(versioned), nil
 }
 
-func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.EnvironmentRecipeProperties, recipeName string) error {
+func getRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.EnvironmentRecipeProperties, recipeName string) error {
 	recipeData := make(map[string]any)
 	err := util.ReadFromRegistry(ctx, recipeDetails.TemplatePath, &recipeData)
 	if err != nil {
-		return fmt.Errorf("failed to fetch template from the path %q for recipe %q: %s", recipeDetails.TemplatePath, recipeName, err.Error())
+		return err
 	}
 
 	recipeDetails.Parameters = make(map[string]any)
@@ -93,29 +94,25 @@ func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 	//     "parameters": {
 	//         "location": {
 	//				"type" : "string",
-	//              "tdefaultValue" : "[resourceGroup().location]"
+	//              "defaultValue" : "[resourceGroup().location]"
 	//            }
 	//     }
 	// }
 	// We want to extract the parameters with their constraints and return the following:
 	// {
-	// 		<recipe-name>: {
-	// 			"linkType": <link-type>,
-	// 			"templatePath": <template-path>,
-	// 			"parameters": {
-	// 				<parameter-name>: <parameter-constraint-name> : <parameter-constraint-value>\t<parameter-constraint-name> : <parameter-constraint-value>
-	//         	}
-	// 		}
+	//		"linkType": <link-type>,
+	//		"templatePath": <template-path>,
+	//		"parameters": {
+	//			<parameter-name>: <parameter-constraint-name> : <parameter-constraint-value>\t<parameter-constraint-name> : <parameter-constraint-value>
+	//    	}
 	// }
 	// For example:
 	// {
-	// 		mongodb: {
-	// 			"linkType": "Applications.Link/mongoDatabases",
-	// 			"templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-	// 			"parameters": {
-	// 				"location": "type : string\tdefaultValue : [resourceGroup().location]\t"
-	//        	 }
-	// 		}
+	//		"linkType": "Applications.Link/mongoDatabases",
+	//		"templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+	//		"parameters": {
+	//			"location": "type : string\tdefaultValue : [resourceGroup().location]\t"
+	//		}
 	// }
 
 	recipeParam, ok := recipeData["parameters"].(map[string]interface{})
@@ -124,27 +121,27 @@ func GetRecipeDetailsFromRegistry(ctx context.Context, recipeDetails *datamodel.
 	}
 
 	for key, value := range recipeParam {
-		if key == "context" {
-			// context parameter is only revelant to operator.
+		if key == linkrp.RecipeContextParameter {
+			// context parameter is only revelant to operator and is generated and passed by linkrp instead of the developer/operators.
 			continue
 		}
 
 		details := ""
-		values, ok := value.(map[string]interface{})
+		paramDetails, ok := value.(map[string]interface{})
 		if !ok {
 			return fmt.Errorf("failed to fetch parameter names")
 		}
 
-		keys := make([]string, 0, len(values))
+		keys := make([]string, 0, len(paramDetails))
 
-		for k := range values {
+		for k := range paramDetails {
 			keys = append(keys, k)
 		}
 
 		// to keep order of parameters details consistent - sort.
 		sort.Sort(sort.Reverse(sort.StringSlice(keys)))
 		for _, k := range keys {
-			details += k + " : " + values[k].(string) + "\t"
+			details += k + " : " + paramDetails[k].(string) + "\t"
 		}
 
 		recipeDetails.Parameters[key] = details

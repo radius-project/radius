@@ -142,7 +142,7 @@ func TestGetRecipeDetailsFromRegistry(t *testing.T) {
 		recipeDetails := datamodel.EnvironmentRecipeProperties{
 			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 		}
-		err := GetRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
+		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
 		require.NoError(t, err)
 		expectedOutput := map[string]any{
 			"mongodbName":    "type : string\t",
@@ -156,7 +156,7 @@ func TestGetRecipeDetailsFromRegistry(t *testing.T) {
 		recipeDetails := datamodel.EnvironmentRecipeProperties{
 			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/mongodatabases/azure:1.0",
 		}
-		err := GetRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
+		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
 		require.NoError(t, err)
 		expectedOutput := map[string]any{
 			"location": "type : string\tdefaultValue : [resourceGroup().location]\t",
@@ -164,11 +164,21 @@ func TestGetRecipeDetailsFromRegistry(t *testing.T) {
 		require.Equal(t, expectedOutput, recipeDetails.Parameters)
 	})
 
+	t.Run("get recipe details from registry with no parameters", func(t *testing.T) {
+		recipeDetails := datamodel.EnvironmentRecipeProperties{
+			TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+		}
+		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
+		require.NoError(t, err)
+		expectedOutput := map[string]any{}
+		require.Equal(t, expectedOutput, recipeDetails.Parameters)
+	})
+
 	t.Run("get recipe details from registry with invalid path", func(t *testing.T) {
 		recipeDetails := datamodel.EnvironmentRecipeProperties{
 			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0",
 		}
-		err := GetRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
+		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
 		require.Error(t, err, "failed to fetch template from the path \"radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0\" for recipe \"mongodb\": radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0: not found")
 	})
 }

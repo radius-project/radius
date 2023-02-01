@@ -122,6 +122,12 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: env_ctrl.NewDeleteEnvironment,
 		},
 		{
+			ParentRouter:   envResourceRouter.PathPrefix("/getrecipedetails/{recipeName}").Subrouter(),
+			ResourceType:   env_ctrl.ResourceTypeName,
+			Method:         env_ctrl.OperationGetRecipeDetails,
+			HandlerFactory: env_ctrl.NewGetRecipeDetails,
+		},
+		{
 			ParentRouter: hrtSubrouter,
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
@@ -365,12 +371,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					},
 				)
 			},
-		},
-		{
-			ParentRouter:   envResourceRouter.PathPrefix("/getrecipedetails/{recipeName}").Subrouter(),
-			ResourceType:   env_ctrl.ResourceTypeName,
-			Method:         env_ctrl.OperationGetRecipeDetails,
-			HandlerFactory: env_ctrl.NewGetRecipeDetails,
 		},
 	}
 	for _, h := range handlerOptions {

@@ -7,5 +7,5 @@
         "documentdbName": "type : string\t",
         "location":       "type : string\tdefaultValue : [resourceGroup().location]\t"
       }
-          }
+  }
 }

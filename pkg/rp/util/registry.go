@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	dockerParser "github.com/novln/docker-parser"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -19,7 +20,7 @@ import (
 func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error {
 	registryRepo, tag, err := ParsePath(path)
 	if err != nil {
-		return fmt.Errorf("invalid path %s", err.Error())
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
 
 	// get the data from ACR
