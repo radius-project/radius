@@ -16,9 +16,10 @@ func init() {
 }
 
 var envInitKubernetesCmd = &cobra.Command{
-	Use:   "kubernetes",
-	Short: "Initializes a kubernetes environment",
-	Long:  `Initializes a kubernetes environment.`,
+	Use:    "kubernetes",
+	Short:  "Initializes a kubernetes environment",
+	Long:   `Initializes a kubernetes environment.`,
+	Hidden: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return initSelfHosted(cmd, args, Kubernetes)
 	},
