@@ -103,10 +103,6 @@ type clientAssertionCredentialOptions struct {
 func newClientAssertionCredential(tenantID, clientID, authorityHost, file string, options *clientAssertionCredentialOptions) (*clientAssertionCredential, error) {
 	c := &clientAssertionCredential{file: file}
 
-	// if options == nil {
-	// 	options = &clientAssertionCredentialOptions{}
-	// }
-
 	cred := confidential.NewCredFromAssertionCallback(
 		func(ctx context.Context, _ confidential.AssertionRequestOptions) (string, error) {
 			return c.getAssertion(ctx)
