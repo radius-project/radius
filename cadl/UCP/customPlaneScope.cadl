@@ -115,7 +115,7 @@ TRootParams>
 interface ResourceGroupListByParent<TResource extends ArmResource, TRootParams> {
   @get
   //@pageable
-  @doc("Lists information about all {name}s in the given root scope", TResource)
+  @doc("Lists information about all {name}s in the given resource group", TResource)
   @autoRoute
   @list(TResource)
   @segmentOf(TResource)
@@ -129,7 +129,7 @@ model Nil2 {}
 interface PlaneListByParent<TResource extends ArmResource, TRootParams> {
   @get
   //@pageable
-  @doc("Lists information about all {name}s in the given root scope", TResource)
+  @doc("Lists information about all {name}s in the given plane", TResource)
   @autoRoute
   @list(TResource)
   @segmentOf(TResource)
@@ -143,7 +143,7 @@ model Nil3 {}
 interface CredentialListByParent<TResource extends ArmResource, TRootParams> {
   @get
   //@pageable
-  @doc("Lists information about all {name}s in the given root scope", TResource)
+  @doc("Lists information about all {name}s in the given credential", TResource)
   @autoRoute
   @list(TResource)
   @segmentOf(TResource)

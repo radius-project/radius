@@ -203,7 +203,6 @@ func Test_Run(t *testing.T) {
 			config.SetConfigFile(configPath)
 
 			expectedPut := ucp.AzureCredentialResource{
-				Name:     to.Ptr("default"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AzureCredential),
 				ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),

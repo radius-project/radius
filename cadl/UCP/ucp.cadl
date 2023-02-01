@@ -184,7 +184,6 @@ model PlaneNameParameter {
   planeName: string;
 }
 
-
 @doc("Provisioning state of the link at the time the operation was called")
 enum ProvisioningState {
   Succeeded,

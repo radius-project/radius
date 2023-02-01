@@ -52,7 +52,7 @@ func Test_Credential(t *testing.T) {
 		{
 			name:     "test_credential_creation",
 			filename: "aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
+			url:      "/planes/aws/aws/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			expected: getAwsResponse(),
 			fn:       setupCredentialSuccessMocks,
 			err:      nil,
@@ -60,7 +60,7 @@ func Test_Credential(t *testing.T) {
 		{
 			name:     "test_invalid_version_credential_resource",
 			filename: "aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2020-09-01-privatepreview",
+			url:      "/planes/aws/aws/providers/System.AWS/credentials/default?api-version=2020-09-01-privatepreview",
 			expected: armrpc_rest.NewBadRequestResponse(v1.ErrUnsupportedAPIVersion.Error()),
 			fn:       setupEmptyMocks,
 			err:      nil,
@@ -68,7 +68,7 @@ func Test_Credential(t *testing.T) {
 		{
 			name:     "test_invalid_credential_request",
 			filename: "invalid-request-aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
+			url:      "/planes/aws/aws/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			expected: getInvalidRequestResponse(),
 			fn:       setupEmptyMocks,
 			err:      nil,
@@ -76,7 +76,7 @@ func Test_Credential(t *testing.T) {
 		{
 			name:     "test_credential_created",
 			filename: "aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
+			url:      "/planes/aws/aws/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			expected: getAwsResponse(),
 			fn:       setupCredentialNotFoundMocks,
 			err:      nil,
@@ -84,21 +84,21 @@ func Test_Credential(t *testing.T) {
 		{
 			name:     "test_credential_notFoundError",
 			filename: "aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
+			url:      "/planes/aws/aws/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			fn:       setupCredentialNotFoundErrorMocks,
 			err:      errors.New("Error"),
 		},
 		{
 			name:     "test_credential_get_failure",
 			filename: "aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
+			url:      "/planes/aws/aws/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			fn:       setupCredentialGetFailMocks,
 			err:      errors.New("Failed Get"),
 		},
 		{
 			name:     "test_credential_secret_save_failure",
 			filename: "aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
+			url:      "/planes/aws/aws/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			fn:       setupCredentialSecretSaveFailMocks,
 			err:      errors.New("Secret Save Failure"),
 		},
@@ -125,7 +125,7 @@ func Test_Credential(t *testing.T) {
 func getAwsResponse() armrpc_rest.Response {
 	return armrpc_rest.NewOKResponse(&v20220901privatepreview.AWSCredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+		ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
 		Tags: map[string]*string{
@@ -136,7 +136,7 @@ func getAwsResponse() armrpc_rest.Response {
 			Kind:        to.Ptr("AccessKey"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
-				SecretName: to.Ptr("aws-awscloud-default"),
+				SecretName: to.Ptr("aws-aws-default"),
 			},
 		},
 	})

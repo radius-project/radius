@@ -22,7 +22,7 @@ import (
 
 func Test_AWS_Credential_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceTypePath := "/planes/aws/awscloud/providers/System.AWS/credentials"
+		resourceTypePath := "/planes/aws/aws/providers/System.AWS/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
 		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
 		runAWSCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSCredentialObject(), getExpectedAWSCredentialObject())
@@ -130,7 +130,7 @@ func getAWSCredentialList(t *testing.T, res *http.Response) []ucp.AWSCredentialR
 func getAWSCredentialObject() ucp.AWSCredentialResource {
 	return ucp.AWSCredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+		ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
 		Tags: map[string]*string{
@@ -151,7 +151,7 @@ func getAWSCredentialObject() ucp.AWSCredentialResource {
 func getExpectedAWSCredentialObject() ucp.AWSCredentialResource {
 	return ucp.AWSCredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+		ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
 		Tags: map[string]*string{

@@ -29,7 +29,7 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 			expected: &datamodel.AWSCredential{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/aws/awscloud/providers/System.AWS/credentials/default",
+						ID:       "/planes/aws/aws/providers/System.AWS/credentials/default",
 						Name:     "default",
 						Type:     "System.AWS/credentials",
 						Location: "west-us-2",
@@ -104,7 +104,7 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-aws.json",
 			expected: &AWSCredentialResource{
-				ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+				ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
 				Name:     to.Ptr("default"),
 				Type:     to.Ptr("System.AWS/credentials"),
 				Location: to.Ptr("west-us-2"),
