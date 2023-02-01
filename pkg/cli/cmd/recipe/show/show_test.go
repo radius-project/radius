@@ -9,10 +9,8 @@ import (
 	"context"
 	"testing"
 
-	az_to "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -81,7 +79,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("List recipes linked to the environment", func(t *testing.T) {
+	t.Run("Show recipes details", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
@@ -91,22 +89,6 @@ func Test_Run(t *testing.T) {
 				Parameters: map[string]interface{}{
 					"throughput": "int (max: 800)",
 					"sku":        "string",
-				},
-			}
-
-			envResource := v20220315privatepreview.EnvironmentResource{
-				ID:       az_to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:     az_to.Ptr("kind-kind"),
-				Type:     az_to.Ptr("applications.core/environments"),
-				Location: az_to.Ptr(v1.LocationGlobal),
-				Properties: &v20220315privatepreview.EnvironmentProperties{
-					UseDevRecipes: az_to.Ptr(true),
-					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-						"cosmosDB": &envRecipes,
-					},
-					Compute: &v20220315privatepreview.KubernetesCompute{
-						Namespace: az_to.Ptr("default"),
-					},
 				},
 			}
 
@@ -125,9 +107,6 @@ func Test_Run(t *testing.T) {
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().
-				GetEnvDetails(gomock.Any(), gomock.Any()).
-				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
 				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(envRecipes, nil).Times(1)

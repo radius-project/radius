@@ -39,7 +39,7 @@ type EnvironmentRecipeProperties struct {
 }
 
 func (e *EnvironmentRecipeProperties) ResourceTypeName() string {
-	return "Applications.Core/environmentrecipeproperties"
+	return "Applications.Core/environmentRecipeProperties"
 }
 
 // Providers represents configs for providers for the environment, eg azure,aws
