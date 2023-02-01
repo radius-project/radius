@@ -8,11 +8,13 @@ package resourcemodel
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.mongodb.org/mongo-driver/bson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,7 +25,13 @@ import (
 // The RP will be able to support a resource only if the corresponding provider is configured with the RP
 const (
 	ProviderAzure      = "azure"
+	ProviderAWS        = "aws"
 	ProviderKubernetes = "kubernetes"
+
+	// APIVersionUnknown encodes an "unknown" API version. Including API version in resource identity is
+	// a design mistake because an API version is not part of the identity of a resource. We use this
+	// value as a sentinel for the cases where we don't have a preferred API version.
+	APIVersionUnknown = "unknown"
 )
 
 // ResourceType determines the type of the resource and the provider domain for the resource
@@ -54,6 +62,11 @@ var _ json.Unmarshaler = (*ResourceIdentity)(nil)
 type ARMIdentity struct {
 	ID         string `json:"id"`
 	APIVersion string `json:"apiVersion"`
+}
+
+// UCPIdentity uniquely identifies a UCP resource
+type UCPIdentity struct {
+	ID string `json:"id"`
 }
 
 // KubernetesIdentity uniquely identifies a Kubernetes resource
@@ -91,6 +104,18 @@ func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) Re
 	}
 }
 
+func NewUCPIdentity(resourceType *ResourceType, id string) ResourceIdentity {
+	return ResourceIdentity{
+		ResourceType: &ResourceType{
+			Type:     resourceType.Type,
+			Provider: resourceType.Provider,
+		},
+		Data: UCPIdentity{
+			ID: id,
+		},
+	}
+}
+
 func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objectMeta metav1.ObjectMeta) ResourceIdentity {
 	return ResourceIdentity{
 		ResourceType: &ResourceType{
@@ -103,6 +128,31 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 			Name:       objectMeta.Name,
 			Namespace:  objectMeta.Namespace,
 		},
+	}
+}
+
+// GetID constructs a UCP resource ID from the ResourceIdentity.
+func (r ResourceIdentity) GetID() string {
+	switch r.ResourceType.Provider {
+	case ProviderAzure:
+		id, _, _ := r.RequireARM()
+		return id
+	case ProviderAWS:
+		id, _ := r.RequireAWS()
+		return id
+	case ProviderKubernetes:
+		gvk, namespace, name, _ := r.RequireKubernetes()
+		group := gvk.Group
+		if group == "" {
+			group = "core"
+		}
+		if namespace == "" {
+			return fmt.Sprintf("/planes/kubernetes/local/providers/%s/%s/%s", group, gvk.Kind, name)
+		} else {
+			return fmt.Sprintf("/planes/kubernetes/local/namespaces/%s/providers/%s/%s/%s", namespace, group, gvk.Kind, name)
+		}
+	default:
+		return ""
 	}
 }
 
@@ -119,6 +169,21 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 	}
 
 	return "", "", fmt.Errorf("expected an %q provider, was %q", ProviderAzure, r.ResourceType.Provider)
+}
+
+func (r ResourceIdentity) RequireAWS() (string, error) {
+	if r.ResourceType.Provider == ProviderAWS {
+		data, ok := r.Data.(UCPIdentity)
+		if !ok {
+			data = UCPIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return "", err
+			}
+		}
+		return data.ID, nil
+	}
+
+	return "", fmt.Errorf("expected an %q provider, was %q", ProviderAWS, r.ResourceType.Provider)
 }
 
 func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
@@ -147,6 +212,11 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 		b, _ := other.Data.(ARMIdentity)
 		return a == b
 
+	case ProviderAWS:
+		a, _ := r.Data.(UCPIdentity)
+		b, _ := other.Data.(UCPIdentity)
+		return a == b
+
 	case ProviderKubernetes:
 		a, _ := r.Data.(KubernetesIdentity)
 		b, _ := other.Data.(KubernetesIdentity)
@@ -168,13 +238,27 @@ func (r ResourceIdentity) AsLogValues() []any {
 		data := r.Data.(ARMIdentity)
 		id, err := resources.ParseResource(data.ID)
 		if err != nil {
-			return []any{logging.LogFieldResourceID, data.ID}
+			return []any{ucplog.LogFieldResourceID, data.ID}
 		}
 
 		return []any{
 			logging.LogFieldResourceID, data.ID,
 			logging.LogFieldSubscriptionID, id.FindScope(resources.SubscriptionsSegment),
 			logging.LogFieldResourceGroup, id.FindScope(resources.ResourceGroupsSegment),
+			logging.LogFieldResourceType, id.Type(),
+			logging.LogFieldResourceName, id.QualifiedName(),
+		}
+
+	case ProviderAWS:
+		// We can't report an error here so this is best-effort.
+		data := r.Data.(UCPIdentity)
+		id, err := resources.ParseResource(data.ID)
+		if err != nil {
+			return []any{ucplog.LogFieldResourceID, data.ID}
+		}
+
+		return []any{
+			logging.LogFieldResourceID, data.ID,
 			logging.LogFieldResourceType, id.Type(),
 			logging.LogFieldResourceName, id.QualifiedName(),
 		}
@@ -210,6 +294,15 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 	switch r.ResourceType.Provider {
 	case ProviderAzure:
 		identity := ARMIdentity{}
+		err = json.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
+	case ProviderAWS:
+		identity := UCPIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
 		if err != nil {
 			return err
@@ -259,6 +352,15 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 		r.Data = identity
 		return nil
 
+	case ProviderAWS:
+		identity := UCPIdentity{}
+		err = bson.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
 	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
@@ -271,4 +373,65 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 	default:
 		return fmt.Errorf("unknown provider: %q", r.ResourceType.Provider)
 	}
+}
+
+// FromUCPID translates a UCP resource ID into a ResourceIdentity.
+//
+// TODO: This is transitional while we're refactoring to get rid of ResourceIdentity. UCP resource IDs are a more
+// complete and flexible way of identitying resources.
+func FromUCPID(id resources.ID, preferredAPIVersion string) ResourceIdentity {
+	// Blank resource id => blank identity
+	if len(id.ScopeSegments()) == 0 {
+		return ResourceIdentity{}
+	}
+
+	firstScope := id.ScopeSegments()[0].Type
+	if preferredAPIVersion == "" {
+		preferredAPIVersion = APIVersionUnknown
+	}
+
+	// If this starts with a subscription ID then it's an Azure resource
+	//
+	// case: /subscriptions/.../resourceGroups/.../......
+	if strings.EqualFold(resources.SubscriptionsSegment, firstScope) {
+		return NewARMIdentity(&ResourceType{Type: id.Type(), Provider: ProviderAzure}, id.String(), preferredAPIVersion)
+	}
+
+	// case: /planes/azure/azurecloud/subscriptions/.../resourceGroups/.../......
+	if strings.EqualFold("azure", firstScope) {
+		return NewARMIdentity(&ResourceType{Type: id.Type(), Provider: ProviderAzure}, id.String(), preferredAPIVersion)
+	}
+
+	// case: /planes/aws/aws/accounts/.../regions/.../......
+	if strings.EqualFold("aws", firstScope) {
+		return NewUCPIdentity(&ResourceType{Type: id.Type(), Provider: ProviderAWS}, id.String())
+	}
+
+	// case: /planes/kubernetes/local/namespaces/.../......
+	if strings.EqualFold("kubernetes", firstScope) {
+		// Kubernetes has some quirks because API groups were added after the initial release.
+		// We encode the "unnamed" group as "core".
+		group, kind, _ := strings.Cut(id.Type(), "/")
+		resourceType := id.Type()
+		apiVersion := group + "/" + preferredAPIVersion
+		if strings.EqualFold(group, "core") {
+			resourceType = kind
+			apiVersion = preferredAPIVersion
+		}
+
+		return ResourceIdentity{
+			ResourceType: &ResourceType{
+				Type:     resourceType,
+				Provider: ProviderKubernetes,
+			},
+			Data: KubernetesIdentity{
+				Kind:       kind,
+				APIVersion: apiVersion,
+				Namespace:  id.FindScope("namespaces"),
+				Name:       id.Name(),
+			},
+		}
+	}
+
+	return ResourceIdentity{}
 }

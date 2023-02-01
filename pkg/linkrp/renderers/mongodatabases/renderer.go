@@ -75,7 +75,6 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 	}
 
 	recipeData := linkrp.RecipeData{
-		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
 		APIVersion:       clientv2.DocumentDBManagementClientAPIVersion,
 	}

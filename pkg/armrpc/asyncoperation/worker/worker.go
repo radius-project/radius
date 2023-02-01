@@ -234,6 +234,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err != nil {
 				armErr := extractError(err)
 				result.SetFailed(armErr, false)
+				logger.Error(err, "Operation Failed")
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}

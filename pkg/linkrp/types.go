@@ -8,9 +8,7 @@ package linkrp
 type RecipeData struct {
 	RecipeProperties
 
-	Provider string
-
-	// API version to use to perform operations on resources supported by the link.
+	// APIVersion is the API version to use to perform operations on resources supported by the link.
 	// For example for Azure resources, every service has different REST API version that must be specified in the request.
 	APIVersion string
 
