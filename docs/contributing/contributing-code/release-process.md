@@ -207,7 +207,7 @@ After creating a release, it's good to sanity check that the release works in so
 5. Execute `rad deploy` to confirm a simple deployment works
 
    ```
-   rad env init kubernetes -i
+   rad init
    rad deploy <simple bicep>
    ```
 

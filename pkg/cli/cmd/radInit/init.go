@@ -43,7 +43,7 @@ const (
 	backNavigator      = "[back]"
 
 	confirmCloudProviderPrompt    = "Add cloud providers for cloud resources?"
-	confirmReinstallRadiusPrompt  = "Would you like to reinstall Radius control plane and configure cloud providers?"
+	confirmReinstallRadiusPrompt  = "Would you like to reinstall Radius control plane?"
 	confirmSetupApplicationPrompt = "Setup application in the current directory?"
 	enterApplicationName          = "Choose an application name"
 	selectKubeContextPrompt       = "Select the kubeconfig context to install Radius into"
