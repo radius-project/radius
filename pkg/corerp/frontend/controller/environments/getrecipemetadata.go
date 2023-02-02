@@ -128,7 +128,7 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 		if len(paramDetails) > 0 {
 			keys := maps.Keys(paramDetails)
 
-			// to keep order of parameters details consistent - sort.
+			// to keep order of parameters details consistent - sort. Reverse sorting will ensure type (a required detail) is always first.
 			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
 			for _, paramDetailName := range keys {
 				if paramDetailName == "metadata" {
