@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
