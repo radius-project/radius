@@ -17,7 +17,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -32,9 +31,9 @@ import (
 )
 
 var envInitCmd = &cobra.Command{
-	Use:    "init",
-	Short:  "Create a RAD environment",
-	Long:   `Create a RAD environment`,
+	Use:   "init",
+	Short: "Create a RAD environment",
+	Long:  `Create a RAD environment`,
 	Hidden: true,
 }
 
@@ -82,49 +81,16 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	var azProvider *azure.Provider
-	// parse azure provider args in case:
-	// it is not interactive and info is through flags
-	// it is interactive and user wants to add azure spn
-	if interactive {
-		addAzureSPN, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", &prompt.Impl{})
-		if err != nil {
-			return err
-		}
-		if addAzureSPN {
-			azProvider, err = setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		azProvider, err = setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
-		if err != nil {
-			return err
-		}
+	// Configure Azure provider for cloud resources if specified
+	azProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
+	if err != nil {
+		return err
 	}
 
-	var awsProvider *aws.Provider
-	// parse aws provider args in case:
-	// it is not interactive and info is through flags
-	// it is interactive and user wants to add aws iam
-	if interactive {
-		addAWSIAM, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", &prompt.Impl{})
-		if err != nil {
-			return err
-		}
-		// Configure AWS provider for cloud resources if specified
-		if addAWSIAM {
-			awsProvider, err = setup.ParseAWSProviderArgs(cmd, interactive, &prompt.Impl{})
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		awsProvider, err = setup.ParseAWSProviderArgs(cmd, interactive, &prompt.Impl{})
-		if err != nil {
-			return err
-		}
+	// Configure AWS provider for cloud resources if specified
+	awsProvider, err := setup.ParseAWSProviderArgs(cmd, interactive, &prompt.Impl{})
+	if err != nil {
+		return err
 	}
 
 	var defaultEnvName string
