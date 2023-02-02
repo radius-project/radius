@@ -54,7 +54,6 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 	if !addAzureSPN {
 		return nil, nil
 	}
-	
 	armConfig, err := armauth.NewArmConfig(nil)
 	if err != nil {
 		return nil, err
