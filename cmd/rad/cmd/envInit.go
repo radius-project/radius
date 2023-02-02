@@ -82,33 +82,45 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	addAzureSPN, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", &prompt.Impl{})
-	if err != nil {
-		return err
-	}
-
 	var azProvider *azure.Provider
 	// parse azure provider args in case:
 	// it is not interactive and info is through flags
 	// it is interactive and user wants to add azure spn
-	if !interactive || (interactive && addAzureSPN) {
+	if interactive {
+		addAzureSPN, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", &prompt.Impl{})
+		if err != nil {
+			return err
+		}
+		if addAzureSPN {
+			azProvider, err = setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
+			if err != nil {
+				return err
+			}
+		}
+	} else {
 		azProvider, err = setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
 		if err != nil {
 			return err
 		}
 	}
 
-	addAWSIAM, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", &prompt.Impl{})
-	if err != nil {
-		return err
-	}
-
 	var awsProvider *aws.Provider
 	// parse aws provider args in case:
 	// it is not interactive and info is through flags
 	// it is interactive and user wants to add aws iam
-	if !interactive || (interactive && addAWSIAM) {
+	if interactive {
+		addAWSIAM, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", &prompt.Impl{})
+		if err != nil {
+			return err
+		}
 		// Configure AWS provider for cloud resources if specified
+		if addAWSIAM {
+			awsProvider, err = setup.ParseAWSProviderArgs(cmd, interactive, &prompt.Impl{})
+			if err != nil {
+				return err
+			}
+		}
+	} else {
 		awsProvider, err = setup.ParseAWSProviderArgs(cmd, interactive, &prompt.Impl{})
 		if err != nil {
 			return err
