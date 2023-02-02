@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	linkrp "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/util"
+	"golang.org/x/exp/maps"
 )
 
 var _ ctrl.Controller = (*GetRecipeMetadata)(nil)
@@ -106,7 +107,7 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 
 	if recipeData["parameters"] == nil {
 		return recipePrameters, nil
-	} 
+	}
 	recipeParam, ok := recipeData["parameters"].(map[string]any)
 	if !ok {
 		return recipePrameters, fmt.Errorf("parameters are not in expected format")
@@ -125,17 +126,13 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 		}
 
 		if len(paramDetails) > 0 {
-			keys := make([]string, 0, len(paramDetails))
-
-			for k := range paramDetails {
-				keys = append(keys, k)
-			}
+			keys := maps.Keys(paramDetails)
 
 			// to keep order of parameters details consistent - sort.
 			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
 			for _, paramDetailName := range keys {
-				if paramDetailName == "metadata" {
-					// skip metadata details for now as it is the description of the parameter.
+				if paramDetailName == "metadata" || paramDetailName == "description" {
+					// skip metadata and description details for now as it is the description of the parameter.
 					continue
 				}
 
