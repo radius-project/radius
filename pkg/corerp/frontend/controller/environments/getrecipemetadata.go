@@ -41,13 +41,13 @@ func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-func (e *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Request route for getrecipemetadata has name of the recipe as suffix.
 	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Core/environments/<environment_name>/getrecipemetadata/<recipe_name>
 	recipeName := strings.Split(serviceCtx.OrignalURL.Path, "getrecipemetadata/")[1]
-	resource, _, err := e.GetResource(ctx, serviceCtx.ResourceID)
+	resource, _, err := r.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
