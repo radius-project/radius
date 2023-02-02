@@ -131,8 +131,8 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 			// to keep order of parameters details consistent - sort.
 			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
 			for _, paramDetailName := range keys {
-				if paramDetailName == "metadata" || paramDetailName == "description" {
-					// skip metadata and description details for now as it is the description of the parameter.
+				if paramDetailName == "metadata" {
+					// skip metadata for now as it is a nested object.
 					continue
 				}
 
