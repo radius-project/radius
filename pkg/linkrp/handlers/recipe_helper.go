@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	dockerParser "github.com/novln/docker-parser"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -86,16 +85,6 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	return parameters
-}
-
-func parseTemplatePath(templatePath string) (repository string, tag string, err error) {
-	reference, err := dockerParser.Parse(templatePath)
-	if err != nil {
-		return "", "", err
-	}
-	repository = reference.Repository()
-	tag = reference.Tag()
-	return
 }
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the

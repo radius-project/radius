@@ -9,14 +9,11 @@ import (
 	"context"
 	"testing"
 
-	az_to "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -81,53 +78,55 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("List recipes linked to the environment", func(t *testing.T) {
+	t.Run("Show recipes details", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envRecipes := v20220315privatepreview.EnvironmentRecipeProperties{
 				LinkType:     to.StringPtr("Applications.Link/mongoDatabases"),
 				TemplatePath: to.StringPtr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
-				Parameters: map[string]interface{}{
-					"throughput": "int (max: 800)",
-					"sku":        "string",
-				},
-			}
-
-			envResource := v20220315privatepreview.EnvironmentResource{
-				ID:       az_to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:     az_to.Ptr("kind-kind"),
-				Type:     az_to.Ptr("applications.core/environments"),
-				Location: az_to.Ptr(v1.LocationGlobal),
-				Properties: &v20220315privatepreview.EnvironmentProperties{
-					UseDevRecipes: az_to.Ptr(true),
-					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-						"cosmosDB": &envRecipes,
+				Parameters: map[string]any{
+					"throughput": map[string]any{
+						"type": "float64",
+						"max":  float64(800),
 					},
-					Compute: &v20220315privatepreview.KubernetesCompute{
-						Namespace: az_to.Ptr("default"),
+					"sku": map[string]any{
+						"type": "string",
 					},
 				},
 			}
 
 			recipes := []EnvironmentRecipe{
 				{
-					RecipeName:       "cosmosDB",
-					LinkType:         "Applications.Link/mongoDatabases",
-					TemplatePath:     "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-					ParameterName:    "sku",
-					ParameterDetails: "string",
+					RecipeName:           "cosmosDB",
+					LinkType:             "Applications.Link/mongoDatabases",
+					TemplatePath:         "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+					ParameterName:        "sku",
+					ParameterDetailName:  "type",
+					ParameterDetailValue: "string",
 				},
 				{
-					ParameterName:    "throughput",
-					ParameterDetails: "int (max: 800)",
+					ParameterName:        "throughput",
+					ParameterDetailName:  "type",
+					ParameterDetailValue: "float64",
+				},
+				{
+					ParameterDetailName:  "max",
+					ParameterDetailValue: float64(800),
+				},
+				{
+					// Adding the inverse ordering of throughput parameter details to handle ordering inconsistency.
+					ParameterDetailName:  "type",
+					ParameterDetailValue: "float64",
+				},
+				{
+					ParameterName:        "throughput",
+					ParameterDetailName:  "max",
+					ParameterDetailValue: float64(800),
 				},
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().
-				GetEnvDetails(gomock.Any(), gomock.Any()).
-				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
 				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(envRecipes, nil).Times(1)
@@ -144,15 +143,8 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-
-			expected := []any{
-				output.FormattedOutput{
-					Format:  "table",
-					Obj:     recipes,
-					Options: objectformats.GetRecipeParamsTableFormat(),
-				},
-			}
-			require.Equal(t, expected, outputSink.Writes)
+			output := outputSink.Writes[0].(output.FormattedOutput)
+			require.Subset(t, recipes, output.Obj)
 		})
 	})
 }

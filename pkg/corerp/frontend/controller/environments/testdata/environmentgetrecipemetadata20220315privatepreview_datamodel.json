@@ -20,21 +20,17 @@
                 "namespace": "default"
             }
         },
+        "useDevRecipes": false,
         "recipes": {
-            "mongo-azure": {
-                "linkType": "Applications.Link/mongoDatabases",
-                "templatePath": "radius.azurecr.io/recipes/mongodatabases/azure:1.0"
+            "mongo-parameters": {
+              "linkType": "Applications.Link/mongoDatabases",
+              "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
             },
             "redis": {
-                "linkType": "Applications.Link/redisCache",
-                "templatePath": "radiusdev.azurecr.io/redis:1.0"
-            },
-            "redis-kubernetes": {
-                "linkType": "Applications.Link/redisCaches",
-                "templatePath": "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"
+              "linkType": "Applications.Link/redisCache",
+              "templatePath": "radiusdev.azurecr.io/redis:1.0"
             }
         },
-        "useDevRecipes": true,
         "providers": {
             "azure": {
                 "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"

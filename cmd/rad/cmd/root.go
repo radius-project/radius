@@ -30,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
+	recipe_show "github.com/project-radius/radius/pkg/cli/cmd/recipe/show"
 	recipe_unregister "github.com/project-radius/radius/pkg/cli/cmd/recipe/unregister"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
@@ -171,6 +172,9 @@ func initSubCommands() {
 
 	registerRecipeCmd, _ := recipe_register.NewCommand(framework)
 	recipeCmd.AddCommand(registerRecipeCmd)
+
+	showRecipeCmd, _ := recipe_show.NewCommand(framework)
+	recipeCmd.AddCommand(showRecipeCmd)
 
 	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
 	recipeCmd.AddCommand(unregisterRecipeCmd)

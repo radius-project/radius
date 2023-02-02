@@ -69,6 +69,11 @@ type EnvironmentsClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
+// EnvironmentsClientGetRecipeMetadataResponse contains the response from method EnvironmentsClient.GetRecipeMetadata.
+type EnvironmentsClientGetRecipeMetadataResponse struct {
+	RecipeMetadata
+}
+
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.
 type EnvironmentsClientGetResponse struct {
 	EnvironmentResource

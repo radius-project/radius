@@ -221,8 +221,12 @@ func GetRecipeParamsTableFormat() output.FormatterOptions {
 				JSONPath: "{ .ParameterName }",
 			},
 			{
-				Heading:  "PARAMETER DETAILS",
-				JSONPath: "{ .ParameterDetails }",
+				Heading:  "PARAMETER DETAIL NAME",
+				JSONPath: "{ .ParameterDetailName }",
+			},
+			{
+				Heading:  "PARAMETER DETAIL VALUE",
+				JSONPath: "{ .ParameterDetailValue }",
 			},
 		},
 	}

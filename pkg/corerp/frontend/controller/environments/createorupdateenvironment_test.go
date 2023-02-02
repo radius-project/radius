@@ -610,11 +610,11 @@ func TestGetDevRecipes(t *testing.T) {
 		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
 				LinkType:     linkrp.MongoDatabasesResourceType,
-				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+				TemplatePath: "radius.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 			"redis-kubernetes": {
 				LinkType:     linkrp.RedisCachesResourceType,
-				TemplatePath: "radiusdev.azurecr.io/recipes/rediscaches/kubernetes:1.0",
+				TemplatePath: "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0",
 			},
 		}
 		require.Equal(t, devRecipes, expectedRecipes)
@@ -779,6 +779,6 @@ func TestFindHighestVersion(t *testing.T) {
 	t.Run("Version tags are not all float values", func(t *testing.T) {
 		versions := []string{"1.0", "otherTag", "3.0", "4.0"}
 		_, err := findHighestVersion(versions)
-		require.ErrorContains(t, err, "Unable to convert tag otherTag into valid version.")
+		require.ErrorContains(t, err, "unable to convert tag otherTag into valid version.")
 	})
 }

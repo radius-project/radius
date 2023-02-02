@@ -34,6 +34,7 @@ var envInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create a RAD environment",
 	Long:  `Create a RAD environment`,
+	Hidden: true,
 }
 
 func init() {

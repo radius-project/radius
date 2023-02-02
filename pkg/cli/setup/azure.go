@@ -54,7 +54,6 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 	if !addAzureSPN {
 		return nil, nil
 	}
-
 	armConfig, err := armauth.NewArmConfig(nil)
 	if err != nil {
 		return nil, err
@@ -378,15 +377,7 @@ func promptUserForRgName(ctx context.Context, client *armresources.ResourceGroup
 		for _, s := range resourceGroups {
 			names = append(names, *s.Name)
 		}
-
-		defaultRgName, _ := azure.LoadDefaultResourceGroupFromConfig() // ignore errors resulting from being unable to read the config ini file
-		yes, err := prompt.YesOrNoPrompt(fmt.Sprintf("Use default resource group %s", defaultRgName), "Yes", prompter)
-		if err != nil {
-			return "", err
-		}
-		if yes {
-			return defaultRgName, nil
-		}
+		
 		name, err = prompter.GetListInput(names, "Select ResourceGroup")
 		if err != nil {
 			return "", err

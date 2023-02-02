@@ -62,7 +62,26 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		output, err := cli.RecipeUnregister(ctx, recipeName)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
-
+	})
+	t.Run("Validate rad recipe show", func(t *testing.T) {
+		showRecipeName := "mongodbtest"
+		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+		showRecipeLinkType := "Applications.Link/mongoDatabases"
+		output, err := cli.RecipeRegister(ctx, showRecipeName, showRecipeTemplate, showRecipeLinkType)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully linked recipe")
+		output, err = cli.RecipeShow(ctx, showRecipeName)
+		require.NoError(t, err)
+		require.Contains(t, output, showRecipeName)
+		require.Contains(t, output, showRecipeTemplate)
+		require.Contains(t, output, showRecipeLinkType)
+		require.Contains(t, output, "mongodbName")
+		require.Contains(t, output, "documentdbName")
+		require.Contains(t, output, "location")
+		require.Contains(t, output, "type")
+		require.Contains(t, output, "string")
+		require.Contains(t, output, "defaultValue")
+		require.Contains(t, output, "resourceGroup().location]")
 	})
 }
 
