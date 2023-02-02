@@ -47,14 +47,6 @@ func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter promp
 }
 
 func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) (*azure.Provider, error) {
-	addAzureSPN, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", prompter)
-	if err != nil {
-		return nil, err
-	}
-	if !addAzureSPN {
-		return nil, nil
-	}
-
 	armConfig, err := armauth.NewArmConfig(nil)
 	if err != nil {
 		return nil, err

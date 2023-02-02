@@ -64,15 +64,7 @@ func ParseAWSProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.
 
 func parseAWSProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) (*radAWS.Provider, error) {
 	ctx := cmd.Context()
-
-	addAWSCred, err := prompt.YesOrNoPrompt("Add AWS provider for cloud resources?", "no", prompter)
-	if err != nil {
-		return nil, err
-	}
-	if !addAWSCred {
-		return nil, nil
-	}
-
+	
 	region, err := prompter.GetTextInput("Enter the region you would like to use to deploy AWS resources:", "Enter a region...")
 	if err != nil {
 		return nil, err
