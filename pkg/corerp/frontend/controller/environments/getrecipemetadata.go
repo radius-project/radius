@@ -104,12 +104,10 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 	//		}
 	//	}
 
-	params, ok := recipeData["parameters"]
-	if !ok {
+	if recipeData["parameters"] == nil {
 		return recipePrameters, nil
-	}
-
-	recipeParam, ok := params.(map[string]any)
+	} 
+	recipeParam, ok := recipeData["parameters"].(map[string]any)
 	if !ok {
 		return recipePrameters, fmt.Errorf("parameters are not in expected format")
 	}
