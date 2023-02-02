@@ -1,0 +1,34 @@
+# This is an example of configuration file.
+environment:
+  name: Dev
+  roleLocation: "global"
+storageProvider:
+  provider: "etcd"
+  etcd:
+    inmemory: true
+queueProvider:
+  provider: inmemory
+secretProvider:
+  provider: etcd
+  etcd:
+    inmemory: true
+metricsProvider:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 2222
+featureFlags:
+  - "PLACEHOLDER"
+server:
+  host: "0.0.0.0"
+  port: 8080
+  enableArmAuth: false
+workerServer:
+  maxOperationConcurrency: 3
+  maxOperationRetryCount: 2
+ucp:
+  kind: kubernetes
+ # Logging configuration   
+logging:
+  level: "info"
+  json: true
