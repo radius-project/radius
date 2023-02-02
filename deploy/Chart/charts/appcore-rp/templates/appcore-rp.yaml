@@ -30,10 +30,11 @@ spec:
         - --run-link
         - --link-config=/etc/config/link-self-host.yaml
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
-        envFrom:
-        - secretRef: 
-            name: appcore-rp-secrets
         env:
+        - name: SKIP_ARM
+          value: 'false'
+        - name: ARM_AUTH_METHOD
+          value: 'UCPCredential'
         - name: RADIUS_ENV
           value: 'self-hosted'
         - name: K8S_CLUSTER
@@ -107,24 +108,3 @@ data:
 {{ .Files.Get "radius-self-host.yaml" | indent 4}}
   link-self-host.yaml: |-
 {{ .Files.Get "link-self-host.yaml" | indent 4}}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: appcore-rp-secrets
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: appcore-rp
-stringData:
-# Configuration for 'Azure' provider functionality
-{{ if .Values.global.rp.provider.azure.servicePrincipal }}
-  # Enable ARM with explicit credentials
-  SKIP_ARM: 'false' 
-  ARM_AUTH_METHOD: 'ServicePrincipal'
-  AZURE_CLIENT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.clientId }}
-  AZURE_CLIENT_SECRET: {{ .Values.global.rp.provider.azure.servicePrincipal.clientSecret }}
-  AZURE_TENANT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.tenantId }}
-{{ else }}
-  # Skip ARM by default. Overwriting this secret will let you set this to false as well as configure credentials
-  SKIP_ARM: 'true' 
-{{ end }}

@@ -24,6 +24,10 @@
             "mongo-azure": {
                 "linkType": "Applications.Link/mongoDatabases",
                 "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"
+            }, 
+            "redis-kubernetes": {
+                "linkType": "Applications.Link/redisCaches",
+                "templatePath": "radiusdev.azurecr.io/recipes/rediscaches/kubernetes:1.0"
             }
         },
         "useDevRecipes": true,

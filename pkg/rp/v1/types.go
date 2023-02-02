@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
@@ -90,7 +89,6 @@ type DeploymentOutput struct {
 	DeployedOutputResources []OutputResource
 	ComputedValues          map[string]any
 	SecretValues            map[string]SecretValueReference
-	RecipeData              linkrp.RecipeData
 }
 
 // DeploymentDataModel is the interface that wraps existing data models

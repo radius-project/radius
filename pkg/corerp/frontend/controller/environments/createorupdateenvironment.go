@@ -128,10 +128,15 @@ func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeP
 				if slices.Contains(supportedProviders(), provider) {
 					var name string
 					var linkType string
+					// TODO: this needs to metadata driven per-recipe so we don't have to maintain a lookup
+					// table.
 					switch link {
 					case "mongodatabases":
 						name = "mongo" + "-" + provider
 						linkType = linkrp.MongoDatabasesResourceType
+					case "rediscaches":
+						name = "redis" + "-" + provider
+						linkType = linkrp.RedisCachesResourceType
 					default:
 						continue
 					}

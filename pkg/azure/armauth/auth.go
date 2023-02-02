@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	azcred "github.com/project-radius/radius/pkg/azure/credential"
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 )
 
@@ -58,7 +58,7 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 
 	switch authMethod {
 	case UCPCredentialAuth:
-		return aztoken.NewUCPCredential(aztoken.UCPCredentialOptions{
+		return azcred.NewUCPCredential(azcred.UCPCredentialOptions{
 			Provider: opt.CredentialProvider,
 		})
 	case ServicePrincipalAuth:

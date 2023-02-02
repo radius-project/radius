@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package tokencredentials
+package credential
 
 import (
 	"context"
