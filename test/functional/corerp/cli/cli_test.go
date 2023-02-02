@@ -62,7 +62,6 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		output, err := cli.RecipeUnregister(ctx, recipeName)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
-
 	})
 	t.Run("Validate rad recipe show", func(t *testing.T) {
 		showRecipeName := "mongodbtest"
