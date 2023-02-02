@@ -142,16 +142,6 @@ func (ri ID) FindScope(scopeType string) string {
 	return ""
 }
 
-// FindType function gets the type type and returns the name for that type if it exists.
-func (ri ID) FindType(typeSegmentType string) string {
-	for _, t := range ri.typeSegments {
-		if strings.EqualFold(t.Type, typeSegmentType) {
-			return t.Name
-		}
-	}
-	return ""
-}
-
 // RootScope returns the root-scope (the part before 'providers').
 //
 // Examples:

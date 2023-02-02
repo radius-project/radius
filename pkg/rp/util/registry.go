@@ -32,12 +32,12 @@ func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) er
 
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return err
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
 	}
 
 	bytes, err := getBytes(ctx, repo, digest)
 	if err != nil {
-		return err
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
 	}
 
 	err = json.Unmarshal(bytes, data)

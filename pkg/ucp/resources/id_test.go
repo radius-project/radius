@@ -510,35 +510,6 @@ func Test_FindScope(t *testing.T) {
 	}
 }
 
-func Test_FindType(t *testing.T) {
-	type testcase struct {
-		ID       string
-		Segment  string
-		Expected string
-	}
-
-	cases := []testcase{
-		{
-			ID:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/customaction/test",
-			Segment:  "customaction",
-			Expected: "test",
-		},
-		{
-			ID:       "/subscriPtions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
-			Segment:  "customaction",
-			Expected: "",
-		},
-	}
-
-	for _, tc := range cases {
-		id, err := Parse(tc.ID)
-		require.NoError(t, err)
-
-		result := id.FindType(tc.Segment)
-		require.Equal(t, tc.Expected, result)
-	}
-}
-
 func Test_Append_Collection(t *testing.T) {
 	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
