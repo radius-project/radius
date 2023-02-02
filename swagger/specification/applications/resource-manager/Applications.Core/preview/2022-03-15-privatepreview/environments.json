@@ -272,16 +272,16 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipedetails/{recipeName}": {
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipemetadata/{recipeName}": {
       "post": {
-        "description": "Gets recipe details including parameters and any constraints on the parameters.",
-        "operationId": "Environments_GetRecipeDetails",
+        "description": "Gets recipe metadata including parameters and any constraints on the parameters.",
+        "operationId": "Environments_GetRecipeMetadata",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusEnvironmentsGetRecipeDetails": {
-            "$ref": "./examples/EnvironmentsGetRecipeDetails.json"
+          "RadiusEnvironmentsGetRecipeMetadata": {
+            "$ref": "./examples/EnvironmentsGetRecipeMetadata.json"
           }
         },
         "tags": [
@@ -303,9 +303,9 @@
         ],
         "responses": {
           "200": {
-            "description": "Recipe details",
+            "description": "Recipe metadata including parameters and any constraints on the parameters.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentRecipeProperties"
+              "$ref": "#/definitions/RecipeMetadata"
             }
           },
           "default": {
@@ -458,6 +458,32 @@
     },
     "EnvironmentRecipeProperties": {
       "description": "Properties of a Recipe linked to an Environment.",
+      "properties": {
+        "linkType": {
+          "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",
+          "type": "string"
+        },
+        "templatePath": {
+          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
+          "type": "string"
+        },
+        "parameters": {
+          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "type": "object",
+          "example": [
+            {
+              "port": 6060
+            }
+          ]
+        }
+      },
+      "required": [
+        "linkType",
+        "templatePath"
+      ]
+    },
+    "RecipeMetadata": {
+      "description": "Metadata of a Recipe",
       "properties": {
         "linkType": {
           "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",

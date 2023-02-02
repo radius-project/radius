@@ -86,9 +86,14 @@ func Test_Run(t *testing.T) {
 			envRecipes := v20220315privatepreview.EnvironmentRecipeProperties{
 				LinkType:     to.StringPtr("Applications.Link/mongoDatabases"),
 				TemplatePath: to.StringPtr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
-				Parameters: map[string]interface{}{
-					"throughput": "int (max: 800)",
-					"sku":        "string",
+				Parameters: map[string]any{
+					"throughput": map[string]any{
+						"type": "float64",
+						"max":  float64(800),
+					},
+					"sku": map[string]any{
+						"type": "string",
+					},
 				},
 			}
 
@@ -98,11 +103,11 @@ func Test_Run(t *testing.T) {
 					LinkType:         "Applications.Link/mongoDatabases",
 					TemplatePath:     "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 					ParameterName:    "sku",
-					ParameterDetails: "string",
+					ParameterDetails: "type: string",
 				},
 				{
 					ParameterName:    "throughput",
-					ParameterDetails: "int (max: 800)",
+					ParameterDetails: "type: float64\tmax: 800",
 				},
 			}
 

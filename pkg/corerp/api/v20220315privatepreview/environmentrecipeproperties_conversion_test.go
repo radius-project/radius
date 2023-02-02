@@ -22,7 +22,14 @@ func TestEnvironmentRecipePropertiesConvertVersionedToDataModel(t *testing.T) {
 		LinkType:     linkrp.MongoDatabasesResourceType,
 		TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
 		Parameters: map[string]any{
-			"throughput": float64(400),
+			"location": map[string]any{
+				"defaultValue": "[resourceGroup().location]",
+				"type":         "string",
+			},
+			"throughput": map[string]any{
+				"defaultValue": (float64(200)),
+				"maxValue":     (float64(400)),
+			},
 		},
 	}
 
@@ -52,11 +59,20 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 		// act
 		versioned := &EnvironmentRecipeProperties{}
 		err = versioned.ConvertFrom(r)
-
+		expectedOutput := map[string]any{
+			"location": map[string]any{
+				"defaultValue": "[resourceGroup().location]",
+				"type":         "string",
+			},
+			"throughput": map[string]any{
+				"defaultValue": (float64(200)),
+				"maxValue":     (float64(400)),
+			},
+		}
 		// assert
 		require.NoError(t, err)
 		require.Equal(t, "Applications.Link/mongoDatabases", string(*versioned.LinkType))
 		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.TemplatePath))
-		require.Equal(t, map[string]any{"throughput": float64(400)}, versioned.Parameters)
+		require.Equal(t, expectedOutput, versioned.Parameters)
 	})
 }

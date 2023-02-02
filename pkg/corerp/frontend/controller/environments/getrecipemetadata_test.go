@@ -16,23 +16,22 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
+func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
 	t.Parallel()
-	t.Run("get recipe details run", func(t *testing.T) {
-		envDataModel, expectedOutput := getTestModelsGetRecipeDetails20220315privatepreview()
+	t.Run("get recipe metadata run", func(t *testing.T) {
+		envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipedetails, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
 
 		mStorageClient.
 			EXPECT().
@@ -48,7 +47,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
-		ctl, err := NewGetRecipeDetails(opts)
+		ctl, err := NewGetRecipeMetadata(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -60,9 +59,9 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		require.Equal(t, expectedOutput, actualOutput)
 	})
 
-	t.Run("get recipe details run non existing environment", func(t *testing.T) {
+	t.Run("get recipe metadata run non existing environment", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipedetails, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -74,7 +73,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
-		ctl, err := NewGetRecipeDetails(opts)
+		ctl, err := NewGetRecipeMetadata(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -95,10 +94,10 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		require.Contains(t, armerr.Error.Message, "was not found")
 	})
 
-	t.Run("get recipe details non existing recipe", func(t *testing.T) {
-		envDataModel, _ := getTestModelsGetRecipeDetails20220315privatepreview()
+	t.Run("get recipe metadata non existing recipe", func(t *testing.T) {
+		envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipedetailsnotexisting, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -114,7 +113,7 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
-		ctl, err := NewGetRecipeDetails(opts)
+		ctl, err := NewGetRecipeMetadata(opts)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -135,41 +134,56 @@ func TestGetRecipeDetailsRun_20220315PrivatePreview(t *testing.T) {
 	})
 }
 
-func TestGetRecipeDetailsFromRegistry(t *testing.T) {
+func TestGetRecipeMetadataFromRegistry(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("get recipe details from registry", func(t *testing.T) {
-		recipeDetails := datamodel.EnvironmentRecipeProperties{
-			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-		}
-		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
+	t.Run("get recipe metadata from registry", func(t *testing.T) {
+		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+		output, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
 		require.NoError(t, err)
 		expectedOutput := map[string]any{
-			"mongodbName":    "type : string\t",
-			"documentdbName": "type : string\t",
-			"location":       "type : string\tdefaultValue : [resourceGroup().location]\t",
+			"mongodbName": map[string]any{
+				"type": "string",
+			},
+			"documentdbName": map[string]any{
+				"type": "string",
+			},
+			"location": map[string]any{
+				"type":         "string",
+				"defaultValue": "[resourceGroup().location]",
+			},
 		}
-		require.Equal(t, expectedOutput, recipeDetails.Parameters)
+		require.Equal(t, expectedOutput, output)
 	})
 
-	t.Run("get recipe details from registry with context parameter", func(t *testing.T) {
-		recipeDetails := datamodel.EnvironmentRecipeProperties{
-			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/context/mongodatabases/azure:1.0",
-		}
-		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
+	t.Run("get recipe metadata from registry with context parameter", func(t *testing.T) {
+		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/context/mongodatabases/azure:1.0"
+		output, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
 		require.NoError(t, err)
 		expectedOutput := map[string]any{
-			"location": "type : string\tdefaultValue : [resourceGroup().location]\t",
-			"rg":       "type : string\tdefaultValue : [resourceGroup().name]\t",
+			"location": map[string]any{
+				"type":         "string",
+				"defaultValue": "[resourceGroup().location]",
+			},
+			"rg": map[string]any{
+				"type":         "string",
+				"defaultValue": "[resourceGroup().name]",
+			},
 		}
-		require.Equal(t, expectedOutput, recipeDetails.Parameters)
+		require.Equal(t, expectedOutput, output)
 	})
 
-	t.Run("get recipe details from registry with invalid path", func(t *testing.T) {
-		recipeDetails := datamodel.EnvironmentRecipeProperties{
-			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0",
-		}
-		err := getRecipeDetailsFromRegistry(ctx, &recipeDetails, "mongodb")
+	t.Run("get recipe metadata from registry with invalid path", func(t *testing.T) {
+		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0"
+		_, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
 		require.Error(t, err, "failed to fetch template from the path \"radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0\" for recipe \"mongodb\": radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0: not found")
+	})
+
+	t.Run("get recipe metadata from registry with no parameters", func(t *testing.T) {
+		templatePath := "radiusdev.azurecr.io/pratikshya/recipe/mongodatabases/azure:1.0"
+		output, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
+		require.NoError(t, err)
+		expectedOutput := map[string]any{}
+		require.Equal(t, expectedOutput, output)
 	})
 }

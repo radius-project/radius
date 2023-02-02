@@ -10,7 +10,7 @@ const (
 	DevRecipesACRPath = "radiusdev.azurecr.io"
 
 	// User defined operation names
-	OperationGetRecipeDetails = "GETRECIPEDETAILS"
+	OperationGetRecipeMetadata = "GETRECIPEMETADATA"
 )
 
 func supportedProviders() []string {

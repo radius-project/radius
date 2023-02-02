@@ -192,31 +192,31 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 	return result, nil
 }
 
-// GetRecipeDetails - Gets recipe details including parameters and any constraints on the parameters.
+// GetRecipeMetadata - Gets recipe metadata including parameters and any constraints on the parameters.
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // environmentName - The name of the environment
 // recipeName - The name of the recipe
-// options - EnvironmentsClientGetRecipeDetailsOptions contains the optional parameters for the EnvironmentsClient.GetRecipeDetails
+// options - EnvironmentsClientGetRecipeMetadataOptions contains the optional parameters for the EnvironmentsClient.GetRecipeMetadata
 // method.
-func (client *EnvironmentsClient) GetRecipeDetails(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeDetailsOptions) (EnvironmentsClientGetRecipeDetailsResponse, error) {
-	req, err := client.getRecipeDetailsCreateRequest(ctx, environmentName, recipeName, options)
+func (client *EnvironmentsClient) GetRecipeMetadata(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeMetadataOptions) (EnvironmentsClientGetRecipeMetadataResponse, error) {
+	req, err := client.getRecipeMetadataCreateRequest(ctx, environmentName, recipeName, options)
 	if err != nil {
-		return EnvironmentsClientGetRecipeDetailsResponse{}, err
+		return EnvironmentsClientGetRecipeMetadataResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return EnvironmentsClientGetRecipeDetailsResponse{}, err
+		return EnvironmentsClientGetRecipeMetadataResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return EnvironmentsClientGetRecipeDetailsResponse{}, runtime.NewResponseError(resp)
+		return EnvironmentsClientGetRecipeMetadataResponse{}, runtime.NewResponseError(resp)
 	}
-	return client.getRecipeDetailsHandleResponse(resp)
+	return client.getRecipeMetadataHandleResponse(resp)
 }
 
-// getRecipeDetailsCreateRequest creates the GetRecipeDetails request.
-func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeDetailsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipedetails/{recipeName}"
+// getRecipeMetadataCreateRequest creates the GetRecipeMetadata request.
+func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeMetadataOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipemetadata/{recipeName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
@@ -237,11 +237,11 @@ func (client *EnvironmentsClient) getRecipeDetailsCreateRequest(ctx context.Cont
 	return req, nil
 }
 
-// getRecipeDetailsHandleResponse handles the GetRecipeDetails response.
-func (client *EnvironmentsClient) getRecipeDetailsHandleResponse(resp *http.Response) (EnvironmentsClientGetRecipeDetailsResponse, error) {
-	result := EnvironmentsClientGetRecipeDetailsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentRecipeProperties); err != nil {
-		return EnvironmentsClientGetRecipeDetailsResponse{}, err
+// getRecipeMetadataHandleResponse handles the GetRecipeMetadata response.
+func (client *EnvironmentsClient) getRecipeMetadataHandleResponse(resp *http.Response) (EnvironmentsClientGetRecipeMetadataResponse, error) {
+	result := EnvironmentsClientGetRecipeMetadataResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RecipeMetadata); err != nil {
+		return EnvironmentsClientGetRecipeMetadataResponse{}, err
 	}
 	return result, nil
 }
