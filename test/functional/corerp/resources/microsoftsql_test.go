@@ -28,7 +28,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 		adminUsername = "adminUsername=" + os.Getenv("MSSQL_USERNAME")
 		adminPassword = "adminPassword=" + os.Getenv("MSSQL_PASSWORD")
 	} else {
-		t.Error("failed to get msql username or password  from the environment")
+		t.Error("failed to get msql username or password from the environment")
 	}
 
 	appNamespace := "default-corerp-resources-microsoft-sql"

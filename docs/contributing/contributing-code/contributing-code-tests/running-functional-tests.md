@@ -37,10 +37,13 @@ The tests use our product functionality (the Radius config file) to configure th
 4. Run:
 
     ```sh
-    make test-functional-azure
+        ./executeCoreRPFunctionalTest.sh
     ```
 
-When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`.
+When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`. The executeCoreRPFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
+ ```sh
+    make test-functional-corerp
+ ```
 
 You can also run/debug individual tests from VSCode
 
