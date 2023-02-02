@@ -100,7 +100,7 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0/recipe0/recipemetadata?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0/recipe0/getmetadata?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	},
