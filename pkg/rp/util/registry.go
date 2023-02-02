@@ -18,7 +18,7 @@ import (
 
 // ReadFromRegistry reads content from an OCI compliant registry.
 func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error {
-	registryRepo, tag, err := ParsePath(path)
+	registryRepo, tag, err := parsePath(path)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
@@ -103,8 +103,8 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
-// ParsePath parses a path in the form of registry/repository:tag
-func ParsePath(path string) (repository string, tag string, err error) {
+// parsePath parses a path in the form of registry/repository:tag
+func parsePath(path string) (repository string, tag string, err error) {
 	reference, err := dockerParser.Parse(path)
 	if err != nil {
 		return "", "", err

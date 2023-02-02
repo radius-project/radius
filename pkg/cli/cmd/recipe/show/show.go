@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -127,7 +126,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	var recipeParams []EnvironmentRecipe
-	var index = 0
 	keys := make([]string, 0, len(recipeDetails.Parameters))
 
 	for k := range recipeDetails.Parameters {
@@ -136,35 +134,42 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// to keep order of parameters consistent - sort.
 	sort.Strings(keys)
-	for _, k := range keys {
-		paramDetails, ok := recipeDetails.Parameters[k].(map[string]any)
+	var paramDetailIndex = 0
+	for _, paramName := range keys {
+		paramDetails, ok := recipeDetails.Parameters[paramName].(map[string]any)
 		if !ok {
-			return fmt.Errorf("parameter details for parameter %s are formatted incorrectly", k)
+			return fmt.Errorf("parameter details for parameter %s are formatted incorrectly", paramName)
 		}
-		formattedParamDetails := ""
+
+		var paramDetailValueIndex = 0
 		for paramDetailName, paramDetailValue := range paramDetails {
-			formattedParamDetails += fmt.Sprintf("%s: %v\t", paramDetailName, paramDetailValue)
-		}
-		formattedParamDetails = strings.TrimSpace(formattedParamDetails)
-
-		var recipe EnvironmentRecipe
-		if index == 0 {
-			recipe = EnvironmentRecipe{
-				RecipeName:       r.RecipeName,
-				LinkType:         *recipeDetails.LinkType,
-				TemplatePath:     *recipeDetails.TemplatePath,
-				ParameterName:    k,
-				ParameterDetails: formattedParamDetails,
+			var recipe EnvironmentRecipe
+			if paramDetailIndex == 0 && paramDetailValueIndex == 0 {
+				recipe = EnvironmentRecipe{
+					RecipeName:           r.RecipeName,
+					LinkType:             *recipeDetails.LinkType,
+					TemplatePath:         *recipeDetails.TemplatePath,
+					ParameterName:        paramName,
+					ParameterDetailName:  paramDetailName,
+					ParameterDetailValue: paramDetailValue,
+				}
+			} else if paramDetailValueIndex == 0 {
+				recipe = EnvironmentRecipe{
+					ParameterName:        paramName,
+					ParameterDetailName:  paramDetailName,
+					ParameterDetailValue: paramDetailValue,
+				}
+			} else {
+				recipe = EnvironmentRecipe{
+					ParameterDetailName:  paramDetailName,
+					ParameterDetailValue: paramDetailValue,
+				}
 			}
-		} else {
-			recipe = EnvironmentRecipe{
-				ParameterName:    k,
-				ParameterDetails: formattedParamDetails,
-			}
-		}
 
-		recipeParams = append(recipeParams, recipe)
-		index += 1
+			recipeParams = append(recipeParams, recipe)
+			paramDetailValueIndex += 1
+		}
+		paramDetailIndex += 1
 	}
 	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormat())
 	if err != nil {
@@ -175,9 +180,10 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 type EnvironmentRecipe struct {
-	RecipeName       string      `json:"recipeName,omitempty"`
-	LinkType         string      `json:"linkType,omitempty"`
-	TemplatePath     string      `json:"templatePath,omitempty"`
-	ParameterName    string      `json:"parameterName,omitempty"`
-	ParameterDetails interface{} `json:"parameterDetails,omitempty"`
+	RecipeName           string      `json:"recipeName,omitempty"`
+	LinkType             string      `json:"linkType,omitempty"`
+	TemplatePath         string      `json:"templatePath,omitempty"`
+	ParameterName        string      `json:"parameterName,omitempty"`
+	ParameterDetailName  string      `json:"parameterDetailName,omitempty"`
+	ParameterDetailValue interface{} `json:"parameterDetailValue,omitempty"`
 }

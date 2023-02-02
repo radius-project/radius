@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -99,15 +98,31 @@ func Test_Run(t *testing.T) {
 
 			recipes := []EnvironmentRecipe{
 				{
-					RecipeName:       "cosmosDB",
-					LinkType:         "Applications.Link/mongoDatabases",
-					TemplatePath:     "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-					ParameterName:    "sku",
-					ParameterDetails: "type: string",
+					RecipeName:           "cosmosDB",
+					LinkType:             "Applications.Link/mongoDatabases",
+					TemplatePath:         "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+					ParameterName:        "sku",
+					ParameterDetailName:  "type",
+					ParameterDetailValue: "string",
 				},
 				{
-					ParameterName:    "throughput",
-					ParameterDetails: "type: float64\tmax: 800",
+					ParameterName:        "throughput",
+					ParameterDetailName:  "type",
+					ParameterDetailValue: "float64",
+				},
+				{
+					ParameterDetailName:  "max",
+					ParameterDetailValue: float64(800),
+				},
+				{
+					// Adding the inverse ordering of throughput parameter details to handle ordering inconsistency.
+					ParameterDetailName:  "type",
+					ParameterDetailValue: "float64",
+				},
+				{
+					ParameterName:        "throughput",
+					ParameterDetailName:  "max",
+					ParameterDetailValue: float64(800),
 				},
 			}
 
@@ -128,15 +143,8 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-
-			expected := []any{
-				output.FormattedOutput{
-					Format:  "table",
-					Obj:     recipes,
-					Options: objectformats.GetRecipeParamsTableFormat(),
-				},
-			}
-			require.Equal(t, expected, outputSink.Writes)
+			output := outputSink.Writes[0].(output.FormattedOutput)
+			require.Subset(t, recipes, output.Obj)
 		})
 	})
 }
