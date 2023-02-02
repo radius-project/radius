@@ -216,7 +216,7 @@ func (client *EnvironmentsClient) GetRecipeMetadata(ctx context.Context, environ
 
 // getRecipeMetadataCreateRequest creates the GetRecipeMetadata request.
 func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeMetadataOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getrecipemetadata/{recipeName}"
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/{recipeName}/getmetadata"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
