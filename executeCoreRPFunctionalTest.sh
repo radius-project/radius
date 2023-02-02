@@ -30,4 +30,5 @@ export MSSQL_PASSWORD=$adminPassword
 export MONGODB_RESOURCE_ID=$( jq -r '.properties.outputs.mongoDatabaseId.value' <<< "${resp}" )
 export REDIS_RESOURCE_ID=$( jq -r '.properties.outputs.redisCacheId.value' <<< "${resp}" )
 export TABLESTORAGE_RESOURCE_ID=$( jq -r '.properties.outputs.tableStorageAccId.value' <<< "${resp}" )
+export DOCUMENTDB_RESOURCE_ID=$( jq -r '.properties.outputs.documentDBId.value' <<< "${resp}" )
 make test-functional-corerp
