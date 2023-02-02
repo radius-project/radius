@@ -67,7 +67,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 	recipeData := make(map[string]any)
 	err := util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
 	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
+		return nil, err
 	}
 
 	// get the parameters after resolving the conflict between developer and operator parameters
