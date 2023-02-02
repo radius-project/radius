@@ -23,7 +23,7 @@ import (
 
 var _ ctrl.Controller = (*GetRecipeMetadata)(nil)
 
-// GetRecipe is the controller implementation to get recipe metadata.
+// GetRecipeMetadata is the controller implementation to get recipe metadata.
 type GetRecipeMetadata struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
 }
