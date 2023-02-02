@@ -611,6 +611,12 @@ type EnvironmentsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
+// EnvironmentsClientGetRecipeMetadataOptions contains the optional parameters for the EnvironmentsClient.GetRecipeMetadata
+// method.
+type EnvironmentsClientGetRecipeMetadataOptions struct {
+	// placeholder for future optional parameters
+}
+
 // EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.ListByScope method.
 type EnvironmentsClientListByScopeOptions struct {
 	// placeholder for future optional parameters
@@ -1117,6 +1123,18 @@ type ProvidersAws struct {
 type ProvidersAzure struct {
 	// Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
 	Scope *string `json:"scope,omitempty"`
+}
+
+// RecipeMetadata - Metadata of a Recipe
+type RecipeMetadata struct {
+	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	LinkType *string `json:"linkType,omitempty"`
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string `json:"templatePath,omitempty"`
+
+	// Key/value parameters to pass to the recipe template at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

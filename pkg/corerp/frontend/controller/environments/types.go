@@ -8,6 +8,8 @@ package environments
 const (
 	ResourceTypeName  = "Applications.Core/environments"
 	DevRecipesACRPath = "radius.azurecr.io"
+	// User defined operation names
+	OperationGetRecipeMetadata = "GETRECIPEMETADATA"
 )
 
 // supportedProviders returns the list of "known" providers we understand for dev recipes.

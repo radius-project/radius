@@ -99,6 +99,10 @@ var handlerTests = []struct {
 		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0/recipe0/getmetadata?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPost,
+		isAzureAPI: false,
 	},
 }
 
