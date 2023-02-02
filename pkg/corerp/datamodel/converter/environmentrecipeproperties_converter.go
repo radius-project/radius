@@ -25,3 +25,12 @@ func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.Environmen
 		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
+
+// EnvironmentRecipePropertiesDataModelFromVersioned converts versioned environment recipe properties model to datamodel.
+func EnvironmentRecipePropertiesDataModelFromVersioned(content []byte, version string) (*datamodel.EnvironmentRecipeProperties, error) {
+	switch version {
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}

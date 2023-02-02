@@ -6,11 +6,18 @@
 package v20220315privatepreview
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
+
+// ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
+func (src *EnvironmentRecipeProperties) ConvertTo() (v1.DataModelInterface, error) {
+	return nil, fmt.Errorf("converting Environment Recipe Properties to a version-agnostic object is not supported")
+}
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment recipe properties resource.
 func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) error {

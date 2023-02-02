@@ -15,6 +15,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEnvironmentRecipePropertiesConvertVersionedToDataModel(t *testing.T) {
+	t.Run("Convert to Data Model", func(t *testing.T) {
+		r := &EnvironmentRecipeProperties{}
+		// act
+		_, err := r.ConvertTo()
+
+		require.ErrorContains(t, err, "converting Environment Recipe Properties to a version-agnostic object is not supported")
+	})
+}
+
 func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 	filename := "environmentrecipepropertiesdatamodel.json"
 	t.Run(filename, func(t *testing.T) {

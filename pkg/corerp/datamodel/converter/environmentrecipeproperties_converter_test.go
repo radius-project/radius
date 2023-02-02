@@ -55,3 +55,25 @@ func TestEnvironmentRecipePropertiesDataModelToVersioned(t *testing.T) {
 		})
 	}
 }
+
+func TestEnvironmentRecipePropertiesDataModelFromVersioned(t *testing.T) {
+	testset := []struct {
+		versionedModelFile string
+		apiVersion         string
+		err                error
+	}{
+		{
+			"",
+			"unsupported",
+			v1.ErrUnsupportedAPIVersion,
+		},
+	}
+
+	for _, tc := range testset {
+		t.Run(tc.apiVersion, func(t *testing.T) {
+			var c []byte
+			_, err := EnvironmentRecipePropertiesDataModelFromVersioned(c, tc.apiVersion)
+			require.ErrorAs(t, tc.err, &err)
+		})
+	}
+}
