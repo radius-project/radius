@@ -7,8 +7,7 @@ package environments
 
 const (
 	ResourceTypeName  = "Applications.Core/environments"
-	DevRecipesACRPath = "radiusdev.azurecr.io"
-
+	DevRecipesACRPath = "radius.azurecr.io"
 	// User defined operation names
 	OperationGetRecipeMetadata = "GETRECIPEMETADATA"
 )
