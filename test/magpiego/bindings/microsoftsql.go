@@ -15,12 +15,14 @@ func MicrosoftSqlBinding(envParams map[string]string) BindingStatus {
 		log.Println("CONNECTIONSTRING is required")
 		return BindingStatus{false, "CONNECTIONSTRING is required"}
 	}
+
 	db, err := sql.Open("sqlserver", connString)
-	defer db.Close()
 	if err != nil {
 		log.Println("Error creating connection pool - ", err.Error())
 		return BindingStatus{false, "Connection to mssql db failed"}
 	}
+	defer db.Close()
+
 	ctx := context.Background()
 	err = db.PingContext(ctx)
 	if err != nil {

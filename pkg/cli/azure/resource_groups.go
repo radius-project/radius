@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/Azure/go-autorest/autorest/azure/cli"
 	"gopkg.in/ini.v1"
 )
 
 func LoadDefaultResourceGroupFromConfig() (string, error) {
-	profilePath, err := cli.ProfilePath()
+	profilePath, err := ProfilePath()
 	if err != nil {
 		return "", fmt.Errorf("cannot load azure-cli config: %v", err)
 	}
