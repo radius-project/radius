@@ -96,36 +96,6 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			recipes := []EnvironmentRecipe{
-				{
-					RecipeName:           "cosmosDB",
-					LinkType:             "Applications.Link/mongoDatabases",
-					TemplatePath:         "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-					ParameterName:        "sku",
-					ParameterDetailName:  "type",
-					ParameterDetailValue: "string",
-				},
-				{
-					ParameterName:        "throughput",
-					ParameterDetailName:  "type",
-					ParameterDetailValue: "float64",
-				},
-				{
-					ParameterDetailName:  "max",
-					ParameterDetailValue: float64(800),
-				},
-				{
-					// Adding the inverse ordering of throughput parameter details to handle ordering inconsistency.
-					ParameterDetailName:  "type",
-					ParameterDetailValue: "float64",
-				},
-				{
-					ParameterName:        "throughput",
-					ParameterDetailName:  "max",
-					ParameterDetailValue: float64(800),
-				},
-			}
-
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -144,7 +114,51 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 			output := outputSink.Writes[0].(output.FormattedOutput)
-			require.Subset(t, recipes, output.Obj)
+			skuType := false
+			throughputType := false
+			throughputMax := false
+			outputParams := output.Obj.([]EnvironmentRecipe)
+			require.Equal(t, 3, len(outputParams))
+			for i, envRecipeObj := range output.Obj.([]EnvironmentRecipe) {
+				if i == 0 {
+					require.Equal(t, "cosmosDB", envRecipeObj.RecipeName)
+					require.Equal(t, "Applications.Link/mongoDatabases", envRecipeObj.LinkType)
+					require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", envRecipeObj.TemplatePath)
+				} else {
+					require.Equal(t, "", envRecipeObj.RecipeName)
+					require.Equal(t, "", envRecipeObj.LinkType)
+					require.Equal(t, "", envRecipeObj.TemplatePath)
+				}
+				if envRecipeObj.ParameterName == "sku" && envRecipeObj.ParameterDetailName == "type" {
+					require.Equal(t, "string", envRecipeObj.ParameterDetailValue)
+					skuType = true
+				}
+
+				if envRecipeObj.ParameterName == "throughput" {
+					if envRecipeObj.ParameterDetailName == "type" {
+						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
+						throughputType = true
+					}
+					if envRecipeObj.ParameterDetailName == "max" {
+						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
+						throughputMax = true
+					}
+				}
+
+				if envRecipeObj.ParameterName == "" {
+					if envRecipeObj.ParameterDetailName == "type" && !throughputType {
+						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
+						throughputType = true
+					}
+					if envRecipeObj.ParameterDetailName == "max" && !throughputMax {
+						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
+						throughputMax = true
+					}
+				}
+			}
+			require.True(t, skuType)
+			require.True(t, throughputType)
+			require.True(t, throughputMax)
 		})
 	})
 }
