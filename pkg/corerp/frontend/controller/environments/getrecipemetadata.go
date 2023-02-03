@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -18,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	linkrp "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/util"
+	"golang.org/x/exp/maps"
 )
 
 var _ ctrl.Controller = (*GetRecipeMetadata)(nil)
@@ -131,16 +133,22 @@ func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[
 		if !ok {
 			return fmt.Errorf("parameter details are not in expected format")
 		}
+		if len(paramDetails) > 0 {
+			keys := maps.Keys(paramDetails)
 
-		for paramDetailName, paramDetailValue := range paramDetails {
-			if paramDetailName == "metadata" {
-				// skip metadata for now as it is a nested object.
-				continue
+			// to keep order of parameters details consistent - sort. Reverse sorting will ensure type (a required detail) is always first.
+			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
+			for _, paramDetailName := range keys {
+				if paramDetailName == "metadata" {
+					// skip metadata for now as it is a nested object.
+					continue
+				}
+
+				details[paramDetailName] = paramDetails[paramDetailName]
 			}
-			details[paramDetailName] = paramDetailValue
-		}
 
-		recipeParameters[paramName] = details
+			recipeParameters[paramName] = details
+		}
 	}
 
 	return nil

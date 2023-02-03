@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad recipe show` command.
@@ -127,24 +126,23 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	var recipeParams []EnvironmentRecipe
-	var paramDetailIndex = 0
-	paramNames := maps.Keys(recipeDetails.Parameters)
+	keys := make([]string, 0, len(recipeDetails.Parameters))
 
-	// To keep order of parameters consistent, sort since golang maps are unordered.
-	sort.Strings(paramNames)
-	for _, paramName := range paramNames {
+	for k := range recipeDetails.Parameters {
+		keys = append(keys, k)
+	}
+
+	// to keep order of parameters consistent - sort.
+	sort.Strings(keys)
+	var paramDetailIndex = 0
+	for _, paramName := range keys {
 		paramDetails, ok := recipeDetails.Parameters[paramName].(map[string]any)
 		if !ok {
 			return fmt.Errorf("parameter details for parameter %s are formatted incorrectly", paramName)
 		}
 
 		var paramDetailValueIndex = 0
-		paramDetailNames := maps.Keys(paramDetails)
-
-		// to keep order of parameters details consistent - sort. Reverse sorting will ensure type (a required detail) is always first.
-		sort.Sort(sort.Reverse(sort.StringSlice(paramDetailNames)))
-		for _, paramDetailName := range paramDetailNames {
-			paramDetailValue := paramDetails[paramDetailName]
+		for paramDetailName, paramDetailValue := range paramDetails {
 			var recipe EnvironmentRecipe
 			if paramDetailIndex == 0 && paramDetailValueIndex == 0 {
 				recipe = EnvironmentRecipe{
