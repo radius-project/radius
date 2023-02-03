@@ -10,7 +10,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	azcred "github.com/project-radius/radius/pkg/azure/credential"
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
@@ -79,8 +78,10 @@ func GetAuthMethod() string {
 		return authMethod
 	}
 
-	settings, err := auth.GetSettingsFromEnvironment()
-	if err == nil && settings.Values[auth.ClientID] != "" && settings.Values[auth.ClientSecret] != "" {
+	clientID := os.Getenv("AZURE_CLIENT_ID")
+	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
+
+	if clientID != "" && clientSecret != "" {
 		return ServicePrincipalAuth
 	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
 		return ManagedIdentityAuth

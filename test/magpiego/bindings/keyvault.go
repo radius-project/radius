@@ -2,9 +2,9 @@ package bindings
 
 import (
 	"context"
-	"fmt"
 	"log"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets"
 )
@@ -29,15 +29,22 @@ func KeyVaultBinding(envParams map[string]string) BindingStatus {
 		log.Println("failed to connect to keyVault client - ", err.Error())
 		return BindingStatus{false, "failed to connect to keyVault client"}
 	}
-	_, err = client.SetSecret(context.TODO(), "TestSecret", "testValue", nil)
+
+	// Create a secret
+	resp, err := client.SetSecret(context.TODO(), "TestSecret", azsecrets.SetSecretParameters{Value: to.Ptr("testValue")}, nil)
 	if err != nil {
-		log.Println(fmt.Sprintf("failed to create a secret: %v", err))
+		log.Printf("failed to create a secret: %v", err)
 		return BindingStatus{false, "failed to create a secret"}
 	}
-	_, err = client.GetSecret(context.TODO(), "TestSecret", nil)
+
+	// Get the secret
+	_, err = client.GetSecret(context.TODO(), "TestSecret", resp.ID.Version(), nil)
 	if err != nil {
 		log.Fatalf("failed to get the secret: %v", err)
 		return BindingStatus{false, "failed to get the secret"}
 	}
+
+	// TODO: Should we delete the secret?
+
 	return BindingStatus{true, "secrets accessed"}
 }
