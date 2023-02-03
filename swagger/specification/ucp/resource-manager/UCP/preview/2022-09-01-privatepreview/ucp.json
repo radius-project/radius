@@ -80,6 +80,9 @@
         ],
         "parameters": [
           {
+            "$ref": "#/parameters/PlaneTypeParameter"
+          },
+          {
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {

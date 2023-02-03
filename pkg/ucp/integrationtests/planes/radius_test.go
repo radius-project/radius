@@ -64,9 +64,15 @@ func Test_RadiusPlane_LIST(t *testing.T) {
 	server := testserver.Start(t)
 	defer server.Close()
 
+	// Add a radius plane
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
 	response.EqualsFixture(200, radiusPlaneResponseFixture)
 
+	// Add an AWS plane
+	response = server.MakeFixtureRequest("PUT", awsPlaneResourceURL, awsPlaneRequestFixture)
+	response.EqualsFixture(200, awsPlaneResponseFixture)
+
+	// Verify that /planes/radius URL returns planes only with the radius plane type.
 	response = server.MakeRequest("GET", radiusPlaneCollectionURL, nil)
 	response.EqualsFixture(200, radiusPlaneListResponseFixture)
 }
