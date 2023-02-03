@@ -114,16 +114,6 @@ func Test_Run(t *testing.T) {
 					ParameterDetailName:  "max",
 					ParameterDetailValue: float64(800),
 				},
-				{
-					// Adding the inverse ordering of throughput parameter details to handle ordering inconsistency.
-					ParameterDetailName:  "type",
-					ParameterDetailValue: "float64",
-				},
-				{
-					ParameterName:        "throughput",
-					ParameterDetailName:  "max",
-					ParameterDetailValue: float64(800),
-				},
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
