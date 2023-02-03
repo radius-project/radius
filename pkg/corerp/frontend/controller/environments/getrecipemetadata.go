@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -19,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	linkrp "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/util"
-	"golang.org/x/exp/maps"
 )
 
 var _ ctrl.Controller = (*GetRecipeMetadata)(nil)
@@ -80,14 +78,22 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 	return rest.NewOKResponse(versioned), nil
 }
 
-func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, recipeName string) (recipePrameters map[string]any, err error) {
-	recipePrameters = make(map[string]any)
+func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, recipeName string) (recipeParameters map[string]any, err error) {
+	recipeParameters = make(map[string]any)
 	recipeData := make(map[string]any)
 	err = util.ReadFromRegistry(ctx, templatePath, &recipeData)
 	if err != nil {
-		return recipePrameters, err
+		return recipeParameters, err
 	}
 
+	err = parseAndFormatRecipeParams(recipeData, recipeParameters)
+	if err != nil {
+		return recipeParameters, err
+	}
+
+	return recipeParameters, nil
+}
+func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[string]any) error {
 	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
 	//	{
 	//		"parameters": {
@@ -107,11 +113,11 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 	//	}
 
 	if recipeData["parameters"] == nil {
-		return recipePrameters, nil
+		return nil
 	}
 	recipeParam, ok := recipeData["parameters"].(map[string]any)
 	if !ok {
-		return recipePrameters, fmt.Errorf("parameters are not in expected format")
+		return fmt.Errorf("parameters are not in expected format")
 	}
 
 	for paramName, paramValue := range recipeParam {
@@ -123,26 +129,19 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 		details := make(map[string]any)
 		paramDetails, ok := paramValue.(map[string]any)
 		if !ok {
-			return recipePrameters, fmt.Errorf("parameter details are not in expected format")
+			return fmt.Errorf("parameter details are not in expected format")
 		}
 
-		if len(paramDetails) > 0 {
-			keys := maps.Keys(paramDetails)
-
-			// to keep order of parameters details consistent - sort. Reverse sorting will ensure type (a required detail) is always first.
-			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
-			for _, paramDetailName := range keys {
-				if paramDetailName == "metadata" {
-					// skip metadata for now as it is a nested object.
-					continue
-				}
-
-				details[paramDetailName] = paramDetails[paramDetailName]
+		for paramDetailName, paramDetailValue := range paramDetails {
+			if paramDetailName == "metadata" {
+				// skip metadata for now as it is a nested object.
+				continue
 			}
-
-			recipePrameters[paramName] = details
+			details[paramDetailName] = paramDetailValue
 		}
+
+		recipeParameters[paramName] = details
 	}
 
-	return recipePrameters, nil
+	return nil
 }

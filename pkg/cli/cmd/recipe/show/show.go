@@ -8,7 +8,6 @@ package show
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -126,17 +125,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	var recipeParams []EnvironmentRecipe
-	keys := make([]string, 0, len(recipeDetails.Parameters))
-
-	for k := range recipeDetails.Parameters {
-		keys = append(keys, k)
-	}
-
-	// to keep order of parameters consistent - sort.
-	sort.Strings(keys)
 	var paramDetailIndex = 0
-	for _, paramName := range keys {
-		paramDetails, ok := recipeDetails.Parameters[paramName].(map[string]any)
+	for paramName, paramValue := range recipeDetails.Parameters {
+		paramDetails, ok := paramValue.(map[string]any)
 		if !ok {
 			return fmt.Errorf("parameter details for parameter %s are formatted incorrectly", paramName)
 		}
