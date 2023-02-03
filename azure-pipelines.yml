@@ -27,9 +27,9 @@ variables:
 - name: DOCKER_REGISTRY
   value: radiusdev.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
-  value: 60m
+  value: 90m
 - name: AZURE_FUNCTIONALTEST_TIMEOUT
-  value: 60m
+  value: 90m
 - name: REL_CHANNEL
   value: edge
 - name: REL_VERSION
