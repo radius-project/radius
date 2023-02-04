@@ -78,14 +78,16 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		workspace := workspace
 
 		for _, provider := range providersList {
-			if provider != nil {
-				switch p := provider.(type) {
-				case azure.Provider:
+			switch p := provider.(type) {
+			case *azure.Provider:
+				if p != nil {
 					workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
 						SubscriptionID: p.SubscriptionID,
 						ResourceGroup:  p.ResourceGroup,
 					}
-				case aws.Provider:
+				}
+			case *aws.Provider:
+				if p != nil {
 					workspace.ProviderConfig.AWS = &workspaces.AWSProvider{
 						Region:    p.TargetRegion,
 						AccountId: p.AccountId,
