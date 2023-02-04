@@ -18,7 +18,7 @@ func TestPtr(t *testing.T) {
 	pb := Ptr(b)
 
 	require.NotNil(t, pb, "unexpected nil conversion")
-	require.Equal(t, b, *pb)
+	require.Exactly(t, b, *pb)
 }
 
 func TestSliceOfPtrs(t *testing.T) {
@@ -27,6 +27,6 @@ func TestSliceOfPtrs(t *testing.T) {
 
 	arr = SliceOfPtrs(1, 2, 3, 4, 5)
 	for i, v := range arr {
-		require.Equal(t, i+1, *v)
+		require.Exactly(t, i+1, *v)
 	}
 }

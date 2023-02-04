@@ -23,7 +23,7 @@ func TestStringSlice(t *testing.T) {
 	require.Exactly(t, v, StringSlice(&v))
 	require.Nil(t, StringSlice(nil))
 	w := []string{"a", "b"}
-	require.Exactly(t, w, Ptr(w))
+	require.Exactly(t, w, *Ptr(w))
 }
 
 func TestStringMap(t *testing.T) {
