@@ -64,10 +64,10 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) 
 	var cred ProviderCredentialConfiguration
 	if strings.EqualFold(name, AzureCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		cred, err = cpm.CredentialInterface.GetCredential(ctx, AzurePlaneType, AzurePlaneName, name)
+		cred, err = cpm.CredentialInterface.GetCredential(ctx, AzurePlaneType, AzurePlaneName, "default")
 	} else if strings.EqualFold(name, AWSCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		cred, err = cpm.CredentialInterface.GetCredential(ctx, AWSPlaneType, AWSPlaneName, name)
+		cred, err = cpm.CredentialInterface.GetCredential(ctx, AWSPlaneType, AWSPlaneName, "default")
 	} else {
 		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
 	}
@@ -106,9 +106,9 @@ func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
 	var err error
 	if strings.EqualFold(name, AzureCredential) {
-		err = cpm.CredentialInterface.DeleteCredential(ctx, AzurePlaneType, AzurePlaneName, name)
+		err = cpm.CredentialInterface.DeleteCredential(ctx, AzurePlaneType, AzurePlaneName, "default")
 	} else if strings.EqualFold(name, AWSCredential) {
-		err = cpm.CredentialInterface.DeleteCredential(ctx, AWSPlaneType, AWSPlaneName, name)
+		err = cpm.CredentialInterface.DeleteCredential(ctx, AWSPlaneType, AWSPlaneName, "default")
 	}
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
