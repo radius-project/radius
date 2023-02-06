@@ -18,13 +18,13 @@ import (
 // CredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type CredentialManagementClient interface {
 	// Get gets the credential registered with the given ucp provider plane.
-	Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error)
+	Get(ctx context.Context, providerName string) (ProviderCredentialConfiguration, error)
 	// List lists the credentials registered with all ucp provider planes.
 	List(ctx context.Context) ([]CloudProviderStatus, error)
 	// Put registers a credential with the respective ucp provider plane.
 	Put(ctx context.Context, credential_config ucp.CredentialResource) error
 	// Delete unregisters credential from the given ucp provider plane.
-	Delete(ctx context.Context, name string) (bool, error)
+	Delete(ctx context.Context, providerName string) (bool, error)
 }
 
 const (
@@ -62,13 +62,13 @@ func (cpm *UCPCredentialManagementClient) Put(ctx context.Context, credential uc
 // We've a single credential configured today for all providers which we name as "default"
 // example: If we ask for azure credential, then we will fetch the credential with the name "default" because that is the only
 // credential for azure expected in the system.
-func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
+func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, providerName string) (ProviderCredentialConfiguration, error) {
 	var err error
 	var cred ProviderCredentialConfiguration
-	if strings.EqualFold(name, AzureCredential) {
+	if strings.EqualFold(providerName, AzureCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
 		cred, err = cpm.CredentialInterface.GetCredential(ctx, AzurePlaneType, AzurePlaneName, defaultSecretName)
-	} else if strings.EqualFold(name, AWSCredential) {
+	} else if strings.EqualFold(providerName, AWSCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
 		cred, err = cpm.CredentialInterface.GetCredential(ctx, AWSPlaneType, AWSPlaneName, defaultSecretName)
 	} else {
@@ -78,7 +78,7 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) 
 	if clients.Is404Error(err) {
 		return ProviderCredentialConfiguration{
 			CloudProviderStatus: CloudProviderStatus{
-				Name:    name,
+				Name:    providerName,
 				Enabled: false,
 			},
 		}, nil
@@ -109,11 +109,11 @@ func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 // We've a single credential configured today for all providers which we name as "default"
 // example: If we ask to delete azure credential, then we will delete the credential with the name "default" because that is the only
 // credential for azure expected in the system.
-func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
+func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, providerName string) (bool, error) {
 	var err error
-	if strings.EqualFold(name, AzureCredential) {
+	if strings.EqualFold(providerName, AzureCredential) {
 		err = cpm.CredentialInterface.DeleteCredential(ctx, AzurePlaneType, AzurePlaneName, defaultSecretName)
-	} else if strings.EqualFold(name, AWSCredential) {
+	} else if strings.EqualFold(providerName, AWSCredential) {
 		err = cpm.CredentialInterface.DeleteCredential(ctx, AWSPlaneType, AWSPlaneName, defaultSecretName)
 	}
 	// We get 404 when credential for the provider plane is not registered.
