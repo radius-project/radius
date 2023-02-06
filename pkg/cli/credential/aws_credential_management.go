@@ -68,11 +68,11 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) 
 		if err != nil {
 			return ProviderCredentialConfiguration{}, err
 		}
-		awsAccessKey, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSCredentialProperties)
+		awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSCredentialProperties)
 		if !ok {
 			return ProviderCredentialConfiguration{}, &cli.FriendlyError{Message: fmt.Sprintf("Unable to Find Credentials for %s", name)}
 		}
-		providerCredentialConfiguration.AWSCredentials = awsAccessKey
+		providerCredentialConfiguration.AWSCredentials = awsAccessKeyCredentials
 	} else {
 		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
 	}
@@ -91,9 +91,9 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) 
 	return providerCredentialConfiguration, nil
 }
 
-// List, lists the credentials registered with all ucp provider planes
+// List, lists the AWS credentials registered
 func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
-	// list azure credential
+	// list AWS credential
 	var providerList []*ucp.AWSCredentialResource
 
 	pager := cpm.AWSCredentialClient.NewListByRootScopePager(AWSPlaneName, nil)

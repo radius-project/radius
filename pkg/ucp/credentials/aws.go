@@ -52,7 +52,6 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 
 	switch p := cred.Properties.(type) {
 	case *ucpapi.AWSAccessKeyCredentialProperties:
-
 		switch c := p.Storage.(type) {
 		case *ucpapi.InternalCredentialStorageProperties:
 			storage = c
