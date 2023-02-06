@@ -18,6 +18,8 @@ import (
 
 // Used in tests
 const (
+	AzureCloudProvider                      = "Azure"
+	AWSCloudProvider                        = "AWS"
 	SelectExistingEnvironmentPrompt         = "Select an existing environment or create a new one"
 	SelectExistingEnvironmentCreateSentinel = "[create new]"
 	EnterEnvironmentNamePrompt              = "Enter an environment name"
@@ -26,12 +28,18 @@ const (
 	AWSCredentialID                         = "/planes/aws/aws/providers/System.AWS/credentials/%s"
 )
 
+var (
+	supportedProviders = []string{AzureCloudProvider, AWSCloudProvider}
+)
+
 func ValidateCloudProviderName(name string) error {
-	if strings.EqualFold(name, "azure") {
-		return nil
+	for _, provider := range (supportedProviders) {
+		if strings.EqualFold(name, provider){
+			return nil
+		}
 	}
 
-	return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider type %q is not supported. Supported types: azure.", name)}
+	return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider type %q is not supported. ", strings.Join(supportedProviders, " "))}
 }
 
 // SelectExistingEnvironment prompts the user to select from existing environments (with the option to create a new one).
