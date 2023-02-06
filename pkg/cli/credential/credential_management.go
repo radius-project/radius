@@ -59,7 +59,9 @@ func (cpm *UCPCredentialManagementClient) Put(ctx context.Context, credential uc
 }
 
 // Get, gets the credential from the provided ucp provider plane
-// TODO: get information except secret data from backend and surface it in this response
+// We've a single credential configured today for all providers which we name as "default"
+// example: If we ask for azure credential, then we will fetch the credential with the name "default" because that is the only
+// credential for azure expected in the system.
 func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
 	var err error
 	var cred ProviderCredentialConfiguration
@@ -104,6 +106,9 @@ func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 }
 
 // Delete, deletes the credentials from the given ucp provider plane
+// We've a single credential configured today for all providers which we name as "default"
+// example: If we ask to delete azure credential, then we will delete the credential with the name "default" because that is the only
+// credential for azure expected in the system.
 func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
 	var err error
 	if strings.EqualFold(name, AzureCredential) {

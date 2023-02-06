@@ -77,7 +77,7 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		// TODO: Add checks for duplicate workspace names and append random number mechanisms
 		workspace := workspace
 
-		parseProviders(workspace, providersList)
+		populateProvidersToWorkspace(workspace, providersList)
 
 		name := strings.ToLower(workspace.Name)
 		section.Default = name
@@ -91,7 +91,7 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 	return nil
 }
 
-func parseProviders(workspace *workspaces.Workspace, providersList []any) {
+func populateProvidersToWorkspace(workspace *workspaces.Workspace, providersList []any) {
 	for _, provider := range providersList {
 		switch p := provider.(type) {
 		case *azure.Provider:

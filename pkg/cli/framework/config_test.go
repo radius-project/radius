@@ -60,7 +60,7 @@ func Test_ParseProviders(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
-		parseProviders(tt.workspace, []interface{}{tt.azureProvider, tt.awsProvider})
+		populateProvidersToWorkspace(tt.workspace, []interface{}{tt.azureProvider, tt.awsProvider})
 		if tt.azureProvider != nil {
 			require.NotNil(t, tt.workspace.ProviderConfig.Azure)
 			require.Equal(t, tt.workspace.ProviderConfig.Azure.SubscriptionID, azureProvider.SubscriptionID)
