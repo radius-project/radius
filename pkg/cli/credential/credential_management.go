@@ -26,9 +26,9 @@ type CredentialManagementClient interface {
 	Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error)
 	// List lists the credentials registered with all ucp provider planes.
 	List(ctx context.Context) ([]CloudProviderStatus, error)
-	// Put registers an AWS credential with the respective ucp provider plane.
+	// PutAWS registers an AWS credential with the respective ucp provider plane.
 	PutAWS(ctx context.Context, credential_config ucp.AWSCredentialResource) error
-	// Put registers an AWS credential with the respective ucp provider plane.
+	// PutAzure registers an Azure credential with the respective ucp provider plane.
 	PutAzure(ctx context.Context, credential_config ucp.AzureCredentialResource) error
 	// Delete unregisters credential from the given ucp provider plane.
 	Delete(ctx context.Context, name string) (bool, error)
@@ -42,13 +42,13 @@ type UCPCredentialManagementClient struct {
 
 var _ CredentialManagementClient = (*UCPCredentialManagementClient)(nil)
 
-// Put registers credentials with the provided credential config
+// PutAWS registers credentials with the provided credential config
 func (cpm *UCPCredentialManagementClient) PutAWS(ctx context.Context, credential ucp.AWSCredentialResource) error {
 	err := cpm.AWSClient.Put(ctx, credential)
 	return err
 }
 
-// Put registers credentials with the provided credential config
+// PutAzure registers credentials with the provided credential config
 func (cpm *UCPCredentialManagementClient) PutAzure(ctx context.Context, credential ucp.AzureCredentialResource) error {
 	err := cpm.AzClient.Put(ctx, credential)
 	return err
