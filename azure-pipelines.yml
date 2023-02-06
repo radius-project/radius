@@ -204,9 +204,7 @@ stages:
           --provider-aws-region $AWS_REGION
         dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
           --client-secret $INTEGRATION_TEST_SP_PASSWORD \
-          --tenant-id $INTEGRATION_TEST_TENANT_ID \
-          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-          --resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME
+          --tenant-id $INTEGRATION_TEST_TENANT_ID
         dist/rad credential register aws \
           --access-key-id "$(AWS_ACCESS_KEY_ID)" \
           --secret-access-key "$(AWS_SECRET_ACCESS_KEY)"
