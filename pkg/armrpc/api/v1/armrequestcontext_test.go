@@ -178,6 +178,13 @@ func TestBaseIndex(t *testing.T) {
 			"",
 			"/planes/radius/local/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
+		{
+			"Empty path",
+			"",
+			0,
+			"",
+			"",
+		},
 	}
 
 	for _, tt := range prefixTests {

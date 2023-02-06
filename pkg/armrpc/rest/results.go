@@ -286,16 +286,12 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	}
 
 	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
-
 	if err != nil {
 		return "", err
 	}
-	baseIndex := 0
-	if referer.Path != "" {
-		baseIndex = v1.GetBaseIndex(referer.Path)
-	}
-	base := referer.Path[:baseIndex]
 
+	baseIndex := v1.GetBaseIndex(referer.Path)
+	base := referer.Path[:baseIndex]
 	dest := url.URL{
 		Host:   referer.Host,
 		Scheme: referer.Scheme,

@@ -278,15 +278,20 @@ func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) conte
 	return context.WithValue(ctx, armContextKey, armctx)
 }
 
+// GetBaseIndex gets the URL info before the plane types (i.e. host, base path, etc)
 func GetBaseIndex(path string) int {
-	normalized := strings.ToLower(path)
-	idx := strings.Index(normalized, "/planes/")
-	if idx >= 0 {
-		return idx
+	baseIndex := 0
+	if path != "" {
+		normalized := strings.ToLower(path)
+		baseIndex = strings.Index(normalized, "/planes/")
+		if baseIndex >= 0 {
+			return baseIndex
+		}
+		baseIndex = strings.Index(normalized, "/subscriptions/")
+		if baseIndex >= 0 {
+			return baseIndex
+		}
 	}
-	idx = strings.Index(normalized, "/subscriptions/")
-	if idx >= 0 {
-		return idx
-	}
-	return 0
+
+	return baseIndex
 }
