@@ -27,7 +27,7 @@ const (
 )
 
 func ValidateCloudProviderName(name string) error {
-	if strings.EqualFold(name, "azure") {
+	if strings.EqualFold(name, "azure") || strings.EqualFold(name, "aws"){
 		return nil
 	}
 
