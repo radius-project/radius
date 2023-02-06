@@ -169,12 +169,8 @@ func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions 
 					JSONPath: "{ .Enabled }",
 				},
 				{
-					Heading:  "ClientID",
-					JSONPath: "{ .AzureCredentials.ClientID }",
-				},
-				{
-					Heading:  "TenantID",
-					JSONPath: "{ .AzureCredentials.TenantID }",
+					Heading:  "AccessKeyID",
+					JSONPath: "{ .AWSCredentials.AccessKeyID }",
 				},
 			},
 		}

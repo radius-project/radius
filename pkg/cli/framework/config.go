@@ -77,22 +77,7 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		// TODO: Add checks for duplicate workspace names and append random number mechanisms
 		workspace := workspace
 
-		for _, provider := range providersList {
-			if provider != nil {
-				switch p := provider.(type) {
-				case azure.Provider:
-					workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
-						SubscriptionID: p.SubscriptionID,
-						ResourceGroup:  p.ResourceGroup,
-					}
-				case aws.Provider:
-					workspace.ProviderConfig.AWS = &workspaces.AWSProvider{
-						Region:    p.TargetRegion,
-						AccountId: p.AccountId,
-					}
-				}
-			}
-		}
+		populateProvidersToWorkspace(workspace, providersList)
 
 		name := strings.ToLower(workspace.Name)
 		section.Default = name
@@ -104,6 +89,27 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		return err
 	}
 	return nil
+}
+
+func populateProvidersToWorkspace(workspace *workspaces.Workspace, providersList []any) {
+	for _, provider := range providersList {
+		switch p := provider.(type) {
+		case *azure.Provider:
+			if p != nil {
+				workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
+					SubscriptionID: p.SubscriptionID,
+					ResourceGroup:  p.ResourceGroup,
+				}
+			}
+		case *aws.Provider:
+			if p != nil {
+				workspace.ProviderConfig.AWS = &workspaces.AWSProvider{
+					Region:    p.TargetRegion,
+					AccountId: p.AccountId,
+				}
+			}
+		}
+	}
 }
 
 func (i *ConfigFileInterfaceImpl) ConfigFromContext(ctx context.Context) *viper.Viper {
