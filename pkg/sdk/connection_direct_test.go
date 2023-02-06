@@ -10,19 +10,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func Test_NewDirectConnection_Valid(t *testing.T) {
-	endpoint := "http://some.endpoint.com"
+	endpoint := "http://some.endpoint.com/cool-path"
 
 	connection, err := NewDirectConnection(endpoint)
 	require.NoError(t, err)
 
 	require.IsType(t, &directConnection{}, connection)
 	require.Equal(t, endpoint, connection.(*directConnection).endpoint)
-	require.IsType(t, &http.Client{}, connection.Client())
-	require.IsType(t, &otelhttp.Transport{}, connection.Client().Transport)
+
+	require.Equal(t, http.DefaultClient, connection.Client())
 	require.Equal(t, endpoint, connection.Endpoint())
 }
 

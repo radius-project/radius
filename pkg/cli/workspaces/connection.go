@@ -155,7 +155,9 @@ func (c *KubernetesConnectionConfig) Connect() (sdk.Connection, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return sdk.NewDirectConnection(strURL)
+
 	}
 
 	config, err := kubernetes.GetConfig(c.Context)
