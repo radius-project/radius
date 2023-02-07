@@ -17,6 +17,7 @@ param port int = 3000
 param environment string
 
 resource stream 'AWS.Kinesis/Stream@default' existing = {
+  alias: streamName
   properties: {
     Name: streamName
   }
