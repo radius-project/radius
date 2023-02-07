@@ -59,7 +59,7 @@ func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ProviderResourceType: azresources.StorageStorageAccounts + "/" + azresources.StorageStorageTableServices,
-			RadiusManaged:        to.BoolPtr(false), // Deleting storage account will delete all the underlying resources
+			RadiusManaged:        to.Ptr(false), // Deleting storage account will delete all the underlying resources
 			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDDaprStateStoreAzureStorage}},
 		},
 		{
@@ -69,7 +69,7 @@ func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ProviderResourceType: azresources.StorageStorageAccounts + "/" + azresources.StorageStorageTableServices + "/" + azresources.StorageStorageAccountsTables,
-			RadiusManaged:        to.BoolPtr(false), // Deleting storage account will delete all the underlying resources
+			RadiusManaged:        to.Ptr(false), // Deleting storage account will delete all the underlying resources
 			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureStorageTableService}},
 		},
 	}
