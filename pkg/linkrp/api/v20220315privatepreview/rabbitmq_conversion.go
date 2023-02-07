@@ -11,8 +11,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel.
@@ -70,11 +69,11 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(rabbitmq.ID)
-	dst.Name = to.StringPtr(rabbitmq.Name)
-	dst.Type = to.StringPtr(rabbitmq.Type)
+	dst.ID = to.Ptr(rabbitmq.ID)
+	dst.Name = to.Ptr(rabbitmq.Name)
+	dst.Type = to.Ptr(rabbitmq.Type)
 	dst.SystemData = fromSystemDataModel(rabbitmq.SystemData)
-	dst.Location = to.StringPtr(rabbitmq.Location)
+	dst.Location = to.Ptr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	switch rabbitmq.Properties.Mode {
 	case datamodel.LinkModeValues:
@@ -84,10 +83,10 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 				OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(rabbitmq.Properties.Environment),
-			Application:       to.StringPtr(rabbitmq.Properties.Application),
+			Environment:       to.Ptr(rabbitmq.Properties.Environment),
+			Application:       to.Ptr(rabbitmq.Properties.Application),
 			Mode:              &mode,
-			Queue:             to.StringPtr(rabbitmq.Properties.Queue),
+			Queue:             to.Ptr(rabbitmq.Properties.Queue),
 		}
 	case datamodel.LinkModeRecipe:
 		mode := "recipe"
@@ -98,10 +97,10 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 				OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(rabbitmq.Properties.Environment),
-			Application:       to.StringPtr(rabbitmq.Properties.Application),
+			Environment:       to.Ptr(rabbitmq.Properties.Environment),
+			Application:       to.Ptr(rabbitmq.Properties.Application),
 			Mode:              &mode,
-			Queue:             to.StringPtr(rabbitmq.Properties.Queue),
+			Queue:             to.Ptr(rabbitmq.Properties.Queue),
 			Recipe:            recipe,
 		}
 	default:
@@ -117,7 +116,7 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.StringPtr(rabbitMQSecrets.ConnectionString)
+	dst.ConnectionString = to.Ptr(rabbitMQSecrets.ConnectionString)
 	return nil
 }
 

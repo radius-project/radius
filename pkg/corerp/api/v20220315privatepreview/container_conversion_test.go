@@ -12,10 +12,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
 
-	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,7 +72,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
 				tcpProbe := ct.Properties.Container.LivenessProbe
 				require.Equal(t, datamodel.TCPHealthProbe, tcpProbe.Kind)
-				require.Equal(t, to.Float32Ptr(5), tcpProbe.TCP.InitialDelaySeconds)
+				require.Equal(t, to.Ptr[float32](5), tcpProbe.TCP.InitialDelaySeconds)
 				require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
 				require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 				require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
@@ -141,9 +140,9 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "aks", versioned.Properties.Status.OutputResources[0]["Provider"])
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[2].GetExtension().Kind)
 				require.Equal(t, 3, len(versioned.Properties.Extensions))
-				require.Equal(t, azto.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
-				require.Equal(t, azto.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
-				require.Equal(t, to.StringPtr("/app"), versioned.Properties.Container.WorkingDir)
+				require.Equal(t, to.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
+				require.Equal(t, to.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
+				require.Equal(t, to.Ptr("/app"), versioned.Properties.Container.WorkingDir)
 			}
 		})
 	}

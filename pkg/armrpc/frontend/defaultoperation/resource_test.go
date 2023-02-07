@@ -17,10 +17,10 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/mock/gomock"
 )
 
@@ -102,18 +102,18 @@ func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(dm.ID)
-	dst.Name = to.StringPtr(dm.Name)
-	dst.Type = to.StringPtr(dm.Type)
+	dst.ID = to.Ptr(dm.ID)
+	dst.Name = to.Ptr(dm.Name)
+	dst.Type = to.Ptr(dm.Type)
 	dst.SystemData = &dm.SystemData
-	dst.Location = to.StringPtr(dm.Location)
+	dst.Location = to.Ptr(dm.Location)
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 	dst.Properties = &TestResourceProperties{
 		ProvisioningState: fromProvisioningStateDataModel(dm.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.StringPtr(dm.Properties.Environment),
-		Application:       to.StringPtr(dm.Properties.Application),
-		PropertyA:         to.StringPtr(dm.Properties.PropertyA),
-		PropertyB:         to.StringPtr(dm.Properties.PropertyB),
+		Environment:       to.Ptr(dm.Properties.Environment),
+		Application:       to.Ptr(dm.Properties.Application),
+		PropertyA:         to.Ptr(dm.Properties.PropertyA),
+		PropertyB:         to.Ptr(dm.Properties.PropertyB),
 	}
 
 	return nil

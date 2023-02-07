@@ -9,11 +9,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"

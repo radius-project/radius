@@ -12,9 +12,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"github.com/stretchr/testify/require"
 )

@@ -8,8 +8,8 @@ package v20220901privatepreview
 import (
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 

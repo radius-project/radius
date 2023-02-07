@@ -13,7 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
+	
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
@@ -27,7 +28,7 @@ func Test_GetOperationResults(t *testing.T) {
 	cloudcontrolClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
 		output := cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
-				RequestToken: to.StringPtr(testAWSRequestToken),
+				RequestToken: to.Ptr(testAWSRequestToken),
 			},
 		}
 		return &output, nil

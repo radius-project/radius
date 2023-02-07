@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	cli_aws "github.com/project-radius/radius/pkg/cli/aws"
@@ -30,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"

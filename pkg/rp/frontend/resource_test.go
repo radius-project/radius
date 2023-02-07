@@ -6,9 +6,9 @@
 package frontend
 
 import (
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 const (
@@ -111,21 +111,21 @@ func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(dm.ID)
-	dst.Name = to.StringPtr(dm.Name)
-	dst.Type = to.StringPtr(dm.Type)
+	dst.ID = to.Ptr(dm.ID)
+	dst.Name = to.Ptr(dm.Name)
+	dst.Type = to.Ptr(dm.Type)
 	dst.SystemData = &dm.SystemData
-	dst.Location = to.StringPtr(dm.Location)
+	dst.Location = to.Ptr(dm.Location)
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 	dst.Properties = &TestResourceProperties{
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(dm.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.StringPtr(dm.Properties.Environment),
-		Application:       to.StringPtr(dm.Properties.Application),
-		PropertyA:         to.StringPtr(dm.Properties.PropertyA),
-		PropertyB:         to.StringPtr(dm.Properties.PropertyB),
+		Environment:       to.Ptr(dm.Properties.Environment),
+		Application:       to.Ptr(dm.Properties.Application),
+		PropertyA:         to.Ptr(dm.Properties.PropertyA),
+		PropertyB:         to.Ptr(dm.Properties.PropertyB),
 	}
 
 	return nil

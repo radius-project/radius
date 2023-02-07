@@ -11,8 +11,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
@@ -101,11 +100,11 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(mongo.ID)
-	dst.Name = to.StringPtr(mongo.Name)
-	dst.Type = to.StringPtr(mongo.Type)
+	dst.ID = to.Ptr(mongo.ID)
+	dst.Name = to.Ptr(mongo.Name)
+	dst.Type = to.Ptr(mongo.Type)
 	dst.SystemData = fromSystemDataModel(mongo.SystemData)
-	dst.Location = to.StringPtr(mongo.Location)
+	dst.Location = to.Ptr(mongo.Location)
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 
 	switch mongo.Properties.Mode {
@@ -113,45 +112,45 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		mode := "resource"
 		dst.Properties = &ResourceMongoDatabaseProperties{
 			Mode:     &mode,
-			Resource: to.StringPtr(mongo.Properties.MongoDatabaseResourceProperties.Resource),
-			Host:     to.StringPtr(mongo.Properties.Host),
-			Port:     to.Int32Ptr(mongo.Properties.Port),
-			Database: to.StringPtr(mongo.Properties.Database),
+			Resource: to.Ptr(mongo.Properties.MongoDatabaseResourceProperties.Resource),
+			Host:     to.Ptr(mongo.Properties.Host),
+			Port:     to.Ptr(mongo.Properties.Port),
+			Database: to.Ptr(mongo.Properties.Database),
 			Status: &ResourceStatus{
 				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(mongo.Properties.Environment),
-			Application:       to.StringPtr(mongo.Properties.Application),
+			Environment:       to.Ptr(mongo.Properties.Environment),
+			Application:       to.Ptr(mongo.Properties.Application),
 		}
 	case datamodel.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ValuesMongoDatabaseProperties{
 			Mode:     &mode,
-			Host:     to.StringPtr(mongo.Properties.Host),
-			Port:     to.Int32Ptr(mongo.Properties.Port),
-			Database: to.StringPtr(mongo.Properties.Database),
+			Host:     to.Ptr(mongo.Properties.Host),
+			Port:     to.Ptr(mongo.Properties.Port),
+			Database: to.Ptr(mongo.Properties.Database),
 			Status: &ResourceStatus{
 				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(mongo.Properties.Environment),
-			Application:       to.StringPtr(mongo.Properties.Application),
+			Environment:       to.Ptr(mongo.Properties.Environment),
+			Application:       to.Ptr(mongo.Properties.Application),
 		}
 	case datamodel.LinkModeRecipe:
 		mode := "recipe"
 		dst.Properties = &RecipeMongoDatabaseProperties{
 			Mode:     &mode,
 			Recipe:   fromRecipeDataModel(mongo.Properties.Recipe),
-			Host:     to.StringPtr(mongo.Properties.Host),
-			Port:     to.Int32Ptr(mongo.Properties.Port),
-			Database: to.StringPtr(mongo.Properties.Database),
+			Host:     to.Ptr(mongo.Properties.Host),
+			Port:     to.Ptr(mongo.Properties.Port),
+			Database: to.Ptr(mongo.Properties.Database),
 			Status: &ResourceStatus{
 				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(mongo.Properties.Environment),
-			Application:       to.StringPtr(mongo.Properties.Application),
+			Environment:       to.Ptr(mongo.Properties.Environment),
+			Application:       to.Ptr(mongo.Properties.Application),
 		}
 	default:
 		return fmt.Errorf("Unsupported mode %s", mongo.Properties.Mode)
@@ -167,9 +166,9 @@ func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.StringPtr(mongoSecrets.ConnectionString)
-	dst.Username = to.StringPtr(mongoSecrets.Username)
-	dst.Password = to.StringPtr(mongoSecrets.Password)
+	dst.ConnectionString = to.Ptr(mongoSecrets.ConnectionString)
+	dst.Username = to.Ptr(mongoSecrets.Username)
+	dst.Password = to.Ptr(mongoSecrets.Password)
 
 	return nil
 }

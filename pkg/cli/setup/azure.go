@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/marstr/randname"
@@ -27,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // RegisterAzureProviderArgs adds flags to configure Azure provider for cloud resources.
@@ -377,7 +377,7 @@ func promptUserForRgName(ctx context.Context, client *armresources.ResourceGroup
 		for _, s := range resourceGroups {
 			names = append(names, *s.Name)
 		}
-		
+
 		name, err = prompter.GetListInput(names, "Select ResourceGroup")
 		if err != nil {
 			return "", err

@@ -9,8 +9,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned Extender resource to version-agnostic datamodel.
@@ -48,19 +47,19 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(extender.ID)
-	dst.Name = to.StringPtr(extender.Name)
-	dst.Type = to.StringPtr(extender.Type)
+	dst.ID = to.Ptr(extender.ID)
+	dst.Name = to.Ptr(extender.Name)
+	dst.Type = to.Ptr(extender.Type)
 	dst.SystemData = fromSystemDataModel(extender.SystemData)
-	dst.Location = to.StringPtr(extender.Location)
+	dst.Location = to.Ptr(extender.Location)
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
-		Environment:          to.StringPtr(extender.Properties.Environment),
-		Application:          to.StringPtr(extender.Properties.Application),
+		Environment:          to.Ptr(extender.Properties.Environment),
+		Application:          to.Ptr(extender.Properties.Application),
 		AdditionalProperties: extender.Properties.AdditionalProperties,
 
 		// Secrets are omitted.
