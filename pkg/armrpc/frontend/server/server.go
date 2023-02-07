@@ -69,6 +69,8 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	if options.EnableMetrics {
 		handlerFunc = otelhttp.NewHandler(middleware.LowercaseURLPath(r),
 			options.ProviderNamespace, otelhttp.WithMeterProvider(global.MeterProvider()), otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator()))
+		//handlerFunc = otelhttp.NewHandler(middleware.LowercaseURLPath(r),
+		//	options.ProviderNamespace, otelhttp.WithMeterProvider(global.MeterProvider()))
 	}
 
 	server := &http.Server{
