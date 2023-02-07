@@ -47,6 +47,8 @@ const (
 	LocalIDAzureSqlServerDatabase       = "AzureSqlServerDatabase"
 	LocalIDExtender                     = "Extender"
 	LocalIDDaprStateStoreAzureStorage   = "DaprStateStoreAzureStorage"
+	LocalIDAzureStorageTableService     = "AzureStorageTableService"
+	LocalIDAzureStorageTable            = "AzureStorageTable"
 	LocalIDDaprStateStoreComponent      = "DaprStateStoreComponent"
 	LocalIDDaprStateStoreSQLServer      = "DaprStateStoreSQLServer"
 	LocalIDDaprComponent                = "DaprComponent"
