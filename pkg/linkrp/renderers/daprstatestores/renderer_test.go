@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
@@ -22,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -385,7 +385,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				handlers.ApplicationName:         applicationName,
 				handlers.ResourceName:            "test-state-store",
 			},
-			RadiusManaged: to.BoolPtr(true),
+			RadiusManaged: to.Ptr(true),
 		},
 		{
 			LocalID: rpv1.LocalIDAzureStorageTableService,
@@ -394,7 +394,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ProviderResourceType: azresources.StorageStorageAccounts + "/" + azresources.StorageStorageTableServices,
-			RadiusManaged:        to.BoolPtr(false),
+			RadiusManaged:        to.Ptr(false),
 			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDDaprStateStoreAzureStorage}},
 		},
 		{
@@ -404,7 +404,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ProviderResourceType: azresources.StorageStorageAccounts + "/" + azresources.StorageStorageTableServices + "/" + azresources.StorageStorageAccountsTables,
-			RadiusManaged:        to.BoolPtr(false),
+			RadiusManaged:        to.Ptr(false),
 			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureStorageTableService}},
 		},
 	}

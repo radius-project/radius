@@ -10,8 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
@@ -26,8 +25,8 @@ func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) e
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.LinkType = to.StringPtr(recipe.LinkType)
-	dst.TemplatePath = to.StringPtr(recipe.TemplatePath)
+	dst.LinkType = to.Ptr(recipe.LinkType)
+	dst.TemplatePath = to.Ptr(recipe.TemplatePath)
 	dst.Parameters = recipe.Parameters
 	return nil
 }

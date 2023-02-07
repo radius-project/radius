@@ -13,8 +13,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -152,7 +151,7 @@ func getAzureCredentialObject() ucp.CredentialResource {
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:     to.Ptr("azure.com.serviceprincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
+				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
 				SecretName: to.Ptr("azure-azuretest-default"),
 			},
 		},
@@ -168,11 +167,11 @@ func getAWSCredentialObject() ucp.CredentialResource {
 		Tags: map[string]*string{
 			"env": to.Ptr("dev"),
 		},
-		Properties: &v20220901privatepreview.AWSCredentialProperties{
+		Properties: &ucp.AWSCredentialProperties{
 			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:        to.Ptr("aws.com.iam"),
-			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
+			Storage: &ucp.InternalCredentialStorageProperties{
+				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
 				SecretName: to.Ptr("aws-awstest-default"),
 			},
 		},

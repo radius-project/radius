@@ -9,8 +9,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned Application resource to version-agnostic datamodel.
@@ -61,15 +60,15 @@ func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(app.ID)
-	dst.Name = to.StringPtr(app.Name)
-	dst.Type = to.StringPtr(app.Type)
+	dst.ID = to.Ptr(app.ID)
+	dst.Name = to.Ptr(app.Name)
+	dst.Type = to.Ptr(app.Type)
 	dst.SystemData = fromSystemDataModel(app.SystemData)
-	dst.Location = to.StringPtr(app.Location)
+	dst.Location = to.Ptr(app.Location)
 	dst.Tags = *to.StringMapPtr(app.Tags)
 	dst.Properties = &ApplicationProperties{
 		ProvisioningState: fromProvisioningStateDataModel(app.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.StringPtr(app.Properties.Environment),
+		Environment:       to.Ptr(app.Properties.Environment),
 		Status: &ResourceStatus{
 			Compute: fromEnvironmentComputeDataModel(app.Properties.Status.Compute),
 		},
@@ -92,14 +91,14 @@ func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationE
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
 		return &ApplicationKubernetesMetadataExtension{
-			Kind:        to.StringPtr(string(e.Kind)),
+			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
 	case datamodel.KubernetesNamespaceExtension:
 		return &ApplicationKubernetesNamespaceExtension{
-			Kind:      to.StringPtr(string(e.Kind)),
-			Namespace: to.StringPtr(e.KubernetesNamespace.Namespace),
+			Kind:      to.Ptr(string(e.Kind)),
+			Namespace: to.Ptr(e.KubernetesNamespace.Namespace),
 		}
 	}
 

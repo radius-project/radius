@@ -12,16 +12,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/pkg/to"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_CreateAWSResource(t *testing.T) {
@@ -40,7 +41,7 @@ func Test_CreateAWSResource(t *testing.T) {
 		&cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.StringPtr(testAWSRequestToken),
+				RequestToken:    to.Ptr(testAWSRequestToken),
 			},
 		}, nil)
 
@@ -223,7 +224,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Properties: to.StringPtr(string(getResponseBodyBytes)),
+				Properties: to.Ptr(string(getResponseBodyBytes)),
 			},
 		}, nil)
 

@@ -10,12 +10,12 @@ import (
 	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/go-autorest/autorest/to"
+
 	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/to"
+	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
-
-	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 var _ CredentialProvider[AWSCredential] = (*AWSCredentialProvider)(nil)

@@ -9,8 +9,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
@@ -86,7 +85,7 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	var tls *GatewayPropertiesTLS
 	if g.Properties.TLS != nil {
 		tls = &GatewayPropertiesTLS{
-			SSLPassthrough: to.BoolPtr(g.Properties.TLS.SSLPassthrough),
+			SSLPassthrough: to.Ptr(g.Properties.TLS.SSLPassthrough),
 		}
 	}
 
@@ -94,9 +93,9 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	if g.Properties.Routes != nil {
 		for _, r := range g.Properties.Routes {
 			s := &GatewayRoute{
-				Destination:   to.StringPtr(r.Destination),
-				Path:          to.StringPtr(r.Path),
-				ReplacePrefix: to.StringPtr(r.ReplacePrefix),
+				Destination:   to.Ptr(r.Destination),
+				Path:          to.Ptr(r.Path),
+				ReplacePrefix: to.Ptr(r.ReplacePrefix),
 			}
 			routes = append(routes, s)
 		}
@@ -105,27 +104,27 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	var hostname *GatewayPropertiesHostname
 	if g.Properties.Hostname != nil {
 		hostname = &GatewayPropertiesHostname{
-			FullyQualifiedHostname: to.StringPtr(g.Properties.Hostname.FullyQualifiedHostname),
-			Prefix:                 to.StringPtr(g.Properties.Hostname.Prefix),
+			FullyQualifiedHostname: to.Ptr(g.Properties.Hostname.FullyQualifiedHostname),
+			Prefix:                 to.Ptr(g.Properties.Hostname.Prefix),
 		}
 	}
 
-	dst.ID = to.StringPtr(g.ID)
-	dst.Name = to.StringPtr(g.Name)
-	dst.Type = to.StringPtr(g.Type)
+	dst.ID = to.Ptr(g.ID)
+	dst.Name = to.Ptr(g.Name)
+	dst.Type = to.Ptr(g.Type)
 	dst.SystemData = fromSystemDataModel(g.SystemData)
-	dst.Location = to.StringPtr(g.Location)
+	dst.Location = to.Ptr(g.Location)
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(g.InternalMetadata.AsyncProvisioningState),
-		Application:       to.StringPtr(g.Properties.Application),
+		Application:       to.Ptr(g.Properties.Application),
 		Hostname:          hostname,
 		Routes:            routes,
 		TLS:               tls,
-		URL:               to.StringPtr(g.Properties.URL),
+		URL:               to.Ptr(g.Properties.URL),
 	}
 
 	return nil

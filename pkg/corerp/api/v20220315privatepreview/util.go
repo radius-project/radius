@@ -8,10 +8,9 @@ package v20220315privatepreview
 import (
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
@@ -79,7 +78,7 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 func fromIdentityKind(kind rpv1.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
 	case rpv1.AzureIdentityWorkload:
-		return azto.Ptr(IdentitySettingKindAzureComWorkload)
+		return to.Ptr(IdentitySettingKindAzureComWorkload)
 	default:
 		return nil
 	}
