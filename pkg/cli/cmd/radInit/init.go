@@ -375,7 +375,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		r.Output.LogInfo("Configuring Cloud providers")
-		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.Namespace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, false)
+		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.Namespace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
 		if err != nil || !isEnvCreated {
 			return &cli.FriendlyError{Message: "Failed to create radius environment"}
 		}
