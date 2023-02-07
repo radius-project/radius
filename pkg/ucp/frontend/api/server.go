@@ -174,7 +174,8 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
 		// TODO: Once https://github.com/project-radius/radius/issues/3582 is fixed, we could use the lowercase middleware
-		Handler: otelhttp.NewHandler(middleware.NormalizePath(app), "oteltrace", otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator())),
+		Handler: otelhttp.NewHandler(middleware.NormalizePath(app), "ucp", otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator())),
+		//Handler: middleware.NormalizePath(app),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},

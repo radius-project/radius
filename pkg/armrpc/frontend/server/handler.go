@@ -67,7 +67,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 	//opts.ParentRouter.PathPrefix(opts.Path).otelhttp.NewHandler(http.HandlerFunc(fn), "span").Name(ot.String())*/
 	//opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
 	//var otelHandler http.Handler
-	otelHandler := otelhttp.NewHandler(http.HandlerFunc(fn), "oteltracing", otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator()))
+	otelHandler := otelhttp.NewHandler(http.HandlerFunc(fn), ot.String(), otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator()))
 	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).Handler(otelHandler).Name(ot.String())
 
 	return nil

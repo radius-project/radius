@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/logging"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
@@ -84,6 +85,19 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
+
+	url := "http://localhost:9411/api/v2/spans"
+	shutdown, err := trace.InitServerTracer(url, "applink-rp")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+
+	}()
+
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	exitCh := make(chan os.Signal, 2)
