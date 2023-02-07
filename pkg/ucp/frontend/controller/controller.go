@@ -97,12 +97,12 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options)
 	ot := v1.OperationType{Type: opts.Path, Method: opts.Method}
 	if opts.Method != "" {
 		otelHandler := otelhttp.NewHandler(http.HandlerFunc(fn), ot.String(), otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator()))
-		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).Handler(otelHandler).Name(ot.String())
+		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).Handler(otelHandler)
 		//opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
 	} else {
 		// Path is used to proxy plane request irrespective of the http method
 		otelHandler := otelhttp.NewHandler(http.HandlerFunc(fn), ot.String(), otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator()))
-		opts.ParentRouter.PathPrefix(opts.Path).Handler(otelHandler).Name(ot.String())
+		opts.ParentRouter.PathPrefix(opts.Path).Handler(otelHandler)
 		//opts.ParentRouter.PathPrefix(opts.Path).HandlerFunc(fn).Name(ot.String())
 	}
 	return nil
