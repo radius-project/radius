@@ -139,6 +139,14 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDDaprStateStoreAzureStorage,
 							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureStorageTableService,
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureStorageTable,
+							},
 						},
 					},
 				},
