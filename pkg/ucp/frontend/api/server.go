@@ -31,6 +31,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/metric/global"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -58,6 +60,7 @@ type ServiceOptions struct {
 	InitialPlanes           []rest.Plane
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
+	EnableMetrics           bool
 }
 
 type Service struct {
@@ -165,6 +168,10 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app := http.Handler(r)
 	app = middleware.UseLogValues(app, s.options.BasePath)
 	app = servicecontext.ARMRequestCtx(s.options.BasePath, "global")(app)
+
+	if s.options.EnableMetrics {
+		app = otelhttp.NewHandler(app, "ucp", otelhttp.WithMeterProvider(global.MeterProvider()))
+	}
 
 	server := &http.Server{
 		Addr: s.options.Address,
