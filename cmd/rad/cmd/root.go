@@ -97,6 +97,20 @@ func prettyPrintJSON(o any) (string, error) {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
+
+	/*
+		tracerOpts := trace.TracerOptions{
+			ServiceName: "cli",
+		}
+		shutdown, err := trace.InitTracer(tracerOpts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer func() {
+			_ = shutdown(ctx)
+		}()
+	*/
+
 	err := RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())

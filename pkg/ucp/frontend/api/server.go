@@ -31,6 +31,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -172,7 +174,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
 		// TODO: Once https://github.com/project-radius/radius/issues/3582 is fixed, we could use the lowercase middleware
-		Handler: middleware.NormalizePath(app),
+		Handler: otelhttp.NewHandler(middleware.NormalizePath(app), "oteltrace", otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator())),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},

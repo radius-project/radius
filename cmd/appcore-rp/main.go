@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
 	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
@@ -122,6 +123,18 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
+
+	url := "http://localhost:9411/api/v2/spans"
+	shutdown, err := trace.InitServerTracer(url, "appcore-rp")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+
+	}()
 
 	stopped, serviceErrors := host.RunAsync(ctx)
 

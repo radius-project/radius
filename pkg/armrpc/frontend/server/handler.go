@@ -18,6 +18,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -62,7 +64,12 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 	}
 
 	ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
-	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+	//opts.ParentRouter.PathPrefix(opts.Path).otelhttp.NewHandler(http.HandlerFunc(fn), "span").Name(ot.String())*/
+	//opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+	//var otelHandler http.Handler
+	otelHandler := otelhttp.NewHandler(http.HandlerFunc(fn), "oteltracing", otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator()))
+	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).Handler(otelHandler).Name(ot.String())
+
 	return nil
 }
 

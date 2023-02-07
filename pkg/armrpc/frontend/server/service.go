@@ -8,6 +8,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -15,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,6 +74,17 @@ func (s *Service) Init(ctx context.Context) error {
 func (s *Service) Start(ctx context.Context, opt Options) error {
 	logger := logr.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
+	url := "http://localhost:9411/api/v2/spans"
+	shutdown, err := trace.InitServerTracer(url, "armrpc")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+
+	}()
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	server, err := New(ctx, opt)
