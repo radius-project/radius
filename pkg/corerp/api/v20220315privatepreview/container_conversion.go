@@ -6,11 +6,10 @@
 package v20220315privatepreview
 
 import (
-	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
@@ -138,7 +137,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		var kind *Kind
 
 		for _, r := range val.IAM.Roles {
-			roles = append(roles, to.StringPtr(r))
+			roles = append(roles, to.Ptr(r))
 		}
 
 		kind = fromKindDataModel(val.IAM.Kind)
@@ -149,7 +148,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 
 		connections[key] = &ConnectionProperties{
-			Source:                to.StringPtr(val.Source),
+			Source:                to.Ptr(val.Source),
 			DisableDefaultEnvVars: &disableDefaultEnvVars,
 			Iam: &IamProperties{
 				Kind:  kind,
@@ -171,9 +170,9 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	ports := make(map[string]*ContainerPort)
 	for key, val := range c.Properties.Container.Ports {
 		ports[key] = &ContainerPort{
-			ContainerPort: to.Int32Ptr(val.ContainerPort),
+			ContainerPort: to.Ptr(val.ContainerPort),
 			Protocol:      fromProtocolDataModel(val.Protocol),
-			Provides:      to.StringPtr(val.Provides),
+			Provides:      to.Ptr(val.Provides),
 		}
 	}
 
@@ -196,34 +195,34 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	if c.Properties.Identity != nil {
 		identity = &IdentitySettings{
 			Kind:       fromIdentityKind(c.Properties.Identity.Kind),
-			Resource:   azto.Ptr(c.Properties.Identity.Resource),
-			OidcIssuer: azto.Ptr(c.Properties.Identity.OIDCIssuer),
+			Resource:   to.Ptr(c.Properties.Identity.Resource),
+			OidcIssuer: to.Ptr(c.Properties.Identity.OIDCIssuer),
 		}
 	}
 
-	dst.ID = to.StringPtr(c.ID)
-	dst.Name = to.StringPtr(c.Name)
-	dst.Type = to.StringPtr(c.Type)
+	dst.ID = to.Ptr(c.ID)
+	dst.Name = to.Ptr(c.Name)
+	dst.Type = to.Ptr(c.Type)
 	dst.SystemData = fromSystemDataModel(c.SystemData)
-	dst.Location = to.StringPtr(c.Location)
+	dst.Location = to.Ptr(c.Location)
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
-		Application:       to.StringPtr(c.Properties.Application),
+		Application:       to.Ptr(c.Properties.Application),
 		Connections:       connections,
 		Container: &Container{
-			Image:          to.StringPtr(c.Properties.Container.Image),
+			Image:          to.Ptr(c.Properties.Container.Image),
 			Env:            *to.StringMapPtr(c.Properties.Container.Env),
 			LivenessProbe:  livenessProbe,
 			Ports:          ports,
 			ReadinessProbe: readinessProbe,
 			Volumes:        volumes,
-			Command:        azto.SliceOfPtrs(c.Properties.Container.Command...),
-			Args:           azto.SliceOfPtrs(c.Properties.Container.Args...),
-			WorkingDir:     to.StringPtr(c.Properties.Container.WorkingDir),
+			Command:        to.SliceOfPtrs(c.Properties.Container.Command...),
+			Args:           to.SliceOfPtrs(c.Properties.Container.Args...),
+			WorkingDir:     to.Ptr(c.Properties.Container.WorkingDir),
 		},
 		Extensions: extensions,
 		Identity:   identity,
@@ -274,7 +273,7 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			InitialDelaySeconds: h.Exec.InitialDelaySeconds,
 			PeriodSeconds:       h.Exec.PeriodSeconds,
 			TimeoutSeconds:      h.Exec.TimeoutSeconds,
-			Command:             to.StringPtr(h.Exec.Command),
+			Command:             to.Ptr(h.Exec.Command),
 		}
 	case datamodel.HTTPGetHealthProbe:
 		return &HTTPGetHealthProbeProperties{
@@ -283,8 +282,8 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			InitialDelaySeconds: h.HTTPGet.InitialDelaySeconds,
 			PeriodSeconds:       h.HTTPGet.PeriodSeconds,
 			TimeoutSeconds:      h.HTTPGet.TimeoutSeconds,
-			ContainerPort:       to.Int32Ptr(h.HTTPGet.ContainerPort),
-			Path:                to.StringPtr(h.HTTPGet.Path),
+			ContainerPort:       to.Ptr(h.HTTPGet.ContainerPort),
+			Path:                to.Ptr(h.HTTPGet.Path),
 			Headers:             *to.StringMapPtr(h.HTTPGet.Headers),
 		}
 	case datamodel.TCPHealthProbe:
@@ -294,7 +293,7 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			InitialDelaySeconds: h.TCP.InitialDelaySeconds,
 			PeriodSeconds:       h.TCP.PeriodSeconds,
 			TimeoutSeconds:      h.TCP.TimeoutSeconds,
-			ContainerPort:       to.Int32Ptr(h.TCP.ContainerPort),
+			ContainerPort:       to.Ptr(h.TCP.ContainerPort),
 		}
 	}
 
@@ -492,22 +491,22 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 	switch e.Kind {
 	case datamodel.ManualScaling:
 		return &ManualScalingExtension{
-			Kind:     to.StringPtr(string(e.Kind)),
+			Kind:     to.Ptr(string(e.Kind)),
 			Replicas: e.ManualScaling.Replicas,
 		}
 	case datamodel.DaprSidecar:
 		return &DaprSidecarExtension{
-			Kind:     to.StringPtr(string(e.Kind)),
-			AppID:    to.StringPtr(e.DaprSidecar.AppID),
-			AppPort:  to.Int32Ptr(e.DaprSidecar.AppPort),
-			Config:   to.StringPtr(e.DaprSidecar.Config),
+			Kind:     to.Ptr(string(e.Kind)),
+			AppID:    to.Ptr(e.DaprSidecar.AppID),
+			AppPort:  to.Ptr(e.DaprSidecar.AppPort),
+			Config:   to.Ptr(e.DaprSidecar.Config),
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
-			Provides: to.StringPtr(e.DaprSidecar.Provides),
+			Provides: to.Ptr(e.DaprSidecar.Provides),
 		}
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
 		return &ContainerKubernetesMetadataExtension{
-			Kind:        to.StringPtr(string(e.Kind)),
+			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}

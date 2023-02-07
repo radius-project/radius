@@ -11,8 +11,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned DaprSecretStore resource to version-agnostic datamodel.
@@ -69,11 +68,11 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(daprSecretStore.ID)
-	dst.Name = to.StringPtr(daprSecretStore.Name)
-	dst.Type = to.StringPtr(daprSecretStore.Type)
+	dst.ID = to.Ptr(daprSecretStore.ID)
+	dst.Name = to.Ptr(daprSecretStore.Name)
+	dst.Type = to.Ptr(daprSecretStore.Type)
 	dst.SystemData = fromSystemDataModel(daprSecretStore.SystemData)
-	dst.Location = to.StringPtr(daprSecretStore.Location)
+	dst.Location = to.Ptr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	switch daprSecretStore.Properties.Mode {
 	case datamodel.LinkModeValues:
@@ -83,13 +82,13 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 				OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
-			Application:       to.StringPtr(daprSecretStore.Properties.Application),
+			Environment:       to.Ptr(daprSecretStore.Properties.Environment),
+			Application:       to.Ptr(daprSecretStore.Properties.Application),
 			Mode:              &mode,
-			Type:              to.StringPtr(daprSecretStore.Properties.Type),
-			Version:           to.StringPtr(daprSecretStore.Properties.Version),
+			Type:              to.Ptr(daprSecretStore.Properties.Type),
+			Version:           to.Ptr(daprSecretStore.Properties.Version),
 			Metadata:          daprSecretStore.Properties.Metadata,
-			ComponentName:     to.StringPtr(daprSecretStore.Properties.ComponentName),
+			ComponentName:     to.Ptr(daprSecretStore.Properties.ComponentName),
 		}
 	case datamodel.LinkModeRecipe:
 		mode := "recipe"
@@ -100,13 +99,13 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 				OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
-			Application:       to.StringPtr(daprSecretStore.Properties.Application),
+			Environment:       to.Ptr(daprSecretStore.Properties.Environment),
+			Application:       to.Ptr(daprSecretStore.Properties.Application),
 			Mode:              &mode,
-			Type:              to.StringPtr(daprSecretStore.Properties.Type),
-			Version:           to.StringPtr(daprSecretStore.Properties.Version),
+			Type:              to.Ptr(daprSecretStore.Properties.Type),
+			Version:           to.Ptr(daprSecretStore.Properties.Version),
 			Metadata:          daprSecretStore.Properties.Metadata,
-			ComponentName:     to.StringPtr(daprSecretStore.Properties.ComponentName),
+			ComponentName:     to.Ptr(daprSecretStore.Properties.ComponentName),
 			Recipe:            recipe,
 		}
 	}

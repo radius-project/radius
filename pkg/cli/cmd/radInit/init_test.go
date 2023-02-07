@@ -12,8 +12,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
@@ -29,9 +31,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
-	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func Test_CommandValidation(t *testing.T) {
