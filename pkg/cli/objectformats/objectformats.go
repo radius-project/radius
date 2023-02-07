@@ -78,10 +78,6 @@ func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 				Heading:  "NAME",
 				JSONPath: "{ .Name }",
 			},
-			{
-				Heading:  "KIND",
-				JSONPath: "{ .Properties.Compute.Kind }",
-			},
 		},
 	}
 }
