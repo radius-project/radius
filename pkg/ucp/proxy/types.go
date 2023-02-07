@@ -126,7 +126,7 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 			}
 		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
 			// This is an Async Response with a Location Header
-			hasUCPHost, err := hasUCPHost(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader)
+			hasUCPHost, err := hasUCPHost(ctx, LocationHeader, locationHeader)
 			if err != nil {
 				logger.Error(err, "Location Header error")
 			}
