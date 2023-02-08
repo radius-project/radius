@@ -108,6 +108,7 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	ctx := resp.Request.Context()
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
+		logger := logr.FromContextOrDiscard(ctx)
 		var headerKey string
 		var headerValue []string
 
@@ -130,7 +131,7 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 
 		if !ok {
 			if err := convertHeaderToUCPIDs(ctx, headerKey, headerValue, resp); err != nil {
-				return err
+				logger.Error(err, fmt.Sprintf("%s Header conversion error", headerKey))
 			}
 		}
 	}
