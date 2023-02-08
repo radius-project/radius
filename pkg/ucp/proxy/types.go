@@ -124,6 +124,7 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 			headerValue = val
 		}
 
+		logger.Info(fmt.Sprintf("%s Header value : %s", headerKey, headerValue))
 		ok, err := hasUCPHost(ctx, headerKey, headerValue)
 		if err != nil {
 			return err
@@ -131,7 +132,7 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 
 		if !ok {
 			if err := convertHeaderToUCPIDs(ctx, headerKey, headerValue, resp); err != nil {
-				logger.Error(err, fmt.Sprintf("%s Header conversion error", headerKey))
+				return err
 			}
 		}
 	}
