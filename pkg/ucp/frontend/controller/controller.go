@@ -7,16 +7,21 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -25,10 +30,20 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	BasePath     string
+	BasePath string
+	// DB is the data storage client.
 	DB           store.StorageClient
 	SecretClient secret.Client
 	Address      string
+
+	// DataProvider is the data storage provider.
+	DataProvider dataprovider.DataStorageProvider
+
+	// ResourceType is the string that represents the resource type.
+	ResourceType string
+
+	// StatusManager
+	StatusManager sm.StatusManager
 
 	AWSCloudControlClient   ucp_aws.AWSCloudControlClient
 	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
@@ -37,6 +52,24 @@ type Options struct {
 	//
 	// TODO: over time we should replace Options with CommonControllerOptions.
 	CommonControllerOptions armrpc_controller.Options
+}
+
+// ResourceOptions represents the options and filters for resource.
+type ResourceOptions[T any] struct {
+	// RequestConverter is the request converter.
+	RequestConverter v1.ConvertToDataModel[T]
+
+	// ResponseConverter is the response converter.
+	ResponseConverter v1.ConvertToAPIModel[T]
+
+	// DeleteFilters is a slice of filters that execute prior to deleting a resource.
+	DeleteFilters []DeleteFilter[T]
+
+	// UpdateFilters is a slice of filters that execute prior to updating a resource.
+	UpdateFilters []UpdateFilter[T]
+
+	// AsyncOperationTimeout is the default timeout duration of async put operation.
+	AsyncOperationTimeout time.Duration
 }
 
 type ControllerFunc func(Options) (armrpc_controller.Controller, error)
@@ -242,4 +275,106 @@ func ConfigureDefaultHandlers(router *mux.Router, opts Options) {
 // GetAPIVersion extracts the API version from the request
 func GetAPIVersion(req *http.Request) string {
 	return req.URL.Query().Get("api-version")
+}
+
+// DeleteFilter is a function that is executed as part of the controller lifecycle. DeleteFilters can be used to:
+//
+// - Block deletion of a resource based on some arbitrary condition.
+//
+// DeleteFilters should return a rest.Response to handle the request without allowing deletion to occur. Any
+// errors returned will be treated as "unhandled" and logged before sending back an HTTP 500.
+type DeleteFilter[T any] func(ctx context.Context, oldResource *T, options *Options) (rest.Response, error)
+
+// UpdateFilter is a function that is executed as part of the controller lifecycle. UpdateFilters can be used to:
+//
+// - Set internal state of a resource data model prior to saving.
+// - Perform semantic validation based on the old state of a resource.
+// - Perform semantic validation based on external state.
+//
+// UpdateFilters should return a rest.Response to handle the request without allowing updates to occur. Any
+// errors returned will be treated as "unhandled" and logged before sending back an HTTP 500.
+type UpdateFilter[T any] func(ctx context.Context, newResource *T, oldResource *T, options *Options) (rest.Response, error)
+
+var (
+	// ContentTypeHeaderKey is the header key of Content-Type
+	ContentTypeHeaderKey = http.CanonicalHeaderKey("Content-Type")
+
+	// DefaultScheme is the default scheme used if there is no scheme in the URL.
+	DefaultSheme = "http"
+)
+
+var (
+	// ErrUnsupportedContentType represents the error of unsupported content-type.
+	ErrUnsupportedContentType = errors.New("unsupported Content-Type")
+	// ErrRequestedResourceDoesNotExist represents the error of resource that is requested not existing.
+	ErrRequestedResourceDoesNotExist = errors.New("requested resource does not exist")
+	// ErrETagsDoNotMatch represents the error of the eTag of the resource and the requested etag not matching.
+	ErrETagsDoNotMatch = errors.New("etags do not match")
+	// ErrResourceAlreadyExists represents the error of the resource being already existent at the moment.
+	ErrResourceAlreadyExists = errors.New("resource already exists")
+)
+
+// ReadJSONBody extracts the content from request.
+func ReadJSONBody(r *http.Request) ([]byte, error) {
+	defer r.Body.Close()
+
+	contentType := strings.ToLower(strings.TrimSpace(r.Header.Get(ContentTypeHeaderKey)))
+	if i := strings.Index(contentType, ";"); i > -1 {
+		contentType = contentType[0:i]
+	}
+
+	if contentType != "application/json" {
+		return nil, ErrUnsupportedContentType
+	}
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading request body: %w", err)
+	}
+	return data, nil
+}
+
+// ValidateETag receives an ARMRequestContect and gathers the values in the If-Match and/or
+// If-None-Match headers and then checks to see if the etag of the resource matches what is requested.
+func ValidateETag(armRequestContext v1.ARMRequestContext, etag string) error {
+	ifMatchETag := armRequestContext.IfMatch
+	ifMatchCheck := checkIfMatchHeader(ifMatchETag, etag)
+	if ifMatchCheck != nil {
+		return ifMatchCheck
+	}
+
+	ifNoneMatchETag := armRequestContext.IfNoneMatch
+	ifNoneMatchCheck := checkIfNoneMatchHeader(ifNoneMatchETag, etag)
+	if ifNoneMatchCheck != nil {
+		return ifNoneMatchCheck
+	}
+
+	return nil
+}
+
+// checkIfMatchHeader function checks if the etag of the resource matches
+// the one provided in the if-match header
+func checkIfMatchHeader(ifMatchETag string, etag string) error {
+	if ifMatchETag == "" {
+		return nil
+	}
+
+	if etag == "" {
+		return ErrRequestedResourceDoesNotExist
+	}
+
+	if ifMatchETag != "*" && ifMatchETag != etag {
+		return ErrETagsDoNotMatch
+	}
+
+	return nil
+}
+
+// checkIfNoneMatchHeader function checks if the etag of the resource matches
+// the one provided in the if-none-match header
+func checkIfNoneMatchHeader(ifNoneMatchETag string, etag string) error {
+	if ifNoneMatchETag == "*" && etag != "" {
+		return ErrResourceAlreadyExists
+	}
+
+	return nil
 }

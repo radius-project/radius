@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -17,24 +18,27 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*ListPlanes)(nil)
 
 // ListPlanes is the controller implementation to get the list of UCP planes.
 type ListPlanes struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
 // NewListPlanes creates a new ListPlanes.
 func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &ListPlanes{ctrl.NewBaseController(opts)}, nil
+	return &ListPlanes{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Plane]{},
+		),
+	}, nil
 }
 
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContextOrDiscard(ctx)
+	path := middleware.GetRelativePath(e.BasePath(), req.URL.Path)
+	logger := logr.FromContextOrDiscard(ctx)
 
 	query := store.Query{
 		RootScope:    path,

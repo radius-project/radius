@@ -5,15 +5,13 @@
 package planes
 
 import (
-	"bytes"
+	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
-
-	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
@@ -21,16 +19,19 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
+
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 func Test_CreateUCPNativePlane(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
+
+	w := httptest.NewRecorder()
+
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
@@ -38,27 +39,24 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	body := []byte(`{
-		"properties": {
-			"resourceProviders": {
-				"Applications.Core": "http://localhost:9080/",
-				"Applications.Connection": "http://localhost:9081/"
-			},
-			"kind": "UCPNative"
-		}
-	}`)
-	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
-
 	dataModelPlane := datamodel.Plane{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/planes/radius/local",
-			Type: "System.Planes/radius",
-			Name: "local",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       "/planes/radius/local",
+				Type:     "",
+				Name:     "local",
+				Location: "West US",
+			},
+			InternalMetadata: v1.InternalMetadata{
+				CreatedAPIVersion:      "2022-09-01-privatepreview",
+				UpdatedAPIVersion:      "2022-09-01-privatepreview",
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
+			},
 		},
 		Properties: datamodel.PlaneProperties{
 			ResourceProviders: map[string]*string{
-				"Applications.Core":       to.Ptr("http://localhost:9080/"),
 				"Applications.Connection": to.Ptr("http://localhost:9081/"),
+				"Applications.Core":       to.Ptr("http://localhost:9080/"),
 			},
 			Kind: rest.PlaneKindUCPNative,
 		},
@@ -68,13 +66,20 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 		Metadata: store.Metadata{
 			ID: dataModelPlane.TrackedResource.ID,
 		},
-		Data: dataModelPlane,
+		Data: &dataModelPlane,
 	}
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+		return nil, &store.ErrNotFound{}
+	})
 	mockStorageClient.EXPECT().Save(gomock.Any(), o, gomock.Any())
 
-	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	planeVersionedInput := &v20220901privatepreview.PlaneResource{}
+	planeInput := testutil.ReadFixture(createRequestBody)
+	err = json.Unmarshal(planeInput, planeVersionedInput)
+	require.NoError(t, err)
+
+	request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderFile, planeVersionedInput)
 	require.NoError(t, err)
 
 	versionedPlane := v20220901privatepreview.PlaneResource{
@@ -87,19 +92,27 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 		},
 		ID:   to.Ptr("/planes/radius/local"),
 		Name: to.Ptr("local"),
-		Type: to.Ptr("System.Planes/radius"),
+		Type: to.Ptr(""),
 	}
 
-	expectedResponse := armrpc_rest.NewOKResponse(&versionedPlane)
-	response, err := planesCtrl.Run(ctx, nil, request)
-	require.NoError(t, err)
+	headers := map[string]string{"ETag": ""}
 
-	assert.DeepEqual(t, expectedResponse, response)
+	_ = armrpc_rest.NewOKResponseWithHeaders(versionedPlane, headers)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
+	response, err := planesCtrl.Run(ctx, w, request)
+	require.NoError(t, err)
+	_ = response.Apply(ctx, w, request)
+
+	actualOutput := v20220901privatepreview.PlaneResource{}
+	err = json.Unmarshal(w.Body.Bytes(), &actualOutput)
+	require.NoError(t, err)
+	assert.DeepEqual(t, versionedPlane, actualOutput)
 }
 
 func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
+	// ctx, cancel := testcontext.New(t)
+	// defer cancel()
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -110,32 +123,24 @@ func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	body := []byte(`{
-		"properties": {
-			"kind": "UCPNative"
-		}
-	}`)
-	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
+	planeVersionedInput := &v20220901privatepreview.PlaneResource{}
+	planeInput := testutil.ReadFixture(createRequestWithNoProvidersBody)
+	err = json.Unmarshal(planeInput, planeVersionedInput)
+	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderFile, planeVersionedInput)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	badResponse := &armrpc_rest.BadRequestResponse{
-		Body: armrpc_v1.ErrorResponse{
-			Error: armrpc_v1.ErrorDetails{
-				Code:    armrpc_v1.CodeInvalid,
-				Message: "$.properties.resourceProviders must be at least one provided.",
-			},
-		},
+	require.Nil(t, response)
+	expectedError := &v1.ErrModelConversion{
+		PropertyName: "$.properties.resourceProviders",
+		ValidValue:   "at least one provided",
 	}
-	assert.DeepEqual(t, badResponse, response)
-	require.NoError(t, err)
+	assert.DeepEqual(t, expectedError, err)
 }
 
 func Test_CreateAzurePlane_NoURL(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
@@ -145,24 +150,20 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	body := []byte(`{
-		"properties": {
-			"kind": "Azure"
-		}
-	}`)
-	url := "/planes/azure/azurecloud?api-version=2022-09-01-privatepreview"
+	planeVersionedInput := &v20220901privatepreview.PlaneResource{}
+	planeInput := testutil.ReadFixture(createRequestWithNoUrlBody)
+	err = json.Unmarshal(planeInput, planeVersionedInput)
+	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderFileAzure, planeVersionedInput)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	badResponse := &armrpc_rest.BadRequestResponse{
-		Body: armrpc_v1.ErrorResponse{
-			Error: armrpc_v1.ErrorDetails{
-				Code:    armrpc_v1.CodeInvalid,
-				Message: "$.properties.URL must be non-empty string.",
-			},
-		},
+	require.Nil(t, response)
+	expectedError := &v1.ErrModelConversion{
+		PropertyName: "$.properties.URL",
+		ValidValue:   "non-empty string",
 	}
-	assert.DeepEqual(t, badResponse, response)
-	require.NoError(t, err)
+
+	assert.DeepEqual(t, expectedError, err)
 }
