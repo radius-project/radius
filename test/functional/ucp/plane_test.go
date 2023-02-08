@@ -53,7 +53,7 @@ func Test_Plane_Operations(t *testing.T) {
 
 		testPlaneRest := rest.Plane{
 			ID:   planeID,
-			Type: "System.Planes/testtype",
+			Type: "",
 			Name: "testplane",
 			Properties: rest.PlaneProperties{
 				Kind: rest.PlaneKindUCPNative,

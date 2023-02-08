@@ -94,7 +94,7 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 		},
 		ID:   to.Ptr("/planes/radius/local"),
 		Name: to.Ptr("local"),
-		Type: to.Ptr("System.Planes/radius"),
+		Type: to.Ptr(""),
 	}
 
 	headers := map[string]string{"ETag": ""}

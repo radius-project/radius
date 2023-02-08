@@ -90,7 +90,7 @@ var testUCPNativePlane = datamodel.Plane{
 
 var testUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 	ID:   to.Ptr("/planes/radius/local"),
-	Type: to.Ptr("System.Planes/radius"),
+	Type: to.Ptr(""),
 	Name: to.Ptr("local"),
 	Properties: &v20220901privatepreview.PlaneResourceProperties{
 		Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
@@ -103,7 +103,7 @@ var testUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 var testAzurePlane = v20220901privatepreview.PlaneResource{
 	ID:   to.Ptr(testAzurePlaneID),
 	Name: to.Ptr("azurecloud"),
-	Type: to.Ptr("System.Planes/azure"),
+	Type: to.Ptr(""),
 	Properties: &v20220901privatepreview.PlaneResourceProperties{
 		Kind: &planeKindAzure,
 		URL:  to.Ptr("http://" + azureURL),
