@@ -199,6 +199,16 @@ func Test_HasUCPHost(t *testing.T) {
 			ucpHost:    "localhost:9443",
 			result:     false,
 		},
+		{
+			name:       LocationHeader,
+			header:     []string{"https://localhost:9443/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/rg/providers/Applications.Core/Containers/test"},
+			planeURL:   "https://localhost:9443",
+			planeKind:  rest.PlaneKindUCPNative,
+			planeID:    "/planes/radius/local",
+			httpScheme: "https",
+			ucpHost:    "localhost:9443/apis/api.ucp.dev/v1alpha3",
+			result:     true,
+		},
 	}
 	for _, datum := range testData {
 		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.planeKind, datum.httpScheme, datum.ucpHost)

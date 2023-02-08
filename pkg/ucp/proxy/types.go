@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -204,9 +205,13 @@ func hasUCPHost(ctx context.Context, headerName string, header []string) (bool, 
 	if err != nil {
 		return false, err
 	}
+	pathPrefix := v1.GetBaseIndex(uri.Path)
+	pathBase := uri.Path[:pathPrefix]
+	uriHost := uri.Host + pathBase
+
 	if ctx.Value(UCPRequestInfoField) == nil {
 		return false, fmt.Errorf("Could not find ucp request data in %s header", headerName)
 	}
 	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
-	return uri.Host == requestInfo.UCPHost, nil
+	return uriHost == requestInfo.UCPHost, nil
 }
