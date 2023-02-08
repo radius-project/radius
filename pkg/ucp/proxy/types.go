@@ -108,7 +108,6 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	ctx := resp.Request.Context()
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
-		logger := logr.FromContextOrDiscard(ctx)
 		var headerKey string
 		var headerValue []string
 
@@ -122,9 +121,10 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 			// This is an Async Response with a Location Header
 			headerKey = LocationHeader
 			headerValue = val
+		} else {
+			return nil
 		}
 
-		logger.Info(fmt.Sprintf("%s Header value : %s", headerKey, headerValue))
 		ok, err := hasUCPHost(ctx, headerKey, headerValue)
 		if err != nil {
 			return err
@@ -207,8 +207,7 @@ func hasUCPHost(ctx context.Context, headerName string, header []string) (bool, 
 	if err != nil {
 		return false, err
 	}
-	pathPrefix := v1.GetBaseIndex(uri.Path)
-	pathBase := uri.Path[:pathPrefix]
+	pathBase := v1.ParsePathBase(uri.Path)
 	uriHost := uri.Host + pathBase
 
 	if ctx.Value(UCPRequestInfoField) == nil {
