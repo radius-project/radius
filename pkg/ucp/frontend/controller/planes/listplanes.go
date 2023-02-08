@@ -24,16 +24,25 @@ var _ armrpc_controller.Controller = (*ListPlanes)(nil)
 
 // ListPlanes is the controller implementation to get the list of UCP planes.
 type ListPlanes struct {
-	ctrl.BaseController
+	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
+	basePath string
 }
 
 // NewListPlanes creates a new ListPlanes.
 func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &ListPlanes{ctrl.NewBaseController(opts)}, nil
+	return &ListPlanes{
+		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+			armrpc_controller.ResourceOptions[datamodel.Plane]{
+				RequestConverter:  converter.PlaneDataModelFromVersioned,
+				ResponseConverter: converter.PlaneDataModelToVersioned,
+			},
+		),
+		basePath: opts.BasePath,
+	}, nil
 }
 
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
+	path := middleware.GetRelativePath(e.basePath, req.URL.Path)
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	query := store.Query{

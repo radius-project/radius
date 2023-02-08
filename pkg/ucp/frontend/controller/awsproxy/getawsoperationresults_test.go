@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -39,7 +40,9 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -72,7 +75,9 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 

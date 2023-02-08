@@ -72,9 +72,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 
 	}
 
-	ctrl.ConfigureDefaultHandlers(router, ctrl.Options{
-		BasePath: baseURL,
-	})
+	ctrl.ConfigureDefaultHandlers(router, ctrlOpts)
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))

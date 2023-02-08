@@ -54,7 +54,7 @@ func Test_Plane_Operations(t *testing.T) {
 
 		testPlaneRest := rest.Plane{
 			ID:   planeID,
-			Type: "System.Planes/testtype",
+			Type: "",
 			Name: "testplane",
 			Properties: rest.PlaneProperties{
 				Kind: rest.PlaneKindUCPNative,
@@ -83,7 +83,7 @@ func Test_Plane_Operations(t *testing.T) {
 func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20220901privatepreview.PlaneResource) {
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(
+	createRequest, err := NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(body))
@@ -97,7 +97,7 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 }
 
 func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Plane, int) {
-	getRequest, err := http.NewRequest(
+	getRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -119,7 +119,7 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 }
 
 func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.PlanesClientListResponse {
-	listRequest, err := http.NewRequest(
+	listRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -140,7 +140,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 }
 
 func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
-	deleteRgRequest, err := http.NewRequest(
+	deleteRgRequest, err := NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,

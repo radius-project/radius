@@ -25,12 +25,19 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	BasePath     string
-	DB           store.StorageClient
-	SecretClient secret.Client
-	Address      string
+	// Base path
+	BasePath string
 
-	AWSCloudControlClient   ucp_aws.AWSCloudControlClient
+	// Host Address
+	Address string
+
+	// SecretClient is the client to fetch secrets.
+	SecretClient secret.Client
+
+	// AWSCloudControlClient is the AWS Cloud Control client.
+	AWSCloudControlClient ucp_aws.AWSCloudControlClient
+
+	// AWSCloudFormationClient is the AWS Cloud Formation client.
 	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
 
 	// CommonControllerOptions is the set of options used by most of our controllers.
@@ -103,7 +110,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options)
 
 // StorageClient gets storage client for this controller.
 func (b *BaseController) StorageClient() store.StorageClient {
-	return b.Options.DB
+	return b.Options.CommonControllerOptions.StorageClient
 }
 
 // GetResource is the helper to get the resource via storage client.

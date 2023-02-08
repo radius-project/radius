@@ -126,18 +126,19 @@ func Start(t *testing.T) *TestServer {
 	}
 
 	err = api.Register(ctx, router, controller.Options{
+		CommonControllerOptions: armrpc_controller.Options{
+			DataProvider:  dataprovider.NewStorageProvider(storageOptions),
+			StorageClient: storageClient,
+		},
 		// TODO: we're doing lots of cleanup on controller.Options that will lead
 		// to small changes here.
 		Address:  server.URL,
 		BasePath: basePath,
 
 		// TODO: remove this to align on design with the RPs
-		DB:           storageClient,
 		SecretClient: secretClient,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: dataprovider.NewStorageProvider(storageOptions),
-		},
-	})
+	},
+	)
 	require.NoError(t, err)
 
 	logger := logr.FromContextOrDiscard(ctx)

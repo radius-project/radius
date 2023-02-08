@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -31,7 +32,9 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	url := "/planes/radius/local/resourceGroups/default?api-version=2022-09-01-privatepreview"
 
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -76,7 +79,9 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 
 	url := "/planes/radius/local/resourceGroups/default?api-version=2022-09-01-privatepreview"
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 

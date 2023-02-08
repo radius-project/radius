@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -27,7 +28,9 @@ func Test_ListPlanesByType(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewListPlanesByType(ctrl.Options{
-		DB: mockStorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 

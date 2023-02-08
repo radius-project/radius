@@ -20,6 +20,7 @@ import (
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -30,6 +31,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
@@ -88,7 +90,7 @@ var testUCPNativePlane = datamodel.Plane{
 
 var testUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 	ID:   to.Ptr("/planes/radius/local"),
-	Type: to.Ptr("System.Planes/radius"),
+	Type: to.Ptr(""),
 	Name: to.Ptr("local"),
 	Properties: &v20220901privatepreview.PlaneResourceProperties{
 		Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
@@ -101,7 +103,7 @@ var testUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 var testAzurePlane = v20220901privatepreview.PlaneResource{
 	ID:   to.Ptr(testAzurePlaneID),
 	Name: to.Ptr("azurecloud"),
-	Type: to.Ptr("System.Planes/azure"),
+	Type: to.Ptr(""),
 	Properties: &v20220901privatepreview.PlaneResourceProperties{
 		Kind: &planeKindAzure,
 		URL:  to.Ptr("http://" + azureURL),
@@ -117,11 +119,12 @@ var testResourceGroup = v20220901privatepreview.ResourceGroupResource{
 }
 
 func Test_ProxyToRP(t *testing.T) {
-	body, err := json.Marshal(applicationList)
-	require.NoError(t, err)
-
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
+
+	body, err := json.Marshal(applicationList)
+	require.NoError(t, err)
 
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, testProxyRequestPath, r.URL.Path)
@@ -148,10 +151,10 @@ func Test_ProxyToRP(t *testing.T) {
 
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
 		BasePath: basePath,
 		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+			DataProvider:  provider,
+			StorageClient: db,
 		},
 	})
 	require.NoError(t, err)
@@ -195,13 +198,14 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 		AnyTimes()
 
 	router := mux.NewRouter()
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
 		BasePath: basePath,
 		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+			DataProvider:  provider,
+			StorageClient: db,
 		},
 	})
 	require.NoError(t, err)
@@ -288,14 +292,15 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 		AnyTimes()
 
 	router := mux.NewRouter()
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
 		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+			DataProvider:  provider,
+			StorageClient: db,
 		},
+		BasePath: basePath,
 	})
 	require.NoError(t, err)
 
@@ -332,13 +337,15 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	require.NoError(t, err)
 	var createPlaneRequest *http.Request
 	if ucpNative {
-		createPlaneRequest, err = http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+		createPlaneRequest, err = testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+"/planes/radius/local?api-version=2022-09-01-privatepreview", body)
 	} else {
-		createPlaneRequest, err = http.NewRequest("PUT", ucp.URL+basePath+"/planes/azure/azurecloud?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+		createPlaneRequest, err = testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+"/planes/azure/azurecloud?api-version=2022-09-01-privatepreview", body)
 	}
 	require.NoError(t, err)
 
-	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
+	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+		return nil, &store.ErrNotFound{}
+	})
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
 
 	response, err := ucpClient.httpClient.Do(createPlaneRequest)
@@ -472,11 +479,11 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	router := mux.NewRouter()
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
 		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+			DataProvider:  provider,
+			StorageClient: db,
 		},
+		BasePath: basePath,
 	})
 	require.NoError(t, err)
 

@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/to"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -57,7 +58,9 @@ func Test_CreateAWSResource(t *testing.T) {
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -159,7 +162,9 @@ func Test_UpdateAWSResource(t *testing.T) {
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		DB:                      testOptions.StorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -243,7 +248,9 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		DB:                      testOptions.StorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 

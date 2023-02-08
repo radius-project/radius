@@ -14,6 +14,7 @@ import (
 	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
@@ -22,28 +23,30 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_GetPlaneByID(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
+	tCtx := testutil.NewTestContext(t)
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewGetPlane(ctrl.Options{
-		DB: mockStorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
+	resourceID, err := resources.Parse(url)
+	require.NoError(t, err)
 
 	dbPlane := datamodel.Plane{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/planes/radius/local",
+				ID:   resourceID.String(),
 				Type: "radius",
 				Name: "local",
 			},
@@ -65,10 +68,17 @@ func Test_GetPlaneByID(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+
+	armctx := &v1.ARMRequestContext{
+		ResourceID: resourceID,
+		APIVersion: "2022-09-01-privatepreview",
+	}
+	ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
 	response, err := planesCtrl.Run(ctx, nil, request)
 	planeKind := v20220901privatepreview.PlaneKindUCPNative
-	expectedResponse := armrpc_rest.NewOKResponse(&v20220901privatepreview.PlaneResource{
-		ID:   to.Ptr("/planes/radius/local"),
+	expectedResponse := armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.PlaneResource{
+		ID:   to.Ptr(resourceID.String()),
 		Type: to.Ptr("radius"),
 		Name: to.Ptr("local"),
 		Properties: &v20220901privatepreview.PlaneResourceProperties{
@@ -77,26 +87,27 @@ func Test_GetPlaneByID(t *testing.T) {
 				"Applications.Core": to.Ptr("http://localhost:8080"),
 			},
 		},
-	})
-
+	}, map[string]string{"ETag": ""})
 	require.NoError(t, err)
 	assert.DeepEqual(t, expectedResponse, response)
 }
 
 func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
+	tCtx := testutil.NewTestContext(t)
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewGetPlane(ctrl.Options{
-		DB: mockStorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
+	resourceID, err := resources.ParseScope(url)
+	require.NoError(t, err)
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return nil, &store.ErrNotFound{}
@@ -104,12 +115,15 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+
+	armctx := &v1.ARMRequestContext{
+		ResourceID: resourceID,
+		APIVersion: "2022-09-01-privatepreview",
+	}
+	ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 	response, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	id, err := resources.ParseScope("/planes/radius/local")
-	require.NoError(t, err)
-
-	expectedResponse := armrpc_rest.NewNotFoundResponse(id)
+	expectedResponse := armrpc_rest.NewNotFoundResponse(resourceID)
 	assert.DeepEqual(t, expectedResponse, response)
 }

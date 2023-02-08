@@ -1,0 +1,9 @@
+{
+    "location": "global",
+    "id": "/planes/radius/local",
+    "name": "local",
+    "type": "System.Planes/radius",
+    "properties": {
+        "kind": "UCPNative"
+    }
+}

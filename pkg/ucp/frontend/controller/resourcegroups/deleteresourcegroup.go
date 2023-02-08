@@ -52,7 +52,7 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 	}
 
 	// Get all resources under the path with resource group prefix
-	listOfResources, err := r.listResources(ctx, r.Options.DB, path)
+	listOfResources, err := r.listResources(ctx, r.Options.CommonControllerOptions.StorageClient, path)
 	if err != nil {
 		return nil, err
 	}

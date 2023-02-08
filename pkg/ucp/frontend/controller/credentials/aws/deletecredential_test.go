@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -31,7 +32,9 @@ func Test_Credential_Delete(t *testing.T) {
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
 	credentialCtrl, err := NewDeleteCredential(ctrl.Options{
-		DB:           mockStorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 		SecretClient: mockSecretClient,
 	})
 	require.NoError(t, err)
