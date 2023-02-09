@@ -73,7 +73,7 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 		if respFromCtx.StatusCode == 204 {
 			output.LogInfo("Environment '%s' does not exist or has already been deleted.", resource.Name)
 		}
-
+		t.Logf("deleting environment: %s failed with err %s", resource.Name, err.Error())
 		return err
 
 		// TODO: this should probably call the CLI, but if you create an

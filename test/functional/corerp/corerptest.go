@@ -294,6 +294,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		for _, resource := range step.CoreRPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
 			err := validation.DeleteCoreRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
+			t.Logf("failed deleting resource: %s err: %s", resource.Name, err)
 			require.NoErrorf(t, err, "failed to delete %s", resource.Name)
 			t.Logf("finished deleting %s", ct.Description)
 
