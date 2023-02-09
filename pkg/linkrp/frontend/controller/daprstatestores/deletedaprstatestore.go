@@ -21,9 +21,8 @@ import (
 var _ ctrl.Controller = (*DeleteDaprStateStore)(nil)
 
 const (
-	// AsyncDeleteDeleteDaprStateStoreOperationTimeout is the default timeout duration of async delete dapr state store operation.
-	// DaprStateStore takes 1-2 mins to delete.
-	AsyncDeleteDeleteDaprStateStoreOperationTimeout = time.Duration(300) * time.Second
+	// AsyncDeleteDaprStateStoreOperationTimeout is the default timeout duration of async delete dapr state store operation.
+	AsyncDeleteDaprStateStoreOperationTimeout = time.Duration(1200) * time.Second
 )
 
 // DeleteDaprStateStore is the controller implementation to delete daprStateStore link resource.
@@ -61,7 +60,7 @@ func (daprStateStore *DeleteDaprStateStore) Run(ctx context.Context, w http.Resp
 		return r, err
 	}
 
-	if r, err := daprStateStore.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteDeleteDaprStateStoreOperationTimeout, &etag); r != nil || err != nil {
+	if r, err := daprStateStore.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteDaprStateStoreOperationTimeout, &etag); r != nil || err != nil {
 		return r, err
 	}
 
