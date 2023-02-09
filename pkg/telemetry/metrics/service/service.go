@@ -11,10 +11,12 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 
 type Service struct {
@@ -40,6 +42,11 @@ func (s *Service) Run(ctx context.Context) error {
 	pme, err := provider.NewPrometheusExporter()
 	if err != nil {
 		return err
+	}
+
+	err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
+	if err != nil {
+		logger.Error(err, "failed to start runtime metrics")
 	}
 
 	mux := http.NewServeMux()
