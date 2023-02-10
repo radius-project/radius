@@ -5,10 +5,11 @@
 package resourcegroups
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -16,48 +17,51 @@ import (
 	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_CreateResourceGroup(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	w := httptest.NewRecorder()
 
 	rgCtrl, err := NewCreateOrUpdateResourceGroup(ctrl.Options{
 		DB: mockStorageClient,
 	})
 	require.NoError(t, err)
 
-	input := v20220901privatepreview.ResourceGroupResource{
-		Location: to.Ptr(v1.LocationGlobal),
-	}
-
-	body, err := json.Marshal(&input)
+	rgVersionedInput := &v20220901privatepreview.ResourceGroupResource{}
+	resourceGroupInput := testutil.ReadFixture(createRequestBody)
+	err = json.Unmarshal(resourceGroupInput, rgVersionedInput)
 	require.NoError(t, err)
 
-	url := "/planes/radius/local/resourceGroups/test-rg?api-version=2022-09-01-privatepreview"
-	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderFile, rgVersionedInput)
 	require.NoError(t, err)
 
 	testResourceGroupID := "/planes/radius/local/resourceGroups/test-rg"
 	testResourceGroupName := "test-rg"
 
 	resourceGroup := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:       testResourceGroupID,
-			Name:     testResourceGroupName,
-			Type:     ResourceGroupType,
-			Location: v1.LocationGlobal,
-			Tags:     map[string]string{},
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       testResourceGroupID,
+				Name:     testResourceGroupName,
+				Type:     "",
+				Location: "West US",
+				Tags:     map[string]string{},
+			},
+			InternalMetadata: v1.InternalMetadata{
+				CreatedAPIVersion:      "2022-09-01-privatepreview",
+				UpdatedAPIVersion:      "2022-09-01-privatepreview",
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
+			},
 		},
 	}
 
@@ -73,47 +77,47 @@ func Test_CreateResourceGroup(t *testing.T) {
 	})
 	mockStorageClient.EXPECT().Save(gomock.Any(), o, gomock.Any())
 
-	expectedResourceGroup := &v20220901privatepreview.ResourceGroupResource{
+	versionedResourceGroup := v20220901privatepreview.ResourceGroupResource{
 		ID:       &testResourceGroupID,
 		Name:     &testResourceGroupName,
-		Type:     to.Ptr(ResourceGroupType),
-		Location: to.Ptr(v1.LocationGlobal),
+		Type:     to.Ptr(""),
+		Location: to.Ptr("West US"),
 		Tags:     *to.Ptr(map[string]*string{}),
 	}
-	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroup)
-	response, err := rgCtrl.Run(ctx, nil, request)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
+	response, err := rgCtrl.Run(ctx, w, request)
+	_ = response.Apply(ctx, w, request)
+
+	actualOutput := v20220901privatepreview.ResourceGroupResource{}
+	err = json.Unmarshal(w.Body.Bytes(), &actualOutput)
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, response)
+	assert.DeepEqual(t, versionedResourceGroup, actualOutput)
 }
 
 func Test_CreateResourceGroup_BadAPIVersion(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	w := httptest.NewRecorder()
 
 	rgCtrl, err := NewCreateOrUpdateResourceGroup(ctrl.Options{
 		DB: mockStorageClient,
 	})
 	require.NoError(t, err)
 
-	body := []byte(`{
-		"name": "test-rg"
-	}`)
-	url := "/planes/radius/local/resourceGroups/test-rg?api-version=notsupported"
+	rgVersionedInput := &v20220901privatepreview.ResourceGroupResource{}
+	resourceGroupInput := testutil.ReadFixture(createRequestBody)
+	err = json.Unmarshal(resourceGroupInput, rgVersionedInput)
+	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderFileWithBadAPIVersion, rgVersionedInput)
 	require.NoError(t, err)
-	response, err := rgCtrl.Run(ctx, nil, request)
-	require.NoError(t, err)
-	expectedResponse := &armrpc_rest.BadRequestResponse{
-		Body: v1.ErrorResponse{
-			Error: v1.ErrorDetails{
-				Code:    "BadRequest",
-				Message: v1.ErrUnsupportedAPIVersion.Error(),
-			},
-		},
-	}
-	assert.DeepEqual(t, expectedResponse, response)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
+	response, err := rgCtrl.Run(ctx, w, request)
+	require.Nil(t, response)
+	expectedError := errors.New("unsupported api-version")
+	assert.Equal(t, expectedError.Error(), err.Error())
 }

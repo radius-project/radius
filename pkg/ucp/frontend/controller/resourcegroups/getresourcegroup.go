@@ -11,6 +11,7 @@ import (
 	http "net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -19,24 +20,30 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*GetResourceGroup)(nil)
 
 // GetResourceGroup is the controller implementation to get the details of a UCP resource group
 type GetResourceGroup struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
 }
 
 // NewGetResourceGroup creates a new GetResourceGroup.
 func NewGetResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &GetResourceGroup{ctrl.NewBaseController(opts)}, nil
+	return &GetResourceGroup{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.ResourceGroup]{
+				RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
+				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
+			},
+		),
+	}, nil
 }
 
 func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContextOrDiscard(ctx)
+	path := middleware.GetRelativePath(r.BasePath(), req.URL.Path)
+	logger := logr.FromContextOrDiscard(ctx)
 	id := strings.ToLower(path)
 	resourceID, err := resources.ParseScope(id)
 	if err != nil {
@@ -44,8 +51,12 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 	}
 
 	logger.Info(fmt.Sprintf("Getting resource group %s from db", resourceID))
-	rg := datamodel.ResourceGroup{}
-	_, err = r.GetResource(ctx, resourceID.String(), &rg)
+	// old := &datamodel.ResourceGroup{}
+
+	rg, _, err := r.GetResource(ctx, resourceID)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			logger.Info(fmt.Sprintf("Resource group %s not found in db", resourceID))
@@ -58,7 +69,7 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 	apiVersion := ctrl.GetAPIVersion(req)
 
 	// Return a versioned response of the resource group
-	versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)
+	versioned, err := converter.ResourceGroupDataModelToVersioned(rg, apiVersion)
 	if err != nil {
 		return nil, err
 	}

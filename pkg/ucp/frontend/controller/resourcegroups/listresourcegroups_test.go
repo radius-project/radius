@@ -48,11 +48,13 @@ func Test_ListResourceGroups(t *testing.T) {
 	testResourceGroupName := "test-rg"
 
 	rg := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:       testResourceGroupID,
-			Name:     testResourceGroupName,
-			Type:     ResourceGroupType,
-			Location: v1.LocationGlobal,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       testResourceGroupID,
+				Name:     testResourceGroupName,
+				Type:     ResourceGroupType,
+				Location: v1.LocationGlobal,
+			},
 		},
 	}
 

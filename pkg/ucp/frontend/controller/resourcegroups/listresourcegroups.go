@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -18,24 +19,30 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*ListResourceGroups)(nil)
 
 // ListResourceGroups is the controller implementation to get the list of UCP resource groups.
 type ListResourceGroups struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
 func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &ListResourceGroups{ctrl.NewBaseController(opts)}, nil
+	return &ListResourceGroups{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.ResourceGroup]{
+				RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
+				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
+			},
+		),
+	}, nil
 }
 
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContextOrDiscard(ctx)
+	path := middleware.GetRelativePath(r.BasePath(), req.URL.Path)
+	logger := logr.FromContextOrDiscard(ctx)
 	var query store.Query
 	planeType, planeName, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
 	if err != nil {
