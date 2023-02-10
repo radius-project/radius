@@ -7,7 +7,6 @@ package text
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -61,7 +60,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.valueEntered = true
 			return m, tea.Quit
 		case tea.KeyCtrlC, tea.KeyEsc:
-			os.Exit(1)
+			return m, tea.Quit
 		}
 
 	// We handle errors just like any other message
