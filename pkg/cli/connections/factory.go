@@ -84,8 +84,6 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 		Client:              dc,
 		OperationsClient:    doc,
 		RadiusResourceGroup: id.FindScope(resources.ResourceGroupsSegment),
-		AzProvider:          workspace.ProviderConfig.Azure,
-		AWSProvider:         workspace.ProviderConfig.AWS,
 	}, nil
 }
 

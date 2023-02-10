@@ -53,6 +53,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 	result, err := deploymentClient.Deploy(ctx, clients.DeploymentOptions{
 		Template:     options.Template,
 		Parameters:   options.Parameters,
+		Providers:    options.Providers,
 		ProgressChan: progressChan,
 	})
 
