@@ -108,6 +108,7 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	ctx := resp.Request.Context()
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
+		logger := logr.FromContextOrDiscard(ctx)
 		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
 		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
@@ -119,8 +120,11 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 			if !ucpHost {
 				err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
 				if err != nil {
+					logger.Info("#### AAO error" + err.Error())
 					return err
 				}
+			} else {
+				logger.Info("#### AAO Has UCP Host: " + azureAsyncOperationHeader[0])
 			}
 		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
 			// This is an Async Response with a Location Header
@@ -131,9 +135,14 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 			if !ucpHost {
 				err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
 				if err != nil {
+					logger.Info("#### Location error" + err.Error())
 					return err
 				}
+			} else {
+				logger.Info("#### Location Has UCP Host: " + locationHeader[0])
 			}
+		} else {
+			return nil
 		}
 	}
 	return nil
