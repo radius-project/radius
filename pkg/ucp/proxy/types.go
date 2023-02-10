@@ -108,34 +108,31 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	ctx := resp.Request.Context()
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
-		logger := logr.FromContextOrDiscard(ctx)
 		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
 		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
 			// This is an Async Response with a Azure-AsyncOperation Header
-			ok, prob := hasUCPHost(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader)
-			if prob != nil {
-				logger.Error(prob, "#### AAO: Something went wrong with checking the UCP host")
-			}
-			if ok {
-				logger.Info("#### AAO: Has UCP Host")
-			}
-			err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
+			ucpHost, err := hasUCPHost(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader)
 			if err != nil {
-				logger.Error(err, "Azure-Async Operation Header conversion error")
+				return err
+			}
+			if !ucpHost {
+				err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
+				if err != nil {
+					return err
+				}
 			}
 		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
 			// This is an Async Response with a Location Header
-			ok, prob := hasUCPHost(ctx, LocationHeader, locationHeader)
-			if prob != nil {
-				logger.Error(prob, "#### Location: Something went wrong with checking the UCP host")
-			}
-			if ok {
-				logger.Info("#### Location: Has UCP Host")
-			}
-			err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
+			ucpHost, err := hasUCPHost(ctx, LocationHeader, locationHeader)
 			if err != nil {
-				logger.Error(err, "Location Header conversion error")
+				return err
+			}
+			if !ucpHost {
+				err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
