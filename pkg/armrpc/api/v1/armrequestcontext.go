@@ -178,8 +178,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	}
 
 	if pathBase == "" {
-		pathPrefix := GetBaseIndex(refererURL.Path)
-		pathBase = refererURL.Path[:pathPrefix]
+		pathBase = ParsePathBase(refererURL.Path)
 	}
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
 	rID, err := resources.ParseByMethod(path, r.Method)
@@ -278,16 +277,19 @@ func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) conte
 	return context.WithValue(ctx, armContextKey, armctx)
 }
 
-func GetBaseIndex(path string) int {
-	normalized := strings.ToLower(path)
-	idx := strings.Index(normalized, "/planes/")
-	if idx >= 0 {
-		return idx
+// ParsePathBase gets the URL info before the plane types (i.e. host, base path, etc)
+func ParsePathBase(path string) string {
+	baseIndex := 0
+	if path != "" {
+		normalized := strings.ToLower(path)
+		baseIndex = strings.Index(normalized, "/planes/")
+		if baseIndex < 0 {
+			baseIndex = strings.Index(normalized, "/subscriptions/")
+			if baseIndex <= 0 {
+				return ""
+			}
+		}
+		return path[:baseIndex]
 	}
-	idx = strings.Index(normalized, "/subscriptions/")
-	if idx >= 0 {
-		return idx
-	}
-	return 0
-
+	return path
 }
