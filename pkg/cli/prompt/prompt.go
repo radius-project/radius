@@ -25,6 +25,7 @@ const (
 	No
 
 	InvalidResourceNameMessage = "name must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
+	ErrExitConsoleMessage      = "interrupt signal entered"
 )
 
 func MatchAll(validators ...func(string) (bool, string, error)) func(string) (bool, string, error) {
@@ -183,6 +184,9 @@ func (i *Impl) GetTextInput(promptMsg string, defaultPlaceHolder string) (string
 	if !ok {
 		return "", &ErrUnsupportedModel{}
 	}
+	if tm.Quitting {
+		return "", &ErrExitConsole{}
+	}
 
 	return tm.GetValue(), nil
 }
@@ -201,8 +205,28 @@ func (i *Impl) GetListInput(items []string, promptMsg string) (string, error) {
 	if !ok {
 		return "", &ErrUnsupportedModel{}
 	}
+	if lm.Quitting {
+		return "", &ErrExitConsole{}
+	}
 
 	return lm.Choice, nil
+}
+
+var _ error = (*ErrExitConsole)(nil)
+
+// ErrExitConsole represents interrupt commands being entered.
+type ErrExitConsole struct {
+}
+
+// Error returns the error message.
+func (e *ErrExitConsole) Error() string {
+	return ErrExitConsoleMessage
+}
+
+// Is checks for the error type is ErrExitConsole.
+func (e *ErrExitConsole) Is(target error) bool {
+	_, ok := target.(*ErrExitConsole)
+	return ok
 }
 
 // YesOrNoPrompt Creates a Yes or No prompt where user has to select either a Yes or No as input
