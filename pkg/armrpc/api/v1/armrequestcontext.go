@@ -278,19 +278,17 @@ func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) conte
 }
 
 // ParsePathBase gets the URL info before the plane types (i.e. host, base path, etc)
-func ParsePathBase(pathBase string) string {
-	baseIndex := 0
-	if pathBase != "" {
-		normalized := strings.ToLower(pathBase)
-		baseIndex = strings.Index(normalized, "/planes/")
-		if baseIndex < 0 {
-			baseIndex = strings.Index(normalized, "/subscriptions/")
-			if baseIndex <= 0 {
-				return ""
-			}
+func ParsePathBase(path string) string {
+	if path != "" {
+		normalized := strings.ToLower(path)
+		baseIndex := strings.Index(normalized, "/planes/")
+		if baseIndex >= 0 {
+			return path[:baseIndex]
 		}
-		return pathBase[:baseIndex]
+		baseIndex = strings.Index(normalized, "/subscriptions/")
+		if baseIndex >= 0 {
+			return path[:baseIndex]
+		}
 	}
-
-	return pathBase
+	return ""
 }
