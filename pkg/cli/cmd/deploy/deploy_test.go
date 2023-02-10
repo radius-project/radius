@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +74,15 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20220315privatepreview.EnvironmentResource{
+						Properties: &v20220315privatepreview.EnvironmentProperties{
+							Providers: &v20220315privatepreview.Providers{
+								Azure: &v20220315privatepreview.ProvidersAzure{
+									Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
+								},
+							},
+						},
+					}, nil).
 					Times(1)
 
 			},
@@ -178,18 +187,6 @@ func Test_Run(t *testing.T) {
 			Return(map[string]any{}, nil).
 			Times(1)
 
-		options := deploy.Options{}
-
-		deployMock := deploy.NewMockInterface(ctrl)
-		deployMock.EXPECT().
-			DeployWithProgress(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
-				// Capture options for verification
-				options = o
-				return clients.DeploymentResult{}, nil
-			}).
-			Times(1)
-
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
 				"kind":    "kubernetes",
@@ -197,17 +194,50 @@ func Test_Run(t *testing.T) {
 			},
 			Name: "kind-kind",
 		}
+
+		providers := &v20220315privatepreview.Providers{
+			Azure: &v20220315privatepreview.ProvidersAzure{
+				Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
+			},
+		}
+
+		filePath := "app.bicep"
+		progressText := fmt.Sprintf(
+			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
+				"Deployment In Progress...", filePath, radcli.TestEnvironmentName, workspace.Name)
+
+		options := deploy.Options{
+			Providers:      providers,
+			EnvironmentID:  fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			Workspace:      *workspace,
+			Parameters:     map[string]map[string]any{},
+			CompletionText: "Deployment Complete",
+			ProgressText:   progressText,
+			Template:       map[string]any{},
+		}
+
+		deployMock := deploy.NewMockInterface(ctrl)
+		deployMock.EXPECT().
+			DeployWithProgress(gomock.Any(), options).
+			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
+				// Capture options for verification
+				options = o
+				return clients.DeploymentResult{}, nil
+			}).
+			Times(1)
+
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			Bicep:  bicep,
 			Deploy: deployMock,
 			Output: outputSink,
 
-			FilePath:        "app.bicep",
+			FilePath:        filePath,
 			EnvironmentID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			EnvironmentName: radcli.TestEnvironmentName,
 			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
+			Providers:       providers,
 		}
 
 		err := runner.Run(context.Background())

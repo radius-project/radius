@@ -18,7 +18,6 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -42,8 +41,6 @@ type ResourceDeploymentClient struct {
 	Client              *sdkclients.ResourceDeploymentsClient
 	OperationsClient    *sdkclients.ResourceDeploymentOperationsClient
 	Tags                map[string]*string
-	AzProvider          *workspaces.AzureProvider
-	AWSProvider         *workspaces.AWSProvider
 }
 
 var _ clients.DeploymentClient = (*ResourceDeploymentClient)(nil)
@@ -105,7 +102,7 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 	}
 
 	resourceId = ucpresources.MakeUCPID(scopes, types...)
-	providerConfig := dc.GetProviderConfigs()
+	providerConfig := dc.GetProviderConfigs(options)
 
 	poller, err := dc.Client.CreateOrUpdate(ctx,
 		sdkclients.Deployment{
@@ -125,27 +122,27 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 	return poller, nil
 }
 
-func (dc *ResourceDeploymentClient) GetProviderConfigs() sdkclients.ProviderConfig {
+func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.DeploymentOptions) sdkclients.ProviderConfig {
 	providerConfig := sdkclients.NewDefaultProviderConfig(dc.RadiusResourceGroup)
+	// if there are no providers, then return default provider config
+	if options.Providers == nil {
+		return providerConfig
+	}
 
-	if dc.AzProvider != nil {
-		if dc.AzProvider.SubscriptionID != "" && dc.AzProvider.ResourceGroup != "" {
-			scope := "/subscriptions/" + dc.AzProvider.SubscriptionID + "/resourceGroups/" + dc.AzProvider.ResourceGroup
-			providerConfig.Az = &sdkclients.Az{
-				Type: sdkclients.ProviderTypeAzure,
-				Value: sdkclients.Value{
-					Scope: scope,
-				},
-			}
+	if options.Providers.Azure != nil {
+		providerConfig.Az = &sdkclients.Az{
+			Type: sdkclients.ProviderTypeAzure,
+			Value: sdkclients.Value{
+				Scope: *options.Providers.Azure.Scope,
+			},
 		}
 	}
 
-	if dc.AWSProvider != nil {
-		scope := "/planes/aws/aws/accounts/" + dc.AWSProvider.AccountId + "/regions/" + dc.AWSProvider.Region
+	if options.Providers.Aws != nil {
 		providerConfig.AWS = &sdkclients.AWS{
 			Type: sdkclients.ProviderTypeAWS,
 			Value: sdkclients.Value{
-				Scope: scope,
+				Scope: *options.Providers.Aws.Scope,
 			},
 		}
 	}
