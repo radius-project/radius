@@ -21,10 +21,16 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
+
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -129,6 +135,8 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
+			w3cTraceID := op.TraceparentID
+
 			opLogger := logger.WithValues(
 				"OperationID", op.OperationID.String(),
 				"OperationType", op.OperationType,
@@ -181,7 +189,10 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			if err = w.updateResourceAndOperationStatus(ctx, asyncCtrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
 				return
 			}
-
+			carrier := make(propagation.MapCarrier)
+			carrier[trace.TraceparentHeader] = w3cTraceID
+			spanContextPropagator := otel.GetTextMapPropagator()
+			ctx := spanContextPropagator.Extract(ctx, carrier)
 			opCtx := logr.NewContext(ctx, opLogger)
 			w.runOperation(opCtx, msgreq, asyncCtrl)
 		}(msg)
@@ -192,6 +203,9 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 }
 
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
+	spanKind := oteltrace.WithSpanKind(oteltrace.SpanKindConsumer)
+	ctx, span := trace.AddConsumerSpan(ctx, "worker.runOperation receive", trace.RPBackendTracer, spanKind)
+
 	logger := logr.FromContextOrDiscard(ctx)
 
 	asyncReq := &ctrl.Request{}
@@ -215,7 +229,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err := recover(); err != nil {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
 				logger.V(ucplog.Error).Info(msg)
-
+				span.RecordError(errors.New("recovering from panic"))
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).
 				// After message lock is expired, message will be reprocessed 'w.options.MaxOperationRetryCount' times and
@@ -238,6 +252,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
+		trace.RecordAsyncResult(result, span)
 	}()
 
 	operationTimeoutAfter := time.After(asyncReq.Timeout())
@@ -261,15 +276,18 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
+			span.End()
 			return
 
 		case <-ctx.Done():
 			logger.Info("Stopping processing async operation. This operation will be reprocessed.")
+			span.End()
 			return
 
 		case <-opDone:
 			opEndAt := time.Now()
 			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
+			span.End()
 			return
 		}
 	}
