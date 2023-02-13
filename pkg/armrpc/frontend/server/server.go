@@ -14,6 +14,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/pkg/version"
@@ -55,7 +56,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
 
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.AppendLogValues)
+	r.Use(middleware.UseLogValues(logging.ServiceName))
 	// add the arm cert validation if EnableAuth is true
 	if options.EnableArmAuth {
 		r.Use(authentication.ClientCertValidator(options.ArmCertMgr))

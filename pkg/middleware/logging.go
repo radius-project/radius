@@ -21,44 +21,47 @@ import (
 )
 
 // UseLogValues appends logging values to the context based on the request.
-func UseLogValues(h http.Handler, basePath string, serviceName string) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		values := []any{}
+func UseLogValues(serviceName string) func(h http.Handler) http.Handler {
 
-		attr := map[attribute.Key]string{}
-		attr = AddAttribute(semconv.ServiceNameKey, serviceName, attr)
-		attr = AddAttribute(semconv.ServiceVersionKey, version.Channel(), attr)
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			values := []any{}
 
-		id, err := resources.Parse(r.URL.Path)
-		if err == nil {
-			attr = AddAttribute(attribute.Key(ucplog.LogFieldResourceID), id.String(), attr)
+			attr := map[attribute.Key]string{}
+			attr = AddAttribute(semconv.ServiceNameKey, serviceName, attr)
+			attr = AddAttribute(semconv.ServiceVersionKey, version.Channel(), attr)
+
+			id, err := resources.Parse(r.URL.Path)
+			if err == nil {
+				attr = AddAttribute(attribute.Key(ucplog.LogFieldResourceID), id.String(), attr)
+			}
+
+			host, _ := os.Hostname()
+			attr = AddAttribute(semconv.HostNameKey, host, attr)
+
+			clientIP := r.Header.Get(ucplog.HttpXForwardedFor)
+			if clientIP == "" {
+				remote := r.RemoteAddr
+				clientIP, _, _ = net.SplitHostPort(remote)
+			}
+			attr = AddAttribute(semconv.HTTPClientIPKey, clientIP, attr)
+			attr = AddAttribute(semconv.HTTPUserAgentKey, r.Header.Get(ucplog.HttpUserAgent), attr)
+			attr = AddAttribute(attribute.Key(ucplog.LogFieldCorrelationID), r.Header.Get(ucplog.HttpCorrelationId), attr)
+			if len(attr) > 0 {
+				values = AddLogValue(ucplog.LogFieldAttributes, attr, values)
+			}
+
+			sc := trace.SpanFromContext(r.Context())
+			values = AddLogValue(ucplog.LogFieldSpanId, sc.SpanContext().SpanID().String(), values)
+			values = AddLogValue(ucplog.LogFieldTraceId, sc.SpanContext().TraceID().String(), values)
+
+			logger := logr.FromContextOrDiscard(r.Context()).WithValues(values...)
+			r = r.WithContext(logr.NewContext(r.Context(), logger))
+			h.ServeHTTP(w, r)
 		}
-
-		host, _ := os.Hostname()
-		attr = AddAttribute(semconv.HostNameKey, host, attr)
-
-		clientIP := r.Header.Get(ucplog.HttpXForwardedFor)
-		if clientIP == "" {
-			remote := r.RemoteAddr
-			clientIP, _, _ = net.SplitHostPort(remote)
-		}
-		attr = AddAttribute(semconv.HTTPClientIPKey, clientIP, attr)
-		attr = AddAttribute(semconv.HTTPUserAgentKey, r.Header.Get(ucplog.HttpUserAgent), attr)
-		attr = AddAttribute(attribute.Key(ucplog.LogFieldCorrelationID), r.Header.Get(ucplog.HttpCorrelationId), attr)
-		if len(attr) > 0 {
-			values = AddLogValue(ucplog.LogFieldAttributes, attr, values)
-		}
-
-		sc := trace.SpanFromContext(r.Context())
-		values = AddLogValue(ucplog.LogFieldSpanId, sc.SpanContext().SpanID().String(), values)
-		values = AddLogValue(ucplog.LogFieldTraceId, sc.SpanContext().TraceID().String(), values)
-
-		logger := logr.FromContextOrDiscard(r.Context()).WithValues(values...)
-		r = r.WithContext(logr.NewContext(r.Context(), logger))
-		h.ServeHTTP(w, r)
+		return http.HandlerFunc(fn)
 	}
 
-	return http.HandlerFunc(fn)
 }
 
 // GetRelativePath trims the prefix basePath from path

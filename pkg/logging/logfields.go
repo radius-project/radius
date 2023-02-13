@@ -36,4 +36,5 @@ const (
 	LogFieldSubscriptionID     = "subscriptionID"
 	LogFieldResourceKind       = "resourceKind"
 	LogHTTPStatusCode          = "statusCode"
+	LogFieldRPHostName         = "rpHostName"
 )

@@ -22,6 +22,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/logging"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/telemetry/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/version"
@@ -31,9 +32,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	"go.opentelemetry.io/otel"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/semaphore"
 )
@@ -147,17 +150,18 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			sc := oteltrace.SpanFromContext(ctx)
 
 			attr := map[attribute.Key]string{}
-			attr[semconv.ServiceNameKey] = logging.ServiceName
-			attr[semconv.ServiceVersionKey] = version.Channel()
-			attr[attribute.Key(logging.LogFieldOperationID)] = op.OperationID.String()
-			attr[attribute.Key(logging.LogFieldOperationType)] = op.OperationType
-			attr[attribute.Key(logging.LogFieldResourceID)] = op.ResourceID
-			attr[attribute.Key(logging.LogFieldDequeueCount)] = strconv.Itoa(msgreq.DequeueCount)
+			attr = middleware.AddAttribute(semconv.ServiceNameKey, logging.ServiceName, attr)
+			attr = middleware.AddAttribute(semconv.ServiceVersionKey, version.Channel(), attr)
+			attr = middleware.AddAttribute(attribute.Key(logging.LogFieldOperationID), op.OperationID.String(), attr)
+			attr = middleware.AddAttribute(attribute.Key(logging.LogFieldOperationType), op.OperationType, attr)
+			attr = middleware.AddAttribute(attribute.Key(attribute.Key(ucplog.LogFieldResourceID)), op.OperationType, attr)
+			attr = middleware.AddAttribute(attribute.Key(logging.LogFieldDequeueCount), strconv.Itoa(msgreq.DequeueCount), attr)
+
 			opLogger := logger.WithValues(
-				"attributes", attr,
-				"spanID", sc.SpanContext().SpanID().String(),
-				"traceID", sc.SpanContext().TraceID().String(),
-				"corrleationID", op.CorrelationID,
+				ucplog.LogFieldAttributes, attr,
+				ucplog.LogFieldSpanId, sc.SpanContext().SpanID().String(),
+				ucplog.LogFieldTraceId, sc.SpanContext().TraceID().String(),
+				ucplog.LogFieldCorrelationID, op.CorrelationID,
 			)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
