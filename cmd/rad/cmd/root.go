@@ -101,7 +101,9 @@ func prettyPrintJSON(o any) (string, error) {
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
-	shutdown, err := trace.InitTracer(trace.TracerProviderOptions{}, "cli")
+	shutdown, err := trace.InitTracer(trace.Options{
+		ServiceName: "cli",
+	})
 	if err != nil {
 		log.Fatal(err)
 	}

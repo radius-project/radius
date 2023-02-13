@@ -42,7 +42,7 @@ type Options struct {
 	LoggingOptions         ucplog.LoggingOptions
 	SecretProviderOptions  provider.SecretProviderOptions
 	MetricsProviderOptions metricsprovider.MetricsProviderOptions
-	TracerProviderOptions  trace.TracerProviderOptions
+	TracerProviderOptions  trace.Options
 	TLSCertDir             string
 	BasePath               string
 	InitialPlanes          []rest.Plane

@@ -25,7 +25,7 @@ type ProviderConfig struct {
 	Server          *ServerOptions                      `yaml:"server,omitempty"`
 	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`
 	MetricsProvider provider.MetricsProviderOptions     `yaml:"metricsProvider"`
-	TracerProvider  trace.TracerProviderOptions         `yaml:"tracerProvider"`
+	TracerProvider  trace.Options                       `yaml:"tracerProvider"`
 	UCP             config.UCPOptions                   `yaml:"ucp"`
 	Logging         ucplog.LoggingOptions               `yaml:"logging"`
 

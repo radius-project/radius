@@ -15,15 +15,15 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
-func InitTracer(opts TracerProviderOptions, serviceName string) (func(context.Context) error, error) {
+func InitTracer(opts Options) (func(context.Context) error, error) {
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceNameKey.String(opts.ServiceName),
 		)),
 	)
-	if opts.Zipkin != nil && opts.Zipkin.Enabled {
+	if opts.Zipkin != nil {
 		exporter, err := zipkin.New(
 			opts.Zipkin.URL,
 		)
