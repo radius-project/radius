@@ -26,6 +26,7 @@ import (
 	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
+	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
@@ -198,6 +199,9 @@ func initSubCommands() {
 
 	envShowCmd, _ := env_show.NewCommand(framework)
 	envCmd.AddCommand(envShowCmd)
+
+	envUpdateCmd, _ := env_update.NewCommand(framework)
+	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)

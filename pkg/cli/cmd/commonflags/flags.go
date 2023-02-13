@@ -13,6 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	SetEnvAzureFlag         = "set-azure"
+	AzureSubscriptionIdFlag = "azure-subscriptionid"
+	AzureResourceGroupFlag  = "azure-resourcegroup"
+	SetEnvAWSFlag           = "set-aws"
+	AWSRegionFlag           = "aws-region"
+	AWSAccountIdFlag        = "aws-account"
+	ClearEnvAzureFlag       = "clear-azure"
+	ClearEnvAWSFlag         = "clear-aws"
+)
+
 func AddOutputFlag(cmd *cobra.Command) {
 	description := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	cmd.Flags().StringP("output", "o", output.DefaultFormat, description)
@@ -48,4 +59,34 @@ func AddParameterFlag(cmd *cobra.Command) {
 
 func AddRecipeFlag(cmd *cobra.Command) {
 	cmd.Flags().String("name", "", "The recipe name")
+}
+
+func AddAzureScopeFlags(cmd *cobra.Command) {
+	cmd.Flags().Bool(SetEnvAzureFlag, false, "Specify if azure provider needs to be set on env")
+	AddAzureSubscriptionFlag(cmd)
+	AddAzureResourceGroupFlag(cmd)
+	cmd.MarkFlagsRequiredTogether(SetEnvAzureFlag, AzureSubscriptionIdFlag, AzureResourceGroupFlag)
+}
+
+func AddAzureSubscriptionFlag(cmd *cobra.Command) {
+	cmd.Flags().String(AzureSubscriptionIdFlag, "", "Subscription id of the azure app on env")
+}
+
+func AddAzureResourceGroupFlag(cmd *cobra.Command) {
+	cmd.Flags().String(AzureResourceGroupFlag, "", "Resource group of the azure app")
+}
+
+func AddAWSScopeFlags(cmd *cobra.Command) {
+	cmd.Flags().Bool(SetEnvAWSFlag, false, "Specify if aws provider needs to be set on env")
+	AddAWSRegionFlag(cmd)
+	AddAWSAccountFlag(cmd)
+	cmd.MarkFlagsRequiredTogether(SetEnvAWSFlag, AWSRegionFlag, AWSAccountIdFlag)
+}
+
+func AddAWSRegionFlag(cmd *cobra.Command) {
+	cmd.Flags().String(AWSRegionFlag, "", "Region of the aws app")
+}
+
+func AddAWSAccountFlag(cmd *cobra.Command) {
+	cmd.Flags().String(AWSAccountIdFlag, "", "Account Id of the aws app")
 }
