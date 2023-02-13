@@ -37,13 +37,13 @@ You can specify parameters using the '--parameter' flag ('-p' for short). Parame
 - A key-value-pair passed in the command line
 		`,
 		Example: `
-# Add a link recipe to an environment
+# Add a recipe to an environment
 rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
 		
 # Specify a parameter
 rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
 		
-# specify many parameters using a JSON parameter file
+# specify multiple parameters using a JSON parameter file
 rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(0),
