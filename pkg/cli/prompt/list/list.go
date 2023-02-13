@@ -8,7 +8,6 @@ package list
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -103,7 +102,8 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c", "esc", "q":
-			os.Exit(1)
+			m.Quitting = true
+			return m, tea.Quit
 		case "enter":
 			if m.List.FilterState() != list.Filtering {
 				i, ok := m.List.SelectedItem().(item)
