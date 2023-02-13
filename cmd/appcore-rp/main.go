@@ -129,7 +129,7 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
 	tracerOpts := options.Config.TracerProvider
-	shutdown, err := trace.InitTracer(tracerOpts, serviceName)
+	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)
 	}

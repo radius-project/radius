@@ -43,7 +43,7 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(ctx)
 
 		tracerOpts := options.TracerProviderOptions
-		shutdown, err := trace.InitTracer(tracerOpts, serviceName)
+		shutdown, err := trace.InitTracer(tracerOpts)
 		if err != nil {
 			log.Fatal(err)
 		}
