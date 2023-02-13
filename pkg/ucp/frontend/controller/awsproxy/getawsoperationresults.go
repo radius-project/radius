@@ -15,6 +15,7 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
@@ -22,16 +23,20 @@ var _ armrpc_controller.Controller = (*GetAWSOperationResults)(nil)
 
 // GetAWSOperationResults is the controller implementation to get AWS resource operation results.
 type GetAWSOperationResults struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
 func NewGetAWSOperationResults(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &GetAWSOperationResults{ctrl.NewBaseController(opts)}, nil
+	return &GetAWSOperationResults{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.AWSResource]{},
+		),
+	}, nil
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, _, _, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, _, _, id, err := ParseAWSRequest(ctx, *p.Options(), req)
 	if err != nil {
 		return nil, err
 	}

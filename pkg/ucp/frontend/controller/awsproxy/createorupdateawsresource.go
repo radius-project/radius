@@ -19,6 +19,7 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
@@ -26,16 +27,20 @@ var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
 
 // CreateOrUpdateAWSResource is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResource struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
 func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &CreateOrUpdateAWSResource{ctrl.NewBaseController(opts)}, nil
+	return &CreateOrUpdateAWSResource{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.AWSResource]{},
+		),
+	}, nil
 }
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -180,6 +185,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		"properties": responseProperties,
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.BasePath())
 	return resp, nil
 }
