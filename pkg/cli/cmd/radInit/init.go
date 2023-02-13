@@ -7,6 +7,7 @@ package radInit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -136,6 +137,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// In dev mode we will just take the default kubecontext
 	r.KubeContext, err = selectKubeContext(kubeContextList.CurrentContext, kubeContextList.Contexts, !r.Dev, r.Prompter)
 	if err != nil {
+		if errors.Is(err, &prompt.ErrExitConsole{}) {
+			return &cli.FriendlyError{Message: err.Error()}
+		}
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
 	}
 
@@ -153,6 +157,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		output.LogInfo(fmt.Sprintf("Radius control plane is already installed to context '%s'...", r.KubeContext))
 		y, err := prompt.YesOrNoPrompt(confirmReinstallRadiusPrompt, "no", r.Prompter)
 		if err != nil {
+			if errors.Is(err, &prompt.ErrExitConsole{}) {
+				return &cli.FriendlyError{Message: err.Error()}
+			}
 			return &cli.FriendlyError{Message: "Unable to read reinstall prompt"}
 		}
 		if y {
@@ -201,6 +208,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", false, r.Prompter, environments)
 			if err != nil {
+				if errors.Is(err, &prompt.ErrExitConsole{}) {
+					return &cli.FriendlyError{Message: err.Error()}
+				}
 				return err
 			}
 		}
@@ -208,6 +218,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.EnvName == "" {
 			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", true, r.Prompter, environments)
 			if err != nil {
+				if errors.Is(err, &prompt.ErrExitConsole{}) {
+					return &cli.FriendlyError{Message: err.Error()}
+				}
 				return err
 			}
 		}
@@ -259,6 +272,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		} else {
 			r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
 			if err != nil {
+				if errors.Is(err, &prompt.ErrExitConsole{}) {
+					return &cli.FriendlyError{Message: err.Error()}
+				}
 				return &cli.FriendlyError{Message: "Failed to read env name"}
 			}
 		}
@@ -275,22 +291,34 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			// Configuring Cloud Provider
 			addingCloudProvider, err := prompt.YesOrNoPrompt(confirmCloudProviderPrompt, "no", r.Prompter)
 			if err != nil {
+				if errors.Is(err, &prompt.ErrExitConsole{}) {
+					return &cli.FriendlyError{Message: err.Error()}
+				}
 				return &cli.FriendlyError{Message: "Error reading cloud provider"}
 			}
 			for addingCloudProvider {
 				cloudProvider, err := selectCloudProvider(r.Prompter)
 				if err != nil {
+					if errors.Is(err, &prompt.ErrExitConsole{}) {
+						return &cli.FriendlyError{Message: err.Error()}
+					}
 					return &cli.FriendlyError{Message: "Error reading cloud provider"}
 				}
 				switch cloudProvider {
 				case common.AzureCloudProvider:
 					r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
+						if errors.Is(err, &prompt.ErrExitConsole{}) {
+							return &cli.FriendlyError{Message: err.Error()}
+						}
 						return err
 					}
 				case common.AWSCloudProvider:
 					r.AwsCloudProvider, err = r.SetupInterface.ParseAWSProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
+						if errors.Is(err, &prompt.ErrExitConsole{}) {
+							return &cli.FriendlyError{Message: err.Error()}
+						}
 						return err
 					}
 				case backNavigator:
@@ -300,6 +328,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 				}
 				addingCloudProvider, err = prompt.YesOrNoPrompt(confirmCloudProviderPrompt, "no", r.Prompter)
 				if err != nil {
+					if errors.Is(err, &prompt.ErrExitConsole{}) {
+						return &cli.FriendlyError{Message: err.Error()}
+					}
 					return &cli.FriendlyError{Message: "Error reading cloud provider"}
 				}
 			}
@@ -313,6 +344,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.ScaffoldApplication, err = prompt.YesOrNoPrompt(confirmSetupApplicationPrompt, "Yes", r.Prompter)
 	if err != nil {
+		if errors.Is(err, &prompt.ErrExitConsole{}) {
+			return &cli.FriendlyError{Message: err.Error()}
+		}
 		return err
 	}
 
@@ -534,7 +568,7 @@ func chooseApplicationName(prompter prompt.Interface) (string, error) {
 
 	appName, err := prompter.GetTextInput(enterApplicationName, "enter app name...")
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	isValid, errMsg, _ := prompt.ResourceName(appName)
 	if !isValid {

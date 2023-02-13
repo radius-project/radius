@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -249,5 +250,28 @@ func Test_Show(t *testing.T) {
 		}
 
 		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	// This is a success scenario because the user intended for the interrupt
+	t.Run("Success: Console Interrupt", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock.EXPECT().
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return("", &prompt.ErrExitConsole{}).
+			Times(1)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			InputPrompter:   promptMock,
+			Output:          outputSink,
+			EnvironmentName: "test-env",
+		}
+
+		err := runner.Run(context.Background())
+		require.Equal(t, err, &cli.FriendlyError{Message: prompt.ErrExitConsoleMessage})
+		require.Empty(t, outputSink.Writes)
 	})
 }
