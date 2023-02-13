@@ -129,6 +129,7 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
 	tracerOpts := options.Config.TracerProvider
+	tracerOpts.ServiceName = "appcore-rp"
 	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)
