@@ -15,7 +15,7 @@ resources:
 
 trigger: none
 
-pr: [ main, features/*]
+pr: [ main, features/*, releases/*]
 
 variables:
 - name: RADIUS_CHART_LOCATION
