@@ -19,10 +19,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-const (
-	serviceName string = "ucp"
-)
-
 var rootCmd = &cobra.Command{
 	Use:   "ucpd",
 	Short: "UCP server",

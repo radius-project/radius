@@ -91,7 +91,7 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
 	tracerOpts := options.Config.TracerProvider
-	tracerOpts.ServiceName = "applink-rp"
+	tracerOpts.ServiceName = serviceName
 	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)
