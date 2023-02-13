@@ -32,7 +32,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"Name":                 name,
-							"RetentionPeriodHours": float64(168),
+							"RetentionPeriodHours": float64(24),
 							"ShardCount":           float64(3),
 						},
 					},
