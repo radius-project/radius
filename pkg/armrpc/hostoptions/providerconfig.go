@@ -7,6 +7,7 @@ package hostoptions
 
 import (
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
@@ -24,6 +25,7 @@ type ProviderConfig struct {
 	Server          *ServerOptions                      `yaml:"server,omitempty"`
 	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`
 	MetricsProvider provider.MetricsProviderOptions     `yaml:"metricsProvider"`
+	TracerProvider  trace.TracerProviderOptions         `yaml:"tracerProvider"`
 	UCP             config.UCPOptions                   `yaml:"ucp"`
 	Logging         ucplog.LoggingOptions               `yaml:"logging"`
 

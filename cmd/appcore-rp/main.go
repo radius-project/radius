@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
 	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
@@ -29,6 +30,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
+)
+
+const (
+	serviceName string = "appcore-rp"
 )
 
 func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
@@ -123,6 +128,17 @@ func main() {
 
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
+	tracerOpts := options.Config.TracerProvider
+	shutdown, err := trace.InitTracer(tracerOpts, serviceName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+
+	}()
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	exitCh := make(chan os.Signal, 2)
