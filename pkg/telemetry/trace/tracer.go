@@ -25,10 +25,8 @@ func InitTracer(opts Options) (func(context.Context) error, error) {
 		)),
 	)
 	if opts.Zipkin != nil {
-		exporter, err := zipkin.New(
-			opts.Zipkin.URL,
-		)
-		if err != nil || exporter == nil {
+		exporter, err := zipkin.New(opts.Zipkin.URL)
+		if err != nil {
 			return nil, err
 		}
 		batcher := sdktrace.NewBatchSpanProcessor(exporter)
