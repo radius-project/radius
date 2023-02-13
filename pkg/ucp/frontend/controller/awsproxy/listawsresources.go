@@ -14,6 +14,7 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
@@ -21,16 +22,20 @@ var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
 
 // ListAWSResources is the controller implementation to get/list AWS resources.
 type ListAWSResources struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 }
 
 // NewListAWSResources creates a new ListAWSResources.
 func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &ListAWSResources{ctrl.NewBaseController(opts)}, nil
+	return &ListAWSResources{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.AWSResource]{},
+		),
+	}, nil
 }
 
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), req)
 	if err != nil {
 		return nil, err
 	}
