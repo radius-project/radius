@@ -33,6 +33,7 @@ logging:
   json: false
 # Tracing configuration
 tracerProvider:
+  serviceName: "rp"
   zipkin:
     enabled: true
     url: "http://localhost:9411/api/v2/spans"
