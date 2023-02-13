@@ -29,10 +29,6 @@ import (
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
-const (
-	serviceName = "applink-rp"
-)
-
 func main() {
 	var configFile string
 	var enableAsyncWorker bool
@@ -91,7 +87,6 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
 	tracerOpts := options.Config.TracerProvider
-	tracerOpts.ServiceName = serviceName
 	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)
