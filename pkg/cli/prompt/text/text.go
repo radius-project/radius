@@ -7,7 +7,6 @@ package text
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,6 +26,7 @@ type Model struct {
 	textInput    textinput.Model
 	promptMsg    string
 	valueEntered bool
+	Quitting     bool
 	err          error
 }
 
@@ -61,7 +61,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.valueEntered = true
 			return m, tea.Quit
 		case tea.KeyCtrlC, tea.KeyEsc:
-			os.Exit(1)
+			m.Quitting = true
+			return m, tea.Quit
 		}
 
 	// We handle errors just like any other message

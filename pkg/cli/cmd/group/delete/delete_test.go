@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -158,6 +159,29 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, expected, outputSink.Writes)
 
 		})
+	})
+
+	t.Run("Exit console with interrupt signal", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		outputSink := &output.MockOutput{}
+		prompter := prompt.NewMockInterface(ctrl)
+		prompter.EXPECT().
+			GetListInput([]string{"No", "Yes"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+			Return("", &prompt.ErrExitConsole{}).
+			Times(1)
+
+		runner := &Runner{
+			UCPResourceGroupName: "testrg",
+			Confirmation:         false,
+			InputPrompter:        prompter,
+			Output:               outputSink,
+		}
+
+		err := runner.Run(context.Background())
+		require.Equal(t, err, &cli.FriendlyError{Message: prompt.ErrExitConsoleMessage})
+		require.Empty(t, outputSink.Writes)
+
 	})
 
 }
