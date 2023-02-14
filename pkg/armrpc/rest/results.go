@@ -293,6 +293,9 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	}
 
 	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
+	if referer.Host == "" {
+		referer.Host = req.Host
+	}
 
 	if err != nil {
 		return "", err
