@@ -146,3 +146,75 @@ func Test_ConvertHeaderToUCPIDs_NoContextDataSet(t *testing.T) {
 	require.Error(t, err, "Should have have failed")
 	require.Equal(t, "Could not find ucp request data in Location header", err.Error())
 }
+
+func Test_HasUCPHost(t *testing.T) {
+	type data []struct {
+		name       string
+		header     []string
+		planeURL   string
+		planeID    string
+		planeKind  string
+		httpScheme string
+		ucpHost    string
+		result     bool
+	}
+	testData := data{
+		{
+			name:       AzureAsyncOperationHeader,
+			header:     []string{"http://localhost:9443/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"},
+			planeURL:   "http://localhost:9443",
+			planeKind:  rest.PlaneKindAzure,
+			planeID:    "/planes/test/local",
+			httpScheme: "http",
+			ucpHost:    "localhost:9443",
+			result:     true,
+		},
+		{
+			name:       LocationHeader,
+			header:     []string{"https://localhost:9443/planes/radius/local/resourceGroups/rg/providers/Applications.Core/Containers/test"},
+			planeURL:   "https://localhost:9443",
+			planeKind:  rest.PlaneKindUCPNative,
+			planeID:    "/planes/radius/local",
+			httpScheme: "https",
+			ucpHost:    "localhost:9443",
+			result:     true,
+		},
+		{
+			name:       AzureAsyncOperationHeader,
+			header:     []string{"http://de-api.radius-system:6443/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"},
+			planeURL:   "http://localhost:9443",
+			planeKind:  rest.PlaneKindAzure,
+			planeID:    "/planes/test/local",
+			httpScheme: "http",
+			ucpHost:    "localhost:9443",
+			result:     false,
+		},
+		{
+			name:       LocationHeader,
+			header:     []string{"https://de-api.radius-system:6443/planes/radius/local/resourceGroups/rg/providers/Applications.Core/Containers/test"},
+			planeURL:   "https://localhost:9443",
+			planeKind:  rest.PlaneKindUCPNative,
+			planeID:    "/planes/radius/local",
+			httpScheme: "https",
+			ucpHost:    "localhost:9443",
+			result:     false,
+		},
+		{
+			name:       LocationHeader,
+			header:     []string{"https://localhost:9443/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/rg/providers/Applications.Core/Containers/test"},
+			planeURL:   "https://localhost:9443",
+			planeKind:  rest.PlaneKindUCPNative,
+			planeID:    "/planes/radius/local",
+			httpScheme: "https",
+			ucpHost:    "localhost:9443/apis/api.ucp.dev/v1alpha3",
+			result:     true,
+		},
+	}
+	for _, datum := range testData {
+
+		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.planeKind, datum.httpScheme, datum.ucpHost)
+		hasUCPHost, err := hasUCPHost(ctx, datum.name, datum.header)
+		require.NoError(t, err, "%q should have not have failed", datum)
+		require.Equal(t, datum.result, hasUCPHost)
+	}
+}
