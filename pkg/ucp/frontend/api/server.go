@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
@@ -234,12 +235,28 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 			return err
 		}
 
-		_, err = planesCtrl.Run(ctx, nil, request)
+		// Wrap the request in an ARM RPC context because this call will bypass the middleware
+		// that normally does this for us.
+		rpcContext, err := s.wrapArmRpcContext(ctx, request)
+		if err != nil {
+			return err
+		}
+		_, err = planesCtrl.Run(rpcContext, nil, request)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) wrapArmRpcContext(ctx context.Context, request *http.Request) (context.Context, error) {
+	rpcContext, err := v1.FromARMRequest(request, s.options.BasePath, "global")
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add(v1.ContentTypeHeader, "application/json")
+	ctx = v1.WithARMRequestContext(ctx, rpcContext)
+	return ctx, nil
 }
 
 func (s *Service) Run(ctx context.Context) error {

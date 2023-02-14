@@ -2,11 +2,11 @@
     "values": [
         {
             "id": "/planes/aws/aws",
-            "name": "local",
+            "name": "aws",
             "properties": {
                 "kind": "AWS"
             },
-            "type": "System.Planes/aws"
+            "type": ""
         }
     ]
 }

@@ -39,6 +39,23 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 	return req, nil
 }
 
+func GetARMTestHTTPRequestFromURL(ctx context.Context, method string, url string, body []byte) (*http.Request, error) {
+	headers := map[string]string{
+		"Accept":          "application/json",
+		"Accept-Encoding": "gzip, deflate",
+		"Accept-Language": "en-US",
+		"Content-Length":  "305",
+		"Content-Type":    "application/json; charset=utf-8",
+	}
+	req, _ := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
+	req.Header.Add("Referer", url)
+	return req, nil
+}
+
 func ARMTestContextFromRequest(req *http.Request) context.Context {
 	ctx := context.Background()
 	armctx, _ := v1.FromARMRequest(req, "", "West US")

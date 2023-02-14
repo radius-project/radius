@@ -1,6 +1,8 @@
 {
     "location": "global",
+    "id": "/planes/aws/aws",
     "properties":{
         "kind": "AWS"
-    }
+    },
+    "type": ""
 }
