@@ -248,6 +248,13 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
+	logger := logr.FromContextOrDiscard(ctx)
+	if req.Header.Get(v1.RefererHeader) == "" {
+		logger.Info("#### Request URL: " + req.URL.String())
+		req.Header.Set(v1.RefererHeader, req.URL.String())
+		logger.Info("#### Referer base path: " + v1.ParsePathBase(req.Header.Get(v1.RefererHeader)))
+	}
+
 	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
 	if err != nil {
 		return err
@@ -258,10 +265,6 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	}
 
 	// Write Headers
-	logger := logr.FromContextOrDiscard(ctx)
-	if req.Header.Get(v1.RefererHeader) == "" {
-		req.Header.Set(v1.RefererHeader, req.URL.String())
-	}
 	logger.Info(fmt.Sprintf("Original referer header: %s", req.Header.Get(v1.RefererHeader)))
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", locationHeader)
