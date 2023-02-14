@@ -225,7 +225,7 @@ func Test_HTTPSGateway(t *testing.T) {
 }
 
 func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
-	urlPath := fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), strings.TrimPrefix(path, "/"))
+	urlPath := strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
 	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
 	if err != nil {
 		return err

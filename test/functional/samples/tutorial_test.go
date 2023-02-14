@@ -308,8 +308,7 @@ func sendRequest(t *testing.T, req *http.Request, expectedStatusCode int) (*http
 }
 
 func sendGetRequest(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
-	urlPath := fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), strings.TrimPrefix(path, "/"))
-	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
+	req, err := http.NewRequest(http.MethodGet, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -324,9 +323,7 @@ func sendPostRequest(t *testing.T, hostname, baseURL, path string, body *[]byte,
 	}
 
 	bodyReader := bytes.NewReader(*body)
-
-	urlPath := fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), strings.TrimPrefix(path, "/"))
-	req, err := http.NewRequest(http.MethodPost, urlPath, bodyReader)
+	req, err := http.NewRequest(http.MethodPost, getURLPath(baseURL, path), bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -342,9 +339,7 @@ func sendPutRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, 
 	}
 
 	bodyReader := bytes.NewReader(*body)
-
-	urlPath := fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), strings.TrimPrefix(path, "/"))
-	req, err := http.NewRequest(http.MethodPut, urlPath, bodyReader)
+	req, err := http.NewRequest(http.MethodPut, getURLPath(baseURL, path), bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -355,12 +350,15 @@ func sendPutRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, 
 }
 
 func sendDeleteRequest(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
-	urlPath := fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), strings.TrimPrefix(path, "/"))
-	req, err := http.NewRequest(http.MethodDelete, urlPath, nil)
+	req, err := http.NewRequest(http.MethodDelete, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Host = hostname
 
 	return sendRequest(t, req, expectedStatusCode)
+}
+
+func getURLPath(baseURL, path string) string {
+	return strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
 }
