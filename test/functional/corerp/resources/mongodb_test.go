@@ -21,10 +21,10 @@ func Test_MongoDB(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
 
-	mongodbresourceid := "mongodbresourceid=" + os.Getenv("MONGODB_RESOURCE_ID")
-	if mongodbresourceid == "" {
-		t.Error("failed to get the mongoDB resource id from the environment")
+	if os.Getenv("MONGODB_RESOURCE_ID") == "" {
+		t.Error("MONGODB_RESOURCE_ID environment variable must be set to run this test.")
 	}
+	mongodbresourceid := "mongodbresourceid=" + os.Getenv("MONGODB_RESOURCE_ID")
 	appNamespace := "default-corerp-resources-mongodb"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{

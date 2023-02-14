@@ -7,7 +7,7 @@ param adminUsername string
 param adminPassword string
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'account-radiustestdev'
+  name: 'account-radiustest'
   location: location
   kind: 'MongoDB'
   tags: {
@@ -28,10 +28,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   }
 
   resource dbinner 'mongodbDatabases' = {
-    name: 'mongodb-radiustestdev'
+    name: 'mongodb-radiustest'
     properties: {
       resource: {
-        id: 'mongodb-radiustestdev'
+        id: 'mongodb-radiustest'
       }
       options: { 
         throughput: 400
@@ -41,7 +41,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 }
 
 resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
-  name: 'daprns-radiustestdev'
+  name: 'daprns-radiustest'
   location: location
   tags: {
     radiustest: 'corerp-resources-dapr-pubsub-servicebus'
@@ -63,13 +63,13 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     name: 'default'
     
     resource table 'tables' = {
-      name: 'radiustestdev'
+      name: 'radiustest'
     } 
   }
 }
 
 resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
-  name: 'mssql-radiustestdev'
+  name: 'mssql-radiustest'
   location: location
   tags: {
     radiustest: 'corerp-resources-microsoft-sql'
@@ -80,7 +80,7 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
   }
 
   resource db 'databases' = {
-    name: 'database-radiustestdev'
+    name: 'database-radiustest'
     location: location
   }
 
@@ -94,7 +94,7 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
 }
 
 resource redisCache 'Microsoft.Cache/redis@2020-12-01' = {
-  name: 'redis-radiustestdev'
+  name: 'redis-radiustest'
   location: location
   properties: {
     enableNonSslPort: false
@@ -110,6 +110,6 @@ resource redisCache 'Microsoft.Cache/redis@2020-12-01' = {
 output redisCacheId string = redisCache.id
 output sqlServerId string = server::db.id
 output tableStorageAccId string = storageAccount::tableServices::table.id
-output namespace string = namespace.id
+output namespaceId string = namespace.id
 output mongoDatabaseId string = account::dbinner.id
-output documentDBId string = account.id
+output cosmosMongoAccountID string = account.id

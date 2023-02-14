@@ -20,10 +20,10 @@ func Test_AzureConnections(t *testing.T) {
 	containerResourceName := "db-service"
 	template := "testdata/corerp-azure-connection-database-service.bicep"
 
-	documentdbresourceid := "documentdbresourceid=" + os.Getenv("DOCUMENTDB_RESOURCE_ID")
-	if documentdbresourceid == "" {
-		t.Error("failed to get the documentDB id from the environment")
+	if os.Getenv("DOCUMENTDB_RESOURCE_ID") == "" {
+		t.Error("DOCUMENTDB_RESOURCE_ID environment variable must be set to run this test.")
 	}
+	documentdbresourceid := "documentdbresourceid=" + os.Getenv("DOCUMENTDB_RESOURCE_ID")
 	appNamespace := "default-corerp-azure-connection-database-service"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
