@@ -71,7 +71,7 @@ func Test_RedisAzure(t *testing.T) {
 	name := "corerp-resources-redis-azure"
 
 	if os.Getenv("REDIS_RESOURCE_ID") == "" {
-		t.Error("failed to get the redis resource id from the environment")
+		t.Error("REDIS_RESOURCE_ID environment variable must be set to run this test.")
 	}
 	redisresourceid := "redisresourceid=" + os.Getenv("REDIS_RESOURCE_ID")
 

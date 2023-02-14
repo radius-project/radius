@@ -49,7 +49,7 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
-  name: 'tsaccountradiustestdev'
+  name: 'tsaccountradiustest'
   location: location
   sku: {
     name: 'Standard_LRS'
