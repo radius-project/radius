@@ -250,10 +250,7 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 	logger := logr.FromContextOrDiscard(ctx)
 	if req.Header.Get(v1.RefererHeader) == "" {
-		logger.Info("#### Request URL: " + req.URL.String())
-		logger.Info("#### Request host: " + req.Host)
 		req.Header.Set(v1.RefererHeader, req.URL.String())
-		logger.Info("#### Referer base path: " + v1.ParsePathBase(req.Header.Get(v1.RefererHeader)))
 	}
 
 	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
