@@ -6,7 +6,6 @@ package resourcegroups
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	http "net/http"
 	"strings"
@@ -19,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ armrpc_controller.Controller = (*GetResourceGroup)(nil)
@@ -57,12 +55,10 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		if errors.Is(err, &store.ErrNotFound{}) {
-			logger.Info(fmt.Sprintf("Resource group %s not found in db", resourceID))
-			restResponse := armrpc_rest.NewNotFoundResponse(resourceID)
-			return restResponse, nil
-		}
+	if rg == nil {
+		logger.Info(fmt.Sprintf("Resource group %s not found in db", resourceID))
+		restResponse := armrpc_rest.NewNotFoundResponse(resourceID)
+		return restResponse, nil
 		return nil, err
 	}
 	// Convert to version agnostic data model

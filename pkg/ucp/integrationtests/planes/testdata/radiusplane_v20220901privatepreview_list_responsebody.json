@@ -1,5 +1,5 @@
 {
-    "values": [
+    "value": [
         {
             "id": "/planes/radius/local",
             "name": "local",
@@ -9,7 +9,7 @@
                     "test": "http://localhost:9999"
                 }
             },
-            "type": "System.Planes/radius"
+            "type": ""
         }
     ]
 }
