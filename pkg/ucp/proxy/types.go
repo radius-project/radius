@@ -106,25 +106,20 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	ctx := resp.Request.Context()
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
-		logger := logr.FromContextOrDiscard(ctx)
 		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
 		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
 			// This is an Async Response with a Azure-AsyncOperation Header
-			logger.Info(fmt.Sprintf("#### Async header before conversion : %s", resp.Header[AzureAsyncOperationHeader]))
 			err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
 			if err != nil {
-				logger.Error(err, "Azure-Async Operation Header conversion error")
+				return err
 			}
-			logger.Info(fmt.Sprintf("#### Async header after conversion : %s", resp.Header[AzureAsyncOperationHeader]))
 		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
 			// This is an Async Response with a Location Header
-			logger.Info(fmt.Sprintf("#### Location header before conversion : %s", resp.Header[LocationHeader]))
 			err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
 			if err != nil {
-				logger.Error(err, "Location Header conversion error")
+				return err
 			}
-			logger.Info(fmt.Sprintf("#### Location header after conversion : %s", resp.Header[LocationHeader]))
 		}
 	}
 	return nil
