@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -146,7 +147,16 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	requestInfoPlaneID := strings.TrimSuffix(strings.Split(requestInfo.PlaneURL, "//")[1], "/")
 	headerPlaneID := strings.TrimSuffix(strings.Split(key, "//")[1], "/")
 	if !strings.EqualFold(requestInfoPlaneID, headerPlaneID) {
-		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header: %s", requestInfo.PlaneURL, headerName, header[0])
+		url, err := url.Parse(header[0])
+		if err != nil {
+			return err
+		}
+		base := v1.ParsePathBase(url.Path)
+		if !strings.EqualFold(requestInfo.UCPHost, headerPlaneID+base) {
+			return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header: %s", requestInfo.PlaneURL, headerName, header[0])
+		} else {
+			return nil
+		}
 	}
 
 	if requestInfo.UCPHost == "" {
