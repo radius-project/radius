@@ -109,33 +109,27 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
 		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
-		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
-			ucpHost, err := hasUCPHost(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader)
+		var headerName string
+		var headerVal []string
+
+		if header, ok := resp.Header[AzureAsyncOperationHeader]; ok {
+			headerName = AzureAsyncOperationHeader
+			headerVal = header
+		} else if header, ok := resp.Header[LocationHeader]; ok {
+			headerName = LocationHeader
+			headerVal = header
+		} else {
+			return nil
+		}
+
+		ucpHost, err := hasUCPHost(ctx, headerName, headerVal)
+		if err != nil {
+			return err
+		}
+		if !ucpHost {
+			err := convertHeaderToUCPIDs(ctx, headerName, headerVal, resp)
 			if err != nil {
 				return err
-			}
-			if !ucpHost {
-				// This is an Async Response with a Azure-AsyncOperation Header
-				err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
-				if err != nil {
-					return err
-				}
-			} else {
-				return nil
-			}
-		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
-			ucpHost, err := hasUCPHost(ctx, LocationHeader, locationHeader)
-			if err != nil {
-				return err
-			}
-			if !ucpHost {
-				// This is an Async Response with a Location Header
-				err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
-				if err != nil {
-					return err
-				}
-			} else {
-				return nil
 			}
 		}
 	}
