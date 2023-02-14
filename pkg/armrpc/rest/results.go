@@ -248,9 +248,9 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	// if req.Header.Get(v1.RefererHeader) == "" {
-	// 	req.Header.Set(v1.RefererHeader, req.URL.String())
-	// }
+	if req.Header.Get(v1.RefererHeader) == "" {
+		req.Header.Set(v1.RefererHeader, req.URL.String())
+	}
 	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
 	if err != nil {
 		return err
