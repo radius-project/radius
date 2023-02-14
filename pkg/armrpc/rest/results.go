@@ -260,7 +260,7 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	// Write Headers
 	logger := logr.FromContextOrDiscard(ctx)
 	if req.Header.Get(v1.RefererHeader) == "" {
-		req.Header.Set(v1.RefererHeader, req.RequestURI)
+		req.Header.Set(v1.RefererHeader, req.URL.String())
 	}
 	logger.Info(fmt.Sprintf("Original referer header: %s", req.Header.Get(v1.RefererHeader)))
 	w.Header().Add("Content-Type", "application/json")
