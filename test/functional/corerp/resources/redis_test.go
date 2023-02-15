@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
@@ -69,9 +70,14 @@ func Test_RedisAzure(t *testing.T) {
 	template := "testdata/corerp-resources-redis-azure.bicep"
 	name := "corerp-resources-redis-azure"
 
+	if os.Getenv("REDIS_RESOURCE_ID") == "" {
+		t.Error("REDIS_RESOURCE_ID environment variable must be set to run this test.")
+	}
+	redisresourceid := "redisresourceid=" + os.Getenv("REDIS_RESOURCE_ID")
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), redisresourceid),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

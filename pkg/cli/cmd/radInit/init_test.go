@@ -424,6 +424,20 @@ func Test_Validate(t *testing.T) {
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
+		{
+			Name:          "Init Command exit console with interrupt signal",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithInterruptSignal(mocks.Prompter)
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -730,6 +744,12 @@ func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectKubeContextPrompt).
 		Return("", errors.New("cannot read selection")).Times(1)
+}
+
+func initKubeContextWithInterruptSignal(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		GetListInput(gomock.Any(), selectKubeContextPrompt).
+		Return("", &prompt.ErrExitConsole{}).Times(1)
 }
 
 func initRadiusReinstallNo(prompter *prompt.MockInterface) {

@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -60,11 +61,16 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
+
+	if os.Getenv("TABLESTORAGE_RESOURCE_ID") == "" {
+		t.Error("TABLESTORAGE_RESOURCE_ID environment variable must be set to run this test.")
+	}
+	tablestorageresourceid := "tablestorageresourceid=" + os.Getenv("TABLESTORAGE_RESOURCE_ID")
 	appNamespace := "default-corerp-resources-dapr-statestore-tablestorage"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), tablestorageresourceid),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

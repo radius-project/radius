@@ -6,6 +6,8 @@ param environment string
 
 param location string = resourceGroup().location
 
+param namespaceresourceid string
+
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-pubsub-servicebus'
   location: location
@@ -53,14 +55,6 @@ resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' 
     environment: environment
     application: app.id
     mode: 'resource'
-    resource: namespace.id
-  }
-}
-
-resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
-  name: 'daprns-${guid(resourceGroup().id)}'
-  location: location
-  tags: {
-    radiustest: 'corerp-resources-dapr-pubsub-servicebus'
+    resource: namespaceresourceid
   }
 }

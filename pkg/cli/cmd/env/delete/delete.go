@@ -7,6 +7,7 @@ package delete
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -121,6 +122,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !r.Confirm {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.EnvironmentName), "no", r.InputPrompter)
 		if err != nil {
+			if errors.Is(err, &prompt.ErrExitConsole{}) {
+				return &cli.FriendlyError{Message: err.Error()}
+			}
 			return err
 		}
 		if !confirmed {
