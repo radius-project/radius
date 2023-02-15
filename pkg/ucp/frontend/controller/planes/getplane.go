@@ -46,8 +46,7 @@ func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Req
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 	logger.Info(fmt.Sprintf("Getting plane %s from db", resourceId))
-	plane := &datamodel.Plane{}
-	plane, _, err = p.GetResource(ctx, resourceId)
+	plane, _, err := p.GetResource(ctx, resourceId)
 	if err != nil {
 		return nil, err
 	}

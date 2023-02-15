@@ -87,6 +87,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 
 	ctx := testutil.ARMTestContextFromRequest(request)
 	response, err := rgCtrl.Run(ctx, w, request)
+	require.NoError(t, err)
 	_ = response.Apply(ctx, w, request)
 
 	actualOutput := v20220901privatepreview.ResourceGroupResource{}

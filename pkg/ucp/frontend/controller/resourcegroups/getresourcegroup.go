@@ -59,7 +59,6 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 		logger.Info(fmt.Sprintf("Resource group %s not found in db", resourceID))
 		restResponse := armrpc_rest.NewNotFoundResponse(resourceID)
 		return restResponse, nil
-		return nil, err
 	}
 	// Convert to version agnostic data model
 	apiVersion := ctrl.GetAPIVersion(req)
