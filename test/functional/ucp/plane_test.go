@@ -54,7 +54,7 @@ func Test_Plane_Operations(t *testing.T) {
 
 		testPlaneRest := rest.Plane{
 			ID:   planeID,
-			Type: "System.Planes/testtype",
+			Type: "",
 			Name: "testplane",
 			Properties: rest.PlaneProperties{
 				Kind: rest.PlaneKindUCPNative,
@@ -88,6 +88,7 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 		url,
 		bytes.NewBuffer(body))
 	require.NoError(t, err, "")
+	createRequest.Header.Add("Content-Type", "application/json")
 
 	res, err := roundTripper.RoundTrip(createRequest)
 	require.NoError(t, err, "")
@@ -103,6 +104,7 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 		nil,
 	)
 	require.NoError(t, err, "")
+	getRequest.Header.Add("Content-Type", "application/json")
 
 	result, err := roundTripper.RoundTrip(getRequest)
 	require.NoError(t, err, "")
@@ -125,6 +127,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 		nil,
 	)
 	require.NoError(t, err, "")
+	listRequest.Header.Add("Content-Type", "application/json")
 
 	result, err := roundTripper.RoundTrip(listRequest)
 	require.NoError(t, err, "")
@@ -147,6 +150,7 @@ func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
 	)
 	require.NoError(t, err, "")
 
+	deleteRgRequest.Header.Add("Content-Type", "application/json")
 	res, err := roundTripper.RoundTrip(deleteRgRequest)
 	require.NoError(t, err)
 	t.Logf("Plane: %s deleted successfully", url)

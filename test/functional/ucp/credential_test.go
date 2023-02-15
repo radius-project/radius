@@ -71,6 +71,7 @@ func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, 
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
 	createRequest, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	createRequest.Header.Add("Content-Type", "application/json")
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(createRequest)
@@ -83,6 +84,7 @@ func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, 
 func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.CredentialResource, int) {
 	getCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+	getCredentialRequest.Header.Add("Content-Type", "application/json")
 
 	result, err := roundTripper.RoundTrip(getCredentialRequest)
 	require.NoError(t, err)
@@ -102,6 +104,7 @@ func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (uc
 func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
 	deleteCredentialRequest, err := http.NewRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
+	deleteCredentialRequest.Header.Add("Content-Type", "application/json")
 
 	res, err := roundTripper.RoundTrip(deleteCredentialRequest)
 	return res.StatusCode, err
@@ -110,6 +113,7 @@ func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) 
 func listCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.CredentialResource {
 	listCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+	listCredentialRequest.Header.Add("Content-Type", "application/json")
 
 	res, err := roundTripper.RoundTrip(listCredentialRequest)
 	require.NoError(t, err)
@@ -139,7 +143,7 @@ func getCredentialList(t *testing.T, res *http.Response) []ucp.CredentialResourc
 
 func getAzureCredentialObject() ucp.CredentialResource {
 	return ucp.CredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
@@ -160,7 +164,7 @@ func getAzureCredentialObject() ucp.CredentialResource {
 
 func getAWSCredentialObject() ucp.CredentialResource {
 	return ucp.CredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
