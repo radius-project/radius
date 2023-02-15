@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -166,6 +167,29 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
+		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Exit Console with interrupt", func(t *testing.T) {
+		outputSink := &output.MockOutput{}
+
+		prompter := prompt.NewMockInterface(ctrl)
+		prompter.EXPECT().
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			Return("", &prompt.ErrExitConsole{}).
+			Times(1)
+
+		runner := &Runner{
+			ConfigHolder:  &framework.ConfigHolder{},
+			Output:        outputSink,
+			InputPrompter: prompter,
+			Workspace: &workspaces.Workspace{
+				Name: "test-workspace",
+			},
+		}
+
+		err := runner.Run(context.Background())
+		require.Equal(t, err, &cli.FriendlyError{Message: prompt.ErrExitConsoleMessage})
 		require.Empty(t, outputSink.Writes)
 	})
 }

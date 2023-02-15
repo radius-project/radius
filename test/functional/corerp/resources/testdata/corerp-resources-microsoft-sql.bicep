@@ -13,11 +13,13 @@ param magpiePort int = 3000
 param environment string = 'test'
 
 @description('Specifies the SQL username.')
-param adminUsername string = 'cooluser'
+param adminUsername string
 
 @description('Specifies the SQL password.')
 @secure()
-param adminPassword string = newGuid()
+param adminPassword string
+
+param mssqlresourceid string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-microsoft-sql'
@@ -57,32 +59,7 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     environment: environment
-    resource: server::dbinner.id
     mode: 'resource'
-  }
-}
-
-resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
-  name: 'mssql-${guid(resourceGroup().name)}'
-  location: location
-  tags: {
-    radiustest: 'corerp-resources-microsoft-sql'
-  }
-  properties: {
-    administratorLogin: adminUsername
-    administratorLoginPassword: adminPassword
-  }
-
-  resource dbinner 'databases' = {
-    name: 'cool-database'
-    location: location
-  }
-
-  resource firewall 'firewallRules' = {
-    name: 'allow'
-    properties: {
-      startIpAddress: '0.0.0.0'
-      endIpAddress: '0.0.0.0'
-    }
+    resource: mssqlresourceid
   }
 }
