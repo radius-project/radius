@@ -21,7 +21,7 @@ var _ ctrl.Controller = (*DeleteContainer)(nil)
 
 var (
 	// AsyncDeleteContainerOperationTimeout is the default timeout duration of async delete container operation.
-	AsyncDeleteContainerOperationTimeout = time.Duration(120) * time.Second
+	AsyncDeleteContainerOperationTimeout = time.Duration(300) * time.Second
 )
 
 // DeleteContainer is the controller implementation to delete container resource.
