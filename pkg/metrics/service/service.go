@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/metrics/provider"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
@@ -46,6 +47,11 @@ func (s *Service) Run(ctx context.Context) error {
 	err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
 	if err != nil {
 		logger.Error(err, "failed to start runtime metrics")
+	}
+
+	err = metrics.InitMetrics()
+	if err != nil {
+		logger.Error(err, "failed to initialize metrics")
 	}
 
 	mux := http.NewServeMux()

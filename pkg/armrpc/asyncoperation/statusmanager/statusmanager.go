@@ -11,13 +11,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/google/uuid"
 )
 
 // statusManager includes the necessary functions to manage asynchronous operations.
@@ -99,6 +101,8 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		}
 		return err
 	}
+
+	metrics.DefaultAsyncOperationMetrics.RecordQueuedAsyncOperation(ctx)
 
 	return nil
 }
