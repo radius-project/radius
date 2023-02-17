@@ -71,11 +71,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 			return nil, err
 		}
 
-		err = ensureUserRecipesNamesAreNotReserved(newResource.Properties.Recipes, devRecipes)
-		if err != nil {
-			return nil, err
-		}
-
 		if newResource.Properties.Recipes == nil {
 			newResource.Properties.Recipes = map[string]datamodel.EnvironmentRecipeProperties{}
 		}
@@ -191,31 +186,6 @@ func parseRepoPathForMetadata(repo string) (link, provider string) {
 	}
 
 	return link, provider
-}
-
-func ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
-	overlap := map[string]datamodel.EnvironmentRecipeProperties{}
-	for k := range devRecipes {
-		if v, ok := userRecipes[k]; ok {
-			overlap[k] = v
-		}
-	}
-
-	if len(overlap) > 0 {
-		errorPrefix := "recipe name(s) reserved for devRecipes for: "
-		var errorRecipes string
-		for k, v := range overlap {
-			if errorRecipes != "" {
-				errorRecipes += ", "
-			}
-
-			errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
-		}
-
-		return fmt.Errorf(errorPrefix + errorRecipes)
-	}
-
-	return nil
 }
 
 func findHighestVersion(versions []string) (latest float64, err error) {

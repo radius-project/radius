@@ -77,6 +77,15 @@ type Runner struct {
 	Parameters        map[string]map[string]any
 }
 
+// TODO: remove the reserved reservedDevRecipesName after the issue:https://github.com/project-radius/radius/issues/5179 is fixed
+// This is a temp fix
+var reservedDevRecipesName = map[string]bool{
+	"mongo-azure":      true,
+	"mongo-kubernetes": true,
+	"redis-kubernetes": true,
+	"redis-azure":      true,
+}
+
 // NewRunner creates a new instance of the `rad recipe register` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
@@ -150,7 +159,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	recipeProperties := envResource.Properties.Recipes
 	if recipeProperties[r.RecipeName] != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
+		// TODO: Remove this check after the issue:https://github.com/project-radius/radius/issues/5179 is fixed
+	} else if v, ok := reservedDevRecipesName[r.RecipeName]; ok && v {
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q is reserved for dev-recipes", r.RecipeName)}
 	}
 	if recipeProperties == nil {
 		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}

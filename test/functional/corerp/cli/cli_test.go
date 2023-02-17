@@ -83,6 +83,14 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Contains(t, output, "defaultValue")
 		require.Contains(t, output, "resourceGroup().location]")
 	})
+	recipeName = "mongo-azure"
+	recipeTemplate = "radius.azurecr.io/recipes/mongodatabases/azure"
+	linkType = "Applications.Link/mongodatbases"
+	t.Run("Validate rad recipe register with recipe name conflicting with dev-recipe", func(t *testing.T) {
+		output, err := cli.RecipeRegister(ctx, recipeName, recipeTemplate, linkType)
+		require.Error(t, err)
+		require.Contains(t, output, fmt.Sprintf("recipe with name %q is reserved for dev-recipes", recipeName))
+	})
 }
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
