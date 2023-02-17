@@ -157,15 +157,7 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	requestInfoPlaneID := strings.TrimSuffix(strings.Split(requestInfo.PlaneURL, "//")[1], "/")
 	headerPlaneID := strings.TrimSuffix(strings.Split(key, "//")[1], "/")
 	if !strings.EqualFold(requestInfoPlaneID, headerPlaneID) {
-		// ok, err := hasUCPHost(ctx, headerName, header)
-		// if err != nil {
-		// 	return err
-		// }
-		// if !ok {
 		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header: %s", requestInfo.PlaneURL, headerName, header[0])
-		// } else {
-		// 	return nil
-		// }
 	}
 
 	if requestInfo.UCPHost == "" {
