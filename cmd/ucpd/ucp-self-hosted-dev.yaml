@@ -73,5 +73,4 @@ logging:
 tracerProvider:
   serviceName: "ucp"
   zipkin:
-    enabled: true
     url: "http://localhost:9411/api/v2/spans"
