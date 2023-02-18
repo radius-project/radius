@@ -16,6 +16,10 @@ spec:
       labels:
         control-plane: de
         app.kubernetes.io/part-of: radius-control-plane
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "6443"
+        prometheus.io/scrape: "true"
     spec:
       serviceAccountName: de-manager
       containers:
@@ -34,7 +38,11 @@ spec:
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
         - name: ASPNETCORE_Logging__LogLevel__Default
           value: "Debug"
-        image: {{ .Values.global.engine.image }}:{{ .Values.global.engine.tag }}
+        - name: ASPNETCORE_Zipkin__Endpoint
+          value: "http://jaeger:9411/api/v2/spans"
+        # image: {{ .Values.global.engine.image }}:{{ .Values.global.engine.tag }}
+        # THIS IS a temporary change for validation.
+        image: radius.azurecr.io/deployment-engine:pr-330
         name: de
         ports:
         - containerPort: 6443
