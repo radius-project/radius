@@ -24,8 +24,7 @@ import (
 )
 
 const (
-	setAndClearErrMessage = "Cannot set and clear env provider"
-	envNotFoundErrMessage = "Env Creation required before udpation"
+	envNotFoundErrMessage = "Environment does not exist. Please select a new environment and try again"
 	azureScopeTemplate    = "/subscriptions/%s/resourceGroups/%s"
 	awsScopeTemplate      = "/planes/aws/aws/accounts/%s/regions/%s"
 )
@@ -39,30 +38,43 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "update [envName]",
-		Short: "Updates configurable environment details.",
-		Long:  `Updates configurable environment details. provider on env is one example`,
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "update [environment]",
+		Short: "Update environment configuration.",
+		Long: `Update environment configuration
+	
+		This command updates the configuration of an environment for properties that are able to be changed.
+		
+		Updatable properties include:
+		  - providers (Azure, AWS)
+		  
+		All other properties require the environment to be deleted and recreated.
+		`,
+		Args: cobra.ExactArgs(1),
 		Example: `
-# Update azure provider on enviroment
-# When setting azure provider, subscriptionId and resourcegroup flags are required
-rad env update my-env --set-azure-provider --subscription-id='subId' --resourcegroup='rgId'
+## Update Azure cloud provider
+rad env update myenv --azure-subscription-id **** --azure-resource-group myrg
 
-# Update aws provider on environment
-# When setting aws provider, region and accountId flags are required
-rad env update my-env --set-aws-provider --region='us-west-2' --accountId='aId'
+## Update AWS cloud provider
+rad env update myenv --aws-region us-west-2 --aws-account-id *****
+
+# Remove azure cloud provider on environment
+rad env update my-env --clear-azure
+
+# Remove aws cloud provider on environment
+rad env update my-env --clear-aws
 `,
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
+	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
+	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
 	commonflags.AddAzureScopeFlags(cmd)
 	commonflags.AddAWSScopeFlags(cmd)
 	commonflags.AddOutputFlag(cmd)
-
-	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
-	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
+	//TODO: https://github.com/project-radius/radius/issues/5247
+	commonflags.AddEnvironmentNameFlag(cmd)
 
 	return cmd, runner
 }
@@ -74,12 +86,15 @@ type Runner struct {
 	Workspace         *workspaces.Workspace
 	Output            output.Interface
 
-	envName       string
-	setEnvAzure   bool
-	setEnvAws     bool
+	EnvName       string
 	clearEnvAzure bool
 	clearEnvAws   bool
 	providers     *corerp.Providers
+	AzureSubId    string
+	AzureRgId     string
+	AWSAccountId  string
+	AWSRegion     string
+	UseDevRecipes bool
 }
 
 // NewRunner creates a new instance of the `rad env update` runner.
@@ -105,68 +120,44 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Scope = scope
 
-	r.envName = args[0]
-
-	r.setEnvAzure, err = cmd.Flags().GetBool(commonflags.SetEnvAzureFlag)
+	r.EnvName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
+
+	// TODO: Validate Azure scope components (https://github.com/project-radius/radius/issues/5155)
+	r.AzureSubId, err = cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
+	if err != nil {
+		return err
+	}
+
+	r.AzureRgId, err = cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
+	if err != nil {
+		return err
+	}
+	r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, r.AzureSubId, r.AzureRgId))
 
 	r.clearEnvAzure, err = cmd.Flags().GetBool(commonflags.ClearEnvAzureFlag)
 	if err != nil {
 		return err
 	}
 
-	if r.setEnvAzure && r.clearEnvAzure {
-		return &cli.FriendlyError{Message: setAndClearErrMessage}
-	}
-
-	if r.setEnvAzure {
-		// TODO: Validate Azure scope components (https://github.com/project-radius/radius/issues/5155)
-		azureSubId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
-		if err != nil {
-			return err
-		}
-
-		azureResourceGroup, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
-		if err != nil {
-			return err
-		}
-		r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, azureSubId, azureResourceGroup))
-	}
-
-	if r.clearEnvAws {
-		r.providers.Aws = nil
-	}
-
-	r.setEnvAws, err = cmd.Flags().GetBool(commonflags.SetEnvAWSFlag)
+	// TODO: Validate AWS scope components (https://github.com/project-radius/radius/issues/5155)
+	// stsclient can be used to validate
+	r.AWSRegion, err = cmd.Flags().GetString(commonflags.AWSRegionFlag)
 	if err != nil {
 		return err
 	}
+
+	r.AWSAccountId, err = cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
+	if err != nil {
+		return err
+	}
+	r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, r.AWSAccountId, r.AWSRegion))
 
 	r.clearEnvAws, err = cmd.Flags().GetBool(commonflags.ClearEnvAWSFlag)
 	if err != nil {
 		return err
-	}
-
-	if r.setEnvAws && r.clearEnvAws {
-		return &cli.FriendlyError{Message: setAndClearErrMessage}
-	}
-
-	if r.setEnvAws {
-		// TODO: Validate AWS scope components (https://github.com/project-radius/radius/issues/5155)
-		// stsclient can be used to validate
-		awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
-		if err != nil {
-			return err
-		}
-
-		awsAccount, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
-		if err != nil {
-			return err
-		}
-		r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, awsAccount, awsRegion))
-
 	}
 
 	return nil
@@ -181,49 +172,41 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	env, err := client.GetEnvDetails(ctx, r.envName)
+	env, err := client.GetEnvDetails(ctx, r.EnvName)
 	if err != nil {
 		if clients.Is404Error(err) {
 			return &cli.FriendlyError{Message: envNotFoundErrMessage}
 		}
 		return err
 	}
-	providers := &corerp.Providers{}
-	//in case provider already exists, fetch it on local.
-	if env.Properties.Providers != nil {
-		providers = env.Properties.Providers
+	if env.Properties.Providers == nil {
+		env.Properties.Providers = &corerp.Providers{}
 	}
 	// only update azure provider info if user requires it.
-	if r.setEnvAzure || r.clearEnvAzure {
-		providers.Azure = r.providers.Azure
+	if r.providers.Azure != nil && r.providers.Azure.Scope != nil {
+		env.Properties.Providers.Azure = r.providers.Azure
+	} else if r.clearEnvAzure {
+		env.Properties.Providers.Azure = nil
 	}
 	// only update aws provider info if user requires it.
-	if r.setEnvAws || r.clearEnvAws {
-		providers.Aws = r.providers.Aws
+	if r.providers.Aws != nil && r.providers.Aws.Scope != nil {
+		env.Properties.Providers.Aws = r.providers.Aws
+	} else if r.clearEnvAws {
+		env.Properties.Providers.Aws = nil
 	}
 
-	var namespace string
-	compute, ok := env.Properties.Compute.(*corerp.KubernetesCompute)
-	if ok {
-		namespace = *compute.Namespace
-	} else {
-		namespace = r.envName
-
-	}
-
-	isEnvUpdated, err := client.CreateEnvironment(ctx, r.envName, v1.LocationGlobal, namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, providers, *env.Properties.UseDevRecipes)
-	// In case of 304 (env not updated but no error), return nil
+	isEnvUpdated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, env.Properties)
 	if err != nil || !isEnvUpdated {
-		return err
+		return &cli.FriendlyError{Message: fmt.Sprintf("failed to configure cloud provider scope to the environment %s: %s", r.EnvName, err.Error())}
 	}
+	r.UseDevRecipes = *env.Properties.UseDevRecipes
 
-	env.Properties.Providers = providers
-	err = r.Output.WriteFormatted("table", env, objectformats.GetEnvironmentTableFormat())
+	err = r.Output.WriteFormatted("table", r, objectformats.GetUpdateEnvironmentTableFormat())
 	if err != nil {
 		return err
 	}
 
-	r.Output.LogInfo("Successfully updated environment %q.", r.envName)
+	r.Output.LogInfo("Successfully updated environment %q.", r.EnvName)
 
 	return nil
 }

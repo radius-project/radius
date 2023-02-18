@@ -15,6 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type updateEnvObject struct {
+	EnvName       string
+	AzureSubId    string
+	AzureRgId     string
+	AWSAccountId  string
+	AWSRegion     string
+	UseDevRecipes bool
+}
+
 func Test_GenericEnvTableFormat(t *testing.T) {
 	obj := v20220315privatepreview.EnvironmentResource{
 		Name: to.Ptr("test_env_resource"),
@@ -29,25 +38,19 @@ func Test_GenericEnvTableFormat(t *testing.T) {
 }
 
 func Test_EnvTableFormat(t *testing.T) {
-	obj := v20220315privatepreview.EnvironmentResource{
-		Name: to.Ptr("test_env_resource"),
-		Properties: &v20220315privatepreview.EnvironmentProperties{
-			Providers: &v20220315privatepreview.Providers{
-				Azure: &v20220315privatepreview.ProvidersAzure{
-					Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/testResourceGroup"),
-				},
-				Aws: &v20220315privatepreview.ProvidersAws{
-					Scope: to.Ptr("/planes/aws/aws/accounts/testAccountId/regions/us-west-2"),
-				},
-			},
-			UseDevRecipes: to.Ptr(false),
-		},
+	obj := updateEnvObject{
+		EnvName:       "test_env_resource",
+		AzureSubId:    "testSubId",
+		AzureRgId:     "testResourceGroup",
+		AWSAccountId:  "testAccountId",
+		AWSRegion:     "us-west-2",
+		UseDevRecipes: true,
 	}
 
 	buffer := &bytes.Buffer{}
-	err := output.Write(output.FormatTable, obj, buffer, GetEnvironmentTableFormat())
+	err := output.Write(output.FormatTable, obj, buffer, GetUpdateEnvironmentTableFormat())
 	require.NoError(t, err)
 
-	expected := "ENV_NAME           AZURE                                                      AWS                                                       DEV_RECIPES\ntest_env_resource  /subscriptions/testSubId/resourceGroups/testResourceGroup  /planes/aws/aws/accounts/testAccountId/regions/us-west-2  false\n"
+	expected := "NAME               AZURE_SUBSCRIPTION  AZURE_RESOURCE_GROUP  AWS_ACCOUNT    AWS_REGION  DEV_RECIPES\ntest_env_resource  testSubId           testResourceGroup     testAccountId  us-west-2   true\n"
 	require.Equal(t, expected, buffer.String())
 }

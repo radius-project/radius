@@ -32,7 +32,7 @@ func Test_Validate(t *testing.T) {
 
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Update Env Command with",
+			Name:          "Update Env Command without pro",
 			Input:         []string{"default"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -51,7 +51,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Update Env Command with single provider set",
-			Input:         []string{"default", "--set-azure", "--azure-subscriptionid", "testSubId", "--azure-resourcegroup", "testResourceGroup"},
+			Input:         []string{"default", "--azure-subscription-id", "testSubId", "--azure-resource-group", "testResourceGroup"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -59,8 +59,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Update Env Command with set and clear for same provider",
-			Input:         []string{"default", "--set-azure", "--azure-subscriptionid", "testSubId", "--azure-resourcegroup", "testResourceGroup", "--clear-azure"},
+			Name:          "Update Env Command with invalid flag groups",
+			Input:         []string{"default", "--azure-subscription-id", "testSubId"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -69,8 +69,8 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name: "Update Env Command with both providers set",
-			Input: []string{"default", "--set-azure", "--azure-subscriptionid", "testSubId", "--azure-resourcegroup", "testResourceGroup",
-				"--set-aws", "--aws-region", "us-west-2", "--aws-account", "testAWSAccount",
+			Input: []string{"default", "--azure-subscription-id", "testSubId", "--azure-resource-group", "testResourceGroup",
+				"--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount",
 			},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -109,10 +109,12 @@ func Test_Update(t *testing.T) {
 			},
 		}
 
+		testEnvProperties := &corerp.EnvironmentProperties{
+			UseDevRecipes: to.Ptr(false),
+			Providers:     testProviders,
+		}
 		appManagementClient.EXPECT().
-			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, "test-env",
-				"Kubernetes", "", gomock.Any(),
-				gomock.Any(), false).
+			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).
 			Return(true, nil).
 			Times(1)
 
@@ -129,8 +131,7 @@ func Test_Update(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Workspace:         workspace,
 			Output:            outputSink,
-			envName:           "test-env",
-			setEnvAzure:       true,
+			EnvName:           "test-env",
 			providers:         testProviders,
 		}
 
@@ -141,15 +142,15 @@ func Test_Update(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format:  "Updating Environment...",
+				Format: "Updating Environment...",
 			},
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     environment,
-				Options: objectformats.GetEnvironmentTableFormat(),
+				Options: objectformats.GetUpdateEnvironmentTableFormat(),
 			},
 			output.LogOutput{
-				Format:  "Successfully updated environment %q.",
+				Format: "Successfully updated environment %q.",
 				Params: []any{"test-env"},
 			},
 		}
@@ -187,10 +188,12 @@ func Test_Update(t *testing.T) {
 			},
 		}
 
+		testEnvProperties := &corerp.EnvironmentProperties{
+			UseDevRecipes: to.Ptr(false),
+			Providers:     testProviders,
+		}
 		appManagementClient.EXPECT().
-			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, "test-env",
-				"Kubernetes", "", gomock.Any(),
-				gomock.Any(), false).
+			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).
 			Return(true, nil).
 			Times(1)
 
@@ -207,8 +210,7 @@ func Test_Update(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Workspace:         workspace,
 			Output:            outputSink,
-			envName:           "test-env",
-			setEnvAzure:       true,
+			EnvName:           "test-env",
 			providers:         testProviders,
 		}
 
@@ -219,15 +221,15 @@ func Test_Update(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format:  "Updating Environment...",
+				Format: "Updating Environment...",
 			},
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     environment,
-				Options: objectformats.GetEnvironmentTableFormat(),
+				Options: objectformats.GetUpdateEnvironmentTableFormat(),
 			},
 			output.LogOutput{
-				Format:  "Successfully updated environment %q.",
+				Format: "Successfully updated environment %q.",
 				Params: []any{"test-env"},
 			},
 		}

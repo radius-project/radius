@@ -193,24 +193,32 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetEnvironmentTableFormat() output.FormatterOptions {
+func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
-				Heading:  "ENV_NAME",
-				JSONPath: "{ .Name }",
+				Heading:  "NAME",
+				JSONPath: "{ .EnvName }",
 			},
 			{
-				Heading:  "AZURE",
-				JSONPath: "{ .Properties.Providers.Azure.Scope }",
+				Heading:  "AZURE_SUBSCRIPTION",
+				JSONPath: "{ .AzureSubId }",
 			},
 			{
-				Heading:  "AWS",
-				JSONPath: "{ .Properties.Providers.Aws.Scope }",
+				Heading:  "AZURE_RESOURCE_GROUP",
+				JSONPath: "{ .AzureRgId }",
+			},
+			{
+				Heading:  "AWS_ACCOUNT",
+				JSONPath: "{ .AWSAccountId }",
+			},
+			{
+				Heading:  "AWS_REGION",
+				JSONPath: "{ .AWSRegion }",
 			},
 			{
 				Heading:  "DEV_RECIPES",
-				JSONPath: "{ .Properties.UseDevRecipes }",
+				JSONPath: "{ .UseDevRecipes }",
 			},
 		},
 	}
