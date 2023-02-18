@@ -17,16 +17,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
+var _ ctrl.Controller = (*GetAWSResourceWithPost)(nil)
 
 // GetAWSResourceWithPost is the controller implementation to get an AWS resource.
 type GetAWSResourceWithPost struct {
@@ -34,7 +33,7 @@ type GetAWSResourceWithPost struct {
 }
 
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost.
-func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewGetAWSResourceWithPost(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetAWSResourceWithPost{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
@@ -87,7 +86,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.BasePath(), req.URL.Path), awsResourceIdentifier)), nil
+		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().BasePath, req.URL.Path), awsResourceIdentifier)), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}

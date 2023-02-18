@@ -11,18 +11,17 @@ import (
 	http "net/http"
 
 	"github.com/go-logr/logr"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ armrpc_controller.Controller = (*DeleteResourceGroup)(nil)
+var _ ctrl.Controller = (*DeleteResourceGroup)(nil)
 
 // DeleteResourceGroup is the controller implementation to delete a UCP resource group.
 type DeleteResourceGroup struct {
@@ -30,7 +29,7 @@ type DeleteResourceGroup struct {
 }
 
 // NewDeleteResourceGroup creates a new DeleteResourceGroup.
-func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewDeleteResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteResourceGroup{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.ResourceGroup]{
@@ -42,7 +41,7 @@ func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, er
 }
 
 func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(r.BasePath(), req.URL.Path)
+	path := middleware.GetRelativePath(r.Options().BasePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 
 	resourceID, err := resources.ParseScope(path)

@@ -11,14 +11,13 @@ import (
 	"path"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
+var _ ctrl.Controller = (*ListAWSResources)(nil)
 
 // ListAWSResources is the controller implementation to get/list AWS resources.
 type ListAWSResources struct {
@@ -26,7 +25,7 @@ type ListAWSResources struct {
 }
 
 // NewListAWSResources creates a new ListAWSResources.
-func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewListAWSResources(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListAWSResources{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},

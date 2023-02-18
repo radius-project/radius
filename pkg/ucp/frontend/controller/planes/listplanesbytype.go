@@ -12,31 +12,34 @@ import (
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ armrpc_controller.Controller = (*ListPlanesByType)(nil)
+var _ ctrl.Controller = (*ListPlanesByType)(nil)
 
 // ListPlanesByType is the controller implementation to get the list of UCP planes.
 type ListPlanesByType struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
 // NewListPlanes creates a new ListPlanesByType.
-func NewListPlanesByType(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &ListPlanesByType{ctrl.NewBaseController(opts)}, nil
+func NewListPlanesByType(opts ctrl.Options) (ctrl.Controller, error) {
+	return &ListPlanesByType{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Plane]{},
+		),
+	}, nil
 }
 
 func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
+	path := middleware.GetRelativePath(e.Options().BasePath, req.URL.Path)
 	// The path is /planes/{planeType}
 	planeType := strings.Split(path, resources.SegmentSeparator)[2]
 	query := store.Query{
@@ -61,7 +64,6 @@ func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *
 }
 
 func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]any, error) {
-	apiVersion := ctrl.GetAPIVersion(req)
 	listOfPlanes := []any{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
@@ -71,7 +73,7 @@ func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request
 				return nil, err
 			}
 
-			versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+			versioned, err := converter.PlaneDataModelToVersioned(&plane, ctrl.GetAPIVersion(req))
 			if err != nil {
 				return nil, err
 			}

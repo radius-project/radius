@@ -12,14 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*DeleteAWSResource)(nil)
+var _ ctrl.Controller = (*DeleteAWSResource)(nil)
 
 // DeleteAWSResource is the controller implementation to delete AWS resource.
 type DeleteAWSResource struct {
@@ -27,7 +26,7 @@ type DeleteAWSResource struct {
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
-func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewDeleteAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteAWSResource{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
@@ -64,6 +63,6 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.BasePath())
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.Options().BasePath)
 	return resp, nil
 }

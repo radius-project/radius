@@ -9,22 +9,26 @@ import (
 	"encoding/json"
 	http "net/http"
 
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*DiscoveryDoc)(nil)
+var _ ctrl.Controller = (*DiscoveryDoc)(nil)
 
 // DiscoveryDoc is the controller implementation to handle the discovery document.
 type DiscoveryDoc struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.KubernetesResource, datamodel.KubernetesResource]
 }
 
 // NewDiscoveryDoc creates a new DiscoveryDoc.
-func NewDiscoveryDoc(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &DiscoveryDoc{ctrl.NewBaseController(opts)}, nil
+func NewDiscoveryDoc(opts ctrl.Options) (ctrl.Controller, error) {
+	return &DiscoveryDoc{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.KubernetesResource]{},
+		),
+	}, nil
 }
 
 func (e *DiscoveryDoc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

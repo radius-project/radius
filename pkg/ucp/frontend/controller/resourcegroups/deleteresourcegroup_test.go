@@ -17,7 +17,7 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -32,7 +32,7 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 
@@ -90,7 +90,7 @@ func Test_DeleteNonExistentResourceGroup(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 
@@ -166,7 +166,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	})
 
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 

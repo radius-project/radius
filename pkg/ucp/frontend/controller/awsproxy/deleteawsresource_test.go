@@ -17,7 +17,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -55,7 +55,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -93,7 +93,7 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

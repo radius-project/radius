@@ -11,20 +11,20 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ armrpc_controller.Controller = (*DeleteCredential)(nil)
+var _ ctrl.Controller = (*DeleteCredential)(nil)
 
 // DeleteCredential is the controller implementation to delete a UCP credential.
 type DeleteCredential struct {
@@ -32,7 +32,7 @@ type DeleteCredential struct {
 }
 
 // NewDeleteCredential creates a new DeleteCredential.
-func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewDeleteCredential(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteCredential{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Credential]{
@@ -44,15 +44,18 @@ func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error
 }
 
 func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(c.BasePath(), req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 
-	resourceID, err := resources.ParseResource(path)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	path := middleware.GetRelativePath(c.Options().BasePath, req.URL.Path)
+
+	_, err := resources.ParseResource(path)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	old, etag, err := c.GetResource(ctx, resourceID)
+	old, etag, err := c.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,10 +64,10 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 		return rest.NewNoContentResponse(), nil
 	}
 
-	secretName := credentials.GetSecretName(resourceID)
+	secretName := credentials.GetSecretName(serviceCtx.ResourceID)
 
 	// Delete the credential secret.
-	err = c.Options().SecretClient.Delete(ctx, secretName)
+	err = c.Options().CredentialClient.Delete(ctx, secretName)
 	if errors.Is(err, &secret.ErrNotFound{}) {
 		return armrpc_rest.NewNoContentResponse(), nil
 	} else if err != nil {
@@ -75,13 +78,13 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 		return r, err
 	}
 
-	if err := c.StorageClient().Delete(ctx, resourceID.String()); err != nil {
+	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("Deleted Credential %s successfully", resourceID))
+	logger.Info(fmt.Sprintf("Deleted Credential %s successfully", serviceCtx.ResourceID))
 	return rest.NewOKResponse(nil), nil
 }

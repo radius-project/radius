@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +39,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

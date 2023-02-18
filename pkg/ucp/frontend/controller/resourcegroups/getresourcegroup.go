@@ -11,16 +11,15 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-var _ armrpc_controller.Controller = (*GetResourceGroup)(nil)
+var _ ctrl.Controller = (*GetResourceGroup)(nil)
 
 // GetResourceGroup is the controller implementation to get the details of a UCP resource group
 type GetResourceGroup struct {
@@ -28,7 +27,7 @@ type GetResourceGroup struct {
 }
 
 // NewGetResourceGroup creates a new GetResourceGroup.
-func NewGetResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewGetResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetResourceGroup{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.ResourceGroup]{
@@ -40,7 +39,7 @@ func NewGetResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error
 }
 
 func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(r.BasePath(), req.URL.Path)
+	path := middleware.GetRelativePath(r.Options().BasePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 	id := strings.ToLower(path)
 	resourceID, err := resources.ParseScope(id)

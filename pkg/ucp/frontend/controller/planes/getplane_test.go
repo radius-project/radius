@@ -14,11 +14,11 @@ import (
 	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -32,7 +32,7 @@ func Test_GetPlaneByID(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewGetPlane(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 
@@ -97,7 +97,7 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewGetPlane(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 
@@ -118,10 +118,7 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 	}
 	ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	require.NoError(t, err)
 
-	id, err := resources.ParseScope("/planes/radius/local")
-	require.NoError(t, err)
-	expectedResponse := armrpc_rest.NewNotFoundResponse(id)
+	expectedResponse := armrpc_rest.NewNotFoundResponse(resourceID)
 	assert.DeepEqual(t, expectedResponse, response)
 }

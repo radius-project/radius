@@ -14,11 +14,11 @@ import (
 	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 )
@@ -32,7 +32,7 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	rgCtrl, err := NewGetResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 

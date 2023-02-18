@@ -15,15 +15,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateAWSResource)(nil)
 
 // CreateOrUpdateAWSResource is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResource struct {
@@ -31,7 +30,7 @@ type CreateOrUpdateAWSResource struct {
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
-func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateAWSResource{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
@@ -185,6 +184,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		"properties": responseProperties,
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.BasePath())
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.Options().BasePath)
 	return resp, nil
 }

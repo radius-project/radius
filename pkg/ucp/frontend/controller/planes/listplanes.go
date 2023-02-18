@@ -11,24 +11,23 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ armrpc_controller.Controller = (*ListPlanes)(nil)
+var _ ctrl.Controller = (*ListPlanes)(nil)
 
 // ListPlanes is the controller implementation to get the list of UCP planes.
 type ListPlanes struct {
 	ctrl.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewListPlanes creates a new ListPlanes.
-func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
+// GetPlane gets a UCP plane.
+func NewListPlanes(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListPlanes{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Plane]{},
@@ -36,20 +35,19 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	}, nil
 }
 
-func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(e.BasePath(), req.URL.Path)
+func (p *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	path := middleware.GetRelativePath(p.Options().BasePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
-
 	query := store.Query{
 		RootScope:    path,
 		IsScopeQuery: true,
 	}
 	logger.Info(fmt.Sprintf("Listing planes in scope %s", query.RootScope))
-	result, err := e.StorageClient().Query(ctx, query)
+	result, err := p.StorageClient().Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	listOfPlanes, err := e.createResponse(ctx, req, result)
+	listOfPlanes, err := p.createResponse(ctx, req, result)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +58,6 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 }
 
 func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]any, error) {
-	apiVersion := ctrl.GetAPIVersion(req)
 	listOfPlanes := []any{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
@@ -70,7 +67,7 @@ func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, resu
 				return nil, err
 			}
 
-			versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+			versioned, err := converter.PlaneDataModelToVersioned(&plane, ctrl.GetAPIVersion(req))
 			if err != nil {
 				return nil, err
 			}

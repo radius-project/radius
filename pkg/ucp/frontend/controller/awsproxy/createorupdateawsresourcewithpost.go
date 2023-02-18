@@ -18,15 +18,14 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
 
 // CreateOrUpdateAWSResourceWithPost is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResourceWithPost struct {
@@ -34,7 +33,7 @@ type CreateOrUpdateAWSResourceWithPost struct {
 }
 
 // NewCreateOrUpdateAWSResourceWithPost creates a new CreateOrUpdateAWSResourceWithPost.
-func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateAWSResourceWithPost{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
@@ -189,6 +188,6 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		responseBody["name"] = awsResourceIdentifier
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.BasePath())
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.Options().BasePath)
 	return resp, nil
 }

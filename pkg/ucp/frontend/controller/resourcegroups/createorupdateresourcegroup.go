@@ -9,14 +9,13 @@ import (
 	http "net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*CreateOrUpdateResourceGroup)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateResourceGroup)(nil)
 
 // CreateOrUpdateResourceGroup is the controller implementation to create/update a UCP resource group.
 type CreateOrUpdateResourceGroup struct {
@@ -24,7 +23,7 @@ type CreateOrUpdateResourceGroup struct {
 }
 
 // NewCreateOrUpdateResourceGroup creates a new CreateOrUpdateResourceGroup.
-func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateResourceGroup{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.ResourceGroup]{

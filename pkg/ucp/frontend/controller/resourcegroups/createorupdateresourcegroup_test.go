@@ -17,10 +17,10 @@ import (
 	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 )
@@ -33,7 +33,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	rgCtrl, err := NewCreateOrUpdateResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 
@@ -104,7 +104,7 @@ func Test_CreateResourceGroup_BadAPIVersion(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	rgCtrl, err := NewCreateOrUpdateResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 

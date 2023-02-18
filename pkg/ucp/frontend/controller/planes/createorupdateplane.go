@@ -9,14 +9,13 @@ import (
 	http "net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*CreateOrUpdatePlane)(nil)
+var _ ctrl.Controller = (*CreateOrUpdatePlane)(nil)
 
 // CreateOrUpdatePlane is the controller implementation to create/update a UCP plane resource.
 type CreateOrUpdatePlane struct {
@@ -24,7 +23,7 @@ type CreateOrUpdatePlane struct {
 }
 
 // NewCreateOrUpdatePlane creates a new CreateOrUpdatePlane.
-func NewCreateOrUpdatePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewCreateOrUpdatePlane(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdatePlane{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Plane]{

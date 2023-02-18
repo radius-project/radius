@@ -9,16 +9,15 @@ import (
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 )
 
-var _ armrpc_controller.Controller = (*CreateOrUpdateCredential)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateCredential)(nil)
 
 // CreateOrUpdateCredential is the controller implementation to create/update a UCP credential.
 type CreateOrUpdateCredential struct {
@@ -26,7 +25,7 @@ type CreateOrUpdateCredential struct {
 }
 
 // NewCreateOrUpdateCredential creates a new CreateOrUpdateCredential.
-func NewCreateOrUpdateCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewCreateOrUpdateCredential(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateCredential{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Credential]{
@@ -63,7 +62,7 @@ func (c *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	// Save the credential secret
-	err = secret.SaveSecret(ctx, c.Options().SecretClient, secretName, newResource.Properties.AWSCredential)
+	err = secret.SaveSecret(ctx, c.Options().CredentialClient, secretName, newResource.Properties.AWSCredential)
 	if err != nil {
 		return nil, err
 	}

@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -29,11 +29,11 @@ func Test_Credential(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
-	mockSecretClient := secret.NewMockClient(mockCtrl)
+	mockCredentialClient := secret.NewMockClient(mockCtrl)
 
 	credentialCtrl, err := NewCreateOrUpdateCredential(ctrl.Options{
-		DB:           mockStorageClient,
-		SecretClient: mockSecretClient,
+		StorageClient:    mockStorageClient,
+		CredentialClient: mockCredentialClient,
 	})
 	require.NoError(t, err)
 
@@ -43,7 +43,7 @@ func Test_Credential(t *testing.T) {
 		headerfile string
 		url        string
 		expected   armrpc_rest.Response
-		fn         func(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient)
+		fn         func(mockStorageClient store.MockStorageClient, mockCredentialClient secret.MockClient)
 		err        error
 	}{
 		{
@@ -122,7 +122,7 @@ func Test_Credential(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fn(*mockStorageClient, *mockSecretClient)
+			tt.fn(*mockStorageClient, *mockCredentialClient)
 			credentialVersionedInput := &v20220901privatepreview.CredentialResource{}
 			credentialInput := testutil.ReadFixture(tt.filename)
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
@@ -164,44 +164,44 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 	}, map[string]string{"ETag": ""})
 }
 
-func setupCredentialSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupCredentialSuccessMocks(mockStorageClient store.MockStorageClient, mockCredentialClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 		return nil, &store.ErrNotFound{}
 	})
-	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	mockCredentialClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 }
 
-func setupCredentialNotFoundMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupCredentialNotFoundMocks(mockStorageClient store.MockStorageClient, mockCredentialClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 			return nil, &store.ErrNotFound{}
 		}).Times(1)
-	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	mockCredentialClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 }
 
-func setupCredentialNotFoundErrorMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupCredentialNotFoundErrorMocks(mockStorageClient store.MockStorageClient, mockCredentialClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 			return nil, errors.New("Error")
 		}).Times(1)
 }
 
-func setupCredentialGetFailMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupCredentialGetFailMocks(mockStorageClient store.MockStorageClient, mockCredentialClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 			return nil, errors.New("Failed Get")
 		}).Times(1)
 }
 
-func setupCredentialSecretSaveFailMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupCredentialSecretSaveFailMocks(mockStorageClient store.MockStorageClient, mockCredentialClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 			return nil, &store.ErrNotFound{}
 		}).Times(1)
-	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Secret Save Failure")).Times(1)
+	mockCredentialClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Secret Save Failure")).Times(1)
 }
 
-func setupEmptyMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupEmptyMocks(mockStorageClient store.MockStorageClient, mockCredentialClient secret.MockClient) {
 }

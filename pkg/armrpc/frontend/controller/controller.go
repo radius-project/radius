@@ -15,7 +15,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -40,6 +42,21 @@ type Options struct {
 
 	// StatusManager
 	StatusManager sm.StatusManager
+
+	// UCP credential client for credentials operations
+	CredentialClient secret.Client
+
+	// AWS Cloud Control Client
+	AWSCloudControlClient ucp_aws.AWSCloudControlClient
+
+	// AWS Cloud Formation Client
+	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
+
+	// Base path
+	BasePath string
+
+	// Host Address
+	Address string
 }
 
 // ResourceOptions represents the options and filters for resource.
@@ -104,9 +121,34 @@ func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
 
-// DeploymentProcessor gets the deployment processor for this controller.
+// StatusManager gets the status manager for this controller.
 func (b *BaseController) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
+}
+
+// CredentialClient gets the UCP credential client for this controller.
+func (b *BaseController) CredentialClient() secret.Client {
+	return b.options.CredentialClient
+}
+
+// AWSCloudControlClient gets the AWS cloud control client for this controller.
+func (b *BaseController) AWSCloudControlClient() ucp_aws.AWSCloudControlClient {
+	return b.options.AWSCloudControlClient
+}
+
+// AWSCloudFormationClient gets the AWS cloud formation client for this controller.
+func (b *BaseController) AWSCloudFormationClient() ucp_aws.AWSCloudFormationClient {
+	return b.options.AWSCloudFormationClient
+}
+
+// BasePath gets the base path for this controller.
+func (b *BaseController) BasePath() string {
+	return b.options.BasePath
+}
+
+// Address gets the host address for this controller.
+func (b *BaseController) Address() string {
+	return b.options.Address
 }
 
 // GetResource is the helper to get the resource via storage client.
@@ -195,3 +237,8 @@ type DeleteFilter[T any] func(ctx context.Context, oldResource *T, options *Opti
 // UpdateFilters should return a rest.Response to handle the request without allowing updates to occur. Any
 // errors returned will be treated as "unhandled" and logged before sending back an HTTP 500.
 type UpdateFilter[T any] func(ctx context.Context, newResource *T, oldResource *T, options *Options) (rest.Response, error)
+
+// GetAPIVersion extracts the API version from the request
+func GetAPIVersion(req *http.Request) string {
+	return req.URL.Query().Get("api-version")
+}

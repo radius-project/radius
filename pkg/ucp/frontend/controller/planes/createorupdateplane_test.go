@@ -13,11 +13,11 @@ import (
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -35,7 +35,7 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 
@@ -111,15 +111,12 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 }
 
 func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
-	// ctx, cancel := testcontext.New(t)
-	// defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 
@@ -146,7 +143,7 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	})
 	require.NoError(t, err)
 

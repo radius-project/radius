@@ -14,8 +14,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -73,7 +73,7 @@ func Test_DeletePlaneByID(t *testing.T) {
 		Delete(gomock.Any(), gomock.Any(), gomock.Any())
 
 	opts := ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	}
 	ctl, err := NewDeletePlane(opts)
 
@@ -110,7 +110,7 @@ func Test_DeletePlane_PlaneDoesNotExist(t *testing.T) {
 		})
 
 	opts := ctrl.Options{
-		DB: mockStorageClient,
+		StorageClient: mockStorageClient,
 	}
 
 	ctl, err := NewDeletePlane(opts)

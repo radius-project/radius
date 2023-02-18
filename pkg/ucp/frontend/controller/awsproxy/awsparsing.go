@@ -13,10 +13,10 @@ import (
 	"net/http"
 	"strings"
 
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 

@@ -25,8 +25,8 @@ import (
 	"gotest.tools/assert"
 
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -65,7 +65,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:           testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -119,7 +119,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:           testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -160,7 +160,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:           testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -208,7 +208,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:           testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -282,7 +282,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
 		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		StorageClient:           testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

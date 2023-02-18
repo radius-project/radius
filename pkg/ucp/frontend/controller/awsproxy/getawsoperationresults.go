@@ -12,14 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ armrpc_controller.Controller = (*GetAWSOperationResults)(nil)
+var _ ctrl.Controller = (*GetAWSOperationResults)(nil)
 
 // GetAWSOperationResults is the controller implementation to get AWS resource operation results.
 type GetAWSOperationResults struct {
@@ -27,7 +26,7 @@ type GetAWSOperationResults struct {
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
-func NewGetAWSOperationResults(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewGetAWSOperationResults(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetAWSOperationResults{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
