@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -225,9 +225,8 @@ func Test_HTTPSGateway(t *testing.T) {
 }
 
 func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
-	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(baseURL),
-		autorest.WithPath(path))
+	urlPath := strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
+	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
 	if err != nil {
 		return err
 	}
@@ -236,27 +235,21 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 		req.Host = hostname
 	}
 
-	// Send requests to backing container via port-forward
-	response, err := autorest.SendWithSender(
-		newTestHTTPClient(isHttps, hostname),
-		req,
-		autorest.WithLogging(functional.NewTestLogger(t)),
-		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
-		autorest.DoRetryForDuration(retryTimeout, retryBackoff))
-
-	if response.Body != nil {
-		defer response.Body.Close()
-	}
-
+	client := newTestHTTPClient(isHttps, hostname)
+	res, err := client.Do(req)
 	if err != nil {
 		return err
+	}
+
+	if res.StatusCode != expectedStatusCode {
+		return fmt.Errorf("expected status code %d, got %d", expectedStatusCode, res.StatusCode)
 	}
 
 	// Encountered the correct status code
 	return nil
 }
 
-func newTestHTTPClient(isHttps bool, hostname string) autorest.Sender {
+func newTestHTTPClient(isHttps bool, hostname string) *http.Client {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -276,5 +269,8 @@ func newTestHTTPClient(isHttps bool, hostname string) autorest.Sender {
 			ServerName:         hostname,
 		}
 	}
-	return &http.Client{Transport: transport}
+
+	return &http.Client{
+		Transport: transport,
+	}
 }
