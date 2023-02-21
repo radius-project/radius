@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -106,7 +107,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	}
 
 	if existing {
-		logger.Info("Updating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+		logger.Info(fmt.Sprintf("Updating resource : resourceType %q resourceID %q", resourceType, awsResourceIdentifier))
 
 		// Generate patch
 		currentState := []byte(*getResponse.ResourceDescription.Properties)
@@ -151,7 +152,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return resp, nil
 		}
 	} else {
-		logger.Info("Creating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+		logger.Info(fmt.Sprintf("Creating resource : resourceType %q resourceID %q", resourceType, awsResourceIdentifier))
 		response, err := cloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),

@@ -21,10 +21,14 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/logging"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/pkg/version"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -108,6 +112,10 @@ func New(
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
+	attr := map[attribute.Key]string{}
+	attr[semconv.ServiceNameKey] = logging.ServiceName
+	attr[semconv.ServiceVersionKey] = version.Channel()
+
 	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
 	if err != nil {
 		return err
@@ -129,13 +137,13 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
+			attr[attribute.Key(logging.LogFieldOperationID)] = op.OperationID.String()
+			attr[attribute.Key(logging.LogFieldOperationType)] = op.OperationType
+			attr[attribute.Key(logging.LogFieldResourceID)] = op.ResourceID
+			attr[attribute.Key(logging.LogFieldDequeueCount)] = strconv.Itoa(msgreq.DequeueCount)
+
 			opLogger := logger.WithValues(
-				"OperationID", op.OperationID.String(),
-				"OperationType", op.OperationType,
-				"ResourceID", op.ResourceID,
-				"CorrleationID", op.CorrelationID,
-				"W3CTraceID", op.TraceparentID,
-				"DequeueCount", strconv.Itoa(msgreq.DequeueCount),
+				logging.LogFieldAttributes, attr,
 			)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)

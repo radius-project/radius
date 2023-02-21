@@ -7,6 +7,8 @@ package logging
 const (
 	AppCoreLoggerName string = "applications.core"
 	AppLinkLoggerName string = "applications.link"
+
+	ServiceName string = "rp"
 )
 
 // Field names for structured logging
@@ -21,7 +23,10 @@ const (
 	LogFieldLocalID            = "localID"
 	LogFieldNamespace          = "namespace"
 	LogFieldOperationID        = "operationID"
+	LogFieldOperationType      = "operationType"
+	LogFieldAttributes         = "attributes"
 	LogFieldOperationStatus    = "operationStatus"
+	LogFieldDequeueCount       = "dequeueCount"
 	LogFieldResourceGroup      = "resourceGroup"
 	LogFieldResourceID         = "resourceID"
 	LogFieldResourceName       = "resourceName"
@@ -32,4 +37,5 @@ const (
 	LogFieldSubscriptionID     = "subscriptionID"
 	LogFieldResourceKind       = "resourceKind"
 	LogHTTPStatusCode          = "statusCode"
+	LogFieldRPHostName         = "rpHostName"
 )

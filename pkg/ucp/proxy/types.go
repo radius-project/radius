@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 type UCPRequestInfo struct {
@@ -157,10 +156,6 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	if requestInfo.PlaneKind == "" {
 		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
 	}
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldUCPHost, requestInfo.UCPHost,
-		ucplog.LogFieldHTTPScheme, requestInfo.HTTPScheme,
-	)
 
 	var planeID string
 	if requestInfo.PlaneKind != rest.PlaneKindUCPNative {
