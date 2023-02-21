@@ -6,41 +6,36 @@
 package ucplog
 
 const (
-	UCPLoggerName string = "ucp"
+	UCPLoggerName  string = "ucplogger"
+	UCPServiceName string = "ucp"
 )
 
 // Field names for structured logging
 const (
-	// LogHTTPStatusCode represents the HTTP status code of response from downstream as seen by UCP.
-	LogHTTPStatusCode string = "ResponseStatusCode"
-
-	// LogFieldRequestPath represents the path of the request URL.
-	LogFieldRequestPath string = "RequestPath"
-
-	// LogFieldHTTPScheme represents the scheme of HTTP request.
-	LogFieldHTTPScheme string = "RequestScheme"
-
-	// LogFieldPlaneURL represents the URL to which this request will be proxied to.
-	LogFieldPlaneURL string = "ProxyURL"
-
-	// LogFieldResourceGroup represents the UCP resource group.
-	LogFieldResourceGroup string = "UCPResourceGroup"
-
-	// LogFieldHTTPMethod represents the HTTP request method of request recieved by UCP from client.
-	LogFieldHTTPMethod string = "RequestMethod"
-
-	// LogFieldRequestURL represents the HTTP request URL of request received by UCP from client.
-	LogFieldRequestURL string = "RequestURL"
-
-	// LogFieldContentLength represents the content-length of the HTTP request/ response received by UCP.
-	LogFieldContentLength string = "ContentLength"
-
-	// LogFieldUCPHost represents the UCP server host name.
-	LogFieldUCPHost string = "UCPHost"
-
 	// LogFieldUCPHost represents the Resource ID.
-	LogFieldResourceID string = "ResourceID"
+	LogFieldResourceID string = "resourceId"
 
 	// LogFieldCorrelationID represents the X-Correlation-ID that may be present in the incoming request.
-	LogFieldCorrelationID string = "X-Correlation-ID"
+	LogFieldCorrelationID string = "correlationId"
+
+	// LogFieldServiceID represents the name of the service generating the log entry
+	LogFieldServiceID string = "serviceId"
+
+	// LogFieldAttributes represents the optional attributes associated with a log message
+	LogFieldAttributes string = "attributes"
+
+	// LogFieldTraceId represents the traceId retrieved from traceparent header of the current HTTP request
+	LogFieldTraceId string = "traceId"
+
+	// LogFieldSpanId represents the spanId retrieved from traceparent header of current HTTP request
+	LogFieldSpanId string = "spanId"
+
+	// HttpXForwardedFor represents the x-forwarded-for HTTP header
+	HttpXForwardedFor string = "x-forwarded-for"
+
+	// HttpCorrelationId represents the x-forwarded-for HTTP header
+	HttpCorrelationId string = "x-correlation-id"
+
+	// HttpUserAgent represents the user-agent HTTP header
+	HttpUserAgent string = "user-agent"
 )
