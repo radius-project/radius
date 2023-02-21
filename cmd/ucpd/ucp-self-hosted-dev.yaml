@@ -56,16 +56,21 @@ ucp:
     endpoint: "http://localhost:5017"
 
 # Metrics configuration
-# port is not the same as metrics configuration in radius-self-hosted.yaml 
-# so that we can run both services in debug mode. 
+# port is not the same as metrics configuration in radius-self-hosted.yaml
+# so that we can run both services in debug mode.
 metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 9090 
-    
- # Logging configuration   
+    port: 9090
+
+  # Logging configuration
 logging:
   level: "info"
   json: true
-  
+
+# Tracing configuration
+tracerProvider:
+  serviceName: "ucp"
+  zipkin:
+    url: "http://localhost:9411/api/v2/spans"
