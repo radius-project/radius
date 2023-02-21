@@ -100,7 +100,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Register Recipe Success", func(t *testing.T) {
+	t.Run("Register recipe Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		envResource := v20220315privatepreview.EnvironmentResource{
@@ -144,7 +144,8 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 	})
-	t.Run("Register Recipe with parameters", func(t *testing.T) {
+
+	t.Run("Register recipe with parameters", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		envResource := v20220315privatepreview.EnvironmentResource{
@@ -190,7 +191,8 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 	})
-	t.Run("Register Recipe with No namespace", func(t *testing.T) {
+
+	t.Run("Register recipe with no namespace", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		envResource := v20220315privatepreview.EnvironmentResource{
@@ -230,7 +232,8 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 	})
-	t.Run("Register Recipe with an existing name.", func(t *testing.T) {
+
+	t.Run("Register recipe with an existing name.", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		envResource := v20220315privatepreview.EnvironmentResource{
@@ -269,7 +272,7 @@ func Test_Run(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("Register Recipe with name matching the dev-recipes", func(t *testing.T) {
+	t.Run("Register recipe with name matching the dev recipes", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		envResource := v20220315privatepreview.EnvironmentResource{
 			ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
@@ -303,7 +306,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		err := runner.Run(context.Background())
-		require.Error(t, err, fmt.Sprintf("recipe with name %q is reserved for dev-recipes", runner.RecipeName))
+		require.ErrorContains(t, err, fmt.Sprintf("recipe with name %q is reserved for dev recipes", runner.RecipeName))
 	})
 
 }
