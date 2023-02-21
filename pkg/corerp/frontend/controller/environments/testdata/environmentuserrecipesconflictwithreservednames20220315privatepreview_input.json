@@ -1,0 +1,16 @@
+{
+    "location": "West US",
+    "properties": {
+        "compute": {
+            "kind": "kubernetes",
+            "resourceId": "fakeid",
+            "namespace": "default"
+        },
+        "useDevRecipes": true,
+        "providers": {
+            "azure": {
+                "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
+            }
+        }
+    }
+}
