@@ -11,8 +11,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel.
@@ -76,11 +75,11 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(sql.ID)
-	dst.Name = to.StringPtr(sql.Name)
-	dst.Type = to.StringPtr(sql.Type)
+	dst.ID = to.Ptr(sql.ID)
+	dst.Name = to.Ptr(sql.Name)
+	dst.Type = to.Ptr(sql.Type)
 	dst.SystemData = fromSystemDataModel(sql.SystemData)
-	dst.Location = to.StringPtr(sql.Location)
+	dst.Location = to.Ptr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
 	switch sql.Properties.Mode {
 	case datamodel.LinkModeResource:
@@ -91,11 +90,11 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			},
 			Mode:              &mode,
 			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(sql.Properties.Environment),
-			Application:       to.StringPtr(sql.Properties.Application),
-			Resource:          to.StringPtr(sql.Properties.Resource),
-			Database:          to.StringPtr(sql.Properties.Database),
-			Server:            to.StringPtr(sql.Properties.Server),
+			Environment:       to.Ptr(sql.Properties.Environment),
+			Application:       to.Ptr(sql.Properties.Application),
+			Resource:          to.Ptr(sql.Properties.Resource),
+			Database:          to.Ptr(sql.Properties.Database),
+			Server:            to.Ptr(sql.Properties.Server),
 		}
 	case datamodel.LinkModeValues:
 		mode := "values"
@@ -105,10 +104,10 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			},
 			Mode:              &mode,
 			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(sql.Properties.Environment),
-			Application:       to.StringPtr(sql.Properties.Application),
-			Database:          to.StringPtr(sql.Properties.Database),
-			Server:            to.StringPtr(sql.Properties.Server),
+			Environment:       to.Ptr(sql.Properties.Environment),
+			Application:       to.Ptr(sql.Properties.Application),
+			Database:          to.Ptr(sql.Properties.Database),
+			Server:            to.Ptr(sql.Properties.Server),
 		}
 	case datamodel.LinkModeRecipe:
 		mode := "recipe"
@@ -120,11 +119,11 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			},
 			Mode:              &mode,
 			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(sql.Properties.Environment),
-			Application:       to.StringPtr(sql.Properties.Application),
+			Environment:       to.Ptr(sql.Properties.Environment),
+			Application:       to.Ptr(sql.Properties.Application),
 			Recipe:            recipe,
-			Database:          to.StringPtr(sql.Properties.Database),
-			Server:            to.StringPtr(sql.Properties.Server),
+			Database:          to.Ptr(sql.Properties.Database),
+			Server:            to.Ptr(sql.Properties.Server),
 		}
 
 	}

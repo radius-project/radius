@@ -120,7 +120,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		{
 			ParentRouter:   planeCollectionByTypeSubRouter,
 			Method:         v1.OperationList,
-			HandlerFactory: planes_ctrl.NewListPlanes,
+			HandlerFactory: planes_ctrl.NewListPlanesByType,
 		},
 		{
 			ParentRouter:   planeSubRouter,

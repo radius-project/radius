@@ -24,8 +24,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "list",
-		Short:   "List link recipes",
-		Long:    "List link recipes within an environment",
+		Short:   "List recipes",
+		Long:    "List recipes within an environment",
 		Example: `rad recipe list`,
 		RunE:    framework.RunCommand(runner),
 		Args:    cobra.ExactArgs(0),

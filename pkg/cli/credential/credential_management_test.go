@@ -10,12 +10,13 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -326,7 +327,7 @@ func Test_Credential_Delete(t *testing.T) {
 			planeType:      AzurePlaneType,
 			planeName:      AzurePlaneName,
 			err:            errInternalServer,
-			setupMocks:     setupErrAzureDeleteMocks,
+			setupMocks:     setupErrorAzureDeleteMocks,
 		},
 		{
 			name:           "delete unsupported aws credential",
@@ -334,7 +335,7 @@ func Test_Credential_Delete(t *testing.T) {
 			planeType:      AWSPlaneType,
 			planeName:      AWSPlaneName,
 			err:            errInternalServer,
-			setupMocks:     setupErrAWSDeleteMocks,
+			setupMocks:     setupErrorAWSDeleteMocks,
 		},
 		{
 			name:           "delete non existent azure credential",
@@ -466,13 +467,13 @@ func setupNotFoundAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientIn
 		Return(true, nil).Times(1)
 }
 
-func setupErrAzureDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
+func setupErrorAzureDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAzure.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
 		Return(false, errInternalServer).Times(1)
 }
 
-func setupErrAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
+func setupErrorAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAWS.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
 		Return(false, errInternalServer).Times(1)

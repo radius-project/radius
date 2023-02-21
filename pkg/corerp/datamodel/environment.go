@@ -38,6 +38,10 @@ type EnvironmentRecipeProperties struct {
 	Parameters   map[string]any `json:"parameters,omitempty"`
 }
 
+func (e *EnvironmentRecipeProperties) ResourceTypeName() string {
+	return "Applications.Core/environments"
+}
+
 // Providers represents configs for providers for the environment, eg azure,aws
 type Providers struct {
 	// Azure provider information

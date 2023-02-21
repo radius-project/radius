@@ -9,8 +9,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned DaprInvokeHttpRoute resource to version-agnostic datamodel.
@@ -52,20 +51,20 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src v1.DataModelInterface) e
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(daprHttpRoute.ID)
-	dst.Name = to.StringPtr(daprHttpRoute.Name)
-	dst.Type = to.StringPtr(daprHttpRoute.Type)
+	dst.ID = to.Ptr(daprHttpRoute.ID)
+	dst.Name = to.Ptr(daprHttpRoute.Name)
+	dst.Type = to.Ptr(daprHttpRoute.Type)
 	dst.SystemData = fromSystemDataModel(daprHttpRoute.SystemData)
-	dst.Location = to.StringPtr(daprHttpRoute.Location)
+	dst.Location = to.Ptr(daprHttpRoute.Location)
 	dst.Tags = *to.StringMapPtr(daprHttpRoute.Tags)
 	dst.Properties = &DaprInvokeHTTPRouteProperties{
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),
-		Application:       to.StringPtr(daprHttpRoute.Properties.Application),
-		AppID:             to.StringPtr(daprHttpRoute.Properties.AppId),
+		Environment:       to.Ptr(daprHttpRoute.Properties.Environment),
+		Application:       to.Ptr(daprHttpRoute.Properties.Application),
+		AppID:             to.Ptr(daprHttpRoute.Properties.AppId),
 	}
 
 	if daprHttpRoute.Properties.Recipe.Name != "" {

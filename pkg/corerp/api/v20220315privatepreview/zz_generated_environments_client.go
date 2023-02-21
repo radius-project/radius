@@ -192,6 +192,60 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 	return result, nil
 }
 
+// GetRecipeMetadata - Gets recipe metadata including parameters and any constraints on the parameters.
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+// environmentName - The name of the environment
+// recipeName - The name of the recipe
+// options - EnvironmentsClientGetRecipeMetadataOptions contains the optional parameters for the EnvironmentsClient.GetRecipeMetadata
+// method.
+func (client *EnvironmentsClient) GetRecipeMetadata(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeMetadataOptions) (EnvironmentsClientGetRecipeMetadataResponse, error) {
+	req, err := client.getRecipeMetadataCreateRequest(ctx, environmentName, recipeName, options)
+	if err != nil {
+		return EnvironmentsClientGetRecipeMetadataResponse{}, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return EnvironmentsClientGetRecipeMetadataResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return EnvironmentsClientGetRecipeMetadataResponse{}, runtime.NewResponseError(resp)
+	}
+	return client.getRecipeMetadataHandleResponse(resp)
+}
+
+// getRecipeMetadataCreateRequest creates the GetRecipeMetadata request.
+func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Context, environmentName string, recipeName string, options *EnvironmentsClientGetRecipeMetadataOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/{recipeName}/getmetadata"
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	if environmentName == "" {
+		return nil, errors.New("parameter environmentName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{environmentName}", url.PathEscape(environmentName))
+	if recipeName == "" {
+		return nil, errors.New("parameter recipeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{recipeName}", url.PathEscape(recipeName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// getRecipeMetadataHandleResponse handles the GetRecipeMetadata response.
+func (client *EnvironmentsClient) getRecipeMetadataHandleResponse(resp *http.Response) (EnvironmentsClientGetRecipeMetadataResponse, error) {
+	result := EnvironmentsClientGetRecipeMetadataResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RecipeMetadata); err != nil {
+		return EnvironmentsClientGetRecipeMetadataResponse{}, err
+	}
+	return result, nil
+}
+
 // NewListByScopePager - List all environments in a scope.
 // Generated from API version 2022-03-15-privatepreview
 // options - EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.ListByScope

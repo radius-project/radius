@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
@@ -36,6 +37,17 @@ var rootCmd = &cobra.Command{
 
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
+
+		tracerOpts := options.TracerProviderOptions
+		shutdown, err := trace.InitTracer(tracerOpts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer func() {
+			if err := shutdown(ctx); err != nil {
+				log.Fatal("failed to shutdown TracerProvider: %w", err)
+			}
+		}()
 
 		host, err := server.NewServer(options)
 		if err != nil {

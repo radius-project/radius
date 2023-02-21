@@ -6,8 +6,8 @@
 package v20220901privatepreview
 
 import (
-	to "github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -36,10 +36,10 @@ func (dst *ResourceGroupResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(rg.ID)
-	dst.Name = to.StringPtr(rg.Name)
-	dst.Type = to.StringPtr(rg.Type)
-	dst.Location = to.StringPtr(rg.Location)
+	dst.ID = to.Ptr(rg.ID)
+	dst.Name = to.Ptr(rg.Name)
+	dst.Type = to.Ptr(rg.Type)
+	dst.Location = to.Ptr(rg.Location)
 	dst.Tags = *to.StringMapPtr(rg.Tags)
 
 	return nil

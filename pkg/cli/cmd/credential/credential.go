@@ -19,9 +19,6 @@ import (
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
 	cmd := &cobra.Command{
-		// These commands are being built in a few steps. We'll show them when they are ready.
-		Hidden: true,
-
 		Use:   "credential",
 		Short: "Manage cloud provider credential for a Radius installation.",
 		Long:  "Manage cloud provider credential for a Radius installation." + common.LongDescriptionBlurb,

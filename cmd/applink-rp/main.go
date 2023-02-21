@@ -21,11 +21,16 @@ import (
 	"github.com/project-radius/radius/pkg/logging"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
+)
+
+const (
+	serviceName = "applink-rp"
 )
 
 func main() {
@@ -84,6 +89,19 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
+
+	tracerOpts := options.Config.TracerProvider
+	tracerOpts.ServiceName = serviceName
+	shutdown, err := trace.InitTracer(tracerOpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+
+	}()
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	exitCh := make(chan os.Signal, 2)

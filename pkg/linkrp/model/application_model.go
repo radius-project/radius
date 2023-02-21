@@ -156,6 +156,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureTableService,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureTable,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 				Provider: resourcemodel.ProviderAzure,
 			},

@@ -1,0 +1,27 @@
+{
+  "parameters": {
+    "planeType": "radius",
+    "api-version": "2022-09-01-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local",
+            "name": "local",
+            "type": "System.Planes/radius",
+            "location": "global",
+            "properties": {
+              "resourceProviders": {
+                "Applications.Link": "http://appcore-rp.radius-system:5444",
+                "Applications.Core": "http://appcore-rp.radius-system:5443"
+              },
+              "kind": "UCPNative"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

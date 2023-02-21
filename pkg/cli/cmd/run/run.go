@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/fatih/color"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -20,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
 	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )

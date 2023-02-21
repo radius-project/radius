@@ -273,6 +273,15 @@ func (cli *CLI) RecipeUnregister(ctx context.Context, recipeName string) (string
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) RecipeShow(ctx context.Context, recipeName string) (string, error) {
+	args := []string{
+		"recipe",
+		"show",
+		"--name", recipeName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{
 		"version",

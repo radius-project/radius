@@ -14,6 +14,8 @@ import (
 )
 
 const testHeaderfile = "requestheaders20220315privatepreview.json"
+const testHeaderfilegetrecipemetadata = "requestheadersgetrecipemetadata20220315privatepreview.json"
+const testHeaderfilegetrecipemetadatanotexisting = "requestheadersgetrecipemetadatanotexisting20220315privatepreview.json"
 
 func getTestModels20220315privatepreview() (*v20220315privatepreview.EnvironmentResource, *datamodel.Environment, *v20220315privatepreview.EnvironmentResource) {
 	rawInput := testutil.ReadFixture("environment20220315privatepreview_input.json")
@@ -103,4 +105,16 @@ func getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepre
 	_ = json.Unmarshal(rawInput, envInput)
 
 	return envExistingDataModel, envInput
+}
+
+func getTestModelsGetRecipeMetadata20220315privatepreview() (*datamodel.Environment, *v20220315privatepreview.EnvironmentResource) {
+	rawExistingDataModel := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_datamodel.json")
+	envExistingDataModel := &datamodel.Environment{}
+	_ = json.Unmarshal(rawExistingDataModel, envExistingDataModel)
+
+	rawExpectedOutput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_output.json")
+	expectedOutput := &v20220315privatepreview.EnvironmentResource{}
+	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
+
+	return envExistingDataModel, expectedOutput
 }

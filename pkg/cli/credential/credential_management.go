@@ -23,7 +23,7 @@ const (
 // CredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type CredentialManagementClient interface {
 	// Get gets the credential registered with the given ucp provider plane.
-	Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error)
+	Get(ctx context.Context, providerName string) (ProviderCredentialConfiguration, error)
 	// List lists the credentials registered with all ucp provider planes.
 	List(ctx context.Context) ([]CloudProviderStatus, error)
 	// PutAWS registers an AWS credential with the respective ucp provider plane.
@@ -31,8 +31,12 @@ type CredentialManagementClient interface {
 	// PutAzure registers an Azure credential with the respective ucp provider plane.
 	PutAzure(ctx context.Context, credential_config ucp.AzureCredentialResource) error
 	// Delete unregisters credential from the given ucp provider plane.
-	Delete(ctx context.Context, name string) (bool, error)
+	Delete(ctx context.Context, providerName string) (bool, error)
 }
+
+const (
+	defaultSecretName = "default"
+)
 
 // UCPCredentialManagementClient implements operations to manage credentials on ucp.
 type UCPCredentialManagementClient struct {
@@ -55,30 +59,34 @@ func (cpm *UCPCredentialManagementClient) PutAzure(ctx context.Context, credenti
 }
 
 // Get, gets the credential from the provided ucp provider plane
-// TODO: get information except secret data from backend and surface it in this response
-func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
+// We've a single credential configured today for all providers which we name as "default"
+// example: If we ask for azure credential, then we will fetch the credential with the name "default" because that is the only
+// credential for azure expected in the system.
+func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, providerName string) (ProviderCredentialConfiguration, error) {
 	var err error
 	var cred ProviderCredentialConfiguration
-	if strings.EqualFold(name, AzureCredential) {
+	if strings.EqualFold(providerName, AzureCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		cred, err = cpm.AzClient.Get(ctx, name)
-	} else if strings.EqualFold(name, AWSCredential) {
+		cred, err = cpm.AzClient.Get(ctx, defaultSecretName)
+	} else if strings.EqualFold(providerName, AWSCredential) {
 		// We send only the name when getting credentials from backend which we already have access to
-		cred, err = cpm.AWSClient.Get(ctx, name)
+		cred, err = cpm.AWSClient.Get(ctx, defaultSecretName)
 	} else {
 		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
 	}
+
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
 		return ProviderCredentialConfiguration{
 			CloudProviderStatus: CloudProviderStatus{
-				Name:    name,
+				Name:    providerName,
 				Enabled: false,
 			},
 		}, nil
 	} else if err != nil {
 		return ProviderCredentialConfiguration{}, err
 	}
+
 	return cred, nil
 }
 
@@ -100,11 +108,15 @@ func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 }
 
 // Delete, deletes the credentials from the given ucp provider plane
-func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
-	if strings.EqualFold(name, AzureCredential) {
-		return cpm.AzClient.Delete(ctx, name)
-	} else if strings.EqualFold(name, AWSCredential) {
-		return cpm.AWSClient.Delete(ctx, name)
+// We've a single credential configured today for all providers which we name as "default"
+// example: If we ask to delete azure credential, then we will delete the credential with the name "default" because that is the only
+// credential for azure expected in the system.
+func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, providerName string) (bool, error) {
+	if strings.EqualFold(providerName, AzureCredential) {
+		return cpm.AzClient.Delete(ctx, defaultSecretName)
+	} else if strings.EqualFold(providerName, AWSCredential) {
+		return cpm.AWSClient.Delete(ctx, defaultSecretName)
 	}
+
 	return true, nil
 }

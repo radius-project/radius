@@ -28,6 +28,13 @@ const (
 
 	// OperationPollInterval is the interval used for polling of deployment operations for progress.
 	OperationPollInterval time.Duration = time.Second * 5
+
+	// deploymentPollInterval is the polling frequency of the deployment client.
+	// This is set to a relatively low number because we're using the UCP deployment engine
+	// inside the cluster. This is a good balance to feel responsible for quick operations
+	// like deploying Kubernetes resources without generating a wasteful amount of traffic.
+	// The default would be 30 seconds.
+	deploymentPollInterval = time.Second * 5
 )
 
 type ResourceDeploymentClient struct {
@@ -181,7 +188,7 @@ func (dc *ResourceDeploymentClient) createSummary(deployment *armresources.Deplo
 }
 
 func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, poller *runtime.Poller[sdkclients.ClientCreateOrUpdateResponse]) (clients.DeploymentResult, error) {
-	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{})
+	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: deploymentPollInterval})
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}

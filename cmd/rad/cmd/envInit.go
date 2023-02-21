@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 
@@ -27,13 +26,15 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var envInitCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Create a RAD environment",
-	Long:  `Create a RAD environment`,
+	Use:    "init",
+	Short:  "Create a RAD environment",
+	Long:   `Create a RAD environment`,
+	Hidden: true,
 }
 
 func init() {

@@ -128,10 +128,15 @@ func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeP
 				if slices.Contains(supportedProviders(), provider) {
 					var name string
 					var linkType string
+					// TODO: this needs to metadata driven per-recipe so we don't have to maintain a lookup
+					// table.
 					switch link {
 					case "mongodatabases":
 						name = "mongo" + "-" + provider
 						linkType = linkrp.MongoDatabasesResourceType
+					case "rediscaches":
+						name = "redis" + "-" + provider
+						linkType = linkrp.RedisCachesResourceType
 					default:
 						continue
 					}
@@ -217,7 +222,7 @@ func findHighestVersion(versions []string) (latest float64, err error) {
 	for _, version := range versions {
 		f, err := strconv.ParseFloat(version, 32)
 		if err != nil {
-			return 0.0, fmt.Errorf("Unable to convert tag %s into valid version.", version)
+			return 0.0, fmt.Errorf("unable to convert tag %s into valid version.", version)
 		}
 
 		if f > latest {

@@ -1,0 +1,18 @@
+{
+  "mongo-parameters": {
+    "linkType": "Applications.Link/mongoDatabases",
+    "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+      "parameters": {
+        "mongodbName": {
+          "type" : "string"
+        },
+        "documentdbName":  {
+          "type" : "string"
+        },
+        "location": {
+          "type" : "string",
+          "defaultValue" : "[resourceGroup().location]"
+        }
+      }
+  }
+}

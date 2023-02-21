@@ -17,6 +17,7 @@ import (
 	metricsprovider "github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricsservicehostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -41,6 +42,7 @@ type Options struct {
 	LoggingOptions         ucplog.LoggingOptions
 	SecretProviderOptions  provider.SecretProviderOptions
 	MetricsProviderOptions metricsprovider.MetricsProviderOptions
+	TracerProviderOptions  trace.Options
 	TLSCertDir             string
 	BasePath               string
 	InitialPlanes          []rest.Plane
@@ -71,6 +73,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	planes := opts.Config.Planes
 	secretOpts := opts.Config.SecretProvider
 	metricsOpts := opts.Config.MetricsProvider
+	traceOpts := opts.Config.TracerProvider
 	loggingOpts := opts.Config.Logging
 	identity := opts.Config.Identity
 	// Set the default authentication method if AuthMethod is not set.
@@ -98,6 +101,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		StorageProviderOptions: storeOpts,
 		SecretProviderOptions:  secretOpts,
 		MetricsProviderOptions: metricsOpts,
+		TracerProviderOptions:  traceOpts,
 		LoggingOptions:         loggingOpts,
 		InitialPlanes:          planes,
 		Identity:               identity,
@@ -118,6 +122,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 			InitialPlanes:          options.InitialPlanes,
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
+			EnableMetrics:          options.MetricsProviderOptions.Prometheus.Enabled,
 		}),
 	}
 

@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"

@@ -26,8 +26,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "unregister",
-		Short:   "Unregister a link recipe from an environment",
-		Long:    `Unregister a link recipe from an environment`,
+		Short:   "Unregister a recipe from an environment",
+		Long:    `Unregister a recipe from an environment`,
 		Example: `rad recipe unregister --name cosmosdb`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),

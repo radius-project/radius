@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/to"
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"

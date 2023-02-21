@@ -11,9 +11,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/jsonpointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -26,9 +27,9 @@ import (
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/linkrp/frontend/deployment github.com/project-radius/radius/pkg/linkrp/frontend/deployment DeploymentProcessor
@@ -58,7 +59,6 @@ type ResourceData struct {
 	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rpv1.SecretValueReference
-	RecipeData      linkrp.RecipeData
 }
 
 type EnvironmentMetadata struct {
@@ -288,7 +288,6 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		DeployedOutputResources: outputResources,
 		ComputedValues:          computedValues,
 		SecretValues:            secretValues,
-		RecipeData:              rendererOutput.RecipeData,
 	}, nil
 }
 
@@ -447,7 +446,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	secretValues := map[string]any{}
 
 	for k, secretReference := range resourceData.SecretValues {
-		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference, resourceData.RecipeData)
+		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch secret %s for resource %s: %w", k, resourceData.ID.String(), err)
 		}
@@ -472,7 +471,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []rpv1.OutputResource, reference rpv1.SecretValueReference, recipeData linkrp.RecipeData) (any, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []rpv1.OutputResource, reference rpv1.SecretValueReference) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil

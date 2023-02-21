@@ -7,7 +7,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -15,16 +14,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
 const (
@@ -66,37 +63,15 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 
-	registryRepo, tag, err := parseTemplatePath(recipe.TemplatePath)
-	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid recipe templatePath %s", err.Error()))
-	}
-
-	// get the recipe from ACR
-	// client to the ACR repository in the templatePath
-	repo, err := remote.NewRepository(registryRepo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
-	}
-
-	digest, err := getDigestFromManifest(ctx, repo, tag)
-	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
-	}
-
-	recipeBytes, err := getRecipeBytes(ctx, repo, digest)
-	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
-	}
-
 	recipeData := make(map[string]any)
-	err = json.Unmarshal(recipeBytes, &recipeData)
+	err := util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, err
 	}
 
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
-	_, isContextParameterDefined := recipeData["parameters"].(map[string]interface{})[datamodel.RecipeContextParameter]
+	_, isContextParameterDefined := recipeData["parameters"].(map[string]any)[datamodel.RecipeContextParameter]
 	parameters := createRecipeParameters(recipe.Parameters, recipe.EnvParameters, isContextParameterDefined, &recipeContext)
 
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
@@ -157,61 +132,6 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 	}
 
 	return &recipeResponse, nil
-}
-
-// getDigestFromManifest gets the layers digest from the manifest
-func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag string) (string, error) {
-	// resolves a manifest descriptor with a Tag reference
-	descriptor, err := repo.Resolve(ctx, tag)
-	if err != nil {
-		return "", err
-	}
-	// get the manifest data
-	rc, err := repo.Fetch(ctx, descriptor)
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-	manifestBlob, err := content.ReadAll(rc, descriptor)
-	if err != nil {
-		return "", err
-	}
-	// create the manifest map to get the digest of the layer
-	var manifest map[string]any
-	err = json.Unmarshal(manifestBlob, &manifest)
-	if err != nil {
-		return "", err
-	}
-	// get the layers digest to fetch the blob
-	layer, ok := manifest["layers"].([]any)[0].(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("failed to decode the layers from manifest")
-	}
-	layerDigest, ok := layer["digest"].(string)
-	if !ok {
-		return "", fmt.Errorf("failed to decode the layers digest from manifest")
-	}
-	return layerDigest, nil
-}
-
-// getRecipeBytes fetches the recipe ARM JSON using the layers digest
-func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest string) ([]byte, error) {
-	// resolves a layer blob descriptor with a digest reference
-	descriptor, err := repo.Blobs().Resolve(ctx, layerDigest)
-	if err != nil {
-		return nil, err
-	}
-	// get the layer data
-	rc, err := repo.Fetch(ctx, descriptor)
-	if err != nil {
-		return nil, err
-	}
-	defer rc.Close()
-	pulledBlob, err := content.ReadAll(rc, descriptor)
-	if err != nil {
-		return nil, err
-	}
-	return pulledBlob, nil
 }
 
 func createDeploymentID(resourceID string, deploymentName string) (resources.ID, error) {

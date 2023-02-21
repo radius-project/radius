@@ -30,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
+	recipe_show "github.com/project-radius/radius/pkg/cli/cmd/recipe/show"
 	recipe_unregister "github.com/project-radius/radius/pkg/cli/cmd/recipe/unregister"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
@@ -96,14 +97,13 @@ func prettyPrintJSON(o any) (string, error) {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-// It also initializes the traceprovider for cli.
+// It also initializes the tracerprovider for cli.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
-	tracerOpts := trace.TracerOptions{
+	shutdown, err := trace.InitTracer(trace.Options{
 		ServiceName: "cli",
-	}
-	shutdown, err := trace.InitTracer(tracerOpts)
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -171,6 +171,9 @@ func initSubCommands() {
 
 	registerRecipeCmd, _ := recipe_register.NewCommand(framework)
 	recipeCmd.AddCommand(registerRecipeCmd)
+
+	showRecipeCmd, _ := recipe_show.NewCommand(framework)
+	recipeCmd.AddCommand(showRecipeCmd)
 
 	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
 	recipeCmd.AddCommand(unregisterRecipeCmd)

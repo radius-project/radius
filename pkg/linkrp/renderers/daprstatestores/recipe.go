@@ -6,7 +6,6 @@
 package daprstatestores
 
 import (
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -16,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 const (
@@ -50,7 +50,27 @@ func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName
 				handlers.KubernetesKindKey:       kubernetesKindKey,
 				handlers.ResourceName:            resource.Name,
 			},
-			RadiusManaged: to.BoolPtr(true),
+			RadiusManaged: to.Ptr(true),
+		},
+		{
+			LocalID: rpv1.LocalIDAzureStorageTableService,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureTableService,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ProviderResourceType: azresources.StorageStorageAccounts + "/" + azresources.StorageStorageTableServices,
+			RadiusManaged:        to.Ptr(false), // Deleting storage account will delete all the underlying resources
+			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDDaprStateStoreAzureStorage}},
+		},
+		{
+			LocalID: rpv1.LocalIDAzureStorageTable,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureTable,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ProviderResourceType: azresources.StorageStorageAccounts + "/" + azresources.StorageStorageTableServices + "/" + azresources.StorageStorageAccountsTables,
+			RadiusManaged:        to.Ptr(false), // Deleting storage account will delete all the underlying resources
+			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureStorageTableService}},
 		},
 	}
 

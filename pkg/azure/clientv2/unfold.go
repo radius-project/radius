@@ -13,10 +13,11 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/google/go-cmp/cmp"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ServiceError conforms to the OData v4 error format.

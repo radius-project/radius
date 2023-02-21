@@ -80,46 +80,33 @@ func (cpm *AzureCredentialManagementClient) Put(ctx context.Context, credential 
 		_, err := cpm.AzureCredentialClient.CreateOrUpdate(ctx, AzurePlaneName, *credential.Name, credential, nil)
 		return err
 	}
+
 	return &ErrUnsupportedCloudProvider{}
 }
 
 // Get, gets the credential from the provided ucp provider plane
 // TODO: get information except secret data from backend and surface it in this response
-func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
+func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialName string) (ProviderCredentialConfiguration, error) {
 	var err error
-	providerCredentialConfiguration := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    name,
-			Enabled: true,
-		},
-	}
 
-	if strings.EqualFold(name, AzureCredential) {
-		// We send only the name when getting credentials from backend which we already have access to
-		resp, err := cpm.AzureCredentialClient.Get(ctx, AzurePlaneName, name, nil)
-		if err != nil {
-			return ProviderCredentialConfiguration{}, err
-		}
-		azureServicePrincipal, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureCredentialProperties)
-		if !ok {
-			return ProviderCredentialConfiguration{}, &cli.FriendlyError{Message: fmt.Sprintf("Unable to Find Credentials for %s", name)}
-		}
-		providerCredentialConfiguration.AzureCredentials = azureServicePrincipal
-	} else {
-		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
-	}
-
-	// We get 404 when credential for the provider plane is not registered.
-	if clients.Is404Error(err) {
-		return ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    name,
-				Enabled: false,
-			},
-		}, nil
-	} else if err != nil {
+	resp, err := cpm.AzureCredentialClient.Get(ctx, AzurePlaneName, credentialName, nil)
+	if err != nil {
 		return ProviderCredentialConfiguration{}, err
 	}
+
+	azureServicePrincipal, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureCredentialProperties)
+	if !ok {
+		return ProviderCredentialConfiguration{}, &cli.FriendlyError{Message: fmt.Sprintf("Unable to Find Credentials for %s", credentialName)}
+	}
+
+	providerCredentialConfiguration := ProviderCredentialConfiguration{
+		CloudProviderStatus: CloudProviderStatus{
+			Name:    AzureCredential,
+			Enabled: true,
+		},
+		AzureCredentials: azureServicePrincipal,
+	}
+
 	return providerCredentialConfiguration, nil
 }
 
@@ -145,12 +132,14 @@ func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudPr
 			Enabled: true,
 		})
 	}
+
 	return res, nil
 }
 
 // Delete, deletes the credentials from the given ucp provider plane
 func (cpm *AzureCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
 	_, err := cpm.AzureCredentialClient.Delete(ctx, AzurePlaneName, name, nil)
+
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
 		// return true if not found.
@@ -158,5 +147,6 @@ func (cpm *AzureCredentialManagementClient) Delete(ctx context.Context, name str
 	} else if err != nil {
 		return false, err
 	}
+
 	return true, nil
 }
