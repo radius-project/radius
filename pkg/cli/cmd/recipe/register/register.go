@@ -77,8 +77,8 @@ type Runner struct {
 	Parameters        map[string]map[string]any
 }
 
-// TODO: remove the reserved reservedDevRecipesName after the issue:https://github.com/project-radius/radius/issues/5179 is fixed
-// This is a temp fix and has these 4 recipes name since we currently support dev recipes only for mongodb and redis.
+// TODO: This is a temporary fix in the CLI to unblock users, and should be removed after long term fix is implemented on the server side as a part of https://github.com/project-radius/radius/issues/5179.
+// Currently only 4 dev recipes are supported: https://github.com/project-radius/radius/blob/main/pkg/corerp/frontend/controller/environments/createorupdateenvironment.go#L134. This list should be updated if support for more recipes is added on the server.
 var reservedDevRecipesName = map[string]bool{
 	"mongo-azure":      true,
 	"mongo-kubernetes": true,
@@ -161,7 +161,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if recipeProperties[r.RecipeName] != nil {
 		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
 	} else if ok := reservedDevRecipesName[r.RecipeName]; ok {
-		// TODO: Remove this check after the issue:https://github.com/project-radius/radius/issues/5179 is fixed
+		// TODO: This is a temporary fix in the CLI to unblock users, and should be removed
+		// after long term fix is implemented on the server side as a part of https://github.com/project-radius/radius/issues/5179.
 		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q is reserved for dev recipes", r.RecipeName)}
 	}
 	if recipeProperties == nil {
