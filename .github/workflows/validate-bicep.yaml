@@ -29,14 +29,14 @@ jobs:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           repository: project-radius/docs
           path: temp/project-radius/docs
-          ref: edge
+          ref: v0.17
       - name: Clone samples repo
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           repository: project-radius/samples
           path: temp/project-radius/samples
-          ref: edge
+          ref: v0.17
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: az CLI login
