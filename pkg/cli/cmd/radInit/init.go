@@ -402,7 +402,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		// create the providers scope to the environment and register credentials at provider plane
-		providers, err := cmd.CreateEnvProviders([]interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
+		providers, err := cmd.CreateEnvProviders([]any{r.AzureCloudProvider, r.AwsCloudProvider})
 		if err != nil {
 			return err
 		}

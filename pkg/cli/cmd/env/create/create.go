@@ -157,7 +157,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	var err error
 	if r.Workspace.ProviderConfig != (workspaces.ProviderConfig{}) && r.Workspace.ProviderConfig.Azure != nil &&
 		(r.Workspace.ProviderConfig.Azure.SubscriptionID != "" && r.Workspace.ProviderConfig.Azure.ResourceGroup != "") {
-		providers, err = cmd.CreateEnvProviders([]interface{}{r.Workspace.ProviderConfig.Azure, nil})
+		providers, err = cmd.CreateEnvProviders([]any{r.Workspace.ProviderConfig.Azure, nil})
 		if err != nil {
 			return err
 		}
