@@ -14,12 +14,12 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprSecretStoreGeneric(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
-	name := "corerp-resources-dapr-secretstore-generic"
-	appNamespace := "default-corerp-resources-dapr-secretstore-generic"
+func Test_DaprInvokeHttpRoute(t *testing.T) {
+	template := "../testdata/corerp-resources-dapr-httproute.bicep"
+	name := "dapr-invokehttproute"
+	appNamespace := "default-dapr-invokehttproute"
 
-	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
@@ -29,13 +29,18 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gnrc-scs-ctnr",
+						Name: "dapr-frontend",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "gnrc-scs",
-						Type: validation.DaprSecretStoresResource,
+						Name: "dapr-backend",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "dapr-backend-httproute",
+						Type: validation.DaprInvokeHttpRoutesResource,
 						App:  name,
 					},
 				},
@@ -43,12 +48,13 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
+						validation.NewK8sPodForResource(name, "dapr-frontend"),
+						validation.NewK8sPodForResource(name, "dapr-backend"),
 					},
 				},
 			},
 		},
-	}, corerp.TestSecretResource(appNamespace, "mysecret", []byte("mysecret")))
+	})
 	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
