@@ -21,7 +21,7 @@ type UCPConfig struct {
 	Planes          []rest.Plane                           `yaml:"planes"`
 	SecretProvider  provider.SecretProviderOptions         `yaml:"secretProvider"`
 	MetricsProvider metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
-	TracerProvider  trace.Options                 `yaml:"tracerProvider"`
+	TracerProvider  trace.Options                          `yaml:"tracerProvider"`
 	Logging         ucplog.LoggingOptions                  `yaml:"logging"`
 	Identity        Identity                               `yaml:"identity,omitempty"`
 	UCP             config.UCPOptions                      `yaml:"ucp"`
