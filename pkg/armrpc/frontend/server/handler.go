@@ -18,6 +18,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -48,12 +50,14 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 	fn := func(w http.ResponseWriter, req *http.Request) {
 		hctx := req.Context()
+		addRequestAttributes(hctx, req)
 
 		response, err := ctrl.Run(hctx, w, req)
 		if err != nil {
 			handleError(hctx, w, req, err)
 			return
 		}
+
 		err = response.Apply(hctx, w, req)
 		if err != nil {
 			handleError(hctx, w, req, err)
@@ -64,6 +68,23 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 	ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
 	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
 	return nil
+}
+
+func addRequestAttributes(ctx context.Context, req *http.Request) {
+	labeler, ok := otelhttp.LabelerFromContext(ctx)
+	if !ok {
+		return
+	}
+
+	labeler.Add(attribute.String("path", req.URL.Path))
+
+	armContext := v1.ARMRequestContextFromContext(ctx)
+	resourceID := armContext.ResourceID
+
+	if resourceID.IsResource() || resourceID.IsResourceCollection() {
+		labeler.Add(attribute.String("resource_type", strings.ToLower(resourceID.Type())))
+		labeler.Add(attribute.String("ucp_plane", strings.ToLower(resourceID.PlaneNamespace())))
+	}
 }
 
 func ConfigureDefaultHandlers(

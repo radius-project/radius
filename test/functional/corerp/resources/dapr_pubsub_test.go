@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -58,11 +59,16 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 func Test_DaprPubSubServiceBus(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
+
+	if os.Getenv("SERVICEBUS_RESOURCE_ID") == "" {
+		t.Error("SERVICEBUS_RESOURCE_ID environment variable must be set to run this test.")
+	}
+	namespaceresourceid := "namespaceresourceid=" + os.Getenv("SERVICEBUS_RESOURCE_ID")
 	appNamespace := "default-corerp-resources-dapr-pubsub-servicebus"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), namespaceresourceid),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

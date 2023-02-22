@@ -424,11 +424,25 @@ func Test_Validate(t *testing.T) {
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
+		{
+			Name:          "Init Command exit console with interrupt signal",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithInterruptSignal(mocks.Prompter)
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Run_InstallAndCreateEnvironment_WithAzureProvider(t *testing.T) {
+func Test_Run_InstallAndCreateEnvironment_WithAzureProvider_WithRecipes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 	configFileInterface.EXPECT().
@@ -442,8 +456,9 @@ func Test_Run_InstallAndCreateEnvironment_WithAzureProvider(t *testing.T) {
 	appManagementClient.EXPECT().
 		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 		Return(true, nil).Times(1)
+	skipRecipes := false
 	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), !skipRecipes).
 		Return(true, nil).Times(1)
 
 	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
@@ -477,6 +492,7 @@ func Test_Run_InstallAndCreateEnvironment_WithAzureProvider(t *testing.T) {
 		Namespace:           "defaultNamespace",
 		RadiusInstalled:     true, // We're testing the reinstall case
 		Reinstall:           true,
+		SkipDevRecipes:      skipRecipes,
 		AzureCloudProvider: &azure.Provider{
 			SubscriptionID: "test-subscription",
 			ResourceGroup:  "test-rg",
@@ -553,7 +569,7 @@ func Test_Run_InstallAndCreateEnvironment_WithAWSProvider(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider(t *testing.T) {
+func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider_WithSkipRecipes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 	configFileInterface.EXPECT().
@@ -567,8 +583,9 @@ func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider(t *testing.T) {
 	appManagementClient.EXPECT().
 		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 		Return(true, nil).Times(1)
+	skipRecipes := true
 	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), !skipRecipes).
 		Return(true, nil).Times(1)
 
 	configFileInterface.EXPECT().
@@ -590,6 +607,7 @@ func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider(t *testing.T) {
 		Output:              outputSink,
 		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
 		KubeContext:         "kind-kind",
+		SkipDevRecipes:      skipRecipes,
 		RadiusInstalled:     false,
 		Namespace:           "defaultNamespace",
 		EnvName:             "default",
@@ -726,6 +744,12 @@ func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectKubeContextPrompt).
 		Return("", errors.New("cannot read selection")).Times(1)
+}
+
+func initKubeContextWithInterruptSignal(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		GetListInput(gomock.Any(), selectKubeContextPrompt).
+		Return("", &prompt.ErrExitConsole{}).Times(1)
 }
 
 func initRadiusReinstallNo(prompter *prompt.MockInterface) {

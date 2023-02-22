@@ -97,14 +97,13 @@ func prettyPrintJSON(o any) (string, error) {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-// It also initializes the traceprovider for cli.
+// It also initializes the tracerprovider for cli.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
-	tracerOpts := trace.TracerOptions{
+	shutdown, err := trace.InitTracer(trace.Options{
 		ServiceName: "cli",
-	}
-	shutdown, err := trace.InitTracer(tracerOpts)
+	})
 	if err != nil {
 		log.Fatal(err)
 	}

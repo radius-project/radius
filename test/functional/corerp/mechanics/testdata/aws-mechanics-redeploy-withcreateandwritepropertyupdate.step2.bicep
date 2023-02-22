@@ -2,7 +2,7 @@ import aws as aws
 
 param dbSubnetGroupName string = 'willsmith-rds-mssql-subnet-group-3'
 resource subnetGroup 'AWS.RDS/DBSubnetGroup@default' = {
-  name: dbSubnetGroupName
+  alias: dbSubnetGroupName
   properties: {
     DBSubnetGroupDescription: dbSubnetGroupName
     SubnetIds: ['']
@@ -11,7 +11,7 @@ resource subnetGroup 'AWS.RDS/DBSubnetGroup@default' = {
 
 param dbName string = 'willsmith-rds-mssql-3'
 resource db 'AWS.RDS/DBInstance@default' = {
-  name: dbName
+  alias: dbName
   properties: {
     DBInstanceIdentifier: dbName
     Engine: 'sqlserver-ex'

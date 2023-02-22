@@ -19,7 +19,7 @@ concurrency:
 jobs:
   linter_check:
     name: Lint
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     timeout-minutes: 30
     env:
       GOVER: '^1.18'

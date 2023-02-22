@@ -29,22 +29,22 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "register",
-		Short: "Add a link recipe to an environment.",
-		Long: `Add a link recipe to an environment.
-		You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
+		Short: "Add a recipe to an environment.",
+		Long: `Add a recipe to an environment.
+You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
 		
-		- A file containing a single value in JSON format
-		- A key-value-pair passed in the command line
+- A file containing a single value in JSON format
+- A key-value-pair passed in the command line
 		`,
 		Example: `
-		# Add a link recipe to an environment
-		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
+# Add a recipe to an environment
+rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
 		
-		# Specify a parameter
-		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+# Specify a parameter
+rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
 		
-		# specify many parameters using a JSON parameter file
-		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+# specify multiple parameters using a JSON parameter file
+rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -75,6 +75,15 @@ type Runner struct {
 	LinkType          string
 	RecipeName        string
 	Parameters        map[string]map[string]any
+}
+
+// TODO: This is a temporary fix in the CLI to unblock users, and should be removed after long term fix is implemented on the server side as a part of https://github.com/project-radius/radius/issues/5179.
+// Currently only 4 dev recipes are supported: https://github.com/project-radius/radius/blob/main/pkg/corerp/frontend/controller/environments/createorupdateenvironment.go#L134. This list should be updated if support for more recipes is added on the server.
+var reservedDevRecipesName = map[string]bool{
+	"mongo-azure":      true,
+	"mongo-kubernetes": true,
+	"redis-kubernetes": true,
+	"redis-azure":      true,
 }
 
 // NewRunner creates a new instance of the `rad recipe register` runner.
@@ -150,7 +159,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	recipeProperties := envResource.Properties.Recipes
 	if recipeProperties[r.RecipeName] != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
+	} else if ok := reservedDevRecipesName[r.RecipeName]; ok {
+		// TODO: This is a temporary fix in the CLI to unblock users, and should be removed
+		// after long term fix is implemented on the server side as a part of https://github.com/project-radius/radius/issues/5179.
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q is reserved for dev recipes", r.RecipeName)}
 	}
 	if recipeProperties == nil {
 		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}

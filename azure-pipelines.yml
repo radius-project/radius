@@ -40,7 +40,6 @@ variables:
   value: "85716382-7362-45c3-ae03-2126e459a123"
 - name: DisableDockerDetector
   value: 'true'
-
 stages:
 - stage: ImageBuild
   jobs:
@@ -58,7 +57,7 @@ stages:
     - task: Cache@2
       inputs:
         key: 'go | "$(Agent.OS)" | go.mod'
-        restoreKeys: | 
+        restoreKeys: |
           go | "$(Agent.OS)"
         path: $(gocachepath.goBuildCache)
       displayName: Cache GO packages
@@ -102,7 +101,7 @@ stages:
     - task: Cache@2
       inputs:
         key: 'go | "$(Agent.OS)" | go.mod'
-        restoreKeys: | 
+        restoreKeys: |
           go | "$(Agent.OS)"
         path: $(gocachepath.goBuildCache)
       displayName: Cache GO packages
@@ -174,7 +173,7 @@ stages:
         echo "##vso[task.setvariable variable=INTEGRATION_TEST_RESOURCE_GROUP_NAME]radius-$(date +%s%N)"
       displayName: Define a resource group name
     - script: az account set --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
-      displayName: az account set 
+      displayName: az account set
     - script: |
         export RANID=$(date +%s%N)
         arr=("westus3")
@@ -183,7 +182,7 @@ stages:
         az group create \
           --location $LOCATION \
           --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
-          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
         while [ $(az group exists --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)) = false ]; do sleep 2; done
       displayName: Create the resource group
     - script: |
@@ -234,6 +233,14 @@ stages:
         make test-functional-$(targetName)
       displayName: run functional $(targetName) tests
       env:
+        MONGODB_RESOURCE_ID: $(MONGODB_RESOURCE_ID)
+        DOCUMENTDB_RESOURCE_ID: $(DOCUMENTDB_RESOURCE_ID)
+        TABLESTORAGE_RESOURCE_ID: $(TABLESTORAGE_RESOURCE_ID)
+        MSSQL_RESOURCE_ID: $(MSSQL_RESOURCE_ID)
+        SERVICEBUS_RESOURCE_ID: $(SERVICEBUS_RESOURCE_ID)
+        REDIS_RESOURCE_ID: $(REDIS_RESOURCE_ID)
+        MSSQL_USERNAME: $(MSSQL_USERNAME)
+        MSSQL_PASSWORD: $(MSSQL_PASSWORD)
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
