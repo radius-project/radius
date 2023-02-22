@@ -29,14 +29,14 @@ jobs:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           repository: project-radius/docs
           path: temp/project-radius/docs
-          ref: edge
+          ref: v0.17
       - name: Clone samples repo
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           repository: project-radius/samples
           path: temp/project-radius/samples
-          ref: edge
+          ref: v0.17
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: az CLI login
@@ -49,7 +49,7 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       - name: Download rad-bicep-corerp
         run: |
-          ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep-corerp
+          ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/0.17/linux-x64/rad-bicep --output rad-bicep-corerp
           chmod +x rad-bicep-corerp
           ./rad-bicep-corerp --version
       - name: Verify Bicep files
