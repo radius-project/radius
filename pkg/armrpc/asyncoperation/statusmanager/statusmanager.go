@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // statusManager includes the necessary functions to manage asynchronous operations.
@@ -61,7 +60,7 @@ func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID
 }
 
 func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, operationTimeout time.Duration) error {
-	ctx, span := trace.AddProducerSpan(ctx, "statusmanager.QueueAsyncOperation publish", trace.RPFrontendTracer, oteltrace.WithSpanKind(oteltrace.SpanKindProducer))
+	ctx, span := trace.AddProducerSpan(ctx, "statusmanager.QueueAsyncOperation publish", trace.RPFrontendTracer)
 	defer span.End()
 
 	if aom.queue == nil {

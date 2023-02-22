@@ -21,51 +21,33 @@ const (
 	RPBackendTracer  string = "rp-backend-tracer"
 
 	TraceparentHeader string = "traceparent"
-	TracestateHeader  string = "tracestate"
-
-	MessagingSystem    string = "messaging.system"
-	MessagingOperation string = "messaging.operation"
 )
 
 // AddProducerSpan adds span to enqueuing async operations.
-func AddProducerSpan(ctx context.Context, spanName string, tracerName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	tp := otel.GetTracerProvider()
-	tr := tp.Tracer(tracerName)
-	ctx, span := tr.Start(ctx, spanName, trace.WithSpanKind(trace.SpanKindProducer))
-	producerAttributes := map[string]string{}
-	producerAttributes[MessagingSystem] = "radius"
-	producerAttributes[MessagingOperation] = "publish"
-
-	var attrs []attribute.KeyValue
-	for k, v := range producerAttributes {
-		attrs = append(attrs, attribute.String(k, v))
+func AddProducerSpan(ctx context.Context, spanName string, tracerName string) (context.Context, trace.Span) {
+	attr := []attribute.KeyValue{
+		attribute.String(string(semconv.MessagingSystemKey), "radius-internal"),
+		attribute.String(string(semconv.MessagingOperationKey), "publish"),
 	}
-
-	if len(attrs) > 0 {
-		span.SetAttributes(attrs...)
-	}
-
-	return ctx, span
+	return StartCustomSpan(ctx, spanName, tracerName, attr, trace.WithSpanKind(trace.SpanKindProducer))
 }
 
 // AddConsumerTelemtryData adds span data to dequeing async operations.
-func AddConsumerSpan(ctx context.Context, spanName string, tracerName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	tp := otel.GetTracerProvider()
-	tr := tp.Tracer(tracerName)
-	ctx, span := tr.Start(ctx, spanName, trace.WithSpanKind(trace.SpanKindConsumer))
-	consumerAttributes := map[string]string{}
-	consumerAttributes[MessagingSystem] = "radius"
-	consumerAttributes[MessagingOperation] = "receive"
-
-	var attrs []attribute.KeyValue
-	for k, v := range consumerAttributes {
-		attrs = append(attrs, attribute.String(k, v))
+func AddConsumerSpan(ctx context.Context, spanName string, tracerName string) (context.Context, trace.Span) {
+	attr := []attribute.KeyValue{
+		attribute.String(string(semconv.MessagingSystemKey), "radius-internal"),
+		attribute.String(string(semconv.MessagingOperationKey), "receive"),
 	}
+	return StartCustomSpan(ctx, spanName, tracerName, attr, trace.WithSpanKind(trace.SpanKindConsumer))
+}
 
+// StartCustomSpan starts a custom span based on opts
+func StartCustomSpan(ctx context.Context, spanName string, tracerName string, attrs []attribute.KeyValue, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	tr := otel.GetTracerProvider().Tracer(tracerName)
+	ctx, span := tr.Start(ctx, spanName, opts...)
 	if len(attrs) > 0 {
 		span.SetAttributes(attrs...)
 	}
-
 	return ctx, span
 }
 
