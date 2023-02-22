@@ -21,6 +21,10 @@ import (
 func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 	var res corerp.Providers
 	for _, provider := range providersList {
+		if provider == nil {
+			continue
+		}
+
 		switch p := provider.(type) {
 		case *azure.Provider:
 			if res.Azure != nil {
@@ -36,8 +40,6 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 			res.Aws = &corerp.ProvidersAws{
 				Scope: to.Ptr("/planes/aws/aws/accounts/" + p.AccountId + "/regions/" + p.TargetRegion),
 			}
-		case nil:
-			// skip the provider
 		default:
 			return res, &cli.FriendlyError{Message: fmt.Sprintf("Internal error: cannot create environment with '%T' type", provider)}
 		}
