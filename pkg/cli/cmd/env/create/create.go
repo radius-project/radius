@@ -14,10 +14,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -152,41 +149,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func providersFromWorkspace(ws *workspaces.Workspace) []any {
-	providerList := []any{}
-	wsAzure := ws.ProviderConfig.Azure
-	if wsAzure != nil && wsAzure.SubscriptionID != "" && wsAzure.ResourceGroup != "" {
-		providerList = append(providerList, &azure.Provider{
-			SubscriptionID: wsAzure.SubscriptionID,
-			ResourceGroup:  wsAzure.ResourceGroup,
-		})
-	}
-
-	wsAWS := ws.ProviderConfig.AWS
-	if wsAWS != nil && wsAWS.AccountId != "" && wsAWS.Region != "" {
-		providerList = append(providerList, &aws.Provider{
-			AccountId:    wsAWS.AccountId,
-			TargetRegion: wsAWS.Region,
-		})
-	}
-	return providerList
-}
-
 // Run runs the `rad env create` command.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
-
-	providers, err := cmd.CreateEnvProviders(providersFromWorkspace(r.Workspace))
-	if err != nil {
-		return err
-	}
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &corerp.Providers{}, !r.SkipDevRecipes)
 	if err != nil || !isEnvCreated {
 		return err
 	}

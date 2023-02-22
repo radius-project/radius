@@ -13,15 +13,13 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -107,125 +105,40 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run_Success(t *testing.T) {
-	runCreateTests := []struct {
-		name             string
-		providerConfig   workspaces.ProviderConfig
-		expectedProvider []any
-	}{
-		{
-			name: "Run env create with only Azure",
-			providerConfig: workspaces.ProviderConfig{
-				Azure: &workspaces.AzureProvider{
-					SubscriptionID: "test-subscription",
-					ResourceGroup:  "test-rg",
-				},
-			},
-			expectedProvider: []any{
-				&azure.Provider{
-					SubscriptionID: "test-subscription",
-					ResourceGroup:  "test-rg",
-				},
-			},
-		},
-		{
-			name: "Run env create with only AWS",
-			providerConfig: workspaces.ProviderConfig{
-				AWS: &workspaces.AWSProvider{
-					AccountId: "0",
-					Region:    "westus",
-				},
-			},
-			expectedProvider: []any{
-				&aws.Provider{
-					AccountId:    "0",
-					TargetRegion: "westus",
-				},
-			},
-		},
-		{
-			name: "Run env create with Azure and AWS",
-			providerConfig: workspaces.ProviderConfig{
-				Azure: &workspaces.AzureProvider{
-					SubscriptionID: "test-subscription",
-					ResourceGroup:  "test-rg",
-				},
-				AWS: &workspaces.AWSProvider{
-					AccountId: "0",
-					Region:    "westus",
-				},
-			},
-			expectedProvider: []any{
-				&azure.Provider{
-					SubscriptionID: "test-subscription",
-					ResourceGroup:  "test-rg",
-				},
-				&aws.Provider{
-					AccountId:    "0",
-					TargetRegion: "westus",
-				},
-			},
-		},
-		{
-			name:             "Run env create without providers",
-			expectedProvider: []any{},
-		},
-		{
-			name: "Run env create without incomplete providers",
-			providerConfig: workspaces.ProviderConfig{
-				Azure: &workspaces.AzureProvider{
-					SubscriptionID: "test-subscription",
-					ResourceGroup:  "",
-				},
-				AWS: &workspaces.AWSProvider{
-					AccountId: "0",
-					Region:    "",
-				},
-			},
-			expectedProvider: []any{},
-		},
-	}
+	t.Run("Run env create tests", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
-	for _, tc := range runCreateTests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		namespaceClient := namespace.NewMockInterface(ctrl)
+		appManagementClient.EXPECT().
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), &corerp.Providers{}, gomock.Any()).
+			Return(true, nil).Times(1)
 
-			p, err := cmd.CreateEnvProviders(tc.expectedProvider)
-			require.NoError(t, err)
+		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+		outputSink := &output.MockOutput{}
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "defaultWorkspace",
+		}
 
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), &p, gomock.Any()).
-				Return(true, nil).Times(1)
+		runner := &Runner{
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			Output:              outputSink,
+			Workspace:           workspace,
+			EnvironmentName:     "default",
+			UCPResourceGroup:    "default",
+			Namespace:           "default",
+			NamespaceInterface:  namespaceClient,
+			ConfigFileInterface: configFileInterface,
+		}
 
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-			workspace := &workspaces.Workspace{
-				Connection: map[string]any{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name:           "defaultWorkspace",
-				ProviderConfig: tc.providerConfig,
-			}
-
-			runner := &Runner{
-				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				Output:              outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "default",
-				Namespace:           "default",
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-				SkipDevRecipes:      true,
-			}
-
-			err = runner.Run(context.Background())
-			require.NoError(t, err)
-		})
-	}
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+	})
 }
 
 func Test_Run_SkipDevRecipes(t *testing.T) {
