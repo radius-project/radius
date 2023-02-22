@@ -54,7 +54,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
 
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.AppendLogValues)
+	r.Use(middleware.UseLogValues)
 	// add the arm cert validation if EnableAuth is true
 	if options.EnableArmAuth {
 		r.Use(authentication.ClientCertValidator(options.ArmCertMgr))

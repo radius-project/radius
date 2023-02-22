@@ -14,7 +14,7 @@ import (
 )
 
 // UseLogValues appends logging values to the context based on the request.
-func UseLogValues(h http.Handler, basePath string) http.Handler {
+func UseLogValues(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		values := []any{}
 		values = append(values,
