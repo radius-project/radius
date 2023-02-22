@@ -283,7 +283,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 			}
 		}
 	}
-
+	logger.Info(fmt.Sprintf("secret values ------%+v", secretValues))
 	return rpv1.DeploymentOutput{
 		DeployedOutputResources: outputResources,
 		ComputedValues:          computedValues,
