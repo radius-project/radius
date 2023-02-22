@@ -155,7 +155,7 @@ func Test_Show(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.Error(t, err)
-		require.ErrorIs(t, err, &cli.FriendlyError{})
+		require.ErrorIs(t, err, &cli.FriendlyError{Message: "The environment \"test-env\" was not found or has been deleted."})
 
 		require.Empty(t, outputSink.Writes)
 	})
