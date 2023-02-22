@@ -39,7 +39,7 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 		case nil:
 			// skip the provider
 		default:
-			return res, &cli.FriendlyError{Message: "Internal error: cannot create environement with the invalid provider type"}
+			return res, &cli.FriendlyError{Message: fmt.Sprintf("Internal error: cannot create environment with '%T' type", provider)}
 		}
 	}
 	return res, nil
