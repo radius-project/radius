@@ -36,6 +36,8 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 			res.Aws = &corerp.ProvidersAws{
 				Scope: to.Ptr("/planes/aws/aws/accounts/" + p.AccountId + "/regions/" + p.TargetRegion),
 			}
+		case nil:
+			// skip the provider
 		default:
 			return res, &cli.FriendlyError{Message: "Internal error: cannot create environement with the invalid provider type"}
 		}

@@ -36,13 +36,17 @@ func TestCreateEnvProviders(t *testing.T) {
 			err:       &cli.FriendlyError{Message: "Internal error: cannot create environement with the invalid provider type"},
 		},
 		{
-			name: "nil provider",
+			name: "skip nil provider",
 			providers: []any{
 				nil,
 				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
 			},
-			out: corerp.Providers{},
-			err: &cli.FriendlyError{Message: "Internal error: cannot create environement with the invalid provider type"},
+			out: corerp.Providers{
+				Azure: &corerp.ProvidersAzure{
+					Scope: to.Ptr("/subscriptions/testSubs/resourceGroups/testRG"),
+				},
+			},
+			err: nil,
 		},
 		{
 			name: "only azure provider",
