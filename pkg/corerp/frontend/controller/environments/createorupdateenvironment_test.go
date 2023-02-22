@@ -547,7 +547,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 	})
 
 	t.Run("User recipes conflict with dev recipe names", func(t *testing.T) {
-		envExistingDataModel, envInput, envDataModel, expectedOutput := getTestModelsUserRecipesConflictWithReservedNames20220315privatepreview()
+		envInput := getTestModelsUserRecipesConflictWithReservedNames20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
@@ -555,28 +555,8 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		mStorageClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (res *store.Object, err error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id, ETag: "existing-data-model"},
-					Data:     envExistingDataModel,
-				}, nil
-			})
-		mStorageClient.
-			EXPECT().
-			Query(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-				return &store.ObjectQueryResult{
-					Items: []store.Object{},
-				}, nil
-			})
-
-		mStorageClient.
-			EXPECT().
-			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-				obj.ETag = "new-resource-etag"
-				obj.Data = envDataModel
-				return nil
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return nil, &store.ErrNotFound{}
 			})
 
 		opts := ctrl.Options{
@@ -585,16 +565,15 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 
 		ctl, err := NewCreateOrUpdateEnvironment(opts)
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, w, req)
-		require.NoError(t, err)
-		_ = resp.Apply(ctx, w, req)
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
-		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-		require.Equal(t, expectedOutput, actualOutput)
+		_, err = ctl.Run(ctx, w, req)
+		require.ErrorContains(
+			t,
+			err,
+			"recipe name(s) reserved for devRecipes for: recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0)")
 	})
 
 	t.Run("Existing user recipe conflicts with dev recipe names ", func(t *testing.T) {
-		envExistingDataModel, envInput, envDataModel, expectedOutput := getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepreview()
+		envExistingDataModel, envInput := getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
@@ -608,23 +587,6 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 					Data:     envExistingDataModel,
 				}, nil
 			})
-		mStorageClient.
-			EXPECT().
-			Query(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-				return &store.ObjectQueryResult{
-					Items: []store.Object{},
-				}, nil
-			})
-
-		mStorageClient.
-			EXPECT().
-			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-				obj.ETag = "new-resource-etag"
-				obj.Data = envDataModel
-				return nil
-			})
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -632,12 +594,11 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 
 		ctl, err := NewCreateOrUpdateEnvironment(opts)
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, w, req)
-		require.NoError(t, err)
-		_ = resp.Apply(ctx, w, req)
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
-		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-		require.Equal(t, expectedOutput, actualOutput)
+		_, err = ctl.Run(ctx, w, req)
+		require.ErrorContains(
+			t,
+			err,
+			"recipe name(s) reserved for devRecipes for: recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0)")
 	})
 
 }

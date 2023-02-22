@@ -32,6 +32,15 @@ type CreateOrUpdateEnvironment struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
 }
 
+// TODO: This is a temporary fix to unblock users to register recipes using bicep, and should be removed after long term fix is implemented as part of https://github.com/project-radius/radius/issues/5179.
+// Currently only 4 dev recipes are supported: https://github.com/project-radius/radius/blob/main/pkg/corerp/frontend/controller/environments/createorupdateenvironment.go#L134. This list should be updated if support for more recipes is added.
+var reservedDevRecipesName = map[string]bool{
+	"mongo-azure":      true,
+	"mongo-kubernetes": true,
+	"redis-kubernetes": true,
+	"redis-azure":      true,
+}
+
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
 func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateEnvironment{
@@ -70,8 +79,23 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		if err != nil {
 			return nil, err
 		}
-
-		if newResource.Properties.Recipes == nil {
+		if newResource.Properties.Recipes != nil {
+			// TODO: This is a temporary fix to unblock users to register recipes using bicep, and should be removed
+			// after long term fix is implemented as part of https://github.com/project-radius/radius/issues/5179.
+			errorPrefix := "recipe name(s) reserved for devRecipes for: "
+			var errorRecipes string
+			for k, v := range newResource.Properties.Recipes {
+				if ok := reservedDevRecipesName[k]; ok {
+					if errorRecipes != "" {
+						errorRecipes += ", "
+					}
+					errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
+				}
+			}
+			if errorRecipes != "" {
+				return nil, fmt.Errorf(errorPrefix + errorRecipes)
+			}
+		} else {
 			newResource.Properties.Recipes = map[string]datamodel.EnvironmentRecipeProperties{}
 		}
 		maps.Copy(newResource.Properties.Recipes, devRecipes)
