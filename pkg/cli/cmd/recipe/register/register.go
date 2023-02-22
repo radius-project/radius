@@ -77,6 +77,15 @@ type Runner struct {
 	Parameters        map[string]map[string]any
 }
 
+// TODO: This is a temporary fix in the CLI to unblock users, and should be removed after long term fix is implemented on the server side as a part of https://github.com/project-radius/radius/issues/5179.
+// Currently only 4 dev recipes are supported: https://github.com/project-radius/radius/blob/main/pkg/corerp/frontend/controller/environments/createorupdateenvironment.go#L134. This list should be updated if support for more recipes is added on the server.
+var reservedDevRecipesName = map[string]bool{
+	"mongo-azure":      true,
+	"mongo-kubernetes": true,
+	"redis-kubernetes": true,
+	"redis-azure":      true,
+}
+
 // NewRunner creates a new instance of the `rad recipe register` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
@@ -150,7 +159,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	recipeProperties := envResource.Properties.Recipes
 	if recipeProperties[r.RecipeName] != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
+	} else if ok := reservedDevRecipesName[r.RecipeName]; ok {
+		// TODO: This is a temporary fix in the CLI to unblock users, and should be removed
+		// after long term fix is implemented on the server side as a part of https://github.com/project-radius/radius/issues/5179.
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q is reserved for dev recipes", r.RecipeName)}
 	}
 	if recipeProperties == nil {
 		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}
