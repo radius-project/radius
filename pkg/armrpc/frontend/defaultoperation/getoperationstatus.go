@@ -8,8 +8,10 @@ package defaultoperation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -33,12 +35,13 @@ func NewGetOperationStatus(opts ctrl.Options) (ctrl.Controller, error) {
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationStatus) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
+	logger := logr.FromContextOrDiscard(ctx)
 	// TODO: Add additional validation
 
 	os := &manager.Status{}
 	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
+		logger.Info(fmt.Sprintf("The response is %s for resource %s", err.Error(), serviceCtx.ResourceID))
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 

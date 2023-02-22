@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -31,6 +32,7 @@ func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
@@ -63,6 +65,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 
 	err = c.StorageClient().Delete(ctx, request.ResourceID)
 	if err != nil {
+		logger.Info(fmt.Sprintf("the error is %s for resource %s", err.Error(), request.ResourceID))
 		return ctrl.Result{}, err
 	}
 
