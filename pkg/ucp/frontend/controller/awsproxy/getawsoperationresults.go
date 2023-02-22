@@ -23,24 +23,26 @@ var _ ctrl.Controller = (*GetAWSOperationResults)(nil)
 // GetAWSOperationResults is the controller implementation to get AWS resource operation results.
 type GetAWSOperationResults struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	AWSOptions
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
-func NewGetAWSOperationResults(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetAWSOperationResults(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
 	return &GetAWSOperationResults{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
+		awsOpts,
 	}, nil
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, _, _, id, err := ParseAWSRequest(ctx, *p.Options(), req)
+	_, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := cloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	response, err := p.AWSOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(id.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {

@@ -27,20 +27,22 @@ var _ ctrl.Controller = (*DeleteAWSResourceWithPost)(nil)
 // DeleteAWSResourceWithPost is the controller implementation to delete an AWS resource.
 type DeleteAWSResourceWithPost struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	AWSOptions
 }
 
 // NewDeleteAWSResourceWithPost creates a new DeleteAWSResourceWithPost.
-func NewDeleteAWSResourceWithPost(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteAWSResourceWithPost(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
 	return &DeleteAWSResourceWithPost{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
+		awsOpts,
 	}, nil
 }
 
 func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), req)
+	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +58,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+	describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: aws.String(resourceType),
 	})
@@ -76,7 +78,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	_, err = cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	_, err = p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(awsResourceIdentifier),
 	})
@@ -87,7 +89,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	logger.Info("Deleting resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
-	response, err := cloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+	response, err := p.AWSOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(awsResourceIdentifier),
 	})

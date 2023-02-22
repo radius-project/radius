@@ -61,11 +61,15 @@ func Test_ListAWSResources(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewListAWSResources(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, firstTestResource.CollectionPath, nil)
@@ -109,11 +113,15 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewListAWSResources(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
@@ -139,9 +147,7 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
+		StorageClient: testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -171,11 +177,15 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 		},
 	})
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewListAWSResources(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)

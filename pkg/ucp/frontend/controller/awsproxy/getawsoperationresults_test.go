@@ -15,8 +15,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -36,11 +36,15 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:                      testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSOperationResults(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
@@ -69,11 +73,15 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:                      testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSOperationResults(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)

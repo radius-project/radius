@@ -12,12 +12,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -31,6 +31,7 @@ type ControllerFunc func(ctrl.Options) (ctrl.Controller, error)
 type HandlerOptions struct {
 	ParentRouter   *mux.Router
 	ResourceType   string
+	Path           string
 	Method         v1.OperationMethod
 	HandlerFactory ControllerFunc
 }
@@ -54,19 +55,28 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 		response, err := ctrl.Run(hctx, w, req)
 		if err != nil {
-			handleError(hctx, w, req, err)
+			HandleError(hctx, w, req, err)
 			return
 		}
 
 		err = response.Apply(hctx, w, req)
 		if err != nil {
-			handleError(hctx, w, req, err)
+			HandleError(hctx, w, req, err)
 			return
 		}
 	}
 
-	ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
-	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+	// ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
+	// opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+
+	ot := v1.OperationType{Type: opts.Path, Method: opts.Method}
+	if opts.Method != "" {
+		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+	} else {
+		// Path is used to proxy plane request irrespective of the http method
+		opts.ParentRouter.PathPrefix(opts.Path).HandlerFunc(fn).Name(ot.String())
+	}
+
 	return nil
 }
 
@@ -146,8 +156,8 @@ func ConfigureDefaultHandlers(
 }
 
 // Responds with an HTTP 500
-func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
+func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
 
 	var response rest.Response

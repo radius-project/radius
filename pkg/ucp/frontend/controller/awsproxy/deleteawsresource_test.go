@@ -52,11 +52,15 @@ func Test_DeleteAWSResource(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:                      testOptions.StorageClient,
-	})
+	awsController, err := NewDeleteAWSResource(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
@@ -90,11 +94,15 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 			Message: aws.String("Resource not found"),
 		})
 
-	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:                      testOptions.StorageClient,
-	})
+	awsController, err := NewDeleteAWSResource(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)

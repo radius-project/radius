@@ -20,22 +20,22 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
-	if opts.AWSCloudControlClient == nil {
-		return nil, nil, "", resources.ID{}, errors.New("AWSCloudControlClient is not set.")
+func ParseAWSRequest(ctx context.Context, opts ctrl.Options, awsOpts AWSOptions, r *http.Request) (string, resources.ID, error) {
+	if awsOpts.AWSCloudControlClient == nil {
+		return "", resources.ID{}, errors.New("AWSCloudControlClient is not set.")
 	}
-	if opts.AWSCloudFormationClient == nil {
-		return nil, nil, "", resources.ID{}, errors.New("AWSCloudFormationClient is not set.")
+	if awsOpts.AWSCloudFormationClient == nil {
+		return "", resources.ID{}, errors.New("AWSCloudFormationClient is not set.")
 	}
 
 	path := middleware.GetRelativePath(opts.BasePath, r.URL.Path)
 	id, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
-		return nil, nil, "", resources.ID{}, err
+		return "", resources.ID{}, err
 	}
 
 	resourceType := resources.ToAWSResourceType(id)
-	return opts.AWSCloudControlClient, opts.AWSCloudFormationClient, resourceType, id, nil
+	return resourceType, id, nil
 }
 
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the

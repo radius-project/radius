@@ -26,7 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -106,6 +106,7 @@ func Start(t *testing.T) *TestServer {
 			Client:   config,
 		},
 	}
+
 	secretOptions := secretprovider.SecretProviderOptions{
 		Provider: secretprovider.TypeETCDSecret,
 		ETCD:     storageOptions.ETCD,
@@ -128,19 +129,20 @@ func Start(t *testing.T) *TestServer {
 	}
 	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 
-	err = api.Register(ctx, router, controller.Options{
-		// TODO: we're doing lots of cleanup on controller.Options that will lead
-		// to small changes here.
-		Address:  server.URL,
-		BasePath: basePath,
+	err = api.Register(ctx, router,
+		armrpc_controller.Options{
+			// TODO: we're doing lots of cleanup on controller.Options that will lead
+			// to small changes here.
+			Address:  server.URL,
+			BasePath: basePath,
 
-		// TODO: remove this to align on design with the RPs
-		DB:           storageClient,
-		SecretClient: secretClient,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: dataprovider.NewStorageProvider(storageOptions),
+			// TODO: remove this to align on design with the RPs
+			StorageClient: storageClient,
+
+			CredentialClient: secretClient,
+			DataProvider:     dataprovider.NewStorageProvider(storageOptions),
 		},
-	})
+		awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	logger := logr.FromContextOrDiscard(ctx)

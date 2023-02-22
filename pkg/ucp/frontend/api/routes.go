@@ -11,12 +11,14 @@ import (
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	ucp_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	aws_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/aws"
 	azure_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/azure"
@@ -48,33 +50,36 @@ const (
 )
 
 // Register registers the routes for UCP
-func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) error {
+func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, awsOpts awsproxy.AWSOptions) error {
 	baseURL := ctrlOpts.BasePath
 
-	handlerOptions := []ctrl.HandlerOptions{}
+	handlerOptions := []ucp_ctrl.HandlerOptions{}
 
 	// If we're in Kubernetes we have some required routes to implement.
 	if baseURL != "" {
 		// NOTE: the Kubernetes API Server does not include the gvr (base path) in
 		// the URL for swagger routes.
-		handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
+
+		handlerOptions = append(handlerOptions, []ucp_ctrl.HandlerOptions{
 			{
-				ParentRouter:   router.Path("/openapi/v2").Subrouter(),
-				Method:         v1.OperationGet,
-				HandlerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
+				server.HandlerOptions{
+					ParentRouter:   router.Path("/openapi/v2").Subrouter(),
+					Method:         v1.OperationGet,
+					HandlerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
+				}, nil,
 			},
 			{
-				ParentRouter:   router.Path(baseURL).Subrouter(),
-				Method:         v1.OperationGet,
-				HandlerFactory: kubernetes_ctrl.NewDiscoveryDoc,
+				server.HandlerOptions{
+					ParentRouter:   router.Path(baseURL).Subrouter(),
+					Method:         v1.OperationGet,
+					HandlerFactory: kubernetes_ctrl.NewDiscoveryDoc,
+				}, nil,
 			},
 		}...)
 
 	}
 
-	ctrl.ConfigureDefaultHandlers(router, ctrl.Options{
-		BasePath: baseURL,
-	})
+	// No default handlers configured at this point.
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))
@@ -110,188 +115,242 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	awsCredentialCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, awsCredentialCollectionPath)).Subrouter()
 	awsCredentialResourceSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, awsCredentialResourcePath)).Subrouter()
 
-	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
+	handlerOptions = append(handlerOptions, []ucp_ctrl.HandlerOptions{
 		// Planes resource handler registration.
 		{
-			ParentRouter:   planeCollectionSubRouter,
-			Method:         v1.OperationList,
-			HandlerFactory: planes_ctrl.NewListPlanes,
+			server.HandlerOptions{
+				ParentRouter:   planeCollectionSubRouter,
+				Method:         v1.OperationList,
+				HandlerFactory: planes_ctrl.NewListPlanes,
+			}, nil,
 		},
 		{
-			ParentRouter:   planeCollectionByTypeSubRouter,
-			Method:         v1.OperationList,
-			HandlerFactory: planes_ctrl.NewListPlanesByType,
+			server.HandlerOptions{
+				ParentRouter:   planeCollectionByTypeSubRouter,
+				Method:         v1.OperationList,
+				HandlerFactory: planes_ctrl.NewListPlanesByType,
+			}, nil,
 		},
 		{
-			ParentRouter:   planeSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: planes_ctrl.NewGetPlane,
+			server.HandlerOptions{
+				ParentRouter:   planeSubRouter,
+				Method:         v1.OperationGet,
+				HandlerFactory: planes_ctrl.NewGetPlane,
+			}, nil,
 		},
 		{
-			ParentRouter:   planeSubRouter,
-			Method:         v1.OperationPut,
-			HandlerFactory: planes_ctrl.NewCreateOrUpdatePlane,
+			server.HandlerOptions{
+				ParentRouter:   planeSubRouter,
+				Method:         v1.OperationPut,
+				HandlerFactory: planes_ctrl.NewCreateOrUpdatePlane,
+			}, nil,
 		},
 		{
-			ParentRouter:   planeSubRouter,
-			Method:         v1.OperationDelete,
-			HandlerFactory: planes_ctrl.NewDeletePlane,
+			server.HandlerOptions{
+				ParentRouter:   planeSubRouter,
+				Method:         v1.OperationDelete,
+				HandlerFactory: planes_ctrl.NewDeletePlane,
+			}, nil,
 		},
 		// Resource group handler registration
 		{
-			ParentRouter:   resourceGroupCollectionSubRouter,
-			Method:         v1.OperationList,
-			HandlerFactory: resourcegroups_ctrl.NewListResourceGroups,
+			server.HandlerOptions{
+				ParentRouter:   resourceGroupCollectionSubRouter,
+				Method:         v1.OperationList,
+				HandlerFactory: resourcegroups_ctrl.NewListResourceGroups,
+			}, nil,
 		},
 		{
-			ParentRouter:   resourceGroupSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: resourcegroups_ctrl.NewGetResourceGroup,
+			server.HandlerOptions{
+				ParentRouter:   resourceGroupSubRouter,
+				Method:         v1.OperationGet,
+				HandlerFactory: resourcegroups_ctrl.NewGetResourceGroup,
+			}, nil,
 		},
 		{
-			ParentRouter:   resourceGroupSubRouter,
-			Method:         v1.OperationPut,
-			HandlerFactory: resourcegroups_ctrl.NewCreateOrUpdateResourceGroup,
+			server.HandlerOptions{
+				ParentRouter:   resourceGroupSubRouter,
+				Method:         v1.OperationPut,
+				HandlerFactory: resourcegroups_ctrl.NewCreateOrUpdateResourceGroup,
+			}, nil,
 		},
 		{
-			ParentRouter:   resourceGroupSubRouter,
-			Method:         v1.OperationDelete,
-			HandlerFactory: resourcegroups_ctrl.NewDeleteResourceGroup,
+			server.HandlerOptions{
+				ParentRouter:   resourceGroupSubRouter,
+				Method:         v1.OperationDelete,
+				HandlerFactory: resourcegroups_ctrl.NewDeleteResourceGroup,
+			}, nil,
 		},
 
 		// AWS Plane handlers
 		{
-			ParentRouter:   awsOperationResultsSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: awsproxy_ctrl.NewGetAWSOperationResults,
+			server.HandlerOptions{
+				ParentRouter: awsOperationResultsSubRouter,
+				Method:       v1.OperationGet,
+			},
+			awsproxy_ctrl.NewGetAWSOperationResults,
 		},
 		{
-			ParentRouter:   awsOperationStatusesSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: awsproxy_ctrl.NewGetAWSOperationStatuses,
+			server.HandlerOptions{
+				ParentRouter: awsOperationStatusesSubRouter,
+				Method:       v1.OperationGet,
+			},
+			awsproxy_ctrl.NewGetAWSOperationStatuses,
 		},
 		{
-			ParentRouter:   awsResourceCollectionSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: awsproxy_ctrl.NewListAWSResources,
+			server.HandlerOptions{
+				ParentRouter: awsResourceCollectionSubRouter,
+				Method:       v1.OperationGet,
+			},
+			awsproxy_ctrl.NewListAWSResources,
 		},
 		{
-			ParentRouter:   awsSingleResourceSubRouter,
-			Method:         v1.OperationPut,
-			HandlerFactory: awsproxy_ctrl.NewCreateOrUpdateAWSResource,
+			server.HandlerOptions{
+				ParentRouter: awsSingleResourceSubRouter,
+				Method:       v1.OperationPut,
+			},
+			awsproxy_ctrl.NewCreateOrUpdateAWSResource,
 		},
 		{
-			ParentRouter:   awsSingleResourceSubRouter,
-			Method:         v1.OperationDelete,
-			HandlerFactory: awsproxy_ctrl.NewDeleteAWSResource,
+			server.HandlerOptions{
+				ParentRouter: awsSingleResourceSubRouter,
+				Method:       v1.OperationDelete,
+			},
+			awsproxy_ctrl.NewDeleteAWSResource,
 		},
 		{
-			ParentRouter:   awsSingleResourceSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: awsproxy_ctrl.NewGetAWSResource,
+			server.HandlerOptions{
+				ParentRouter: awsSingleResourceSubRouter,
+				Method:       v1.OperationGet,
+			},
+			awsproxy_ctrl.NewGetAWSResource,
 		},
 		{
-			ParentRouter:   awsPutResourceSubRouter,
-			Method:         v1.OperationPost,
-			HandlerFactory: awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost,
+			server.HandlerOptions{
+				ParentRouter: awsPutResourceSubRouter,
+				Method:       v1.OperationPost,
+			},
+			awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost,
 		},
 		{
-			ParentRouter:   awsGetResourceSubRouter,
-			Method:         v1.OperationPost,
-			HandlerFactory: awsproxy_ctrl.NewGetAWSResourceWithPost,
+			server.HandlerOptions{
+				ParentRouter: awsGetResourceSubRouter,
+				Method:       v1.OperationPost,
+			},
+			awsproxy_ctrl.NewGetAWSResourceWithPost,
 		},
 		{
-			ParentRouter:   awsDeleteResourceSubRouter,
-			Method:         v1.OperationPost,
-			HandlerFactory: awsproxy_ctrl.NewDeleteAWSResourceWithPost,
+			server.HandlerOptions{
+				ParentRouter: awsDeleteResourceSubRouter,
+				Method:       v1.OperationPost,
+			},
+			awsproxy_ctrl.NewDeleteAWSResourceWithPost,
 		},
 
 		// Azure Credential Handlers
 		{
-			ParentRouter: azureCredentialCollectionSubRouter,
-			ResourceType: v20220901privatepreview.AzureCredentialType,
-			Method:       v1.OperationList,
-			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
-					},
-				)
-			},
+			server.HandlerOptions{
+				ParentRouter: azureCredentialCollectionSubRouter,
+				ResourceType: v20220901privatepreview.AzureCredentialType,
+				Method:       v1.OperationList,
+				HandlerFactory: func(opt ctrl.Options) (ctrl.Controller, error) {
+					return defaultoperation.NewListResources(opt,
+						ctrl.ResourceOptions[datamodel.Credential]{
+							RequestConverter:  converter.CredentialDataModelFromVersioned,
+							ResponseConverter: converter.CredentialDataModelToVersioned,
+						},
+					)
+				},
+			}, nil,
 		},
 		{
-			ParentRouter: azureCredentialResourceSubRouter,
-			ResourceType: v20220901privatepreview.AzureCredentialType,
-			Method:       v1.OperationGet,
-			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
-					},
-				)
-			},
+			server.HandlerOptions{
+				ParentRouter: azureCredentialResourceSubRouter,
+				ResourceType: v20220901privatepreview.AzureCredentialType,
+				Method:       v1.OperationGet,
+				HandlerFactory: func(opt ctrl.Options) (ctrl.Controller, error) {
+					return defaultoperation.NewGetResource(opt,
+						ctrl.ResourceOptions[datamodel.Credential]{
+							RequestConverter:  converter.CredentialDataModelFromVersioned,
+							ResponseConverter: converter.CredentialDataModelToVersioned,
+						},
+					)
+				},
+			}, nil,
 		},
 		{
-			ParentRouter:   azureCredentialResourceSubRouter,
-			Method:         v1.OperationPut,
-			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
+			server.HandlerOptions{
+				ParentRouter:   azureCredentialResourceSubRouter,
+				Method:         v1.OperationPut,
+				HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
+			}, nil,
 		},
 		{
-			ParentRouter:   azureCredentialResourceSubRouter,
-			Method:         v1.OperationDelete,
-			HandlerFactory: azure_credential_ctrl.NewDeleteCredential,
+			server.HandlerOptions{
+				ParentRouter:   azureCredentialResourceSubRouter,
+				Method:         v1.OperationDelete,
+				HandlerFactory: azure_credential_ctrl.NewDeleteCredential,
+			}, nil,
 		},
 
 		// AWS Credential Handlers
 		{
-			ParentRouter: awsCredentialCollectionSubRouter,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
-			Method:       v1.OperationList,
-			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
-					},
-				)
-			},
+			server.HandlerOptions{
+				ParentRouter: awsCredentialCollectionSubRouter,
+				ResourceType: v20220901privatepreview.AWSCredentialType,
+				Method:       v1.OperationList,
+				HandlerFactory: func(opt ctrl.Options) (ctrl.Controller, error) {
+					return defaultoperation.NewListResources(opt,
+						ctrl.ResourceOptions[datamodel.Credential]{
+							RequestConverter:  converter.CredentialDataModelFromVersioned,
+							ResponseConverter: converter.CredentialDataModelToVersioned,
+						},
+					)
+				},
+			}, nil,
 		},
 		{
-			ParentRouter: awsCredentialResourceSubRouter,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
-			Method:       v1.OperationGet,
-			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
-					},
-				)
-			},
+			server.HandlerOptions{
+				ParentRouter: awsCredentialResourceSubRouter,
+				ResourceType: v20220901privatepreview.AWSCredentialType,
+				Method:       v1.OperationGet,
+				HandlerFactory: func(opt ctrl.Options) (ctrl.Controller, error) {
+					return defaultoperation.NewGetResource(opt,
+						ctrl.ResourceOptions[datamodel.Credential]{
+							RequestConverter:  converter.CredentialDataModelFromVersioned,
+							ResponseConverter: converter.CredentialDataModelToVersioned,
+						},
+					)
+				},
+			}, nil,
 		},
 		{
-			ParentRouter:   awsCredentialResourceSubRouter,
-			Method:         v1.OperationPut,
-			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
+			server.HandlerOptions{
+				ParentRouter:   awsCredentialResourceSubRouter,
+				Method:         v1.OperationPut,
+				HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
+			}, nil,
 		},
 		{
-			ParentRouter:   awsCredentialResourceSubRouter,
-			Method:         v1.OperationDelete,
-			HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
+			server.HandlerOptions{
+				ParentRouter:   awsCredentialResourceSubRouter,
+				Method:         v1.OperationDelete,
+				HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
+			}, nil,
 		},
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
 			// Note that the API validation is not applied to the router used for proxying
-			ParentRouter:   router,
-			Path:           fmt.Sprintf("%s%s", baseURL, planeItemPath),
-			HandlerFactory: planes_ctrl.NewProxyPlane,
+			server.HandlerOptions{
+				ParentRouter:   router,
+				Path:           fmt.Sprintf("%s%s", ctrlOpts.BasePath, planeItemPath),
+				HandlerFactory: planes_ctrl.NewProxyPlane,
+			}, nil,
 		},
 	}...)
 
 	for _, h := range handlerOptions {
-		if err := ctrl.RegisterHandler(ctx, h, ctrlOpts); err != nil {
+		if err := ucp_ctrl.RegisterHandler(ctx, h, ctrlOpts, awsOpts); err != nil {
 			return err
 		}
 	}

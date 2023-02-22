@@ -61,11 +61,15 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
@@ -156,11 +160,15 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
@@ -247,11 +255,15 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.MemoryDB/Cluster", bytes.NewBuffer(requestBodyBytes))
@@ -328,11 +340,15 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:put", bytes.NewBuffer(requestBodyBytes))
@@ -411,11 +427,15 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:put", bytes.NewBuffer(requestBodyBytes))
@@ -505,11 +525,15 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))

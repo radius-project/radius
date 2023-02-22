@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -146,13 +146,11 @@ func Test_ProxyToRP(t *testing.T) {
 	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
-		},
-	})
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		StorageClient: db,
+		BasePath:      basePath,
+		DataProvider:  provider,
+	}, awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -197,13 +195,11 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
-		},
-	})
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		StorageClient: db,
+		BasePath:      basePath,
+		DataProvider:  provider,
+	}, awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -294,13 +290,11 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
-		},
-	})
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		StorageClient: db,
+		BasePath:      basePath,
+		DataProvider:  provider,
+	}, awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -405,7 +399,12 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 
 	rgID, err := resources.ParseScope("/planes/radius/local/resourceGroups/rg1")
 	require.NoError(t, err)
-	db.EXPECT().Get(gomock.Any(), rgID.String())
+	db.EXPECT().Get(gomock.Any(), rgID.String()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+		return &store.Object{
+			Metadata: store.Metadata{},
+			Data:     &testResourceGroup,
+		}, nil
+	})
 
 	proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
 	// proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
@@ -482,13 +481,11 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 
 	router := mux.NewRouter()
 	ctx := context.Background()
-	err := api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
-		},
-	})
+	err := api.Register(ctx, router, armrpc_controller.Options{
+		StorageClient: db,
+		BasePath:      basePath,
+		DataProvider:  provider,
+	}, awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	mockCtrl := gomock.NewController(t)

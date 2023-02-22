@@ -23,24 +23,26 @@ var _ ctrl.Controller = (*DeleteAWSResource)(nil)
 // DeleteAWSResource is the controller implementation to delete AWS resource.
 type DeleteAWSResource struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	AWSOptions
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
-func NewDeleteAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteAWSResource(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
 	return &DeleteAWSResource{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
+		awsOpts,
 	}, nil
 }
 
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), req)
+	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	_, err = p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
@@ -50,7 +52,7 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return awsclient.HandleAWSError(err)
 	}
 
-	response, err := cloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+	response, err := p.AWSOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})

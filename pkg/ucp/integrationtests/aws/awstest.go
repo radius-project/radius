@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,14 +58,16 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err := api.Register(ctx, router, controller.Options{
-		BasePath:                basePath,
-		AWSCloudControlClient:   cloudControlClient,
-		AWSCloudFormationClient: cloudFormationClient,
-		CommonControllerOptions: armrpc_controller.Options{
+	err := api.Register(ctx, router,
+		armrpc_controller.Options{
+			BasePath:     basePath,
 			DataProvider: provider,
 		},
-	})
+		awsproxy.AWSOptions{
+			AWSCloudControlClient:   cloudControlClient,
+			AWSCloudFormationClient: cloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)

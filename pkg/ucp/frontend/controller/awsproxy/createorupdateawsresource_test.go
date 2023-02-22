@@ -54,11 +54,14 @@ func Test_CreateAWSResource(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResource(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -153,11 +156,14 @@ func Test_UpdateAWSResource(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResource(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -237,11 +243,15 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewCreateOrUpdateAWSResource(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))

@@ -62,11 +62,15 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -116,11 +120,15 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 			Message: aws.String("Resource not found"),
 		})
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -157,11 +165,15 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -205,11 +217,15 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 		},
 	})
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -279,11 +295,15 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSResourceWithPost(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(requestBodyBytes))

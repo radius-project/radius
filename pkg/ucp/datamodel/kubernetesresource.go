@@ -5,11 +5,6 @@
 
 package datamodel
 
-import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-)
-
 // KubernetesResource represents any Kubernetes Resource.
 type KubernetesResource struct {
-	v1.BaseResource
 }

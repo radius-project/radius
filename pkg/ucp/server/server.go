@@ -48,6 +48,7 @@ type Options struct {
 	InitialPlanes          []rest.Plane
 	Identity               hostoptions.Identity
 	UCPConnection          sdk.Connection
+	DefaultLocation        string
 }
 
 func NewServerOptionsFromEnvironment() (Options, error) {
@@ -80,7 +81,10 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	if identity.AuthMethod == "" {
 		identity.AuthMethod = hostoptions.AuthDefault
 	}
-
+	defaultLocation := opts.Config.DefaultLocation
+	if defaultLocation == "" {
+		defaultLocation = "global"
+	}
 	var cfg *kube_rest.Config
 	if opts.Config.UCP.Kind == config.UCPConnectionKindKubernetes {
 		cfg, err = kube.GetConfig()
@@ -119,6 +123,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 			BasePath:               options.BasePath,
 			StorageProviderOptions: options.StorageProviderOptions,
 			SecretProviderOptions:  options.SecretProviderOptions,
+			DefaultLocation:        options.DefaultLocation,
 			InitialPlanes:          options.InitialPlanes,
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,

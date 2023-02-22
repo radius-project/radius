@@ -39,11 +39,15 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewGetAWSOperationStatuses(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSOperationStatuses(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
@@ -82,11 +86,15 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewGetAWSOperationStatuses(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		StorageClient:           testOptions.StorageClient,
-	})
+	awsController, err := NewGetAWSOperationStatuses(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)

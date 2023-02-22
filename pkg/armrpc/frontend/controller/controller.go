@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -45,12 +44,6 @@ type Options struct {
 
 	// UCP credential client for credentials operations
 	CredentialClient secret.Client
-
-	// AWS Cloud Control Client
-	AWSCloudControlClient ucp_aws.AWSCloudControlClient
-
-	// AWS Cloud Formation Client
-	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
 
 	// Base path
 	BasePath string
@@ -129,16 +122,6 @@ func (b *BaseController) StatusManager() sm.StatusManager {
 // CredentialClient gets the UCP credential client for this controller.
 func (b *BaseController) CredentialClient() secret.Client {
 	return b.options.CredentialClient
-}
-
-// AWSCloudControlClient gets the AWS cloud control client for this controller.
-func (b *BaseController) AWSCloudControlClient() ucp_aws.AWSCloudControlClient {
-	return b.options.AWSCloudControlClient
-}
-
-// AWSCloudFormationClient gets the AWS cloud formation client for this controller.
-func (b *BaseController) AWSCloudFormationClient() ucp_aws.AWSCloudFormationClient {
-	return b.options.AWSCloudFormationClient
 }
 
 // BasePath gets the base path for this controller.

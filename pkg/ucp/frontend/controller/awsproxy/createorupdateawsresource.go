@@ -27,19 +27,21 @@ var _ ctrl.Controller = (*CreateOrUpdateAWSResource)(nil)
 // CreateOrUpdateAWSResource is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResource struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	AWSOptions
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
-func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateAWSResource(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
 	return &CreateOrUpdateAWSResource{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
+		awsOpts,
 	}, nil
 }
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), req)
+	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +79,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	// we're working on exists already.
 
 	existing := true
-	getResponse, err := cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	getResponse, err := p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
@@ -110,7 +112,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	if existing {
 		// Get resource type schema
-		describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 			Type:     types.RegistryTypeResource,
 			TypeName: aws.String(resourceType),
 		})
@@ -133,7 +135,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				return awserror.HandleAWSError(err)
 			}
 
-			response, err := cloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := p.AWSOptions.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      &resourceType,
 				Identifier:    aws.String(id.Name()),
 				PatchDocument: aws.String(string(marshaled)),
@@ -161,7 +163,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			return resp, nil
 		}
 	} else {
-		response, err := cloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		response, err := p.AWSOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})

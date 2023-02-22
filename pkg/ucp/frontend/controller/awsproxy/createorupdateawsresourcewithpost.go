@@ -30,20 +30,22 @@ var _ ctrl.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
 // CreateOrUpdateAWSResourceWithPost is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResourceWithPost struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	AWSOptions
 }
 
 // NewCreateOrUpdateAWSResourceWithPost creates a new CreateOrUpdateAWSResourceWithPost.
-func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
 	return &CreateOrUpdateAWSResourceWithPost{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
+		awsOpts,
 	}, nil
 }
 
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), req)
+	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +61,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+	describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: aws.String(resourceType),
 	})
@@ -89,7 +91,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 		// Create and update work differently for AWS - we need to know if the resource
 		// we're working on exists already.
-		getResponse, err = cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		getResponse, err = p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   &resourceType,
 			Identifier: aws.String(awsResourceIdentifier),
 		})
@@ -128,7 +130,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				return awserror.HandleAWSError(err)
 			}
 
-			response, err := cloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := p.AWSOptions.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      &resourceType,
 				Identifier:    aws.String(awsResourceIdentifier),
 				PatchDocument: aws.String(string(marshaled)),
@@ -156,8 +158,8 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return resp, nil
 		}
 	} else {
-		logger.Info(fmt.Sprintf("Creating resource : resourceType %q resourceID %q", resourceType, awsResourceIdentifier))
-		response, err := cloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		logger.Info("Creating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+		response, err := p.AWSOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})
