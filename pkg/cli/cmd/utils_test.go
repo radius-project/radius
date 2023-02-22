@@ -17,6 +17,9 @@ import (
 )
 
 func TestCreateEnvProviders(t *testing.T) {
+	var nilAzureProvider *azure.Provider = nil
+	var nilAWSProvider *aws.Provider = nil
+
 	providersTests := []struct {
 		name      string
 		providers []any
@@ -97,6 +100,31 @@ func TestCreateEnvProviders(t *testing.T) {
 				},
 			},
 			err: &cli.FriendlyError{Message: "Only one aws provider can be configured to a scope"},
+		},
+		{
+			name: "azure and aws providers",
+			providers: []any{
+				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
+				&aws.Provider{AccountId: "0", TargetRegion: "westus"},
+			},
+			out: corerp.Providers{
+				Azure: &corerp.ProvidersAzure{
+					Scope: to.Ptr("/subscriptions/testSubs/resourceGroups/testRG"),
+				},
+				Aws: &corerp.ProvidersAws{
+					Scope: to.Ptr("/planes/aws/aws/accounts/0/regions/westus"),
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "skip typed nil value",
+			providers: []any{
+				nilAzureProvider,
+				nilAWSProvider,
+			},
+			out: corerp.Providers{},
+			err: nil,
 		},
 	}
 

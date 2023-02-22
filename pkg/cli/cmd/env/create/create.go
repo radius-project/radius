@@ -14,6 +14,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -150,17 +152,33 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func providersFromWorkspace(ws *workspaces.Workspace) []any {
+	providerList := []any{}
+	wsAzure := ws.ProviderConfig.Azure
+	if wsAzure != nil && wsAzure.SubscriptionID != "" && wsAzure.ResourceGroup != "" {
+		providerList = append(providerList, &azure.Provider{
+			SubscriptionID: wsAzure.SubscriptionID,
+			ResourceGroup:  wsAzure.ResourceGroup,
+		})
+	}
+
+	wsAWS := ws.ProviderConfig.AWS
+	if wsAWS != nil && wsAWS.AccountId != "" && wsAWS.Region != "" {
+		providerList = append(providerList, &aws.Provider{
+			AccountId:    wsAWS.AccountId,
+			TargetRegion: wsAWS.Region,
+		})
+	}
+	return providerList
+}
+
 // Run runs the `rad env create` command.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
-	var providers corerp.Providers
-	var err error
-	if r.Workspace.ProviderConfig != (workspaces.ProviderConfig{}) && r.Workspace.ProviderConfig.Azure != nil &&
-		(r.Workspace.ProviderConfig.Azure.SubscriptionID != "" && r.Workspace.ProviderConfig.Azure.ResourceGroup != "") {
-		providers, err = cmd.CreateEnvProviders([]any{r.Workspace.ProviderConfig.Azure, nil})
-		if err != nil {
-			return err
-		}
+
+	providers, err := cmd.CreateEnvProviders(providersFromWorkspace(r.Workspace))
+	if err != nil {
+		return err
 	}
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
