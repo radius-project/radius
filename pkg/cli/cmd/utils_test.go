@@ -33,7 +33,7 @@ func TestCreateEnvProviders(t *testing.T) {
 			name:      "invalid provider types",
 			providers: []any{azure.Provider{}},
 			out:       corerp.Providers{},
-			err:       &cli.FriendlyError{Message: "Internal error: cannot create environment with 'azure.Provider' type"},
+			err:       &cli.FriendlyError{Message: "Internal error: cannot create environment with invalid type 'azure.Provider'"},
 		},
 		{
 			name: "skip nil provider",

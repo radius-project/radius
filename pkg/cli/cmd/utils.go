@@ -41,7 +41,7 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 				Scope: to.Ptr("/planes/aws/aws/accounts/" + p.AccountId + "/regions/" + p.TargetRegion),
 			}
 		default:
-			return res, &cli.FriendlyError{Message: fmt.Sprintf("Internal error: cannot create environment with '%T' type", provider)}
+			return res, &cli.FriendlyError{Message: fmt.Sprintf("Internal error: cannot create environment with invalid type '%T'", provider)}
 		}
 	}
 	return res, nil
