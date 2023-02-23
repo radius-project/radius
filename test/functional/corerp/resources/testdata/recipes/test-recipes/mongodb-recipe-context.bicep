@@ -3,7 +3,7 @@ param location string = resourceGroup().location
 param rg string = resourceGroup().name
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'account-${uniqueString(resourceGroup().id, deployment().name)}'
+  name: 'account-${rg}'
   location: location
   kind: 'MongoDB'
   tags: {
