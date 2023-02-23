@@ -110,6 +110,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		InitialPlanes:          planes,
 		Identity:               identity,
 		UCPConnection:          ucpConn,
+		DefaultLocation:        defaultLocation,
 	}, nil
 }
 

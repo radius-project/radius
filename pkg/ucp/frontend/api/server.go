@@ -231,6 +231,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, location string, d
 		// Using the latest API version to make a request to configure the default planes
 		url := fmt.Sprintf("%s?api-version=%s", plane.ID, versions.DefaultAPIVersion)
 		request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+		request.Header.Add("Content-Type", "application/json")
 		if err != nil {
 			return err
 		}

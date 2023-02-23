@@ -146,9 +146,15 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		StorageClient: testOptions.StorageClient,
-	})
+	awsController, err := NewListAWSResources(
+		ctrl.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+		AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+	)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)

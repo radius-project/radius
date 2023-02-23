@@ -118,6 +118,7 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 	}
 	ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 	response, err := planesCtrl.Run(ctx, nil, request)
+	require.NoError(t, err)
 
 	expectedResponse := armrpc_rest.NewNotFoundResponse(resourceID)
 	assert.DeepEqual(t, expectedResponse, response)

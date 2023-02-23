@@ -47,6 +47,9 @@ func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Req
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger.Info(fmt.Sprintf("Getting plane %s from db", serviceCtx.ResourceID))
 	plane, _, err := p.GetResource(ctx, serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
 
 	if plane == nil {
 		restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)

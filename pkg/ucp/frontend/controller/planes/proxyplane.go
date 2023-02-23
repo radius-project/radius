@@ -69,6 +69,9 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	plane, _, err := p.GetResource(ctx, planeID)
+	if err != nil {
+		return nil, err
+	}
 	if plane == nil {
 		restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)
 		return restResponse, nil
@@ -87,6 +90,9 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		}
 
 		existingRG, _, err := p.GetResource(ctx, rgID)
+		if err != nil {
+			return nil, err
+		}
 		if existingRG == nil {
 			logger.Info(fmt.Sprintf("Resource group %s not found in db", serviceCtx.ResourceID))
 			restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)

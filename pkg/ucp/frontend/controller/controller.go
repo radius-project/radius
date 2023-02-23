@@ -18,23 +18,23 @@ import (
 type ControllerAWSFunc func(armrpc_controller.Options, awsproxy.AWSOptions) (armrpc_controller.Controller, error)
 
 type HandlerOptions struct {
-	server.HandlerOptions
+	Options           server.HandlerOptions
 	HandlerFactoryAWS ControllerAWSFunc
 }
 
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts armrpc_controller.Options, awsOpts awsproxy.AWSOptions) error {
-	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
+	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.Options.ResourceType)
 	if err != nil {
 		return err
 	}
 	ctrlOpts.StorageClient = storageClient
-	ctrlOpts.ResourceType = opts.ResourceType
+	ctrlOpts.ResourceType = opts.Options.ResourceType
 
 	var ctrl armrpc_controller.Controller
 	if opts.HandlerFactoryAWS != nil {
 		ctrl, err = opts.HandlerFactoryAWS(ctrlOpts, awsOpts)
 	} else {
-		ctrl, err = opts.HandlerFactory(ctrlOpts)
+		ctrl, err = opts.Options.HandlerFactory(ctrlOpts)
 	}
 	if err != nil {
 		return err
@@ -57,12 +57,12 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts armrpc_c
 		}
 	}
 
-	ot := v1.OperationType{Type: opts.Path, Method: opts.Method}
-	if opts.Method != "" {
-		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+	ot := v1.OperationType{Type: opts.Options.Path, Method: opts.Options.Method}
+	if opts.Options.Method != "" {
+		opts.Options.ParentRouter.Methods(opts.Options.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
 	} else {
 		// Path is used to proxy plane request irrespective of the http method
-		opts.ParentRouter.PathPrefix(opts.Path).HandlerFunc(fn).Name(ot.String())
+		opts.Options.ParentRouter.PathPrefix(opts.Options.Path).HandlerFunc(fn).Name(ot.String())
 	}
 	return nil
 }
