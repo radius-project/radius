@@ -285,6 +285,14 @@ func Test_Run(t *testing.T) {
 						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 					},
+					"mongo-azure": {
+						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
+						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+					},
+					"redis-kubernetes": {
+						LinkType:     to.Ptr("Applications.Link/redisCaches"),
+						TemplatePath: to.Ptr("radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"),
+					},
 				},
 			},
 		}
@@ -306,7 +314,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		err := runner.Run(context.Background())
-		require.ErrorContains(t, err, fmt.Sprintf("recipe with name %q is reserved for dev recipes", runner.RecipeName))
+		require.ErrorContains(t, err, fmt.Sprintf("recipe with name %q already exists in the environment", runner.RecipeName))
 	})
 
 }

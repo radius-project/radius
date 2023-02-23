@@ -43,6 +43,7 @@ const (
 func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	cli.EnvSwitch(ctx, test.Steps[0].CoreRPResources.Resources[0].Name)
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	linkType := "Applications.Link/linkType"
@@ -87,7 +88,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, "mongo-azure", recipeTemplate, linkType)
 		require.Error(t, err)
-		require.Contains(t, output, fmt.Sprintf("recipe with name %q is reserved for dev recipes", "mongo-azure"))
+		require.Contains(t, output, fmt.Sprintf("recipe with name %q already exists in the environment", "mongo-azure"))
 	})
 }
 
