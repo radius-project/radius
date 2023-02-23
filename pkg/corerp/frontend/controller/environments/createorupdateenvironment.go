@@ -75,9 +75,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		// after long term fix is implemented as part of https://github.com/project-radius/radius/issues/5179.
 		if newResource.Properties.Recipes != nil {
 			for k, v := range newResource.Properties.Recipes {
-				if val, ok := devRecipes[k]; !ok {
-					customRecipes[k] = v
-				} else if val.TemplatePath != v.TemplatePath {
+				if val, ok := devRecipes[k]; !ok || val.TemplatePath != v.TemplatePath {
 					customRecipes[k] = v
 				}
 			}
