@@ -248,7 +248,6 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	logger := logr.FromContextOrDiscard(ctx)
 	if req.Header.Get(v1.RefererHeader) == "" {
 		req.Header.Set(v1.RefererHeader, req.URL.String())
 	}
@@ -263,12 +262,9 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	}
 
 	// Write Headers
-	logger.Info(fmt.Sprintf("Original referer header: %s", req.Header.Get(v1.RefererHeader)))
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", locationHeader)
-	logger.Info(fmt.Sprintf("Configured Location header: %s", locationHeader))
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
-	logger.Info(fmt.Sprintf("Configured AsyncOperation header: %s", azureAsyncOpHeader))
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
 	w.Header().Add("Referer", req.Header.Get(v1.RefererHeader))
 
