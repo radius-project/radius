@@ -147,6 +147,41 @@ func Test_ConvertHeaderToUCPIDs_NoContextDataSet(t *testing.T) {
 	require.Equal(t, "Could not find ucp request data in Location header", err.Error())
 }
 
+func Test_ConvertHeaderToUCPIDs_WithUCPHost(t *testing.T) {
+	type data []struct {
+		name       string
+		header     []string
+		planeURL   string
+		planeID    string
+		planeKind  string
+		httpScheme string
+		ucpHost    string
+	}
+	testData := data{
+		{
+			name:       LocationHeader,
+			header:     []string{"http://localhost:9443/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"},
+			planeURL:   "http://localhost:7443",
+			planeKind:  rest.PlaneKindAzure,
+			planeID:    "/planes/test/local",
+			httpScheme: "http",
+			ucpHost:    "localhost:9443",
+		},
+	}
+
+	for _, datum := range testData {
+		response := http.Response{
+			Header: http.Header{},
+		}
+		response.Header.Set(LocationHeader, "http://localhost:9443/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test")
+		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.planeKind, datum.httpScheme, datum.ucpHost)
+		err := convertHeaderToUCPIDs(ctx, datum.name, datum.header, &response)
+		require.NoError(t, err, "%q should have not have failed", datum)
+		// response.SetHeader converts the header into CanonicalMIME format
+		require.Equal(t, datum.header[0], response.Header[textproto.CanonicalMIMEHeaderKey(datum.name)][0])
+	}
+}
+
 func Test_HasUCPHost(t *testing.T) {
 	type data []struct {
 		name       string
@@ -213,7 +248,7 @@ func Test_HasUCPHost(t *testing.T) {
 	for _, datum := range testData {
 
 		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.planeKind, datum.httpScheme, datum.ucpHost)
-		hasUCPHost, err := hasUCPHost(ctx, datum.name, datum.header)
+		hasUCPHost, err := hasUCPHost(ctx.Value(UCPRequestInfoField).(UCPRequestInfo), datum.name, datum.header)
 		require.NoError(t, err, "%q should have not have failed", datum)
 		require.Equal(t, datum.result, hasUCPHost)
 	}

@@ -109,26 +109,13 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
 		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
-		var headerName string
-		var headerVal []string
-
 		if header, ok := resp.Header[AzureAsyncOperationHeader]; ok {
-			headerName = AzureAsyncOperationHeader
-			headerVal = header
-		} else if header, ok := resp.Header[LocationHeader]; ok {
-			headerName = LocationHeader
-			headerVal = header
-		} else {
-			return nil
+			if err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, header, resp); err != nil {
+				return err
+			}
 		}
-
-		ucpHost, err := hasUCPHost(ctx, headerName, headerVal)
-		if err != nil {
-			return err
-		}
-		if !ucpHost {
-			err := convertHeaderToUCPIDs(ctx, headerName, headerVal, resp)
-			if err != nil {
+		if header, ok := resp.Header[LocationHeader]; ok {
+			if err := convertHeaderToUCPIDs(ctx, LocationHeader, header, resp); err != nil {
 				return err
 			}
 		}
@@ -147,6 +134,14 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
 	}
 	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
+	ucpHost, err := hasUCPHost(requestInfo, headerName, header)
+	if err != nil {
+		return err
+	}
+	if ucpHost {
+		return nil
+	}
+
 	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
 	if requestInfo.PlaneURL == "" {
 		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
@@ -195,7 +190,7 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	return nil
 }
 
-func hasUCPHost(ctx context.Context, headerName string, header []string) (bool, error) {
+func hasUCPHost(requestInfo UCPRequestInfo, headerName string, header []string) (bool, error) {
 	uri, err := url.Parse(header[0])
 	if err != nil {
 		return false, err
@@ -203,9 +198,5 @@ func hasUCPHost(ctx context.Context, headerName string, header []string) (bool, 
 	pathBase := v1.ParsePathBase(uri.Path)
 	uriHost := uri.Host + pathBase
 
-	if ctx.Value(UCPRequestInfoField) == nil {
-		return false, fmt.Errorf("Could not find ucp request data in %s header", headerName)
-	}
-	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
 	return strings.EqualFold(uriHost, requestInfo.UCPHost), nil
 }

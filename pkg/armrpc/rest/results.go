@@ -8,6 +8,7 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/textproto"
@@ -248,10 +249,6 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	if req.Header.Get(v1.RefererHeader) == "" {
-		req.Header.Set(v1.RefererHeader, req.URL.String())
-	}
-
 	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
 	if err != nil {
 		return err
@@ -285,13 +282,17 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		rootScope = r.ResourceID.PlaneScope()
 	}
 
-	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
-	if referer.Host == "" {
-		referer.Host = req.Host
+	refererUrl := req.Header.Get(v1.RefererHeader)
+	if refererUrl == "" {
+		refererUrl = req.URL.String()
 	}
 
+	referer, err := url.Parse(refererUrl)
 	if err != nil {
 		return "", err
+	}
+	if referer.Host == "" {
+		return "", errors.New("the hostname in Referer URL is empty")
 	}
 
 	base := v1.ParsePathBase(referer.Path)

@@ -8,6 +8,7 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -216,6 +217,21 @@ func TestGetAsyncLocationPath(t *testing.T) {
 				Path:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			},
 		},
+		{
+			"empty-path-headers",
+			"https://ucp.dev",
+			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			v1.LocationGlobal,
+			operationID,
+			"",
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			url.URL{
+				Scheme: "",
+				Host:   "",
+				Path:   "",
+			},
+		},
 	}
 
 	for _, tt := range testCases {
@@ -246,6 +262,51 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			} else {
 				require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
 			}
+		})
+	}
+
+	negativeTestCases := []struct {
+		desc    string
+		base    string
+		rID     string
+		loc     string
+		opID    uuid.UUID
+		av      string
+		or      string
+		os      string
+		referer url.URL
+	}{
+		{
+			"empty-host-headers",
+			"https://ucp.dev",
+			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			v1.LocationGlobal,
+			operationID,
+			"2022-03-15-privatepreview",
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			url.URL{
+				Scheme: "",
+				Host:   "",
+				Path:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			},
+		},
+	}
+
+	for _, tt := range negativeTestCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			resourceID, err := resources.ParseResource(tt.rID)
+			require.NoError(t, err)
+
+			body := &datamodel.ContainerResource{}
+			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av, "", "")
+
+			req := httptest.NewRequest("GET", tt.base, nil)
+			req.Header.Add(v1.RefererHeader, tt.referer.String())
+			w := httptest.NewRecorder()
+			err = r.Apply(context.Background(), w, req)
+			require.Error(t, err)
+			require.Equal(t, err, errors.New("the hostname in Referer URL is empty"))
 		})
 	}
 }
