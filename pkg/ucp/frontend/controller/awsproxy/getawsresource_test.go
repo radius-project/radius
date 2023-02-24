@@ -49,10 +49,10 @@ func Test_GetAWSResource(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSResource(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -91,10 +91,10 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 		})
 
 	awsController, err := NewGetAWSResource(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -124,10 +124,10 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewGetAWSResource(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -161,10 +161,10 @@ func Test_GetAWSResource_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewGetAWSResource(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},

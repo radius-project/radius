@@ -30,13 +30,13 @@ var _ ctrl.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
 // CreateOrUpdateAWSResourceWithPost is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResourceWithPost struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	AWSOptions
+	*AWSOptions
 }
 
 // NewCreateOrUpdateAWSResourceWithPost creates a new CreateOrUpdateAWSResourceWithPost.
-func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
+func NewCreateOrUpdateAWSResourceWithPost(awsOpts *AWSOptions) (ctrl.Controller, error) {
 	return &CreateOrUpdateAWSResourceWithPost{
-		ctrl.NewOperation(opts,
+		ctrl.NewOperation(awsOpts.Options,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOpts,
@@ -45,7 +45,7 @@ func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options, awsOpts AWSOptions)
 
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
+	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}
@@ -190,6 +190,6 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		responseBody["name"] = awsResourceIdentifier
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.Options().BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.AWSOptions.Options.BasePath)
 	return resp, nil
 }

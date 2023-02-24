@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 )
 
-type ControllerAWSFunc func(armrpc_controller.Options, awsproxy.AWSOptions) (armrpc_controller.Controller, error)
+type ControllerAWSFunc func(*awsproxy.AWSOptions) (armrpc_controller.Controller, error)
 
 type AWSHandlerOptions struct {
 	HandlerFactoryAWS ControllerAWSFunc
@@ -26,7 +26,7 @@ type HandlerOptions struct {
 	AWSOptions AWSHandlerOptions
 }
 
-func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts armrpc_controller.Options, awsOpts awsproxy.AWSOptions) error {
+func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts armrpc_controller.Options, awsOpts *awsproxy.AWSOptions) error {
 	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.Options.ResourceType)
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts armrpc_c
 
 	var ctrl armrpc_controller.Controller
 	if opts.AWSOptions.HandlerFactoryAWS != nil {
-		ctrl, err = opts.AWSOptions.HandlerFactoryAWS(ctrlOpts, awsOpts)
+		ctrl, err = opts.AWSOptions.HandlerFactoryAWS(awsOpts)
 	} else {
 		ctrl, err = opts.Options.HandlerFactory(ctrlOpts)
 	}

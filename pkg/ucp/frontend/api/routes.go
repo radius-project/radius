@@ -50,7 +50,7 @@ const (
 )
 
 // Register registers the routes for UCP
-func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, awsOpts awsproxy.AWSOptions) error {
+func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, awsOpts *awsproxy.AWSOptions) error {
 	baseURL := ctrlOpts.BasePath
 
 	handlerOptions := []ucp_ctrl.HandlerOptions{}

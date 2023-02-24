@@ -5,6 +5,7 @@
 package planes
 
 import (
+	"context"
 	http "net/http"
 	"testing"
 
@@ -13,15 +14,12 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
 func Test_ListPlanesByType(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
@@ -46,7 +44,8 @@ func Test_ListPlanesByType(t *testing.T) {
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{}, nil)
 
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+	request, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, url, nil)
+	ctx := testutil.ARMTestContextFromRequest(request)
 	require.NoError(t, err)
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)

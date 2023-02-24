@@ -23,13 +23,13 @@ var _ ctrl.Controller = (*DeleteAWSResource)(nil)
 // DeleteAWSResource is the controller implementation to delete AWS resource.
 type DeleteAWSResource struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	AWSOptions
+	*AWSOptions
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
-func NewDeleteAWSResource(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
+func NewDeleteAWSResource(awsOpts *AWSOptions) (ctrl.Controller, error) {
 	return &DeleteAWSResource{
-		ctrl.NewOperation(opts,
+		ctrl.NewOperation(awsOpts.Options,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOpts,
@@ -37,7 +37,7 @@ func NewDeleteAWSResource(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controlle
 }
 
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
+	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +65,6 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.Options().BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.AWSOptions.Options.BasePath)
 	return resp, nil
 }

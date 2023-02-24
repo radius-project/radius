@@ -142,7 +142,7 @@ func Start(t *testing.T) *TestServer {
 			CredentialClient: secretClient,
 			DataProvider:     dataprovider.NewStorageProvider(storageOptions),
 		},
-		awsproxy.AWSOptions{})
+		&awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	logger := logr.FromContextOrDiscard(ctx)

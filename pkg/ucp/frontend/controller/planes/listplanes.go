@@ -36,6 +36,9 @@ func NewListPlanes(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (p *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	fmt.Println(serviceCtx.APIVersion)
 	path := middleware.GetRelativePath(p.Options().BasePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 	query := store.Query{
@@ -58,6 +61,7 @@ func (p *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 }
 
 func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]any, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	listOfPlanes := []any{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
@@ -67,7 +71,7 @@ func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, resu
 				return nil, err
 			}
 
-			versioned, err := converter.PlaneDataModelToVersioned(&plane, ctrl.GetAPIVersion(req))
+			versioned, err := converter.PlaneDataModelToVersioned(&plane, serviceCtx.APIVersion)
 			if err != nil {
 				return nil, err
 			}

@@ -22,13 +22,13 @@ var _ ctrl.Controller = (*GetAWSResource)(nil)
 // GetAWSResource is the controller implementation to get AWS resource.
 type GetAWSResource struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	AWSOptions
+	*AWSOptions
 }
 
 // NewGetAWSResource creates a new GetAWSResource.
-func NewGetAWSResource(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
+func NewGetAWSResource(awsOpts *AWSOptions) (ctrl.Controller, error) {
 	return &GetAWSResource{
-		ctrl.NewOperation(opts,
+		ctrl.NewOperation(awsOpts.Options,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOpts,
@@ -36,7 +36,7 @@ func NewGetAWSResource(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, 
 }
 
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
+	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}

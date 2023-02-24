@@ -22,13 +22,13 @@ var _ ctrl.Controller = (*ListAWSResources)(nil)
 // ListAWSResources is the controller implementation to get/list AWS resources.
 type ListAWSResources struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	AWSOptions
+	*AWSOptions
 }
 
 // NewListAWSResources creates a new ListAWSResources.
-func NewListAWSResources(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
+func NewListAWSResources(awsOpts *AWSOptions) (ctrl.Controller, error) {
 	return &ListAWSResources{
-		ctrl.NewOperation(opts,
+		ctrl.NewOperation(awsOpts.Options,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOpts,
@@ -36,7 +36,7 @@ func NewListAWSResources(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller
 }
 
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
+	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}

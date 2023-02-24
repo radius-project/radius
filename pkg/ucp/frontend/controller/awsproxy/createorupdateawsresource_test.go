@@ -55,10 +55,10 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		})
@@ -157,10 +157,10 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		})
@@ -244,10 +244,10 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},

@@ -62,10 +62,10 @@ func Test_ListAWSResources(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewListAWSResources(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -114,10 +114,10 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
 	awsController, err := NewListAWSResources(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -147,10 +147,10 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewListAWSResources(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -184,10 +184,10 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewListAWSResources(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},

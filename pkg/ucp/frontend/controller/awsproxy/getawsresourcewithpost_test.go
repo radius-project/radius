@@ -63,10 +63,10 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSResourceWithPost(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -121,10 +121,10 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 		})
 
 	awsController, err := NewGetAWSResourceWithPost(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -166,10 +166,10 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewGetAWSResourceWithPost(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -218,10 +218,10 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewGetAWSResourceWithPost(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -296,10 +296,10 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewGetAWSResourceWithPost(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},

@@ -150,7 +150,7 @@ func Test_ProxyToRP(t *testing.T) {
 		StorageClient: db,
 		BasePath:      basePath,
 		DataProvider:  provider,
-	}, awsproxy.AWSOptions{})
+	}, &awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -199,7 +199,7 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 		StorageClient: db,
 		BasePath:      basePath,
 		DataProvider:  provider,
-	}, awsproxy.AWSOptions{})
+	}, &awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -294,7 +294,7 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 		StorageClient: db,
 		BasePath:      basePath,
 		DataProvider:  provider,
-	}, awsproxy.AWSOptions{})
+	}, &awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -485,7 +485,7 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 		StorageClient: db,
 		BasePath:      basePath,
 		DataProvider:  provider,
-	}, awsproxy.AWSOptions{})
+	}, &awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
 	mockCtrl := gomock.NewController(t)

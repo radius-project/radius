@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -39,6 +40,7 @@ func NewGetResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	path := middleware.GetRelativePath(r.Options().BasePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 	id := strings.ToLower(path)
@@ -59,11 +61,9 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 		restResponse := armrpc_rest.NewNotFoundResponse(resourceID)
 		return restResponse, nil
 	}
-	// Convert to version agnostic data model
-	apiVersion := ctrl.GetAPIVersion(req)
 
 	// Return a versioned response of the resource group
-	versioned, err := converter.ResourceGroupDataModelToVersioned(rg, apiVersion)
+	versioned, err := converter.ResourceGroupDataModelToVersioned(rg, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}

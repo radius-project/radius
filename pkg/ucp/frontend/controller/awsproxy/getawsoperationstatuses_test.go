@@ -40,10 +40,10 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationStatuses(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -87,10 +87,10 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationStatuses(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},

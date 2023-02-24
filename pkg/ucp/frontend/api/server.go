@@ -147,7 +147,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		StatusManager: nil,
 	}
 
-	awsOpts := awsproxy.AWSOptions{
+	awsOpts := &awsproxy.AWSOptions{
 		AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
 		AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
 	}

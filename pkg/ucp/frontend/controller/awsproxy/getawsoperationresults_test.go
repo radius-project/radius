@@ -37,10 +37,10 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
@@ -74,10 +74,10 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(
-		ctrl.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-		AWSOptions{
+		&AWSOptions{
+			Options: ctrl.Options{
+				StorageClient: testOptions.StorageClient,
+			},
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},

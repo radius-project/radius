@@ -24,13 +24,13 @@ var _ ctrl.Controller = (*GetAWSOperationStatuses)(nil)
 // GetAWSOperationStatuses is the controller implementation to get AWS resource operation status.
 type GetAWSOperationStatuses struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	AWSOptions
+	*AWSOptions
 }
 
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
-func NewGetAWSOperationStatuses(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
+func NewGetAWSOperationStatuses(awsOpts *AWSOptions) (ctrl.Controller, error) {
 	return &GetAWSOperationStatuses{
-		ctrl.NewOperation(opts,
+		ctrl.NewOperation(awsOpts.Options,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOpts,
@@ -38,7 +38,7 @@ func NewGetAWSOperationStatuses(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Con
 }
 
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	_, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
+	_, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}

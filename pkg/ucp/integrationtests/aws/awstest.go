@@ -63,7 +63,7 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 			BasePath:     basePath,
 			DataProvider: provider,
 		},
-		awsproxy.AWSOptions{
+		&awsproxy.AWSOptions{
 			AWSCloudControlClient:   cloudControlClient,
 			AWSCloudFormationClient: cloudFormationClient,
 		},

@@ -23,13 +23,13 @@ var _ ctrl.Controller = (*GetAWSOperationResults)(nil)
 // GetAWSOperationResults is the controller implementation to get AWS resource operation results.
 type GetAWSOperationResults struct {
 	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	AWSOptions
+	*AWSOptions
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
-func NewGetAWSOperationResults(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Controller, error) {
+func NewGetAWSOperationResults(awsOpts *AWSOptions) (ctrl.Controller, error) {
 	return &GetAWSOperationResults{
-		ctrl.NewOperation(opts,
+		ctrl.NewOperation(awsOpts.Options,
 			ctrl.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOpts,
@@ -37,7 +37,7 @@ func NewGetAWSOperationResults(opts ctrl.Options, awsOpts AWSOptions) (ctrl.Cont
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	_, id, err := ParseAWSRequest(ctx, *p.Options(), p.AWSOptions, req)
+	_, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
 	if err != nil {
 		return nil, err
 	}

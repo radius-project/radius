@@ -220,8 +220,3 @@ type DeleteFilter[T any] func(ctx context.Context, oldResource *T, options *Opti
 // UpdateFilters should return a rest.Response to handle the request without allowing updates to occur. Any
 // errors returned will be treated as "unhandled" and logged before sending back an HTTP 500.
 type UpdateFilter[T any] func(ctx context.Context, newResource *T, oldResource *T, options *Options) (rest.Response, error)
-
-// GetAPIVersion extracts the API version from the request
-func GetAPIVersion(req *http.Request) string {
-	return req.URL.Query().Get("api-version")
-}

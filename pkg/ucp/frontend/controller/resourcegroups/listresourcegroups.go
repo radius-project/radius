@@ -66,8 +66,8 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 }
 
 func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	items := v1.PaginatedList{}
-	apiVersion := ctrl.GetAPIVersion(req)
 
 	for _, item := range result.Items {
 		var rg datamodel.ResourceGroup
@@ -76,7 +76,7 @@ func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Reque
 			return nil, err
 		}
 
-		versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)
+		versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}
