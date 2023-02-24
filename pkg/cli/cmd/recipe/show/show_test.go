@@ -9,14 +9,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/mock/gomock"
+
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -83,8 +84,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envRecipes := v20220315privatepreview.EnvironmentRecipeProperties{
-				LinkType:     to.StringPtr("Applications.Link/mongoDatabases"),
-				TemplatePath: to.StringPtr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+				LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+				TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				Parameters: map[string]any{
 					"throughput": map[string]any{
 						"type": "float64",
@@ -93,36 +94,6 @@ func Test_Run(t *testing.T) {
 					"sku": map[string]any{
 						"type": "string",
 					},
-				},
-			}
-
-			recipes := []EnvironmentRecipe{
-				{
-					RecipeName:           "cosmosDB",
-					LinkType:             "Applications.Link/mongoDatabases",
-					TemplatePath:         "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-					ParameterName:        "sku",
-					ParameterDetailName:  "type",
-					ParameterDetailValue: "string",
-				},
-				{
-					ParameterName:        "throughput",
-					ParameterDetailName:  "type",
-					ParameterDetailValue: "float64",
-				},
-				{
-					ParameterDetailName:  "max",
-					ParameterDetailValue: float64(800),
-				},
-				{
-					// Adding the inverse ordering of throughput parameter details to handle ordering inconsistency.
-					ParameterDetailName:  "type",
-					ParameterDetailValue: "float64",
-				},
-				{
-					ParameterName:        "throughput",
-					ParameterDetailName:  "max",
-					ParameterDetailValue: float64(800),
 				},
 			}
 
@@ -144,7 +115,51 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 			output := outputSink.Writes[0].(output.FormattedOutput)
-			require.Subset(t, recipes, output.Obj)
+			skuType := false
+			throughputType := false
+			throughputMax := false
+			outputParams := output.Obj.([]EnvironmentRecipe)
+			require.Equal(t, 3, len(outputParams))
+			for i, envRecipeObj := range output.Obj.([]EnvironmentRecipe) {
+				if i == 0 {
+					require.Equal(t, "cosmosDB", envRecipeObj.RecipeName)
+					require.Equal(t, "Applications.Link/mongoDatabases", envRecipeObj.LinkType)
+					require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", envRecipeObj.TemplatePath)
+				} else {
+					require.Equal(t, "", envRecipeObj.RecipeName)
+					require.Equal(t, "", envRecipeObj.LinkType)
+					require.Equal(t, "", envRecipeObj.TemplatePath)
+				}
+				if envRecipeObj.ParameterName == "sku" && envRecipeObj.ParameterDetailName == "type" {
+					require.Equal(t, "string", envRecipeObj.ParameterDetailValue)
+					skuType = true
+				}
+
+				if envRecipeObj.ParameterName == "throughput" {
+					if envRecipeObj.ParameterDetailName == "type" {
+						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
+						throughputType = true
+					}
+					if envRecipeObj.ParameterDetailName == "max" {
+						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
+						throughputMax = true
+					}
+				}
+
+				if envRecipeObj.ParameterName == "" {
+					if envRecipeObj.ParameterDetailName == "type" && !throughputType {
+						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
+						throughputType = true
+					}
+					if envRecipeObj.ParameterDetailName == "max" && !throughputMax {
+						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
+						throughputMax = true
+					}
+				}
+			}
+			require.True(t, skuType)
+			require.True(t, throughputType)
+			require.True(t, throughputMax)
 		})
 	})
 }

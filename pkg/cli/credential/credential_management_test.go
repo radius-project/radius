@@ -11,12 +11,13 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -318,38 +319,38 @@ func setupSuccessGetMocks(mockCredentialClient MockInterface, planeType string, 
 		credential.CloudProviderStatus.Name = awsProviderName
 	}
 	mockCredentialClient.EXPECT().
-		GetCredential(gomock.Any(), planeType, planeName, gomock.Any()).
+		GetCredential(gomock.Any(), planeType, planeName, defaultSecretName).
 		Return(credential, nil).Times(1)
 }
 
 func setupNotFoundGetMocks(mockCredentialClient MockInterface, planeType string, planeName string) {
 	mockCredentialClient.EXPECT().
-		GetCredential(gomock.Any(), planeType, planeName, gomock.Any()).
+		GetCredential(gomock.Any(), planeType, planeName, defaultSecretName).
 		Return(ProviderCredentialConfiguration{}, errCredentialNotFound).
 		Times(1)
 }
 
 func setupErrorGetMocks(mockCredentialClient MockInterface, planeType string, planeName string) {
 	mockCredentialClient.EXPECT().
-		GetCredential(gomock.Any(), planeType, planeName, gomock.Any()).
+		GetCredential(gomock.Any(), planeType, planeName, defaultSecretName).
 		Return(ProviderCredentialConfiguration{}, errInternalServer).
 		Times(1)
 }
 
 func setupSuccessDeleteMocks(mockCredentialClient MockInterface, planeType string, planeName string) {
 	mockCredentialClient.EXPECT().
-		DeleteCredential(gomock.Any(), planeType, planeName, gomock.Any()).
+		DeleteCredential(gomock.Any(), planeType, planeName, defaultSecretName).
 		Return(nil).Times(1)
 }
 
 func setupNotFoundDeleteMocks(mockCredentialClient MockInterface, planeType string, planeName string) {
 	mockCredentialClient.EXPECT().
-		DeleteCredential(gomock.Any(), planeType, planeName, gomock.Any()).
+		DeleteCredential(gomock.Any(), planeType, planeName, defaultSecretName).
 		Return(errCredentialNotFound).Times(1)
 }
 
 func setupErrDeleteMocks(mockCredentialClient MockInterface, planeType string, planeName string) {
 	mockCredentialClient.EXPECT().
-		DeleteCredential(gomock.Any(), planeType, planeName, gomock.Any()).
+		DeleteCredential(gomock.Any(), planeType, planeName, defaultSecretName).
 		Return(errInternalServer).Times(1)
 }

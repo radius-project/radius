@@ -9,15 +9,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/stretchr/testify/require"
+	"github.com/project-radius/radius/pkg/to"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )

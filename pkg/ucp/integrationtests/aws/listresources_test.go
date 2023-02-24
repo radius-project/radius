@@ -13,7 +13,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
@@ -37,8 +38,8 @@ func Test_ListAWSResources(t *testing.T) {
 		output := cloudcontrol.ListResourcesOutput{
 			ResourceDescriptions: []types.ResourceDescription{
 				{
-					Identifier: to.StringPtr(testAWSResourceName),
-					Properties: to.StringPtr(string(getResponseBodyBytes)),
+					Identifier: to.Ptr(testAWSResourceName),
+					Properties: to.Ptr(string(getResponseBodyBytes)),
 				},
 			},
 		}

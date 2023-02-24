@@ -78,10 +78,6 @@ func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 				Heading:  "NAME",
 				JSONPath: "{ .Name }",
 			},
-			{
-				Heading:  "KIND",
-				JSONPath: "{ .Properties.Compute.Kind }",
-			},
 		},
 	}
 }
@@ -169,12 +165,8 @@ func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions 
 					JSONPath: "{ .Enabled }",
 				},
 				{
-					Heading:  "ClientID",
-					JSONPath: "{ .AzureCredentials.ClientID }",
-				},
-				{
-					Heading:  "TenantID",
-					JSONPath: "{ .AzureCredentials.TenantID }",
+					Heading:  "AccessKeyID",
+					JSONPath: "{ .AWSCredentials.AccessKeyID }",
 				},
 			},
 		}

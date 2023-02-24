@@ -9,8 +9,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -19,8 +20,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -155,7 +156,7 @@ func Test_Show(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.Error(t, err)
-		require.ErrorIs(t, err, &cli.FriendlyError{})
+		require.ErrorIs(t, err, &cli.FriendlyError{Message: "The environment \"test-env\" was not found or has been deleted."})
 
 		require.Empty(t, outputSink.Writes)
 	})

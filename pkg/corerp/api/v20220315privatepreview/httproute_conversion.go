@@ -9,8 +9,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
@@ -52,22 +51,22 @@ func (dst *HTTPRouteResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(route.ID)
-	dst.Name = to.StringPtr(route.Name)
-	dst.Type = to.StringPtr(route.Type)
+	dst.ID = to.Ptr(route.ID)
+	dst.Name = to.Ptr(route.Name)
+	dst.Type = to.Ptr(route.Type)
 	dst.SystemData = fromSystemDataModel(route.SystemData)
-	dst.Location = to.StringPtr(route.Location)
+	dst.Location = to.Ptr(route.Location)
 	dst.Tags = *to.StringMapPtr(route.Tags)
 	dst.Properties = &HTTPRouteProperties{
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(route.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(route.InternalMetadata.AsyncProvisioningState),
-		Application:       to.StringPtr(route.Properties.Application),
-		Hostname:          to.StringPtr(route.Properties.Hostname),
-		Port:              to.Int32Ptr((route.Properties.Port)),
-		Scheme:            to.StringPtr(route.Properties.Scheme),
-		URL:               to.StringPtr(route.Properties.URL),
+		Application:       to.Ptr(route.Properties.Application),
+		Hostname:          to.Ptr(route.Properties.Hostname),
+		Port:              to.Ptr(route.Properties.Port),
+		Scheme:            to.Ptr(route.Properties.Scheme),
+		URL:               to.Ptr(route.Properties.URL),
 	}
 
 	return nil

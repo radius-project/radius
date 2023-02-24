@@ -10,8 +10,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 const (
@@ -94,15 +93,15 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(env.ID)
-	dst.Name = to.StringPtr(env.Name)
-	dst.Type = to.StringPtr(env.Type)
+	dst.ID = to.Ptr(env.ID)
+	dst.Name = to.Ptr(env.Name)
+	dst.Type = to.Ptr(env.Type)
 	dst.SystemData = fromSystemDataModel(env.SystemData)
-	dst.Location = to.StringPtr(env.Location)
+	dst.Location = to.Ptr(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
-		UseDevRecipes:     to.BoolPtr(env.Properties.UseDevRecipes),
+		UseDevRecipes:     to.Ptr(env.Properties.UseDevRecipes),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
@@ -114,8 +113,8 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		recipes := make(map[string]*EnvironmentRecipeProperties)
 		for key, val := range env.Properties.Recipes {
 			recipes[key] = &EnvironmentRecipeProperties{
-				LinkType:     to.StringPtr(val.LinkType),
-				TemplatePath: to.StringPtr(val.TemplatePath),
+				LinkType:     to.Ptr(val.LinkType),
+				TemplatePath: to.Ptr(val.TemplatePath),
 				Parameters:   val.Parameters,
 			}
 		}
@@ -126,12 +125,12 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		dst.Properties.Providers = &Providers{}
 		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
 			dst.Properties.Providers.Azure = &ProvidersAzure{
-				Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),
+				Scope: to.Ptr(env.Properties.Providers.Azure.Scope),
 			}
 		}
 		if env.Properties.Providers.AWS != (datamodel.ProvidersAWS{}) {
 			dst.Properties.Providers.Aws = &ProvidersAws{
-				Scope: to.StringPtr(env.Properties.Providers.AWS.Scope),
+				Scope: to.Ptr(env.Properties.Providers.AWS.Scope),
 			}
 		}
 	}
@@ -198,11 +197,11 @@ func fromEnvironmentComputeDataModel(envCompute *rpv1.EnvironmentCompute) Enviro
 		}
 		compute := &KubernetesCompute{
 			Kind:      fromEnvironmentComputeKind(envCompute.Kind),
-			Namespace: to.StringPtr(envCompute.KubernetesCompute.Namespace),
+			Namespace: to.Ptr(envCompute.KubernetesCompute.Namespace),
 			Identity:  identity,
 		}
 		if envCompute.KubernetesCompute.ResourceID != "" {
-			compute.ResourceID = to.StringPtr(envCompute.KubernetesCompute.ResourceID)
+			compute.ResourceID = to.Ptr(envCompute.KubernetesCompute.ResourceID)
 		}
 		return compute
 	default:
@@ -237,7 +236,7 @@ func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentE
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
 		return &EnvironmentKubernetesMetadataExtension{
-			Kind:        to.StringPtr(string(e.Kind)),
+			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}

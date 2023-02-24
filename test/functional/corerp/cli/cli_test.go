@@ -83,6 +83,12 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Contains(t, output, "defaultValue")
 		require.Contains(t, output, "resourceGroup().location]")
 	})
+
+	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
+		output, err := cli.RecipeRegister(ctx, "mongo-azure", recipeTemplate, linkType)
+		require.Error(t, err)
+		require.Contains(t, output, fmt.Sprintf("recipe with name %q is reserved for dev recipes", "mongo-azure"))
+	})
 }
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {

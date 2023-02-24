@@ -4,6 +4,7 @@ param filterName string
 param logGroupName string
 
 resource metricsFilter 'AWS.Logs/MetricFilter@default' = {
+  alias: filterName
   properties: {
     FilterName: filterName
     LogGroupName: logGroup.properties.LogGroupName
@@ -19,6 +20,7 @@ resource metricsFilter 'AWS.Logs/MetricFilter@default' = {
 }
 
 resource logGroup 'AWS.Logs/LogGroup@default' = {
+  alias: logGroupName
   properties:{
     LogGroupName:logGroupName
   }

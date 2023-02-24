@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/marstr/randname"
@@ -27,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // RegisterAzureProviderArgs adds flags to configure Azure provider for cloud resources.
@@ -104,7 +104,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 	}
 
 	return &azure.Provider{
-		SubscriptionID: subscription.SubscriptionID,
+		SubscriptionID: subscription.ID,
 		ResourceGroup:  resourceGroup,
 		ServicePrincipal: &azure.ServicePrincipal{
 			ClientID:     clientID,
@@ -173,9 +173,9 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 				return nil, err
 			}
 		}
-		idx := slices.IndexFunc(subs.Subscriptions, func(c azure.Subscription) bool { return c.DisplayName == subscriptionID })
+		idx := slices.IndexFunc(subs.Subscriptions, func(c azure.Subscription) bool { return c.Name == subscriptionID })
 		if idx != -1 {
-			subscriptionID = subs.Subscriptions[idx].SubscriptionID
+			subscriptionID = subs.Subscriptions[idx].ID
 		} else {
 			return nil, fmt.Errorf("valid --provider-azure-subscription is required to configure Azure provider for cloud resources")
 		}
@@ -223,7 +223,7 @@ func selectSubscription(ctx context.Context, prompter prompt.Interface, armConfi
 	}
 
 	if subs.Default != nil {
-		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf("Use Subscription '%v'?", subs.Default.DisplayName), "yes", prompter)
+		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf("Use Subscription '%v'?", subs.Default.Name), "yes", prompter)
 		if err != nil {
 			return azure.Subscription{}, err
 		}
@@ -235,15 +235,15 @@ func selectSubscription(ctx context.Context, prompter prompt.Interface, armConfi
 
 	// build prompt to select from list
 	sort.Slice(subs.Subscriptions, func(i, j int) bool {
-		l := strings.ToLower(subs.Subscriptions[i].DisplayName)
-		r := strings.ToLower(subs.Subscriptions[j].DisplayName)
+		l := strings.ToLower(subs.Subscriptions[i].Name)
+		r := strings.ToLower(subs.Subscriptions[j].Name)
 		return l < r
 	})
 	subscriptionMap := make(map[string]azure.Subscription)
 	names := make([]string, 0, len(subs.Subscriptions))
 	for _, s := range subs.Subscriptions {
-		subscriptionMap[s.DisplayName] = s
-		names = append(names, s.DisplayName)
+		subscriptionMap[s.Name] = s
+		names = append(names, s.Name)
 	}
 
 	name, err := prompter.GetListInput(names, "Select Subscription")
@@ -255,7 +255,7 @@ func selectSubscription(ctx context.Context, prompter prompt.Interface, armConfi
 }
 
 func selectResourceGroup(ctx context.Context, sub azure.Subscription, prompter prompt.Interface, armConfig *armauth.ArmConfig) (string, error) {
-	client, err := armresources.NewResourceGroupsClient(sub.SubscriptionID, armConfig.ClientOptions.Cred, nil)
+	client, err := armresources.NewResourceGroupsClient(sub.ID, armConfig.ClientOptions.Cred, nil)
 	if err != nil {
 		return "", err
 	}
@@ -300,7 +300,7 @@ func promptUserForLocation(ctx context.Context, sub azure.Subscription, prompter
 		return nil, fmt.Errorf("cannot list locations: %w", err)
 	}
 
-	pager := client.NewListLocationsPager(sub.SubscriptionID, &armsubscriptions.ClientListLocationsOptions{})
+	pager := client.NewListLocationsPager(sub.ID, &armsubscriptions.ClientListLocationsOptions{})
 	locations := map[string]*armsubscriptions.Location{}
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
@@ -377,7 +377,7 @@ func promptUserForRgName(ctx context.Context, client *armresources.ResourceGroup
 		for _, s := range resourceGroups {
 			names = append(names, *s.Name)
 		}
-		
+
 		name, err = prompter.GetListInput(names, "Select ResourceGroup")
 		if err != nil {
 			return "", err
