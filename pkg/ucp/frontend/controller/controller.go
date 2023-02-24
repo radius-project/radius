@@ -17,9 +17,13 @@ import (
 
 type ControllerAWSFunc func(armrpc_controller.Options, awsproxy.AWSOptions) (armrpc_controller.Controller, error)
 
-type HandlerOptions struct {
-	Options           server.HandlerOptions
+type AWSHandlerOptions struct {
 	HandlerFactoryAWS ControllerAWSFunc
+}
+
+type HandlerOptions struct {
+	Options    server.HandlerOptions
+	AWSOptions AWSHandlerOptions
 }
 
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts armrpc_controller.Options, awsOpts awsproxy.AWSOptions) error {
@@ -31,8 +35,8 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts armrpc_c
 	ctrlOpts.ResourceType = opts.Options.ResourceType
 
 	var ctrl armrpc_controller.Controller
-	if opts.HandlerFactoryAWS != nil {
-		ctrl, err = opts.HandlerFactoryAWS(ctrlOpts, awsOpts)
+	if opts.AWSOptions.HandlerFactoryAWS != nil {
+		ctrl, err = opts.AWSOptions.HandlerFactoryAWS(ctrlOpts, awsOpts)
 	} else {
 		ctrl, err = opts.Options.HandlerFactory(ctrlOpts)
 	}

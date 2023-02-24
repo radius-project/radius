@@ -67,7 +67,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 					Method:         v1.OperationGet,
 					HandlerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
 				},
-				HandlerFactoryAWS: nil,
 			},
 			{
 				Options: server.HandlerOptions{
@@ -75,7 +74,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 					Method:         v1.OperationGet,
 					HandlerFactory: kubernetes_ctrl.NewDiscoveryDoc,
 				},
-				HandlerFactoryAWS: nil,
 			},
 		}...)
 
@@ -125,7 +123,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationList,
 				HandlerFactory: planes_ctrl.NewListPlanes,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -133,7 +130,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationList,
 				HandlerFactory: planes_ctrl.NewListPlanesByType,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -141,7 +137,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationGet,
 				HandlerFactory: planes_ctrl.NewGetPlane,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -149,7 +144,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationPut,
 				HandlerFactory: planes_ctrl.NewCreateOrUpdatePlane,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -157,7 +151,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationDelete,
 				HandlerFactory: planes_ctrl.NewDeletePlane,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		// Resource group handler registration
 		{
@@ -166,7 +159,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationList,
 				HandlerFactory: resourcegroups_ctrl.NewListResourceGroups,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -174,7 +166,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationGet,
 				HandlerFactory: resourcegroups_ctrl.NewGetResourceGroup,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -182,7 +173,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationPut,
 				HandlerFactory: resourcegroups_ctrl.NewCreateOrUpdateResourceGroup,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -190,7 +180,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationDelete,
 				HandlerFactory: resourcegroups_ctrl.NewDeleteResourceGroup,
 			},
-			HandlerFactoryAWS: nil,
 		},
 
 		// AWS Plane handlers
@@ -199,63 +188,81 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				ParentRouter: awsOperationResultsSubRouter,
 				Method:       v1.OperationGet,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSOperationResults,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSOperationResults,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsOperationStatusesSubRouter,
 				Method:       v1.OperationGet,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSOperationStatuses,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSOperationStatuses,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsResourceCollectionSubRouter,
 				Method:       v1.OperationGet,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewListAWSResources,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewListAWSResources,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsSingleResourceSubRouter,
 				Method:       v1.OperationPut,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewCreateOrUpdateAWSResource,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewCreateOrUpdateAWSResource,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsSingleResourceSubRouter,
 				Method:       v1.OperationDelete,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewDeleteAWSResource,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewDeleteAWSResource,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsSingleResourceSubRouter,
 				Method:       v1.OperationGet,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSResource,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSResource,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsPutResourceSubRouter,
 				Method:       v1.OperationPost,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsGetResourceSubRouter,
 				Method:       v1.OperationPost,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSResourceWithPost,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewGetAWSResourceWithPost,
+			},
 		},
 		{
 			Options: server.HandlerOptions{
 				ParentRouter: awsDeleteResourceSubRouter,
 				Method:       v1.OperationPost,
 			},
-			HandlerFactoryAWS: awsproxy_ctrl.NewDeleteAWSResourceWithPost,
+			AWSOptions: ucp_ctrl.AWSHandlerOptions{
+				HandlerFactoryAWS: awsproxy_ctrl.NewDeleteAWSResourceWithPost,
+			},
 		},
 
 		// Azure Credential Handlers
@@ -273,7 +280,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 					)
 				},
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -289,7 +295,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 					)
 				},
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -297,7 +302,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationPut,
 				HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -305,7 +309,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationDelete,
 				HandlerFactory: azure_credential_ctrl.NewDeleteCredential,
 			},
-			HandlerFactoryAWS: nil,
 		},
 
 		// AWS Credential Handlers
@@ -323,7 +326,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 					)
 				},
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -339,7 +341,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 					)
 				},
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -347,7 +348,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationPut,
 				HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		{
 			Options: server.HandlerOptions{
@@ -355,7 +355,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Method:         v1.OperationDelete,
 				HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
 			},
-			HandlerFactoryAWS: nil,
 		},
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
@@ -365,7 +364,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options, aw
 				Path:           fmt.Sprintf("%s%s", ctrlOpts.BasePath, planeItemPath),
 				HandlerFactory: planes_ctrl.NewProxyPlane,
 			},
-			HandlerFactoryAWS: nil,
 		},
 	}...)
 
