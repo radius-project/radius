@@ -394,7 +394,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
 						},
-						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+						AsyncOperationTimeout: time.Duration(60) * time.Minute, // azure/aws redis resource creation is takes between 20-50 mins.
 					},
 				)
 			},
@@ -411,7 +411,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
 						},
-						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+						AsyncOperationTimeout: time.Duration(60) * time.Minute, // azure/aws redis resource creation is takes between 20-50 mins.
 					},
 				)
 			},
@@ -425,7 +425,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:      converter.RedisCacheDataModelFromVersioned,
 						ResponseConverter:     converter.RedisCacheDataModelToVersioned,
-						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+						AsyncOperationTimeout: time.Duration(30) * time.Minute,
 					},
 				)
 			},
