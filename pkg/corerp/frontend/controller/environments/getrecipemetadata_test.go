@@ -154,7 +154,7 @@ func TestParseAndFormatRecipeParams(t *testing.T) {
 		err := parseAndFormatRecipeParams(recipeData, output)
 		require.NoError(t, err)
 		expectedOutput := map[string]any{
-			"mongodbName": map[string]any{
+			"storageAccountName": map[string]any{
 				"type": "string",
 			},
 			"storageAccountType": map[string]any{

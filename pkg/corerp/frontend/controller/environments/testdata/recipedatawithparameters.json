@@ -2,7 +2,10 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "mongodbName": {
+        "context": {
+            "type": "object"
+        },
+        "storageAccountName": {
             "type": "string"
         },
         "storageAccountType": {
@@ -30,7 +33,7 @@
         {
             "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2022-05-01",
-            "name": "[parameters('mongodbName')]",
+            "name": "[parameters('storageAccountName')]",
             "location": "[parameters('location')]",
             "sku": {
                 "name": "[parameters('storageAccountType')]"
