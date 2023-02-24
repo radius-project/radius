@@ -66,16 +66,8 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 		}
 	}
 
-	// ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
-	// opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
-
-	ot := v1.OperationType{Type: opts.Path, Method: opts.Method}
-	if opts.Method != "" {
-		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
-	} else {
-		// Path is used to proxy plane request irrespective of the http method
-		opts.ParentRouter.PathPrefix(opts.Path).HandlerFunc(fn).Name(ot.String())
-	}
+	ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
+	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
 
 	return nil
 }
