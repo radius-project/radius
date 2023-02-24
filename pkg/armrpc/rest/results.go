@@ -8,7 +8,6 @@ package rest
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/textproto"
@@ -283,16 +282,19 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	}
 
 	refererUrl := req.Header.Get(v1.RefererHeader)
-	if refererUrl == "" {
-		refererUrl = req.URL.String()
-	}
 
+	// Used for AWS proxy calls
+	if refererUrl == "" {
+		refererHeader := url.URL{
+			Scheme: req.URL.Scheme,
+			Host:   req.Host,
+			Path:   req.URL.Path,
+		}
+		refererUrl = refererHeader.String()
+	}
 	referer, err := url.Parse(refererUrl)
 	if err != nil {
 		return "", err
-	}
-	if referer.Host == "" {
-		return "", errors.New("the hostname in Referer URL is empty")
 	}
 
 	base := v1.ParsePathBase(referer.Path)
