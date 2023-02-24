@@ -262,7 +262,6 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	w.Header().Add("Location", locationHeader)
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
-	w.Header().Add("Referer", req.Header.Get(v1.RefererHeader))
 
 	w.WriteHeader(r.Code)
 
