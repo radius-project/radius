@@ -8,6 +8,7 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/textproto"
@@ -262,6 +263,7 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	w.Header().Add("Location", locationHeader)
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
+	w.Header().Add("Referer", req.Header.Get(v1.RefererHeader))
 
 	w.WriteHeader(r.Code)
 
@@ -281,19 +283,16 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	}
 
 	refererUrl := req.Header.Get(v1.RefererHeader)
-
-	// Used for AWS proxy calls
 	if refererUrl == "" {
-		refererHeader := url.URL{
-			Scheme: req.URL.Scheme,
-			Host:   req.Host,
-			Path:   req.URL.Path,
-		}
-		refererUrl = refererHeader.String()
+		refererUrl = req.URL.String()
 	}
+
 	referer, err := url.Parse(refererUrl)
 	if err != nil {
 		return "", err
+	}
+	if referer.Host == "" {
+		return "", errors.New("the hostname in Referer URL is empty")
 	}
 
 	base := v1.ParsePathBase(referer.Path)
