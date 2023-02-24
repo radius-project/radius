@@ -70,11 +70,11 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		if err != nil {
 			return nil, err
 		}
-		// TODO: This is a temporary fix to unblock users to register recipes using bicep, and should be removed
-		// after long term fix is implemented as part of https://github.com/project-radius/radius/issues/5179.
 		if newResource.Properties.Recipes != nil {
 			errorPrefix := "recipe name(s) reserved for devRecipes for: "
 			var errorRecipes string
+			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
+			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
 			for k, v := range newResource.Properties.Recipes {
 				if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
 					if errorRecipes != "" {

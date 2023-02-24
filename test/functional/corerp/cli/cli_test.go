@@ -43,10 +43,11 @@ const (
 func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	// get the current environment to switch back to after the test
+	// get the current environment to switch back to after the test since the environment is used
+	// for AWS test and has the AWS scope which the environment created in this does not.
 	output, err := cli.EnvShow(ctx)
 	require.NoError(t, err)
-	// switch to the environment used in the test template
+	// switch to the environment used in the test template since it has dev recipes enabled.
 	_, err = cli.EnvSwitch(ctx, test.Steps[0].CoreRPResources.Resources[0].Name)
 	prevEnv := strings.Trim(strings.Split(output, "\n")[1], " ")
 	require.NoError(t, err)
@@ -94,9 +95,10 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, "mongo-azure", recipeTemplate, linkType)
 		require.Error(t, err)
-		require.Contains(t, output, fmt.Sprintf("recipe with name %q already exists in the environment", "mongo-azure"))
+		require.Contains(t, output, "recipe with name \"mongo-azure\" already exists in the environment")
 	})
-	// switch the environment back
+	// switch the environment back since the environment created by this test does not have the
+	// aws provider scope and gets deleted after the test runs
 	_, err = cli.EnvSwitch(ctx, prevEnv)
 	require.NoError(t, err)
 }
