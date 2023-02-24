@@ -95,6 +95,7 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 
 	return recipeParameters, nil
 }
+
 func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[string]any) error {
 	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
 	//	{

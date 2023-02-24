@@ -1,5 +1,5 @@
 {
-    "$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": [
         "Premium_LRS",
@@ -13,10 +13,10 @@
     ],
     "resources": [
         {
-            "type":       "Microsoft.Storage/storageAccounts",
+            "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2022-05-01",
-            "name":       "[parameters('mongodbName')]",
-            "location":   "[parameters('location')]",
+            "name": "[parameters('mongodbName')]",
+            "location": "[parameters('location')]",
             "sku": {
                 "name": "[parameters('storageAccountType')]"
             },

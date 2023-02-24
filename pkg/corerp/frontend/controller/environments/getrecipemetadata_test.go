@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
@@ -140,7 +141,7 @@ func TestGetRecipeMetadataFromRegistry(t *testing.T) {
 	t.Run("get recipe metadata from registry with invalid path", func(t *testing.T) {
 		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0"
 		_, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
-		require.Error(t, err, "failed to fetch template from the path \"radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0\" for recipe \"mongodb\": radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0: not found")
+		require.ErrorContains(t, err, "failed to fetch repository from the path \"radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0\" for recipe \"mongodb\": radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0: not found")
 	})
 }
 
@@ -174,16 +175,8 @@ func TestParseAndFormatRecipeParams(t *testing.T) {
 				"defaultValue": "[resourceGroup().location]",
 			},
 		}
-		for paramName, paramValue := range expectedOutput {
-			//maps don't guarantee order in golang
-			require.Contains(t, output, paramName)
-			for paramDetailName, paramDetailValue := range paramValue.(map[string]any) {
-				require.Contains(t, output[paramName], paramDetailName)
-				outputParamDetails, ok := output[paramName].(map[string]any)
-				require.True(t, ok)
-				require.Equal(t, paramDetailValue, outputParamDetails[paramDetailName])
-			}
-		}
+
+		assert.DeepEqual(t, expectedOutput, output)
 	})
 
 	t.Run("parse and format recipe with no parameters", func(t *testing.T) {
@@ -200,13 +193,13 @@ func TestParseAndFormatRecipeParams(t *testing.T) {
 		recipeData := map[string]any{}
 		_ = json.Unmarshal(testutil.ReadFixture("recipedatawithmalformedparameters.json"), &recipeData)
 		err := parseAndFormatRecipeParams(recipeData, map[string]any{})
-		require.Error(t, err, "parameters are not in expected format")
+		require.ErrorContains(t, err, "parameters are not in expected format")
 	})
 
 	t.Run("parse and format recipe with malformed parameter details", func(t *testing.T) {
 		recipeData := map[string]any{}
 		_ = json.Unmarshal(testutil.ReadFixture("recipedatawithmalformedparameterdetails.json"), &recipeData)
 		err := parseAndFormatRecipeParams(recipeData, map[string]any{})
-		require.Error(t, err, "parameter details are not in expected format")
+		require.ErrorContains(t, err, "parameter details are not in expected format")
 	})
 }
