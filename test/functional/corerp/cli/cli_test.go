@@ -43,7 +43,13 @@ const (
 func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	cli.EnvSwitch(ctx, test.Steps[0].CoreRPResources.Resources[0].Name)
+	// get the current environment to switch back to after the test
+	output, err := cli.EnvShow(ctx)
+	require.NoError(t, err)
+	// switch to the environment used in the test template
+	_, err = cli.EnvSwitch(ctx, test.Steps[0].CoreRPResources.Resources[0].Name)
+	prevEnv := strings.Trim(strings.Split(output, "\n")[1], " ")
+	require.NoError(t, err)
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	linkType := "Applications.Link/linkType"
@@ -90,6 +96,9 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Error(t, err)
 		require.Contains(t, output, fmt.Sprintf("recipe with name %q already exists in the environment", "mongo-azure"))
 	})
+	// switch the environment back
+	_, err = cli.EnvSwitch(ctx, prevEnv)
+	require.NoError(t, err)
 }
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {

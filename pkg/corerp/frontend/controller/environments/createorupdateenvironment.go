@@ -65,7 +65,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Update Recipes mapping with dev recipes.
-	customRecipes := map[string]datamodel.EnvironmentRecipeProperties{}
 	if newResource.Properties.UseDevRecipes {
 		devRecipes, err := getDevRecipes(ctx)
 		if err != nil {
@@ -74,15 +73,10 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		// TODO: This is a temporary fix to unblock users to register recipes using bicep, and should be removed
 		// after long term fix is implemented as part of https://github.com/project-radius/radius/issues/5179.
 		if newResource.Properties.Recipes != nil {
-			for k, v := range newResource.Properties.Recipes {
-				if val, ok := devRecipes[k]; !ok || val.TemplatePath != v.TemplatePath {
-					customRecipes[k] = v
-				}
-			}
 			errorPrefix := "recipe name(s) reserved for devRecipes for: "
 			var errorRecipes string
-			for k, v := range customRecipes {
-				if _, ok := devRecipes[k]; ok {
+			for k, v := range newResource.Properties.Recipes {
+				if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
 					if errorRecipes != "" {
 						errorRecipes += ", "
 					}

@@ -181,6 +181,14 @@ func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
+	args := []string{
+		"env",
+		"show",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) EnvSwitch(ctx context.Context, environmentName string) (string, error) {
 	args := []string{
 		"env",
