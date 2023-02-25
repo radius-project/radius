@@ -101,9 +101,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldResourceID, resourceID)
-	logger = logr.FromContextOrDiscard(ctx)
 
 	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
@@ -124,13 +121,10 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 			err = fmt.Errorf("provider %s not configured", resourceID.ProviderNamespace())
 			return nil, err
 		}
-		ctx = ucplog.WrapLogContext(ctx,
-			ucplog.LogFieldPlaneURL, proxyURL)
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
 		// all the requests will be forwarded
 		proxyURL = plane.Properties.URL
-		ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneURL, proxyURL)
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -150,8 +144,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if req.TLS != nil {
 		httpScheme = "https"
 	}
-
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldHTTPScheme, httpScheme)
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,

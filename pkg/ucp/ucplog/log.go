@@ -25,6 +25,11 @@ const (
 	DefaultLoggerName string = "radius"
 	LogLevel          string = "RADIUS_LOGGING_LEVEL" // Env variable that determines the log level
 	LogProfile        string = "RADIUS_LOGGING_JSON"  // Env variable that determines the logger config presets
+
+	// keys to conform with otel log schema
+	LogMessageKey string = "message"
+	LogTimeKey    string = "timestamp"
+	LogLevelKey   string = "severity"
 )
 
 // Log levels
@@ -102,6 +107,9 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	}
 	cfg.EncoderConfig.CallerKey = zapcore.OmitKey
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	cfg.EncoderConfig.MessageKey = LogMessageKey
+	cfg.EncoderConfig.LevelKey = LogLevelKey
+	cfg.EncoderConfig.TimeKey = LogTimeKey
 	// Build the logger config based on profile and custom presets
 	logger, err := cfg.Build()
 	if err != nil {
@@ -143,7 +151,6 @@ func NewTestLogger(t *testing.T) (logr.Logger, error) {
 // WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
-
 	ctx = logr.NewContext(ctx, logger.WithValues(keyValues...))
 	return ctx
 }

@@ -19,7 +19,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateResourceGroup)(nil)
@@ -59,7 +58,6 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	newResource.Name = id.Name()
 	newResource.Type = ResourceGroupType
 
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, id)
 	logger := logr.FromContextOrDiscard(ctx)
 
 	existingResource := datamodel.ResourceGroup{}
