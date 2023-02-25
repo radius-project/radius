@@ -18,7 +18,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*DeleteResourceGroup)(nil)
@@ -77,7 +76,6 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 }
 
 func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.StorageClient, path string) (datamodel.ResourceList, error) {
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	var query store.Query
 	query.RootScope = path
 	query.ScopeRecursive = true
