@@ -30,9 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/semaphore"
@@ -139,11 +137,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			w3cTraceID := op.TraceparentID
-			carrier := make(propagation.MapCarrier)
-			carrier[trace.TraceparentHeader] = w3cTraceID
-			spanContextPropagator := otel.GetTextMapPropagator()
-			ctx := spanContextPropagator.Extract(ctx, carrier)
+			ctx := trace.WithTraceparent(ctx, op.TraceparentID)
 			sc := oteltrace.SpanFromContext(ctx)
 
 			attr := map[attribute.Key]string{}
@@ -214,7 +208,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 }
 
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
-	ctx, span := trace.AddConsumerSpan(ctx, "worker.runOperation receive", trace.RPBackendTracer)
+	ctx, span := trace.StartConsumerSpan(ctx, "worker.runOperation receive", trace.BackendTracerName)
 
 	logger := logr.FromContextOrDiscard(ctx)
 
@@ -261,7 +255,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
-		trace.RecordAsyncResult(result, span)
+		trace.SetAsyncResultStatus(result, span)
 	}()
 
 	operationTimeoutAfter := time.After(asyncReq.Timeout())
