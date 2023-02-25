@@ -21,12 +21,12 @@ import (
 )
 
 // UseLogValues appends logging values to the context based on the request.
-func UseLogValues(h http.Handler, basePath string) http.Handler {
+func UseLogValues(h http.Handler, basePath string, serviceName string) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		values := []any{}
 
 		attr := map[attribute.Key]string{}
-		attr = AddAttribute(semconv.ServiceNameKey, ucplog.UCPServiceName, attr)
+		attr = AddAttribute(semconv.ServiceNameKey, serviceName, attr)
 		attr = AddAttribute(semconv.ServiceVersionKey, version.Channel(), attr)
 
 		id, err := resources.Parse(r.URL.Path)

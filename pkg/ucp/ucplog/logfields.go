@@ -6,8 +6,8 @@
 package ucplog
 
 const (
-	UCPLoggerName  string = "ucplogger"
-	UCPServiceName string = "ucp"
+	LoggerName  string = "ucplogger"
+	ServiceName string = "ucp"
 )
 
 // Field names for structured logging

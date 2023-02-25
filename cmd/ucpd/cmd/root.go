@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		logger, flush, err := ucplog.NewLogger(ucplog.UCPLoggerName, &options.LoggingOptions)
+		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.LoggingOptions)
 		if err != nil {
 			log.Fatal(err)
 		}
