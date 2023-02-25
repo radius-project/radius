@@ -65,16 +65,16 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
-
-	handlerFunc := middleware.LowercaseURLPath(r)
+	handlerFunc := otelhttp.NewHandler(r,
+		options.ProviderNamespace, otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 	if options.EnableMetrics {
-		handlerFunc = otelhttp.NewHandler(middleware.LowercaseURLPath(r),
-			options.ProviderNamespace, otelhttp.WithMeterProvider(global.MeterProvider()), otelhttp.WithTracerProvider(otel.GetTracerProvider()))
+		handlerFunc = otelhttp.NewHandler(handlerFunc,
+			options.ProviderNamespace, otelhttp.WithMeterProvider(global.MeterProvider()))
 	}
 
 	server := &http.Server{
 		Addr:    options.Address,
-		Handler: handlerFunc,
+		Handler: middleware.LowercaseURLPath(handlerFunc),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},
