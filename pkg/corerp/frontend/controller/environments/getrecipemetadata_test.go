@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
@@ -137,53 +138,68 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 func TestGetRecipeMetadataFromRegistry(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("get recipe metadata from registry", func(t *testing.T) {
-		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
-		output, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
-		require.NoError(t, err)
-		expectedOutput := map[string]any{
-			"mongodbName": map[string]any{
-				"type": "string",
-			},
-			"documentdbName": map[string]any{
-				"type": "string",
-			},
-			"location": map[string]any{
-				"type":         "string",
-				"defaultValue": "[resourceGroup().location]",
-			},
-		}
-		require.Equal(t, expectedOutput, output)
-	})
-
-	t.Run("get recipe metadata from registry with context parameter", func(t *testing.T) {
-		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/context/mongodatabases/azure:1.0"
-		output, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
-		require.NoError(t, err)
-		expectedOutput := map[string]any{
-			"location": map[string]any{
-				"type":         "string",
-				"defaultValue": "[resourceGroup().location]",
-			},
-			"rg": map[string]any{
-				"type":         "string",
-				"defaultValue": "[resourceGroup().name]",
-			},
-		}
-		require.Equal(t, expectedOutput, output)
-	})
-
 	t.Run("get recipe metadata from registry with invalid path", func(t *testing.T) {
 		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0"
 		_, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
-		require.Error(t, err, "failed to fetch template from the path \"radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0\" for recipe \"mongodb\": radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0: not found")
+		require.ErrorContains(t, err, "failed to fetch repository from the path \"radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0\": radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0: not found")
+	})
+}
+
+func TestParseAndFormatRecipeParams(t *testing.T) {
+	t.Run("parse and format recipe parameters with context", func(t *testing.T) {
+		recipeData := map[string]any{}
+		recipeDataJSON := testutil.ReadFixture("recipedatawithparameters.json")
+		_ = json.Unmarshal(recipeDataJSON, &recipeData)
+		output := map[string]any{}
+		err := parseAndFormatRecipeParams(recipeData, output)
+		require.NoError(t, err)
+		expectedOutput := map[string]any{
+			"storageAccountName": map[string]any{
+				"type": "string",
+			},
+			"storageAccountType": map[string]any{
+				"type": "string",
+				"allowedValues": []any{
+					"Premium_LRS",
+					"Premium_ZRS",
+					"Standard_GRS",
+					"Standard_GZRS",
+					"Standard_LRS",
+					"Standard_RAGRS",
+					"Standard_RAGZRS",
+					"Standard_ZRS",
+				},
+			},
+			"location": map[string]any{
+				"type":         "string",
+				"defaultValue": "[resourceGroup().location]",
+			},
+		}
+
+		assert.DeepEqual(t, expectedOutput, output)
 	})
 
-	t.Run("get recipe metadata from registry with no parameters", func(t *testing.T) {
-		templatePath := "radiusdev.azurecr.io/pratikshya/recipe/mongodatabases/azure:1.0"
-		output, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
+	t.Run("parse and format recipe with no parameters", func(t *testing.T) {
+		recipeData := map[string]any{}
+		_ = json.Unmarshal(testutil.ReadFixture("recipedatawithoutparameters.json"), &recipeData)
+		output := map[string]any{}
+		err := parseAndFormatRecipeParams(recipeData, output)
 		require.NoError(t, err)
 		expectedOutput := map[string]any{}
 		require.Equal(t, expectedOutput, output)
+	})
+
+	t.Run("parse and format recipe with malformed parameters", func(t *testing.T) {
+		recipeData := map[string]any{}
+		_ = json.Unmarshal(testutil.ReadFixture("recipedatawithmalformedparameters.json"), &recipeData)
+		err := parseAndFormatRecipeParams(recipeData, map[string]any{})
+		require.ErrorContains(t, err, "parameters are not in expected format")
+	})
+
+	t.Run("parse and format recipe with malformed parameter details", func(t *testing.T) {
+		recipeData := map[string]any{}
+		_ = json.Unmarshal(testutil.ReadFixture("recipedatawithmalformedparameterdetails.json"), &recipeData)
+		err := parseAndFormatRecipeParams(recipeData, map[string]any{})
+		require.ErrorContains(t, err, "parameter details are not in expected format")
 	})
 }
