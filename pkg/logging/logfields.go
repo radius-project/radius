@@ -17,6 +17,7 @@ const (
 	LogFieldAppID              = "applicationID"
 	LogFieldAppName            = "applicationName"
 	LogFieldArmResourceID      = "armResourceID"
+	LogFieldCorrelationID      = "correlationId"
 	LogFieldDeploymentID       = "deploymentID"
 	LogFieldDeploymentName     = "deploymentName"
 	LogFieldKind               = "kind"
