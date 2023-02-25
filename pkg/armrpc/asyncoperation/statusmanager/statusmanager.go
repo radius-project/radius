@@ -14,9 +14,12 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // statusManager includes the necessary functions to manage asynchronous operations.
@@ -57,6 +60,9 @@ func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID
 }
 
 func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, operationTimeout time.Duration) error {
+	ctx, span := trace.AddProducerSpan(ctx, "statusmanager.QueueAsyncOperation publish", trace.RPFrontendTracer)
+	defer span.End()
+
 	if aom.queue == nil {
 		return errors.New("queue client is unset")
 	}
@@ -148,13 +154,22 @@ func (aom *statusManager) Delete(ctx context.Context, id resources.ID, operation
 
 // queueRequestMessage function is to put the async operation message to the queue to be worked on.
 func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMRequestContext, aos *Status, operationTimeout time.Duration) error {
+	// We need to propagate the current span context from producer to consumer.
+	// Retrieve the current span context from context and serialize it to its w3c string representation using propagator.
+	// pass this w3c string  as a member of message being queued
+	// ref: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
+	carrier := make(propagation.MapCarrier)
+	spanContextPropagator := otel.GetTextMapPropagator()
+	spanContextPropagator.Inject(ctx, carrier)
+	w3cTraceID := carrier[trace.TraceparentHeader]
+
 	msg := &ctrl.Request{
 		APIVersion:       sCtx.APIVersion,
 		OperationID:      sCtx.OperationID,
 		OperationType:    sCtx.OperationType,
 		ResourceID:       aos.LinkedResourceID,
 		CorrelationID:    sCtx.CorrelationID,
-		TraceparentID:    sCtx.Traceparent,
+		TraceparentID:    w3cTraceID,
 		AcceptLanguage:   sCtx.AcceptLanguage,
 		HomeTenantID:     sCtx.HomeTenantID,
 		ClientObjectID:   sCtx.ClientObjectID,
