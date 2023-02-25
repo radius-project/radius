@@ -101,9 +101,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldResourceID, resourceID)
-	logger = logr.FromContextOrDiscard(ctx)
 
 	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
