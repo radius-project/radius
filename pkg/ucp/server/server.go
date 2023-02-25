@@ -14,7 +14,6 @@ import (
 
 	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
 	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
-	metricsservicehostoptions "github.com/project-radius/radius/pkg/metrics/service/hostoptions"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/trace"
@@ -137,7 +136,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 	}
 
 	if options.MetricsProviderOptions.Prometheus.Enabled {
-		metricOptions := metricsservicehostoptions.HostOptions{
+		metricOptions := metricsservice.HostOptions{
 			Config: &options.MetricsProviderOptions,
 		}
 		hostingServices = append(hostingServices, metricsservice.NewService(metricOptions))

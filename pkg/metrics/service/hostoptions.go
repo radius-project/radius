@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package hostoptions
+package metricsservice
 
 import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"

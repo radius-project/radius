@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
-	metricshostoptions "github.com/project-radius/radius/pkg/metrics/service/hostoptions"
 	"github.com/project-radius/radius/pkg/trace"
 
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
@@ -73,7 +72,7 @@ func main() {
 	}
 	hostingSvc := []hosting.Service{frontend.NewService(options)}
 
-	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions := metricsservice.NewHostOptionsFromEnvironment(*options.Config)
 	if metricOptions.Config.Prometheus.Enabled {
 		hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
 	}
