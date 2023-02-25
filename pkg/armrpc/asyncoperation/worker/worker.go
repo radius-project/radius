@@ -140,6 +140,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			ctx := trace.WithTraceparent(ctx, op.TraceparentID)
 			sc := oteltrace.SpanFromContext(ctx)
 
+			// TODO: refactor the below with logr.Marshaller.
 			attr := map[attribute.Key]string{}
 			attr[semconv.ServiceNameKey] = logging.ServiceName
 			attr[semconv.ServiceVersionKey] = version.Channel()
