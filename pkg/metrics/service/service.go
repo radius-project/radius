@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/metrics/provider"
+	"github.com/project-radius/radius/pkg/metrics/service/hostoptions"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 

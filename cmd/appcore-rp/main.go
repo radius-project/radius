@@ -18,9 +18,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
-	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
-	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"github.com/project-radius/radius/pkg/telemetry/trace"
+	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
+	metricshostoptions "github.com/project-radius/radius/pkg/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/trace"
 
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
 	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
