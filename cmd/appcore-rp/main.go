@@ -32,10 +32,6 @@ import (
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
-const (
-	serviceName string = "appcore-rp"
-)
-
 func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
 	hostings := []hosting.Service{}
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
@@ -129,7 +125,6 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
 	tracerOpts := options.Config.TracerProvider
-	tracerOpts.ServiceName = serviceName
 	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)

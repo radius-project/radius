@@ -12,16 +12,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"go.opentelemetry.io/otel"
 )
 
 // DeployWithProgress runs a deployment and displays progress to the user. This is intended to be used
 // from the CLI and thus logs to the console.
 func DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
-	tr := otel.Tracer("deploy")
-	ctx, span := tr.Start(ctx, "DeployWithProgress")
-
-	defer span.End()
 	deploymentClient, err := options.ConnectionFactory.CreateDeploymentClient(ctx, options.Workspace)
 	if err != nil {
 		return clients.DeploymentResult{}, err
