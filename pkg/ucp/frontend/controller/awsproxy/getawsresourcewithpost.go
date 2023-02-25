@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -45,10 +46,7 @@ func NewGetAWSResourceWithPost(awsOpts *AWSOptions) (ctrl.Controller, error) {
 
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -64,7 +62,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 
 	describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
-		TypeName: aws.String(resourceType),
+		TypeName: aws.String(serviceCtx.ResourceType),
 	})
 	if err != nil {
 		return awserror.HandleAWSError(err)
@@ -82,9 +80,9 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	logger.Info("Fetching resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+	logger.Info("Fetching resource", "resourceType", serviceCtx.ResourceType, "resourceID", awsResourceIdentifier)
 	response, err := p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
+		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
@@ -101,11 +99,11 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		}
 	}
 
-	computedResourceID := computeResourceID(id, awsResourceIdentifier)
+	computedResourceID := computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 	body := map[string]any{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,
-		"type":       id.Type(),
+		"type":       serviceCtx.ResourceID.Type(),
 		"properties": resourceProperties,
 	}
 	return armrpc_rest.NewOKResponse(body), nil

@@ -15,6 +15,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -37,14 +38,11 @@ func NewDeleteAWSResource(awsOpts *AWSOptions) (ctrl.Controller, error) {
 }
 
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
-	_, err = p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
-		Identifier: aws.String(id.Name()),
+	_, err := p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		TypeName:   &serviceCtx.ResourceType,
+		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
 		return armrpc_rest.NewNoContentResponse(), nil
@@ -53,8 +51,8 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 	}
 
 	response, err := p.AWSOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		TypeName:   &resourceType,
-		Identifier: aws.String(id.Name()),
+		TypeName:   &serviceCtx.ResourceType,
+		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if err != nil {
 		return awsclient.HandleAWSError(err)
@@ -65,6 +63,6 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.AWSOptions.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.AWSOptions.Options.BasePath)
 	return resp, nil
 }

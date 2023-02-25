@@ -15,6 +15,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -37,16 +38,13 @@ func NewGetAWSOperationResults(awsOpts *AWSOptions) (ctrl.Controller, error) {
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	_, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	response, err := p.AWSOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
-		RequestToken: aws.String(id.Name()),
+		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNotFoundResponse(id), nil
+		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}

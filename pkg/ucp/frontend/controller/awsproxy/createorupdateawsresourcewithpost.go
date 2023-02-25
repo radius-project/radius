@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,6 +21,7 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -45,10 +45,7 @@ func NewCreateOrUpdateAWSResourceWithPost(awsOpts *AWSOptions) (ctrl.Controller,
 
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -63,7 +60,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 	describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
-		TypeName: aws.String(resourceType),
+		TypeName: aws.String(serviceCtx.ResourceType),
 	})
 	if err != nil {
 		return awserror.HandleAWSError(err)
@@ -87,12 +84,12 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	} else if err != nil {
 		return awserror.HandleAWSError(err)
 	} else {
-		computedResourceID = computeResourceID(id, awsResourceIdentifier)
+		computedResourceID = computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 
 		// Create and update work differently for AWS - we need to know if the resource
 		// we're working on exists already.
 		getResponse, err = p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			TypeName:   &resourceType,
+			TypeName:   &serviceCtx.ResourceType,
 			Identifier: aws.String(awsResourceIdentifier),
 		})
 		if awserror.IsAWSResourceNotFound(err) {
@@ -113,7 +110,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	}
 
 	if existing {
-		logger.Info(fmt.Sprintf("Updating resource : resourceType %q resourceID %q", resourceType, awsResourceIdentifier))
+		logger.Info("Updating resource", "resourceType", serviceCtx.ResourceType, "resourceID", awsResourceIdentifier)
 
 		// Generate patch
 		currentState := []byte(*getResponse.ResourceDescription.Properties)
@@ -131,7 +128,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			}
 
 			response, err := p.AWSOptions.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
-				TypeName:      &resourceType,
+				TypeName:      &serviceCtx.ResourceType,
 				Identifier:    aws.String(awsResourceIdentifier),
 				PatchDocument: aws.String(string(marshaled)),
 			})
@@ -150,7 +147,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			responseBody := map[string]any{
 				"id":         computedResourceID,
 				"name":       awsResourceIdentifier,
-				"type":       id.Type(),
+				"type":       serviceCtx.ResourceID.Type(),
 				"properties": responseProperties,
 			}
 
@@ -158,9 +155,9 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return resp, nil
 		}
 	} else {
-		logger.Info("Creating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+		logger.Info("Creating resource", "resourceType", serviceCtx.ResourceType, "resourceID", awsResourceIdentifier)
 		response, err := p.AWSOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-			TypeName:     &resourceType,
+			TypeName:     &serviceCtx.ResourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})
 		if err != nil {
@@ -175,14 +172,14 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		// Get the resource identifier from the progress event response
 		if response != nil && response.ProgressEvent != nil && response.ProgressEvent.Identifier != nil {
 			awsResourceIdentifier = *response.ProgressEvent.Identifier
-			computedResourceID = computeResourceID(id, awsResourceIdentifier)
+			computedResourceID = computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 		}
 	}
 
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
 
 	responseBody := map[string]any{
-		"type":       id.Type(),
+		"type":       serviceCtx.ResourceID.Type(),
 		"properties": responseProperties,
 	}
 	if computedResourceID != "" && awsResourceIdentifier != "" {
@@ -190,6 +187,6 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		responseBody["name"] = awsResourceIdentifier
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.AWSOptions.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.AWSOptions.Options.BasePath)
 	return resp, nil
 }

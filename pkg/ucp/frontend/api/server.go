@@ -228,6 +228,10 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, location string, d
 			return err
 		}
 
+		// The user configures a list of default planes in the config files. We need to
+		// create a request to configure these planes in UCP. The code below is constructing
+		// PUT plane requests and calling the planes controller directly to configure the planes.
+
 		// Using the latest API version to make a request to configure the default planes
 		url := fmt.Sprintf("%s?api-version=%s", plane.ID, versions.DefaultAPIVersion)
 		request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
@@ -238,25 +242,19 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, location string, d
 
 		// Wrap the request in an ARM RPC context because this call will bypass the middleware
 		// that normally does this for us.
-		rpcContext, err := s.wrapArmRpcContext(ctx, location, request)
+		rpcContext, err := v1.FromARMRequest(request, s.options.BasePath, location)
 		if err != nil {
 			return err
 		}
-		_, err = planesCtrl.Run(rpcContext, nil, request)
+		ctx = v1.WithARMRequestContext(ctx, rpcContext)
+
+		// Call the planes controller to configure the default planes
+		_, err = planesCtrl.Run(ctx, nil, request)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (s *Service) wrapArmRpcContext(ctx context.Context, location string, request *http.Request) (context.Context, error) {
-	rpcContext, err := v1.FromARMRequest(request, s.options.BasePath, location)
-	if err != nil {
-		return nil, err
-	}
-	ctx = v1.WithARMRequestContext(ctx, rpcContext)
-	return ctx, nil
 }
 
 func (s *Service) Run(ctx context.Context) error {

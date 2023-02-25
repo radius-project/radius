@@ -19,6 +19,7 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -41,16 +42,12 @@ func NewCreateOrUpdateAWSResource(awsOpts *AWSOptions) (ctrl.Controller, error) 
 }
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	if err != nil {
-		return nil, err
-	}
-
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
 
 	body := map[string]any{}
-	err = decoder.Decode(&body)
+	err := decoder.Decode(&body)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -80,8 +77,8 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	existing := true
 	getResponse, err := p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
-		Identifier: aws.String(id.Name()),
+		TypeName:   &serviceCtx.ResourceType,
+		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if awserror.IsAWSResourceNotFound(err) {
 		existing = false
@@ -114,7 +111,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		// Get resource type schema
 		describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 			Type:     types.RegistryTypeResource,
-			TypeName: aws.String(resourceType),
+			TypeName: aws.String(serviceCtx.ResourceType),
 		})
 		if err != nil {
 			return nil, err
@@ -136,8 +133,8 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			}
 
 			response, err := p.AWSOptions.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
-				TypeName:      &resourceType,
-				Identifier:    aws.String(id.Name()),
+				TypeName:      &serviceCtx.ResourceType,
+				Identifier:    aws.String(serviceCtx.ResourceID.Name()),
 				PatchDocument: aws.String(string(marshaled)),
 			})
 			if err != nil {
@@ -153,9 +150,9 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			// and return 200, telling the deployment engine that the resource has already been created
 			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded
 			responseBody := map[string]any{
-				"id":         id.String(),
-				"name":       id.Name(),
-				"type":       id.Type(),
+				"id":         serviceCtx.ResourceID.String(),
+				"name":       serviceCtx.ResourceID.Name(),
+				"type":       serviceCtx.ResourceID.Type(),
 				"properties": responseProperties,
 			}
 
@@ -164,7 +161,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 	} else {
 		response, err := p.AWSOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-			TypeName:     &resourceType,
+			TypeName:     &serviceCtx.ResourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})
 		if err != nil {
@@ -180,12 +177,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
 
 	responseBody := map[string]any{
-		"id":         id.String(),
-		"name":       id.Name(),
-		"type":       id.Type(),
+		"id":         serviceCtx.ResourceID.String(),
+		"name":       serviceCtx.ResourceID.Name(),
+		"type":       serviceCtx.ResourceID.Type(),
 		"properties": responseProperties,
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.AWSOptions.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.AWSOptions.Options.BasePath)
 	return resp, nil
 }

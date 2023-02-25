@@ -19,6 +19,7 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -42,10 +43,7 @@ func NewDeleteAWSResourceWithPost(awsOpts *AWSOptions) (ctrl.Controller, error) 
 
 func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -60,7 +58,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 
 	describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
-		TypeName: aws.String(resourceType),
+		TypeName: aws.String(serviceCtx.ResourceType),
 	})
 	if err != nil {
 		return awserror.HandleAWSError(err)
@@ -79,7 +77,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	_, err = p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
+		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
@@ -88,9 +86,9 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return awsclient.HandleAWSError(err)
 	}
 
-	logger.Info("Deleting resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+	logger.Info("Deleting resource", "resourceType", serviceCtx.ResourceType, "resourceID", awsResourceIdentifier)
 	response, err := p.AWSOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		TypeName:   &resourceType,
+		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if err != nil {
@@ -102,6 +100,6 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.AWSOptions.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.AWSOptions.Options.BasePath)
 	return resp, nil
 }

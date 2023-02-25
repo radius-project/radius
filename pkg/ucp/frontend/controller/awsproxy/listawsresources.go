@@ -14,6 +14,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -36,14 +37,11 @@ func NewListAWSResources(awsOpts *AWSOptions) (ctrl.Controller, error) {
 }
 
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	// TODO pagination
 	response, err := p.AWSOptions.AWSCloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
-		TypeName: &resourceType,
+		TypeName: &serviceCtx.ResourceType,
 	})
 	if err != nil {
 		return awsclient.HandleAWSError(err)
@@ -65,9 +63,9 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 
 		resourceName := *result.Identifier
 		item := map[string]any{
-			"id":         path.Join(id.String(), resourceName),
+			"id":         path.Join(serviceCtx.ResourceID.String(), resourceName),
 			"name":       result.Identifier,
-			"type":       id.Type(),
+			"type":       serviceCtx.ResourceID.Type(),
 			"properties": properties,
 		}
 		items = append(items, item)

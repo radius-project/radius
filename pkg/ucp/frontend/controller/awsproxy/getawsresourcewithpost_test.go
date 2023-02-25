@@ -28,14 +28,11 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_GetAWSResourceWithPost(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -82,8 +79,9 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
-
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
+
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
@@ -102,9 +100,6 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -140,8 +135,9 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
-
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
+
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -150,9 +146,6 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -186,6 +179,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
@@ -195,9 +189,6 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -238,6 +229,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
@@ -253,9 +245,6 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
@@ -275,7 +264,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(ctx, &cloudcontrol.GetResourceInput{
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), &cloudcontrol.GetResourceInput{
 		TypeName:   aws.String(testResource.AWSResourceType),
 		Identifier: aws.String("abc|xyz"),
 	}).Return(
@@ -308,6 +297,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)

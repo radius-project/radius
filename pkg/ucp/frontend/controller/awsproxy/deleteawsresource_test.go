@@ -18,14 +18,11 @@ import (
 	"github.com/google/uuid"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_DeleteAWSResource(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	getResponseBody := map[string]any{
@@ -65,6 +62,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
@@ -83,9 +81,6 @@ func Test_DeleteAWSResource(t *testing.T) {
 }
 
 func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -107,6 +102,7 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)

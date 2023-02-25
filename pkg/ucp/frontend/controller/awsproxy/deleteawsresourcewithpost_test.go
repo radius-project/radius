@@ -20,14 +20,11 @@ import (
 	"github.com/google/uuid"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_DeleteAWSResourceWithPost(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -83,6 +80,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(body))
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
@@ -101,9 +99,6 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -140,6 +135,7 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(body))
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
@@ -159,9 +155,6 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 }
 
 func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
@@ -188,7 +181,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), &cloudcontrol.DeleteResourceInput{
 		TypeName:   aws.String(testResource.AWSResourceType),
 		Identifier: aws.String("abc|xyz"),
 	}).Return(
@@ -221,6 +214,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
