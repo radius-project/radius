@@ -8,9 +8,8 @@ package v20220901privatepreview
 import (
 	"fmt"
 
-	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
@@ -113,8 +112,8 @@ func (dst *CredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	switch dm.Properties.Storage.Kind {
 	case datamodel.InternalStorageKind:
 		storage = &InternalCredentialStorageProperties{
-			Kind:       azto.Ptr(CredentialStorageKindInternal),
-			SecretName: azto.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
+			Kind:       to.Ptr(CredentialStorageKindInternal),
+			SecretName: to.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
 		}
 	default:
 		return v1.ErrInvalidModelConversion
@@ -124,15 +123,15 @@ func (dst *CredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	switch dm.Properties.Kind {
 	case datamodel.AzureCredentialKind:
 		dst.Properties = &AzureServicePrincipalProperties{
-			Kind:     azto.Ptr(dm.Properties.Kind),
-			ClientID: azto.Ptr(dm.Properties.AzureCredential.ClientID),
-			TenantID: azto.Ptr(dm.Properties.AzureCredential.TenantID),
+			Kind:     to.Ptr(dm.Properties.Kind),
+			ClientID: to.Ptr(dm.Properties.AzureCredential.ClientID),
+			TenantID: to.Ptr(dm.Properties.AzureCredential.TenantID),
 			Storage:  storage,
 		}
 	case datamodel.AWSCredentialKind:
 		dst.Properties = &AWSCredentialProperties{
-			Kind:        azto.Ptr(dm.Properties.Kind),
-			AccessKeyID: azto.Ptr(dm.Properties.AWSCredential.AccessKeyID),
+			Kind:        to.Ptr(dm.Properties.Kind),
+			AccessKeyID: to.Ptr(dm.Properties.AWSCredential.AccessKeyID),
 			Storage:     storage,
 		}
 	default:

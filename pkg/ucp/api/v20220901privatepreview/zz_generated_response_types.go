@@ -69,6 +69,11 @@ type PlanesClientListResponse struct {
 	PlaneResourceList
 }
 
+// PlanesTypeClientListResponse contains the response from method PlanesTypeClient.List.
+type PlanesTypeClientListResponse struct {
+	PlaneResourceList
+}
+
 // ResourceGroupsClientCreateOrUpdateResponse contains the response from method ResourceGroupsClient.CreateOrUpdate.
 type ResourceGroupsClientCreateOrUpdateResponse struct {
 	ResourceGroupResource

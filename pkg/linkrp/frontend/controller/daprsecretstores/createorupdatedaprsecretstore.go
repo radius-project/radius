@@ -18,7 +18,7 @@ import (
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	kube "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -84,7 +84,7 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, w
 		return nil, err
 	}
 
-	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if componentName, ok := deploymentOutput.ComputedValues[linkrp.ComponentNameKey].(string); ok {
@@ -92,8 +92,8 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, w
 	}
 
 	if old != nil {
-		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = daprSecretStore.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
+		diff := rpv1.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
+		err = daprSecretStore.dp.Delete(ctx, serviceCtx.ResourceID, diff)
 		if err != nil {
 			return nil, err
 		}

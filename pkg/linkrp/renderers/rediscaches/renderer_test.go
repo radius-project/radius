@@ -10,14 +10,15 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +41,7 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -50,8 +51,8 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 	}
-	expectedOutputResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureRedis,
+	expectedOutputResource := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureRedis,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRedis,
 			Provider: resourcemodel.ProviderAzure,
@@ -69,23 +70,23 @@ func Test_Render_Success(t *testing.T) {
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		linkrp.Host: {
-			LocalID:     outputresource.LocalIDAzureRedis,
+		renderers.Host: {
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName",
 		},
-		linkrp.Port: {
-			LocalID:     outputresource.LocalIDAzureRedis,
+		renderers.Port: {
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort",
 		},
 	}
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.PasswordStringHolder: {
-			LocalID:       outputresource.LocalIDAzureRedis,
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 		},
 		renderers.ConnectionStringValue: {
-			LocalID:       outputresource.LocalIDAzureRedis,
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 			Transformer: resourcemodel.ResourceType{
@@ -116,7 +117,7 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -146,7 +147,7 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
 		renderers.PasswordStringHolder:  {Value: password},
 	}
@@ -166,16 +167,20 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
 			Mode: datamodel.LinkModeResource,
 		},
 	}
+	expectedErr := &v1.ErrClientRP{
+		Code:    "BadRequest",
+		Message: "the 'resource' field must be a valid resource id",
+	}
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
-	require.NoError(t, err)
+	require.Equal(t, expectedErr, err)
 }
 
 func Test_Render_InvalidResourceModel(t *testing.T) {
@@ -191,7 +196,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -217,7 +222,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -247,7 +252,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -277,7 +282,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "invalid-app-id",
 			},
@@ -291,4 +296,142 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
+}
+
+func Test_Render_Recipe_Success(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	redisResource := datamodel.RedisCache{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: linkrp.RedisCachesResourceType,
+			},
+		},
+		Properties: datamodel.RedisCacheProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeRecipe,
+			RedisRecipeProperties: datamodel.RedisRecipeProperties{
+				Recipe: linkrp.LinkRecipe{
+					Name: "redis",
+					Parameters: map[string]any{
+						"throughput": 400,
+					},
+				},
+			},
+		},
+	}
+	expectedOutputResource := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureRedis,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRedis,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		ProviderResourceType: azresources.CacheRedis,
+		RadiusManaged:        to.Ptr(true),
+	}
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		renderers.Host: {
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/hostName",
+		},
+		renderers.Port: {
+			LocalID:     rpv1.LocalIDAzureRedis,
+			JSONPointer: "/properties/sslPort",
+		},
+	}
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
+		renderers.PasswordStringHolder: {
+			LocalID:       rpv1.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+		},
+		renderers.ConnectionStringValue: {
+			LocalID:       rpv1.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+			Transformer: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderAzure,
+				Type:     resourcekinds.AzureRedis,
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
+				Name: "redis",
+				Parameters: map[string]any{
+					"throughput": 400,
+				},
+			},
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/redis:v1",
+			LinkType:     linkrp.RedisCachesResourceType,
+		}})
+
+	require.NoError(t, err)
+	// Recipe properties
+	require.Equal(t, redisResource.Properties.Recipe.Name, output.RecipeData.Name)
+	require.Equal(t, redisResource.Properties.Recipe.Parameters, output.RecipeData.Parameters)
+	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/redis:v1", output.RecipeData.TemplatePath)
+	require.Equal(t, clientv2.RedisManagementClientAPIVersion, output.RecipeData.APIVersion)
+
+	// secrets and computed values
+	require.Equal(t, expectedSecretValues, output.SecretValues)
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+
+	// output resources
+	require.Len(t, output.Resources, 1)
+	require.Equal(t, expectedOutputResource, output.Resources[0])
+}
+
+func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	redisResource := datamodel.RedisCache{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: linkrp.RedisCachesResourceType,
+			},
+		},
+		Properties: datamodel.RedisCacheProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeRecipe,
+			RedisRecipeProperties: datamodel.RedisRecipeProperties{
+				Recipe: linkrp.LinkRecipe{
+					Name: "redis",
+					Parameters: map[string]any{
+						"throughput": 400,
+					},
+				},
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
+				Name: "redis",
+			},
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
+			LinkType:     linkrp.MongoDatabasesResourceType,
+			EnvParameters: map[string]any{
+				"throughput": 400,
+			},
+		}})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "link type \"Applications.Link/mongoDatabases\" of provided recipe \"redis\" is incompatible with \"Applications.Link/redisCaches\" resource type. Recipe link type must match link resource type.", err.(*v1.ErrClientRP).Message)
 }

@@ -11,13 +11,13 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // PrepareRadiusResource validates the Radius resource and prepare new resource data.
 func PrepareRadiusResource[P interface {
 	*T
-	rp.RadiusResourceModel
+	rpv1.RadiusResourceModel
 }, T any](ctx context.Context, newResource *T, oldResource *T, options *controller.Options) (rest.Response, error) {
 	if oldResource == nil {
 		return nil, nil

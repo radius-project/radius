@@ -19,6 +19,7 @@ The following properties can be specified in configuration for all services:
 | identity | AAD APP authentication for the resource provider | [**See below**](#identity) |
 | storageProvider | Configuration options for the data storage provider | [**See below**](#storageprovider) |
 | queueProvider | Configuration options for the provider to create and manage the queue client | [**See below**](#queueprovider) |
+| secretProvider | Configuration options for the provider to manage credential | [**See below**](#secretprovider) |
 | server | Configuration options for the HTTP server bootstrap | [**See below**](#server) |
 | workerServer | Configuration options for the worker server | [**See below**](#workerserver) |
 | metricsProvider | Configuration options of the providers for publishing metrics | [**See below**](#metricsProvider) |
@@ -37,7 +38,9 @@ The following are properties that can be specified for UCP:
 |-----|-------------|---------|
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
 | plane | Configuration options for the UCP plane | [**See below**](#plane)
- 
+| identity | Configuration options for authenticating with external systems like Azure and AWS | [**See below**](#external system identity)
+| ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
+
 
 ### environment
 | Key | Description | Example |
@@ -70,6 +73,12 @@ The following are properties that can be specified for UCP:
 | apiServer |  Object containing properties for Kubernetes APIServer store | [**See below**](#apiserver) |
 | inMemoryQueue | Object containing properties for InMemory Queue client | |
 
+### secretProvider
+| Key | Description | Example |
+|-----|-------------|---------|
+| provider | The type of secret provider | `etcd` or `kubernetes` | 
+| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |  
+
 ### server
 | Key | Description | Example | 
 |-----|-------------|---------|
@@ -92,7 +101,7 @@ The following are properties that can be specified for UCP:
 |-----|-------------|---------|
 | enabled | Specified whether to publish metrics (must be `true`/`false`) | `true` |
 | port | The connection port | `/metrics` |
-| path | The endpoint name where the metrics are posted | `2222` |
+| path | The endpoint name where the metrics are posted | `9090` |
 
 ### ucp
 
@@ -158,12 +167,17 @@ ucp:
 
 ## Plane properties
 
-## properties
 | Key | Description | Example |
 |-----|-------------|---------|
 | resourceProviders | Resource Providers for UCP Native Plane | `http://appcore-rp.radius-system:5443` |
 | kind | The kind of plane | `Azure` |
 | url | URL to forward requests to for non UCP Native Plane | `http://localhost:7443` |
+
+## external system identity
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| authMethod | The method of authentication | `UCPCredential` using UCP Credential APIs, `Default` using environment variable |
 
 ## Example configuration files 
 
@@ -190,7 +204,7 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
 server:
   host: "0.0.0.0"
   port: 5443
@@ -230,5 +244,5 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
 ```

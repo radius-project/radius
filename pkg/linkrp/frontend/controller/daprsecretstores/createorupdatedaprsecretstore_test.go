@@ -12,29 +12,29 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentOutput) {
 	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
+		Resources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDDaprComponent,
+				LocalID: rpv1.LocalIDDaprComponent,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprComponent,
 					Provider: resourcemodel.ProviderKubernetes,
@@ -42,7 +42,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]rp.SecretValueReference{},
+		SecretValues: map[string]rpv1.SecretValueReference{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"componentName": {
 				Value: "test-app-test-secret-store",
@@ -50,10 +50,10 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
+	deploymentOutput := rpv1.DeploymentOutput{
+		DeployedOutputResources: []rpv1.OutputResource{
 			{
-				LocalID: outputresource.LocalIDDaprComponent,
+				LocalID: rpv1.LocalIDDaprComponent,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprComponent,
 					Provider: resourcemodel.ProviderKubernetes,
@@ -92,9 +92,9 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 		t.Run(testcase.desc, func(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mctrl := gomock.NewController(t)
 			mStorageClient := store.NewMockStorageClient(mctrl)
@@ -132,7 +132,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			err := apiextv1.AddToScheme(crdScheme)
 			require.NoError(t, err)
 
-			kubeClient := radiustesting.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+			kubeClient := testutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "apiextensions.k8s.io/v1",
 					Kind:       "CustomResourceDefinition",
@@ -142,7 +142,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				},
 			})
 			if testcase.daprMissing {
-				kubeClient = radiustesting.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
+				kubeClient = testutil.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
 			}
 
 			opts := frontend_ctrl.Options{
@@ -194,12 +194,12 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
 			if testcase.inputFile != "" {
 				input = &v20220315privatepreview.DaprSecretStoreResource{}
-				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
+				_ = json.Unmarshal(testutil.ReadFixture(testcase.inputFile), input)
 			}
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 
 			mctrl := gomock.NewController(t)
 			mStorageClient := store.NewMockStorageClient(mctrl)
@@ -220,7 +220,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			if !testcase.shouldFail {
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 				mStorageClient.
 					EXPECT().
@@ -237,7 +237,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			err := apiextv1.AddToScheme(crdScheme)
 			require.NoError(t, err)
 
-			kubeClient := radiustesting.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+			kubeClient := testutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "apiextensions.k8s.io/v1",
 					Kind:       "CustomResourceDefinition",
@@ -247,7 +247,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				},
 			})
 			if testcase.daprMissing {
-				kubeClient = radiustesting.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
+				kubeClient = testutil.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
 			}
 
 			opts := frontend_ctrl.Options{

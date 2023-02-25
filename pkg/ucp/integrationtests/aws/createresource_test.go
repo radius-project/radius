@@ -14,7 +14,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
@@ -27,7 +28,7 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		notfound := types.ResourceNotFoundException{
-			Message: to.StringPtr("Resource not found"),
+			Message: to.Ptr("Resource not found"),
 		}
 		return nil, &notfound
 	})
@@ -36,7 +37,7 @@ func Test_CreateAWSResource(t *testing.T) {
 		output := cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.StringPtr(testAWSRequestToken),
+				RequestToken:    to.Ptr(testAWSRequestToken),
 			},
 		}
 		return &output, nil

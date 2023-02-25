@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -103,131 +104,40 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Run(t *testing.T) {
+func Test_Run_Success(t *testing.T) {
 	t.Run("Run env create tests", func(t *testing.T) {
-		t.Run("Success", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		ctrl := gomock.NewController(t)
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(true, nil).Times(1)
+		namespaceClient := namespace.NewMockInterface(ctrl)
+		appManagementClient.EXPECT().
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), &corerp.Providers{}, gomock.Any()).
+			Return(true, nil).Times(1)
 
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-			azureProvider := &workspaces.AzureProvider{
-				SubscriptionID: "test-subscription",
-				ResourceGroup:  "test-rg"}
-			awsProvider := &workspaces.AWSProvider{}
-			providerConfig := workspaces.ProviderConfig{Azure: azureProvider, AWS: awsProvider}
-			workspace := &workspaces.Workspace{
-				Connection: map[string]any{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name:           "defaultWorkspace",
-				ProviderConfig: providerConfig,
-			}
+		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+		outputSink := &output.MockOutput{}
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "defaultWorkspace",
+		}
 
-			runner := &Runner{
-				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				Output:              outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "default",
-				Namespace:           "default",
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-				SkipDevRecipes:      true,
-			}
+		runner := &Runner{
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			Output:              outputSink,
+			Workspace:           workspace,
+			EnvironmentName:     "default",
+			UCPResourceGroup:    "default",
+			Namespace:           "default",
+			NamespaceInterface:  namespaceClient,
+			ConfigFileInterface: configFileInterface,
+		}
 
-			err := runner.Run(context.Background())
-			require.NoError(t, err)
-		})
-	})
-}
-
-func Test_RunWithoutAzureProvider(t *testing.T) {
-	t.Run("Run env create tests", func(t *testing.T) {
-		t.Run("Success", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(true, nil).Times(1)
-
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-
-			awsProvider := &workspaces.AWSProvider{}
-			providerConfig := workspaces.ProviderConfig{AWS: awsProvider}
-			workspace := &workspaces.Workspace{
-				Connection: map[string]any{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name:           "defaultWorkspace",
-				ProviderConfig: providerConfig,
-			}
-
-			runner := &Runner{
-				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				Output:              outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "default",
-				Namespace:           "default",
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-			}
-
-			err := runner.Run(context.Background())
-			require.NoError(t, err)
-		})
-	})
-}
-
-func Test_Run_WithoutProvider(t *testing.T) {
-	t.Run("Run env create tests", func(t *testing.T) {
-		t.Run("Success", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(true, nil).Times(1)
-
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-			workspace := &workspaces.Workspace{
-				Connection: map[string]any{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name: "defaultWorkspace",
-			}
-
-			runner := &Runner{
-				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				Output:              outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "default",
-				Namespace:           "default",
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-			}
-
-			err := runner.Run(context.Background())
-			require.NoError(t, err)
-		})
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
 	})
 }
 

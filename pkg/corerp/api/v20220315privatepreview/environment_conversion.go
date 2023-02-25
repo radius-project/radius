@@ -9,9 +9,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 const (
@@ -69,6 +68,11 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 				Scope: to.String(src.Properties.Providers.Azure.Scope),
 			}
 		}
+		if src.Properties.Providers.Aws != nil {
+			converted.Properties.Providers.AWS = datamodel.ProvidersAWS{
+				Scope: to.String(src.Properties.Providers.Aws.Scope),
+			}
+		}
 	}
 
 	var extensions []datamodel.Extension
@@ -89,15 +93,15 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(env.ID)
-	dst.Name = to.StringPtr(env.Name)
-	dst.Type = to.StringPtr(env.Type)
+	dst.ID = to.Ptr(env.ID)
+	dst.Name = to.Ptr(env.Name)
+	dst.Type = to.Ptr(env.Type)
 	dst.SystemData = fromSystemDataModel(env.SystemData)
-	dst.Location = to.StringPtr(env.Location)
+	dst.Location = to.Ptr(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
-		UseDevRecipes:     to.BoolPtr(env.Properties.UseDevRecipes),
+		UseDevRecipes:     to.Ptr(env.Properties.UseDevRecipes),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
@@ -109,8 +113,8 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		recipes := make(map[string]*EnvironmentRecipeProperties)
 		for key, val := range env.Properties.Recipes {
 			recipes[key] = &EnvironmentRecipeProperties{
-				LinkType:     to.StringPtr(val.LinkType),
-				TemplatePath: to.StringPtr(val.TemplatePath),
+				LinkType:     to.Ptr(val.LinkType),
+				TemplatePath: to.Ptr(val.TemplatePath),
 				Parameters:   val.Parameters,
 			}
 		}
@@ -118,11 +122,15 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	if env.Properties.Providers != (datamodel.Providers{}) {
+		dst.Properties.Providers = &Providers{}
 		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
-			dst.Properties.Providers = &Providers{
-				Azure: &ProvidersAzure{
-					Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),
-				},
+			dst.Properties.Providers.Azure = &ProvidersAzure{
+				Scope: to.Ptr(env.Properties.Providers.Azure.Scope),
+			}
+		}
+		if env.Properties.Providers.AWS != (datamodel.ProvidersAWS{}) {
+			dst.Properties.Providers.Aws = &ProvidersAws{
+				Scope: to.Ptr(env.Properties.Providers.AWS.Scope),
 			}
 		}
 	}
@@ -138,7 +146,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rp.EnvironmentCompute, error) {
+func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rpv1.EnvironmentCompute, error) {
 	switch v := h.(type) {
 	case *KubernetesCompute:
 		k, err := toEnvironmentComputeKindDataModel(*v.Kind)
@@ -150,18 +158,18 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rp.Envi
 			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
-		var identity *rp.IdentitySettings
+		var identity *rpv1.IdentitySettings
 		if v.Identity != nil {
-			identity = &rp.IdentitySettings{
+			identity = &rpv1.IdentitySettings{
 				Kind:       toIdentityKind(v.Identity.Kind),
 				Resource:   to.String(v.Identity.Resource),
 				OIDCIssuer: to.String(v.Identity.OidcIssuer),
 			}
 		}
 
-		return &rp.EnvironmentCompute{
+		return &rpv1.EnvironmentCompute{
 			Kind: k,
-			KubernetesCompute: rp.KubernetesComputeProperties{
+			KubernetesCompute: rpv1.KubernetesComputeProperties{
 				ResourceID: to.String(v.ResourceID),
 				Namespace:  to.String(v.Namespace),
 			},
@@ -172,13 +180,13 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rp.Envi
 	}
 }
 
-func fromEnvironmentComputeDataModel(envCompute *rp.EnvironmentCompute) EnvironmentComputeClassification {
+func fromEnvironmentComputeDataModel(envCompute *rpv1.EnvironmentCompute) EnvironmentComputeClassification {
 	if envCompute == nil {
 		return nil
 	}
 
 	switch envCompute.Kind {
-	case rp.KubernetesComputeKind:
+	case rpv1.KubernetesComputeKind:
 		var identity *IdentitySettings
 		if envCompute.Identity != nil {
 			identity = &IdentitySettings{
@@ -189,11 +197,11 @@ func fromEnvironmentComputeDataModel(envCompute *rp.EnvironmentCompute) Environm
 		}
 		compute := &KubernetesCompute{
 			Kind:      fromEnvironmentComputeKind(envCompute.Kind),
-			Namespace: to.StringPtr(envCompute.KubernetesCompute.Namespace),
+			Namespace: to.Ptr(envCompute.KubernetesCompute.Namespace),
 			Identity:  identity,
 		}
 		if envCompute.KubernetesCompute.ResourceID != "" {
-			compute.ResourceID = to.StringPtr(envCompute.KubernetesCompute.ResourceID)
+			compute.ResourceID = to.Ptr(envCompute.KubernetesCompute.ResourceID)
 		}
 		return compute
 	default:
@@ -201,19 +209,19 @@ func fromEnvironmentComputeDataModel(envCompute *rp.EnvironmentCompute) Environm
 	}
 }
 
-func toEnvironmentComputeKindDataModel(kind string) (rp.EnvironmentComputeKind, error) {
+func toEnvironmentComputeKindDataModel(kind string) (rpv1.EnvironmentComputeKind, error) {
 	switch kind {
 	case EnvironmentComputeKindKubernetes:
-		return rp.KubernetesComputeKind, nil
+		return rpv1.KubernetesComputeKind, nil
 	default:
-		return rp.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
+		return rpv1.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
 	}
 }
 
-func fromEnvironmentComputeKind(kind rp.EnvironmentComputeKind) *string {
+func fromEnvironmentComputeKind(kind rpv1.EnvironmentComputeKind) *string {
 	var k string
 	switch kind {
-	case rp.KubernetesComputeKind:
+	case rpv1.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
 	default:
 		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatepreview supports only kubernetes.
@@ -228,7 +236,7 @@ func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentE
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
 		return &EnvironmentKubernetesMetadataExtension{
-			Kind:        to.StringPtr(string(e.Kind)),
+			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}

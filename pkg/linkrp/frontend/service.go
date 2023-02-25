@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 )
@@ -41,19 +42,18 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient)
+	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient, s.Options.UCPConnection)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
 	opts := ctrl.Options{
 		DataProvider:  s.StorageProvider,
-		SecretClient:  s.SecretClient,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
 	}
 
-	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
+	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, sv.NewSecretValueClient(s.Options.Arm), s.KubeClient)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err = s.Start(ctx, server.Options{
@@ -64,6 +64,7 @@ func (s *Service) Run(ctx context.Context) error {
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
+		EnableMetrics: s.Options.Config.MetricsProvider.Prometheus.Enabled,
 		Configure: func(router *mux.Router) error {
 			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts, deploymentProcessor)
 			if err != nil {

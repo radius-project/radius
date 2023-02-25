@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
@@ -23,7 +24,12 @@ var rootCmd = &cobra.Command{
 	Short: "UCP server",
 	Long:  `Server process for the Univeral Control Plane (UCP).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger, flush, err := ucplog.NewLogger("ucp")
+		options, err := server.NewServerOptionsFromEnvironment()
+		if err != nil {
+			return err
+		}
+
+		logger, flush, err := ucplog.NewLogger(ucplog.UCPLoggerName, &options.LoggingOptions)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -32,10 +38,16 @@ var rootCmd = &cobra.Command{
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
 
-		options, err := server.NewServerOptionsFromEnvironment()
+		tracerOpts := options.TracerProviderOptions
+		shutdown, err := trace.InitTracer(tracerOpts)
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
+		defer func() {
+			if err := shutdown(ctx); err != nil {
+				log.Fatal("failed to shutdown TracerProvider: %w", err)
+			}
+		}()
 
 		host, err := server.NewServer(options)
 		if err != nil {

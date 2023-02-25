@@ -7,8 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // ContainerResource represents Container resource.
@@ -28,19 +27,20 @@ func (c ContainerResource) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (c *ContainerResource) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (c *ContainerResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 	c.ComputedValues = do.ComputedValues
 	c.SecretValues = do.SecretValues
+	return nil
 }
 
 // OutputResources returns the output resources array.
-func (c *ContainerResource) OutputResources() []outputresource.OutputResource {
+func (c *ContainerResource) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *ContainerResource) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *ContainerResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
@@ -54,11 +54,11 @@ func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
-	Identity    *rp.IdentitySettings            `json:"identity,omitempty"`
+	Identity    *rpv1.IdentitySettings          `json:"identity,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

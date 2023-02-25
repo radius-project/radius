@@ -8,11 +8,15 @@ storageProvider:
     inmemory: true
 queueProvider:
   provider: inmemory
+secretProvider:
+  provider: etcd
+  etcd:
+    inmemory: true
 metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
 featureFlags:
   - "PLACEHOLDER"
 server:

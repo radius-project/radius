@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -18,10 +19,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 )
 
 type Renderer struct {
@@ -50,7 +49,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 
 // Render creates the kubernetes output resource for the gateway and its dependency - httproute
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	outputResources := []outputresource.OutputResource{}
+	outputResources := []rpv1.OutputResource{}
 	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
@@ -79,7 +78,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	outputResources = append(outputResources, gatewayObject)
 
-	computedValues := map[string]rp.ComputedValueReference{
+	computedValues := map[string]rpv1.ComputedValueReference{
 		"url": {
 			Value: publicEndpoint,
 		},
@@ -98,34 +97,34 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 }
 
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
-func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
+func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
 	includes := []contourv1.Include{}
 	sslPassthrough := false
 
 	if len(gateway.Properties.Routes) < 1 {
-		return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
+		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
 	if gateway.Properties.TLS != nil {
 		if !gateway.Properties.TLS.SSLPassthrough {
-			return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("only sslPassthrough is supported for TLS currently")
+			return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("only sslPassthrough is supported for TLS currently")
 		} else {
 			sslPassthrough = true
 		}
 	}
 
 	if sslPassthrough && len(gateway.Properties.Routes) > 1 {
-		return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
+		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
 	}
 
 	var route datamodel.GatewayRoute //route will hold the one sslPassthrough route, if sslPassthrough is true
 	for _, route = range gateway.Properties.Routes {
 		if sslPassthrough && (route.Path != "" || route.ReplacePrefix != "") {
-			return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
+			return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
 		}
 		routeName, err := getRouteName(&route)
 		if err != nil {
-			return outputresource.OutputResource{}, err
+			return rpv1.OutputResource{}, err
 		}
 
 		routeResourceName := kubernetes.NormalizeResourceName(routeName)
@@ -169,7 +168,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 
 		routeName, err := getRouteName(&route)
 		if err != nil {
-			return outputresource.OutputResource{}, err
+			return rpv1.OutputResource{}, err
 		}
 
 		tcpProxy = &contourv1.TCPProxy{
@@ -202,11 +201,11 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
 
-	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
 // MakeHttpRoutes creates the kubernetes httproute construct from the corerp gateway datamodel
-func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]outputresource.OutputResource, error) {
+func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]rpv1.OutputResource, error) {
 	dependencies := options.Dependencies
 	objects := make(map[string]*contourv1.HTTPProxy)
 
@@ -220,11 +219,11 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 
 		routeName, err := getRouteName(&route)
 		if err != nil {
-			return []outputresource.OutputResource{}, err
+			return []rpv1.OutputResource{}, err
 		}
 
 		// Create unique localID for dependency graph
-		localID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, routeName)
+		localID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpRoute, routeName)
 		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 
 		var pathRewritePolicy *contourv1.PathRewritePolicy
@@ -289,9 +288,9 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 		objects[localID] = httpProxyObject
 	}
 
-	var outputResources []outputresource.OutputResource
+	var outputResources []rpv1.OutputResource
 	for localID, object := range objects {
-		outputResources = append(outputResources, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
+		outputResources = append(outputResources, rpv1.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
 	}
 
 	return outputResources, nil

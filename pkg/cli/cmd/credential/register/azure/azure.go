@@ -9,15 +9,19 @@ import (
 	"context"
 	"fmt"
 
+
+	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +47,7 @@ calling 'rad provider create azure'.
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication
-rad credential register azure --client-id <client id/app id> --client-secret <client secret/password> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>		
+rad credential register azure --client-id <client id/app id> --client-secret <client secret/password> --tenant-id <tenant id>
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -61,12 +65,6 @@ rad credential register azure --client-id <client id/app id> --client-secret <cl
 	cmd.Flags().String("tenant-id", "", "The tenant id of an Azure service principal.")
 	_ = cmd.MarkFlagRequired("tenant-id")
 
-	cmd.Flags().String("subscription", "", "The subscription id of the target Azure subscription. The subscription id will be stored in local configuration and used by 'rad deploy'.")
-	_ = cmd.MarkFlagRequired("subscription")
-
-	cmd.Flags().String("resource-group", "", "The resource group name of an existing Azure resource group. The resource group will be stored in local configuration and used by 'rad deploy'.")
-	_ = cmd.MarkFlagRequired("resource-group")
-
 	return cmd, runner
 }
 
@@ -78,15 +76,13 @@ type Runner struct {
 	Format            string
 	Workspace         *workspaces.Workspace
 
-	ClientID       string
-	ClientSecret   string
-	TenantID       string
-	SubscriptionID string
-	ResourceGroup  string
-	KubeContext    string
+	ClientID     string
+	ClientSecret string
+	TenantID     string
+	KubeContext  string
 }
 
-// NewRunner creates a new instance of the `rad provider create azure` runner.
+// NewRunner creates a new instance of the `rad credential register azure` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -95,7 +91,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad provider create azure` command.
+// Validate runs validation for the `rad credential register azure` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -126,25 +122,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subscriptionID, err := cmd.Flags().GetString("subscription")
-	if err != nil {
-		return err
-	}
-	resourceGroup, err := cmd.Flags().GetString("resource-group")
-	if err != nil {
-		return err
-	}
 
 	r.ClientID = clientID
 	r.ClientSecret = clientSecret
 	r.TenantID = tenantID
-	r.SubscriptionID = subscriptionID
-	r.ResourceGroup = resourceGroup
-
-	valid, message, _ := prompt.UUIDv4Validator(r.SubscriptionID)
-	if !valid {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Subscription id %q is invalid: %s", r.SubscriptionID, message)}
-	}
 
 	kubeContext, ok := r.Workspace.KubernetesContext()
 	if !ok {
@@ -155,41 +136,35 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad provider create azure` command.
+// Run runs the `rad credential register azure` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// There are two steps to perform here:
 	// 1) Update server-side to add/change credentials
 	// 2) Update local config (all matching workspaces) to remove the scope
 
 	r.Output.LogInfo("Configuring credential for cloud provider %q for Radius installation %q...", "azure", r.Workspace.FmtConnection())
-	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
+	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	provider := clients.AzureCloudProviderResource{
-		CloudProviderResource: clients.CloudProviderResource{
-			Name:    "azure",
-			Enabled: true,
-		},
-		Credentials: &clients.ServicePrincipalCredentials{
-			ClientID:     r.ClientID,
-			ClientSecret: r.ClientSecret,
-			TenantID:     r.TenantID,
+	credential := ucp.CredentialResource{
+		Name:     to.Ptr("default"),
+		Location: to.Ptr(v1.LocationGlobal),
+		Type:     to.Ptr(cli_credential.AzureCredential),
+		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
+		Properties: &ucp.AzureServicePrincipalProperties{
+			Storage: &ucp.CredentialStorageProperties{
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+			},
+			TenantID:     &r.TenantID,
+			ClientID:     &r.ClientID,
+			ClientSecret: &r.ClientSecret,
 		},
 	}
 
 	// 1) Update server-side to add/change credentials
-	err = client.Put(ctx, provider)
-	if err != nil {
-		return err
-	}
-
-	// 2) Update local config (all matching workspaces) to remove the scope
-	err = cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
-		cli.UpdateAzProvider(section, workspaces.AzureProvider{SubscriptionID: r.SubscriptionID, ResourceGroup: r.ResourceGroup}, r.KubeContext)
-		return nil
-	})
+	err = client.Put(ctx, credential)
 	if err != nil {
 		return err
 	}

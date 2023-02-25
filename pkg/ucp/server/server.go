@@ -7,13 +7,18 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/project-radius/radius/pkg/sdk"
 	metricsprovider "github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricsservicehostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
+	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
@@ -21,7 +26,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
 	etcdclient "go.etcd.io/etcd/client/v3"
+	kube_rest "k8s.io/client-go/rest"
 )
 
 const (
@@ -31,11 +39,15 @@ const (
 type Options struct {
 	Port                   string
 	StorageProviderOptions dataprovider.StorageProviderOptions
+	LoggingOptions         ucplog.LoggingOptions
 	SecretProviderOptions  provider.SecretProviderOptions
 	MetricsProviderOptions metricsprovider.MetricsProviderOptions
+	TracerProviderOptions  trace.Options
 	TLSCertDir             string
 	BasePath               string
 	InitialPlanes          []rest.Plane
+	Identity               hostoptions.Identity
+	UCPConnection          sdk.Connection
 }
 
 func NewServerOptionsFromEnvironment() (Options, error) {
@@ -61,6 +73,26 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	planes := opts.Config.Planes
 	secretOpts := opts.Config.SecretProvider
 	metricsOpts := opts.Config.MetricsProvider
+	traceOpts := opts.Config.TracerProvider
+	loggingOpts := opts.Config.Logging
+	identity := opts.Config.Identity
+	// Set the default authentication method if AuthMethod is not set.
+	if identity.AuthMethod == "" {
+		identity.AuthMethod = hostoptions.AuthDefault
+	}
+
+	var cfg *kube_rest.Config
+	if opts.Config.UCP.Kind == config.UCPConnectionKindKubernetes {
+		cfg, err = kube.GetConfig()
+		if err != nil {
+			return Options{}, fmt.Errorf("failed to get kubernetes config: %w", err)
+		}
+	}
+
+	ucpConn, err := config.NewConnectionFromUCPConfig(&opts.Config.UCP, cfg)
+	if err != nil {
+		return Options{}, err
+	}
 
 	return Options{
 		Port:                   port,
@@ -69,7 +101,11 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		StorageProviderOptions: storeOpts,
 		SecretProviderOptions:  secretOpts,
 		MetricsProviderOptions: metricsOpts,
+		TracerProviderOptions:  traceOpts,
+		LoggingOptions:         loggingOpts,
 		InitialPlanes:          planes,
+		Identity:               identity,
+		UCPConnection:          ucpConn,
 	}, nil
 }
 
@@ -84,6 +120,9 @@ func NewServer(options Options) (*hosting.Host, error) {
 			StorageProviderOptions: options.StorageProviderOptions,
 			SecretProviderOptions:  options.SecretProviderOptions,
 			InitialPlanes:          options.InitialPlanes,
+			Identity:               options.Identity,
+			UCPConnection:          options.UCPConnection,
+			EnableMetrics:          options.MetricsProviderOptions.Prometheus.Enabled,
 		}),
 	}
 

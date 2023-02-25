@@ -13,16 +13,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/stretchr/testify/require"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {
@@ -37,8 +38,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -65,8 +66,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
 			renderers.ConnectionStringValue: "connection://string",
 		}
@@ -105,8 +106,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource empty secrets", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{}
 
 		mStorageClient.
@@ -142,8 +143,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 		w := httptest.NewRecorder()
 
 		mStorageClient.

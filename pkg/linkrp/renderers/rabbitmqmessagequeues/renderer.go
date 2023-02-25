@@ -12,7 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/rp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -54,7 +54,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 	// TODO(#1767): We need to store these in a secret store.
 	return renderers.RendererOutput{
 		ComputedValues: values,
-		SecretValues: map[string]rp.SecretValueReference{
+		SecretValues: map[string]rpv1.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				Value: properties.Secrets.ConnectionString,
 			},

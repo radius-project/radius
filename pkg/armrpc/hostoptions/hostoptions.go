@@ -10,15 +10,19 @@ package hostoptions
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/rp/k8sauth"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/ucp/config"
+	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
+	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
@@ -42,13 +46,29 @@ type HostOptions struct {
 	UCPConnection sdk.Connection
 }
 
-func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
-	conf, err := loadConfig(configPath)
-	if err != nil {
-		return HostOptions{}, err
+func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConfig, error) {
+	skipARM, ok := os.LookupEnv("SKIP_ARM")
+	if ok && strings.EqualFold(skipARM, "true") {
+		return nil, nil
 	}
 
-	arm, err := getArm()
+	provider, err := sdk_cred.NewAzureCredentialProvider(sprovider.NewSecretProvider(cfg.SecretProvider), ucpconn, &aztoken.AnonymousCredential{})
+	if err != nil {
+		return nil, err
+	}
+
+	arm, err := armauth.NewArmConfig(&armauth.Options{
+		CredentialProvider: provider,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to build ARM config: %w", err)
+	}
+
+	return arm, nil
+}
+
+func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
+	conf, err := loadConfig(configPath)
 	if err != nil {
 		return HostOptions{}, err
 	}
@@ -58,16 +78,21 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	ucp, err := getUCPConnection(conf, k8s)
+	ucp_conn, err := config.NewConnectionFromUCPConfig(&conf.UCP, k8s)
+	if err != nil {
+		return HostOptions{}, err
+	}
+
+	arm, err := getArmConfig(conf, ucp_conn)
 	if err != nil {
 		return HostOptions{}, err
 	}
 
 	return HostOptions{
 		Config:        conf,
-		Arm:           arm,
 		K8sConfig:     k8s,
-		UCPConnection: ucp,
+		Arm:           arm,
+		UCPConnection: ucp_conn,
 	}, nil
 }
 
@@ -110,26 +135,8 @@ func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
 }
 
-func getArm() (*armauth.ArmConfig, error) {
-	skipARM, ok := os.LookupEnv("SKIP_ARM")
-	if ok && strings.EqualFold(skipARM, "true") {
-		return nil, nil
-	}
-
-	arm, err := armauth.GetArmConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build ARM config: %w", err)
-	}
-
-	if arm != nil {
-		fmt.Println("Initializing RP with the provided ARM credentials")
-	}
-
-	return arm, nil
-}
-
 func getKubernetes() (*rest.Config, error) {
-	cfg, err := k8sauth.GetConfig()
+	cfg, err := kube.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
 	}
@@ -148,16 +155,4 @@ func getKubernetes() (*rest.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func getUCPConnection(config *ProviderConfig, k8sConfig *rest.Config) (sdk.Connection, error) {
-	if config.UCP.Kind == UCPConnectionKindDirect {
-		if config.UCP.Direct == nil || config.UCP.Direct.Endpoint == "" {
-			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
-		}
-
-		return sdk.NewDirectConnection(config.UCP.Direct.Endpoint)
-	}
-
-	return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 }

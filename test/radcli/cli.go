@@ -181,6 +181,23 @@ func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
+	args := []string{
+		"env",
+		"show",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) EnvSwitch(ctx context.Context, environmentName string) (string, error) {
+	args := []string{
+		"env",
+		"switch",
+		environmentName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) EnvList(ctx context.Context) (string, error) {
 	args := []string{
 		"env",
@@ -268,6 +285,15 @@ func (cli *CLI) RecipeUnregister(ctx context.Context, recipeName string) (string
 	args := []string{
 		"recipe",
 		"unregister",
+		"--name", recipeName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) RecipeShow(ctx context.Context, recipeName string) (string, error) {
+	args := []string{
+		"recipe",
+		"show",
 		"--name", recipeName,
 	}
 	return cli.RunCommand(ctx, args)

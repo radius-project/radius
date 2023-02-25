@@ -7,23 +7,27 @@ param sub string = subscription().subscriptionId
 param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-recipes-parameters-env'
+  name: 'corerp-resources-environment-recipe-parameters-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-recipes-parameters-env'
+      namespace: 'corerp-resources-environment-recipe-parameters-env'
     }
     providers: {
       azure: {
-        scope: '/subcriptions/${sub}/resourceGroup/${rg}'
+        scope: '/subscriptions/${sub}/resourceGroups/${rg}'
       }
     }
     recipes: {
       mongodb: {
           linkType: 'Applications.Link/mongoDatabases' 
-          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0' 
+          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0'
+          parameters: {
+            documentdbName: 'acnt-operator-${rg}'
+            mongodbName: 'mdb-operator-${rg}'
+          }
       }
     }
   }
@@ -44,7 +48,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mdb-app-ctnr'
+  name: 'mdb-param-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -68,7 +72,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongo-recipe-param-db'
+  name: 'mdb-recipe-param-db'
   location: 'global'
   properties: {
     application: app.id
@@ -78,7 +82,6 @@ resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' =
       name: 'mongodb'
       parameters: {
         documentdbName: 'acnt-developer-${rg}'
-        mongodbName: 'mdb-developer-${rg}'
       }
     }
   }

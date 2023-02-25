@@ -11,10 +11,10 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 )
 
-var _ rp.SecretValueTransformer = (*AzureTransformer)(nil)
+var _ sv.SecretValueTransformer = (*AzureTransformer)(nil)
 
 type AzureTransformer struct {
 }

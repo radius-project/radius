@@ -17,16 +17,11 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	StorageAccountNameKey = "storageaccount"
-	ResourceIDKey         = "resourceid"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
@@ -45,15 +40,15 @@ type daprStateStoreAzureStorageHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
 	}
 
-	id, ok := properties[ResourceIDKey]
-	if !ok {
-		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required property %s for the resource", ResourceIDKey)
+	id, _, err := resource.Identity.RequireARM()
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	parsedID, err := resources.ParseResource(id)
@@ -61,20 +56,22 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
 
+	storageAccountNameKey := parsedID.TypeSegments()[0].Name
+
 	client, err := clientv2.NewAccountsClient(parsedID.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOptions)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to create Storage Account client: %w", err)
 	}
 
-	account, err := client.GetProperties(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[StorageAccountNameKey], nil)
+	account, err := client.GetProperties(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), storageAccountNameKey, nil)
 	if err != nil {
 		if clientv2.Is404Error(err) {
-			return resourcemodel.ResourceIdentity{}, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", properties[StorageAccountNameKey]))
+			return resourcemodel.ResourceIdentity{}, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", storageAccountNameKey))
 		}
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
 
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clientv2.AccountsClientAPIVersion)
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clientv2.StateStoreClientAPIVersion)
 
 	key, err := handler.findStorageKey(ctx, *account.ID)
 	if err != nil {
@@ -94,10 +91,8 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]any)
-
-	err := handler.deleteDaprStateStore(ctx, properties)
+func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
+	err := handler.deleteDaprStateStore(ctx, resource)
 	if err != nil {
 		return err
 	}
@@ -185,7 +180,8 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 	return nil, fmt.Errorf("listkeys contained keys, but none of them have full access")
 }
 
-func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]any) error {
+func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, resource *rpv1.OutputResource) error {
+	properties := resource.Resource.(map[string]any)
 	item := unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": properties[KubernetesAPIVersionKey],
@@ -197,7 +193,13 @@ func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx conte
 		},
 	}
 
-	err := client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
+	armHandler := NewARMHandler(handler.arm)
+	err := armHandler.Delete(ctx, resource)
+	if err != nil {
+		return fmt.Errorf("failed to delete Azure table storage account: %w", err)
+	}
+
+	err = client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 	if err != nil {
 		return fmt.Errorf("failed to delete Dapr state store: %w", err)
 	}

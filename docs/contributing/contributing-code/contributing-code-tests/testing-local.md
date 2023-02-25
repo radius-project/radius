@@ -2,7 +2,7 @@
 
 This is to help local development setup for quickly iterating on changes in the app core RP. 
 
-Note, this only applies when we want to update the app core image, if we need to update the deployment/environment, a rerun of `rad env init` may need to happen.
+Note, this only applies when we want to update the app core image, if we need to update the deployment/environment, a rerun of `rad init` may need to happen.
 
 1. Create a new Azure Container Registry. [link to Azure Docs](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-portal?tabs=azure-cli)
 

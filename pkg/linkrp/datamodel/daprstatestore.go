@@ -8,8 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // DaprStateStore represents DaprStateStore link resource.
@@ -35,17 +34,18 @@ func (r *DaprStateStore) Transform(outputResources []outputresource.OutputResour
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *DaprStateStore) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
-func (r *DaprStateStore) OutputResources() []outputresource.OutputResource {
+func (r *DaprStateStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *DaprStateStore) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -70,12 +70,12 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.
 type DaprStateStoreProperties struct {
-	rp.BasicResourceProperties
-	rp.BasicDaprResourceProperties
-	Mode     LinkMode       `json:"mode,omitempty"`
-	Metadata map[string]any `json:"metadata,omitempty"`
-	Recipe   LinkRecipe     `json:"recipe,omitempty"`
-	Resource string         `json:"resource,omitempty"`
-	Type     string         `json:"type,omitempty"`
-	Version  string         `json:"version,omitempty"`
+	rpv1.BasicResourceProperties
+	rpv1.BasicDaprResourceProperties
+	Mode     LinkMode          `json:"mode,omitempty"`
+	Metadata map[string]any    `json:"metadata,omitempty"`
+	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Resource string            `json:"resource,omitempty"`
+	Type     string            `json:"type,omitempty"`
+	Version  string            `json:"version,omitempty"`
 }

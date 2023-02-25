@@ -8,10 +8,8 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
-
-	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest/to"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
@@ -31,7 +29,7 @@ func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.VolumeResourceProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: to.String(src.Properties.GetVolumeProperties().Application),
 			},
 			Kind: to.String(src.Properties.GetVolumeProperties().Kind),
@@ -74,11 +72,11 @@ func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = azto.Ptr(resource.ID)
-	dst.Name = azto.Ptr(resource.Name)
-	dst.Type = azto.Ptr(resource.Type)
+	dst.ID = to.Ptr(resource.ID)
+	dst.Name = to.Ptr(resource.Name)
+	dst.Type = to.Ptr(resource.Type)
 	dst.SystemData = fromSystemDataModel(resource.SystemData)
-	dst.Location = azto.Ptr(resource.Location)
+	dst.Location = to.Ptr(resource.Location)
 	dst.Tags = *to.StringMapPtr(resource.Tags)
 
 	switch resource.Properties.Kind {
@@ -86,11 +84,11 @@ func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 		azProp := resource.Properties.AzureKeyVault
 		p := &AzureKeyVaultVolumeProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(resource.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(resource.Properties.Status.OutputResources),
 			},
-			Kind:              azto.Ptr(resource.Properties.Kind),
-			Application:       azto.Ptr(resource.Properties.Application),
-			Resource:          azto.Ptr(azProp.Resource),
+			Kind:              to.Ptr(resource.Properties.Kind),
+			Application:       to.Ptr(resource.Properties.Application),
+			Resource:          to.Ptr(azProp.Resource),
 			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),
 		}
 		if azProp.Certificates != nil {
@@ -126,7 +124,7 @@ func toStringPtr(v string) *string {
 
 func fromKeyDataModel(dm *datamodel.KeyObjectProperties) *KeyObjectProperties {
 	return &KeyObjectProperties{
-		Name:    azto.Ptr(dm.Name),
+		Name:    to.Ptr(dm.Name),
 		Alias:   toStringPtr(dm.Alias),
 		Version: toStringPtr(dm.Version),
 	}
@@ -142,7 +140,7 @@ func toKeyDataModel(k *KeyObjectProperties) *datamodel.KeyObjectProperties {
 
 func fromSecretDataModel(dm *datamodel.SecretObjectProperties) *SecretObjectProperties {
 	return &SecretObjectProperties{
-		Name:     azto.Ptr(dm.Name),
+		Name:     to.Ptr(dm.Name),
 		Alias:    toStringPtr(dm.Alias),
 		Version:  toStringPtr(dm.Version),
 		Encoding: fromEncoding(dm.Encoding),
@@ -209,22 +207,22 @@ func toCertDataModel(c *CertificateObjectProperties) *datamodel.CertificateObjec
 	if c.Format != nil {
 		switch *c.Format {
 		case FormatPem:
-			prop.Format = azto.Ptr(datamodel.CertificateFormatPEM)
+			prop.Format = to.Ptr(datamodel.CertificateFormatPEM)
 		case FormatPfx:
-			prop.Format = azto.Ptr(datamodel.CertificateFormatPFX)
+			prop.Format = to.Ptr(datamodel.CertificateFormatPFX)
 		default:
-			prop.Format = azto.Ptr(datamodel.CertificateFormatPEM)
+			prop.Format = to.Ptr(datamodel.CertificateFormatPEM)
 		}
 	}
 
 	if c.CertType != nil {
 		switch *c.CertType {
 		case CertTypeCertificate:
-			prop.CertType = azto.Ptr(datamodel.CertificateTypeCertificate)
+			prop.CertType = to.Ptr(datamodel.CertificateTypeCertificate)
 		case CertTypePrivatekey:
-			prop.CertType = azto.Ptr(datamodel.CertificateTypePrivateKey)
+			prop.CertType = to.Ptr(datamodel.CertificateTypePrivateKey)
 		case CertTypePublickey:
-			prop.CertType = azto.Ptr(datamodel.CertificateTypePublicKey)
+			prop.CertType = to.Ptr(datamodel.CertificateTypePublicKey)
 		}
 	}
 
@@ -233,7 +231,7 @@ func toCertDataModel(c *CertificateObjectProperties) *datamodel.CertificateObjec
 
 func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateObjectProperties {
 	prop := &CertificateObjectProperties{
-		Name:     azto.Ptr(dm.Name),
+		Name:     to.Ptr(dm.Name),
 		Alias:    toStringPtr(dm.Alias),
 		Version:  toStringPtr(dm.Version),
 		Encoding: fromEncoding(dm.Encoding),
@@ -242,22 +240,22 @@ func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateOb
 	if dm.Format != nil {
 		switch *dm.Format {
 		case datamodel.CertificateFormatPEM:
-			prop.Format = azto.Ptr(FormatPem)
+			prop.Format = to.Ptr(FormatPem)
 		case datamodel.CertificateFormatPFX:
-			prop.Format = azto.Ptr(FormatPfx)
+			prop.Format = to.Ptr(FormatPfx)
 		default:
-			prop.Format = azto.Ptr(FormatPem)
+			prop.Format = to.Ptr(FormatPem)
 		}
 	}
 
 	if dm.CertType != nil {
 		switch *dm.CertType {
 		case datamodel.CertificateTypeCertificate:
-			prop.CertType = azto.Ptr(CertTypeCertificate)
+			prop.CertType = to.Ptr(CertTypeCertificate)
 		case datamodel.CertificateTypePrivateKey:
-			prop.CertType = azto.Ptr(CertTypePrivatekey)
+			prop.CertType = to.Ptr(CertTypePrivatekey)
 		case datamodel.CertificateTypePublicKey:
-			prop.CertType = azto.Ptr(CertTypePublickey)
+			prop.CertType = to.Ptr(CertTypePublickey)
 		}
 	}
 

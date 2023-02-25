@@ -18,11 +18,10 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-type SecretStoreFunc = func(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
+type SecretStoreFunc = func(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]rpv1.OutputResource, error)
 
 var SupportedSecretStoreModes = map[string]SecretStoreFunc{
 	string(datamodel.LinkModeValues): GetDaprSecretStoreGeneric,
@@ -65,7 +64,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 				Value: kubernetes.NormalizeResourceName(resource.Name),
 			},
 		},
-		SecretValues: map[string]rp.SecretValueReference{},
+		SecretValues: map[string]rpv1.SecretValueReference{},
 	}, nil
 
 }
@@ -83,7 +82,7 @@ func getAlphabeticallySortedKeys(store map[string]SecretStoreFunc) []string {
 	return keys
 }
 
-func GetDaprSecretStoreGeneric(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
+func GetDaprSecretStoreGeneric(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]rpv1.OutputResource, error) {
 	properties := resource.Properties
 	daprGeneric := dapr.DaprGeneric{
 		Type:     &properties.Type,
@@ -94,7 +93,7 @@ func GetDaprSecretStoreGeneric(resource datamodel.DaprSecretStore, applicationNa
 	return GetDaprGeneric(daprGeneric, resource, applicationName, namespace)
 }
 
-func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
+func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]rpv1.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
@@ -105,8 +104,8 @@ func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretS
 		return nil, err
 	}
 
-	output := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDDaprComponent,
+	output := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDDaprComponent,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprComponent,
 			Provider: resourcemodel.ProviderKubernetes,
@@ -114,5 +113,5 @@ func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretS
 		Resource: &daprGenericResource,
 	}
 
-	return []outputresource.OutputResource{output}, nil
+	return []rpv1.OutputResource{output}, nil
 }

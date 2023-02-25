@@ -7,16 +7,22 @@ package azure
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/to"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -35,8 +41,6 @@ func Test_Validate(t *testing.T) {
 				"--client-id", "abcd",
 				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-				"--resource-group", "cool-group",
 			},
 			ExpectedValid: true,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
@@ -47,8 +51,6 @@ func Test_Validate(t *testing.T) {
 				"--client-id", "abcd",
 				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
@@ -60,8 +62,6 @@ func Test_Validate(t *testing.T) {
 				"--client-id", "abcd",
 				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
@@ -71,8 +71,6 @@ func Test_Validate(t *testing.T) {
 			Input: []string{
 				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
@@ -82,8 +80,6 @@ func Test_Validate(t *testing.T) {
 			Input: []string{
 				"--client-id", "abcd",
 				"--tenant-id", "ijkl",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
@@ -93,8 +89,6 @@ func Test_Validate(t *testing.T) {
 			Input: []string{
 				"--client-id", "abcd",
 				"--client-secret", "efgh",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
@@ -104,32 +98,6 @@ func Test_Validate(t *testing.T) {
 			Input: []string{
 				"--client-id", "abcd",
 				"--client-secret", "efgh",
-				"--tenant-id", "ijkl",
-				"--resource-group", "cool-group",
-			},
-			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
-		},
-		{
-			Name: "Azure command without resource group",
-			Input: []string{
-				"letsgoooooo",
-				"--client-id", "abcd",
-				"--client-secret", "efgh",
-				"--tenant-id", "ijkl",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-			},
-			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
-		},
-		{
-			Name: "Azure command with invalid subscription id",
-			Input: []string{
-				"--client-id", "abcd",
-				"--client-secret", "efgh",
-				"--tenant-id", "ijkl",
-				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5invalid",
-				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
@@ -165,14 +133,6 @@ func Test_Run(t *testing.T) {
 								"context": "my-context",
 							},
 							Source: workspaces.SourceUserConfig,
-
-							// Will be over-written
-							ProviderConfig: workspaces.ProviderConfig{
-								Azure: &workspaces.AzureProvider{
-									SubscriptionID: "FE3955194-FC78-40A8-8143-C5D8DCDC45C5",
-									ResourceGroup:  "another-cool-group",
-								},
-							},
 						},
 						"c": {
 							Connection: map[string]any{
@@ -180,14 +140,6 @@ func Test_Run(t *testing.T) {
 								"context": "my-other-context",
 							},
 							Source: workspaces.SourceUserConfig,
-
-							// Will be left-alone
-							ProviderConfig: workspaces.ProviderConfig{
-								Azure: &workspaces.AzureProvider{
-									SubscriptionID: "FE3955194-FC78-40A8-8143-C5D8DCDC45C5",
-									ResourceGroup:  "another-cool-group",
-								},
-							},
 						},
 					},
 				},
@@ -197,19 +149,22 @@ func Test_Run(t *testing.T) {
 			config := radcli.LoadConfig(t, string(yamlData))
 			config.SetConfigFile(configPath)
 
-			expectedPut := clients.AzureCloudProviderResource{
-				CloudProviderResource: clients.CloudProviderResource{
-					Name:    "azure",
-					Enabled: true,
-				},
-				Credentials: &clients.ServicePrincipalCredentials{
-					ClientID:     "cool-client-id",
-					ClientSecret: "cool-client-secret",
-					TenantID:     "cool-tenant-id",
+			expectedPut := ucp.CredentialResource{
+				Name:     to.Ptr("default"),
+				Location: to.Ptr(v1.LocationGlobal),
+				Type:     to.Ptr(cli_credential.AzureCredential),
+				ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
+				Properties: &ucp.AzureServicePrincipalProperties{
+					Storage: &ucp.CredentialStorageProperties{
+						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+					},
+					ClientID:     to.Ptr("cool-client-id"),
+					ClientSecret: to.Ptr("cool-client-secret"),
+					TenantID:     to.Ptr("cool-tenant-id"),
 				},
 			}
 
-			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Put(gomock.Any(), expectedPut).
 				Return(nil).
@@ -222,7 +177,7 @@ func Test_Run(t *testing.T) {
 					Config:         config,
 					ConfigFilePath: configPath,
 				},
-				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
 				Output:            outputSink,
 				Workspace: &workspaces.Workspace{
 					Connection: map[string]any{
@@ -233,12 +188,10 @@ func Test_Run(t *testing.T) {
 				},
 				Format: "table",
 
-				ClientID:       "cool-client-id",
-				ClientSecret:   "cool-client-secret",
-				TenantID:       "cool-tenant-id",
-				SubscriptionID: "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-				ResourceGroup:  "cool-resource-group",
-				KubeContext:    "my-context",
+				ClientID:     "cool-client-id",
+				ClientSecret: "cool-client-secret",
+				TenantID:     "cool-tenant-id",
+				KubeContext:  "my-context",
 			}
 
 			err = runner.Run(context.Background())
@@ -262,12 +215,6 @@ func Test_Run(t *testing.T) {
 							"context": "my-context",
 						},
 						Source: workspaces.SourceUserConfig,
-						ProviderConfig: workspaces.ProviderConfig{
-							Azure: &workspaces.AzureProvider{
-								SubscriptionID: "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-								ResourceGroup:  "cool-resource-group",
-							},
-						},
 					},
 					"b": {
 						Name: "b",
@@ -276,12 +223,6 @@ func Test_Run(t *testing.T) {
 							"context": "my-context",
 						},
 						Source: workspaces.SourceUserConfig,
-						ProviderConfig: workspaces.ProviderConfig{
-							Azure: &workspaces.AzureProvider{
-								SubscriptionID: "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
-								ResourceGroup:  "cool-resource-group",
-							},
-						},
 					},
 					"c": {
 						Name: "c",
@@ -290,12 +231,6 @@ func Test_Run(t *testing.T) {
 							"context": "my-other-context",
 						},
 						Source: workspaces.SourceUserConfig,
-						ProviderConfig: workspaces.ProviderConfig{
-							Azure: &workspaces.AzureProvider{
-								SubscriptionID: "FE3955194-FC78-40A8-8143-C5D8DCDC45C5",
-								ResourceGroup:  "another-cool-group",
-							},
-						},
 					},
 				},
 			}

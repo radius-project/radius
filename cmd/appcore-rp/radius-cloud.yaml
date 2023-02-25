@@ -19,6 +19,10 @@ storageProvider:
     masterKey: set-me-in-a-different-way
 queueProvider:
   provider: inmemory
+secretProvider:
+  provider: etcd
+  etcd:
+    inmemory: true
 server:
   host: "0.0.0.0"
   port: 8080
@@ -32,8 +36,12 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
 featureFlags:
   - "PLACEHOLDER"
 ucp:
   kind: kubernetes
+ # Logging configuration   
+logging:
+  level: "info"
+  json: true

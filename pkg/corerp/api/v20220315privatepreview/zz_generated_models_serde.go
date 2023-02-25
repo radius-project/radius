@@ -1899,6 +1899,7 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type Providers.
 func (p Providers) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "aws", p.Aws)
 	populate(objectMap, "azure", p.Azure)
 	return json.Marshal(objectMap)
 }
@@ -1912,8 +1913,38 @@ func (p *Providers) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "aws":
+				err = unpopulate(val, "Aws", &p.Aws)
+				delete(rawMsg, key)
 		case "azure":
 				err = unpopulate(val, "Azure", &p.Azure)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", p, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ProvidersAws.
+func (p ProvidersAws) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "scope", p.Scope)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ProvidersAws.
+func (p *ProvidersAws) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", p, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "scope":
+				err = unpopulate(val, "Scope", &p.Scope)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1945,6 +1976,41 @@ func (p *ProvidersAzure) UnmarshalJSON(data []byte) error {
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", p, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RecipeMetadata.
+func (r RecipeMetadata) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "linkType", r.LinkType)
+	populate(objectMap, "parameters", r.Parameters)
+	populate(objectMap, "templatePath", r.TemplatePath)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeMetadata.
+func (r *RecipeMetadata) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "linkType":
+				err = unpopulate(val, "LinkType", &r.LinkType)
+				delete(rawMsg, key)
+		case "parameters":
+				err = unpopulate(val, "Parameters", &r.Parameters)
+				delete(rawMsg, key)
+		case "templatePath":
+				err = unpopulate(val, "TemplatePath", &r.TemplatePath)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
 		}
 	}
 	return nil

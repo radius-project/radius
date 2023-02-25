@@ -7,8 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 const (
@@ -33,25 +32,26 @@ func (h *VolumeResource) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (h *VolumeResource) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (h *VolumeResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	h.Properties.Status.OutputResources = do.DeployedOutputResources
 	h.ComputedValues = do.ComputedValues
 	h.SecretValues = do.SecretValues
+	return nil
 }
 
 // OutputResources returns the output resources array.
-func (h *VolumeResource) OutputResources() []outputresource.OutputResource {
+func (h *VolumeResource) OutputResources() []rpv1.OutputResource {
 	return h.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *VolumeResource) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *VolumeResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // VolumeResourceProperties represents the properties of VolumeResource.
 type VolumeResourceProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	// Kind represents the type of Volume resource.
 	Kind string `json:"kind,omitempty"`
 	// AzureKeyVault represents Azure Keyvault volume properties

@@ -13,8 +13,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -22,7 +21,7 @@ import (
 
 func Test_Azure_Credential_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_Azure_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceTypePath := "/planes/azure/azurecloud/providers/System.Azure/credentials"
+		resourceTypePath := "/planes/azure/azuretest/providers/System.Azure/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
 		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
 		runCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureCredentialObject())
@@ -33,7 +32,7 @@ func Test_Azure_Credential_Operations(t *testing.T) {
 
 func Test_AWS_Credential_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceTypePath := "/planes/aws/awscloud/providers/System.AWS/credentials"
+		resourceTypePath := "/planes/aws/awstest/providers/System.AWS/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
 		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
 		runCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSCredentialObject())
@@ -141,7 +140,7 @@ func getCredentialList(t *testing.T, res *http.Response) []ucp.CredentialResourc
 func getAzureCredentialObject() ucp.CredentialResource {
 	return ucp.CredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
 		Tags: map[string]*string{
@@ -152,8 +151,8 @@ func getAzureCredentialObject() ucp.CredentialResource {
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:     to.Ptr("azure.com.serviceprincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure-azurecloud-default"),
+				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
+				SecretName: to.Ptr("azure-azuretest-default"),
 			},
 		},
 	}
@@ -162,18 +161,18 @@ func getAzureCredentialObject() ucp.CredentialResource {
 func getAWSCredentialObject() ucp.CredentialResource {
 	return ucp.CredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
 		Tags: map[string]*string{
 			"env": to.Ptr("dev"),
 		},
-		Properties: &v20220901privatepreview.AWSCredentialProperties{
+		Properties: &ucp.AWSCredentialProperties{
 			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:        to.Ptr("aws.com.iam"),
-			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("aws-awscloud-default"),
+			Storage: &ucp.InternalCredentialStorageProperties{
+				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
+				SecretName: to.Ptr("aws-awstest-default"),
 			},
 		},
 	}

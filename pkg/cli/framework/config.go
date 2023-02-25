@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	aws "github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -44,7 +45,7 @@ type ConfigFileInterface interface {
 	ConfigFromContext(ctx context.Context) *viper.Viper
 	SetDefaultWorkspace(ctx context.Context, config *viper.Viper, name string) error
 	DeleteWorkspace(ctx context.Context, config *viper.Viper, name string) error
-	EditWorkspaces(ctx context.Context, config *viper.Viper, workspace *workspaces.Workspace, azureProvider *azure.Provider) error
+	EditWorkspaces(ctx context.Context, config *viper.Viper, workspace *workspaces.Workspace, providersList []any) error
 }
 
 var _ ConfigFileInterface = (*ConfigFileInterfaceImpl)(nil)
@@ -71,17 +72,12 @@ func (i *ConfigFileInterfaceImpl) DeleteWorkspace(ctx context.Context, config *v
 }
 
 // Edits and updates the rad config file with the specified sections to edit
-func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *viper.Viper, workspace *workspaces.Workspace, azureProvider *azure.Provider) error {
+func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *viper.Viper, workspace *workspaces.Workspace, providersList []any) error {
 	err := cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		// TODO: Add checks for duplicate workspace names and append random number mechanisms
 		workspace := workspace
 
-		if azureProvider != nil {
-			workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
-				SubscriptionID: azureProvider.SubscriptionID,
-				ResourceGroup:  azureProvider.ResourceGroup,
-			}
-		}
+		populateProvidersToWorkspace(workspace, providersList)
 
 		name := strings.ToLower(workspace.Name)
 		section.Default = name
@@ -93,6 +89,27 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		return err
 	}
 	return nil
+}
+
+func populateProvidersToWorkspace(workspace *workspaces.Workspace, providersList []any) {
+	for _, provider := range providersList {
+		switch p := provider.(type) {
+		case *azure.Provider:
+			if p != nil {
+				workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
+					SubscriptionID: p.SubscriptionID,
+					ResourceGroup:  p.ResourceGroup,
+				}
+			}
+		case *aws.Provider:
+			if p != nil {
+				workspace.ProviderConfig.AWS = &workspaces.AWSProvider{
+					Region:    p.TargetRegion,
+					AccountId: p.AccountId,
+				}
+			}
+		}
+	}
 }
 
 func (i *ConfigFileInterfaceImpl) ConfigFromContext(ctx context.Context) *viper.Viper {

@@ -70,13 +70,23 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		if err != nil {
 			return nil, err
 		}
-
-		err = ensureUserRecipesNamesAreNotReserved(newResource.Properties.Recipes, devRecipes)
-		if err != nil {
-			return nil, err
-		}
-
-		if newResource.Properties.Recipes == nil {
+		if newResource.Properties.Recipes != nil {
+			errorPrefix := "recipe name(s) reserved for devRecipes for: "
+			var errorRecipes string
+			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
+			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
+			for k, v := range newResource.Properties.Recipes {
+				if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
+					if errorRecipes != "" {
+						errorRecipes += ", "
+					}
+					errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
+				}
+			}
+			if errorRecipes != "" {
+				return nil, fmt.Errorf(errorPrefix + errorRecipes)
+			}
+		} else {
 			newResource.Properties.Recipes = map[string]datamodel.EnvironmentRecipeProperties{}
 		}
 		maps.Copy(newResource.Properties.Recipes, devRecipes)
@@ -128,10 +138,15 @@ func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeP
 				if slices.Contains(supportedProviders(), provider) {
 					var name string
 					var linkType string
+					// TODO: this needs to metadata driven per-recipe so we don't have to maintain a lookup
+					// table.
 					switch link {
 					case "mongodatabases":
 						name = "mongo" + "-" + provider
 						linkType = linkrp.MongoDatabasesResourceType
+					case "rediscaches":
+						name = "redis" + "-" + provider
+						linkType = linkrp.RedisCachesResourceType
 					default:
 						continue
 					}
@@ -188,36 +203,11 @@ func parseRepoPathForMetadata(repo string) (link, provider string) {
 	return link, provider
 }
 
-func ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
-	overlap := map[string]datamodel.EnvironmentRecipeProperties{}
-	for k := range devRecipes {
-		if v, ok := userRecipes[k]; ok {
-			overlap[k] = v
-		}
-	}
-
-	if len(overlap) > 0 {
-		errorPrefix := "recipe name(s) reserved for devRecipes for: "
-		var errorRecipes string
-		for k, v := range overlap {
-			if errorRecipes != "" {
-				errorRecipes += ", "
-			}
-
-			errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
-		}
-
-		return fmt.Errorf(errorPrefix + errorRecipes)
-	}
-
-	return nil
-}
-
 func findHighestVersion(versions []string) (latest float64, err error) {
 	for _, version := range versions {
 		f, err := strconv.ParseFloat(version, 32)
 		if err != nil {
-			return 0.0, fmt.Errorf("Unable to convert tag %s into valid version.", version)
+			return 0.0, fmt.Errorf("unable to convert tag %s into valid version.", version)
 		}
 
 		if f > latest {

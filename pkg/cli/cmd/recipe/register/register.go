@@ -29,22 +29,22 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "register",
-		Short: "Add a link recipe to an environment.",
-		Long: `Add a link recipe to an environment.
-		You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
+		Short: "Add a recipe to an environment.",
+		Long: `Add a recipe to an environment.
+You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
 		
-		- A file containing a single value in JSON format
-		- A key-value-pair passed in the command line
+- A file containing a single value in JSON format
+- A key-value-pair passed in the command line
 		`,
 		Example: `
-		# Add a link recipe to an environment
-		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
+# Add a recipe to an environment
+rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
 		
-		# Specify a parameter
-		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+# Specify a parameter
+rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
 		
-		# specify many parameters using a JSON parameter file
-		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+# specify multiple parameters using a JSON parameter file
+rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -150,8 +150,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	recipeProperties := envResource.Properties.Recipes
 	if recipeProperties[r.RecipeName] != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
 	}
+
 	if recipeProperties == nil {
 		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}
 	}

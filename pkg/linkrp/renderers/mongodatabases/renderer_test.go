@@ -17,10 +17,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +42,7 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -62,9 +61,9 @@ func Test_Render_Success(t *testing.T) {
 		Type:     resourcekinds.AzureCosmosDBMongo,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	expectedOutputResources := []outputresource.OutputResource{
+	expectedOutputResources := []rpv1.OutputResource{
 		{
-			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+			LocalID:       rpv1.LocalIDAzureCosmosAccount,
 			ResourceType:  accountResourceType,
 			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
@@ -76,7 +75,7 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		{
-			LocalID:       outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID:       rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType:  dbResourceType,
 			RadiusManaged: to.Ptr(false),
 			Identity: resourcemodel.ResourceIdentity{
@@ -86,9 +85,9 @@ func Test_Render_Success(t *testing.T) {
 					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				},
 			},
-			Dependencies: []outputresource.Dependency{
+			Dependencies: []rpv1.Dependency{
 				{
-					LocalID: outputresource.LocalIDAzureCosmosAccount,
+					LocalID: rpv1.LocalIDAzureCosmosAccount,
 				},
 			},
 		},
@@ -120,7 +119,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -148,7 +147,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
-	expectedSecretValues := map[string]rp.SecretValueReference{
+	expectedSecretValues := map[string]rpv1.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
 		linkrp.UsernameStringValue:      {Value: userName},
 		renderers.PasswordStringHolder:  {Value: password},
@@ -169,7 +168,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -195,7 +194,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -225,7 +224,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -255,7 +254,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "invalid-app-id",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -285,7 +284,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -314,7 +313,7 @@ func Test_Render_InvalidMode(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -344,13 +343,13 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
 			Mode: datamodel.LinkModeRecipe,
 			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
-				Recipe: datamodel.LinkRecipe{
+				Recipe: linkrp.LinkRecipe{
 					Name: "mongodb",
 					Parameters: map[string]any{
 						"throughput": 400,
@@ -361,15 +360,15 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		linkrp.DatabaseNameValue: {
-			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+		renderers.DatabaseNameValue: {
+			LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id",
 		},
 	}
 
-	expectedOutputResources := []outputresource.OutputResource{
+	expectedOutputResources := []rpv1.OutputResource{
 		{
-			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			LocalID: rpv1.LocalIDAzureCosmosAccount,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: resourcemodel.ProviderAzure,
@@ -378,20 +377,20 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 		},
 		{
-			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			LocalID: rpv1.LocalIDAzureCosmosDBMongo,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			RadiusManaged:        to.Ptr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},
 	}
 
 	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "mongodb",
 				Parameters: map[string]any{
 					"throughput": 400,
@@ -412,7 +411,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	// Secrets
 	require.Equal(t, 1, len(output.SecretValues))
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
+	require.Equal(t, rpv1.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
 
@@ -437,13 +436,13 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
 			Mode: datamodel.LinkModeRecipe,
 			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
-				Recipe: datamodel.LinkRecipe{
+				Recipe: linkrp.LinkRecipe{
 					Name: "mongodb",
 				},
 			},
@@ -451,8 +450,8 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 	}
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
-		RecipeProperties: datamodel.RecipeProperties{
-			LinkRecipe: datamodel.LinkRecipe{
+		RecipeProperties: linkrp.RecipeProperties{
+			LinkRecipe: linkrp.LinkRecipe{
 				Name: "mongodb",
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",

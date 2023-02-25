@@ -8,11 +8,15 @@ storageProvider:
     inmemory: true
 queueProvider:
   provider: inmemory
+secretProvider:
+  provider: etcd
+  etcd:
+    inmemory: true
 metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9092
 featureFlags:
   - "PLACEHOLDER"
 server:
@@ -24,3 +28,11 @@ workerServer:
   maxOperationRetryCount: 2
 ucp:
   kind: kubernetes
+logging:
+  level: "info"
+  json: false
+# Tracing configuration
+tracerProvider:
+  serviceName: "rp"
+  zipkin:
+    url: "http://localhost:9411/api/v2/spans"

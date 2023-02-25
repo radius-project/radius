@@ -20,15 +20,20 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 
+	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
+	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
+)
 
-	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
-	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
+const (
+	serviceName string = "appcore-rp"
 )
 
 func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
@@ -70,15 +75,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
+	hostingSvc := []hosting.Service{frontend.NewService(options)}
 
-	logger, flush, err := ucplog.NewLogger("applications.core")
+	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
+	if metricOptions.Config.Prometheus.Enabled {
+		hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
+	}
+
+	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer flush()
-
-	hostingSvc := []hosting.Service{frontend.NewService(options), metricsservice.NewService(metricOptions)}
 
 	if enableAsyncWorker {
 		logger.Info("Enable AsyncRequestProcessWorker.")
@@ -102,8 +110,10 @@ func main() {
 		logger.Info("Enabled in-memory etcd")
 		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
+		options.Config.SecretProvider.ETCD.Client = client
 		if linkOpts != nil {
 			linkOpts.Config.StorageProvider.ETCD.Client = client
+			linkOpts.Config.SecretProvider.ETCD.Client = client
 		}
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
@@ -117,6 +127,19 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
+
+	tracerOpts := options.Config.TracerProvider
+	tracerOpts.ServiceName = serviceName
+	shutdown, err := trace.InitTracer(tracerOpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+
+	}()
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	exitCh := make(chan os.Signal, 2)

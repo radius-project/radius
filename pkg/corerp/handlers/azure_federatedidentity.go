@@ -11,15 +11,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/go-logr/logr"
+
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -85,7 +86,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 	logger := logr.FromContextOrDiscard(ctx)
 
 	// Get dependencies
-	identityProp, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]
+	identityProp, ok := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]
 	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
@@ -163,7 +164,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 
 	logger.WithValues(
 		logging.LogFieldResourceID, identityID,
-		logging.LogFieldLocalID, outputresource.LocalIDFederatedIdentity).Info("Created federated identity for Azure AD identity.")
+		logging.LogFieldLocalID, rpv1.LocalIDFederatedIdentity).Info("Created federated identity for Azure AD identity.")
 
 	return map[string]string{}, nil
 }

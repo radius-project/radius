@@ -7,8 +7,12 @@ package hostoptions
 
 import (
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
+	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
+	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // ProviderConfig includes the resource provider configuration.
@@ -16,11 +20,14 @@ type ProviderConfig struct {
 	Env             EnvironmentOptions                  `yaml:"environment"`
 	Identity        IdentityOptions                     `yaml:"identity"`
 	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
+	SecretProvider  sprovider.SecretProviderOptions     `yaml:"secretProvider"`
 	QueueProvider   qprovider.QueueProviderOptions      `yaml:"queueProvider"`
 	Server          *ServerOptions                      `yaml:"server,omitempty"`
 	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`
 	MetricsProvider provider.MetricsProviderOptions     `yaml:"metricsProvider"`
-	UCP             UCPConfig                           `yaml:"ucp"`
+	TracerProvider  trace.Options                       `yaml:"tracerProvider"`
+	UCP             config.UCPOptions                   `yaml:"ucp"`
+	Logging         ucplog.LoggingOptions               `yaml:"logging"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`

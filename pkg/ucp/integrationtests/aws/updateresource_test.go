@@ -14,7 +14,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/to"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -57,7 +58,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		output := cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Properties: to.StringPtr(string(getResponseBodyBytes)),
+				Properties: to.Ptr(string(getResponseBodyBytes)),
 			},
 		}
 		return &output, nil
@@ -67,7 +68,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 		output := cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.StringPtr(testAWSRequestToken),
+				RequestToken:    to.Ptr(testAWSRequestToken),
 			},
 		}
 		return &output, nil

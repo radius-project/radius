@@ -17,7 +17,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
@@ -29,6 +28,13 @@ const (
 
 	// OperationPollInterval is the interval used for polling of deployment operations for progress.
 	OperationPollInterval time.Duration = time.Second * 5
+
+	// deploymentPollInterval is the polling frequency of the deployment client.
+	// This is set to a relatively low number because we're using the UCP deployment engine
+	// inside the cluster. This is a good balance to feel responsible for quick operations
+	// like deploying Kubernetes resources without generating a wasteful amount of traffic.
+	// The default would be 30 seconds.
+	deploymentPollInterval = time.Second * 5
 )
 
 type ResourceDeploymentClient struct {
@@ -111,7 +117,7 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 			},
 		},
 		resourceId,
-		clientv2.DeploymentsClientAPIVersion)
+		sdkclients.DeploymentsClientAPIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -120,12 +126,13 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 }
 
 func (dc *ResourceDeploymentClient) GetProviderConfigs() sdkclients.ProviderConfig {
-	var providerConfigs sdkclients.ProviderConfig
+	providerConfig := sdkclients.NewDefaultProviderConfig(dc.RadiusResourceGroup)
+
 	if dc.AzProvider != nil {
 		if dc.AzProvider.SubscriptionID != "" && dc.AzProvider.ResourceGroup != "" {
 			scope := "/subscriptions/" + dc.AzProvider.SubscriptionID + "/resourceGroups/" + dc.AzProvider.ResourceGroup
-			providerConfigs.Az = &sdkclients.Az{
-				Type: "AzureResourceManager",
+			providerConfig.Az = &sdkclients.Az{
+				Type: sdkclients.ProviderTypeAzure,
 				Value: sdkclients.Value{
 					Scope: scope,
 				},
@@ -135,33 +142,15 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs() sdkclients.ProviderConf
 
 	if dc.AWSProvider != nil {
 		scope := "/planes/aws/aws/accounts/" + dc.AWSProvider.AccountId + "/regions/" + dc.AWSProvider.Region
-		providerConfigs.AWS = &sdkclients.AWS{
-			Type: "AWS",
+		providerConfig.AWS = &sdkclients.AWS{
+			Type: sdkclients.ProviderTypeAWS,
 			Value: sdkclients.Value{
 				Scope: scope,
 			},
 		}
 	}
 
-	if dc.RadiusResourceGroup != "" {
-		scope := "/planes/radius/local/resourceGroups/" + dc.RadiusResourceGroup
-		providerConfigs.Radius = &sdkclients.Radius{
-			Type: "Radius",
-			Value: sdkclients.Value{
-				Scope: scope,
-			},
-		}
-
-		scope = "/planes/deployments/local/resourceGroups/" + dc.RadiusResourceGroup
-		providerConfigs.Deployments = &sdkclients.Deployments{
-			Type: "Microsoft.Resources",
-			Value: sdkclients.Value{
-				Scope: scope,
-			},
-		}
-	}
-
-	return providerConfigs
+	return providerConfig
 }
 
 func (dc *ResourceDeploymentClient) createSummary(deployment *armresources.DeploymentExtended) (clients.DeploymentResult, error) {
@@ -199,7 +188,7 @@ func (dc *ResourceDeploymentClient) createSummary(deployment *armresources.Deplo
 }
 
 func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, poller *runtime.Poller[sdkclients.ClientCreateOrUpdateResponse]) (clients.DeploymentResult, error) {
-	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{})
+	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: deploymentPollInterval})
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
@@ -298,7 +287,7 @@ func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name str
 
 	resourceId = ucpresources.MakeUCPID(scopes, types)
 
-	ops, err := dc.OperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, clientv2.DeploymentOperationsClientAPIVersion, nil)
+	ops, err := dc.OperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, sdkclients.DeploymentOperationsClientAPIVersion, nil)
 	if err != nil {
 		return nil, err
 	}

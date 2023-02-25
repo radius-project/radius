@@ -6,10 +6,9 @@
 package frontend
 
 import (
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 const (
@@ -31,23 +30,24 @@ func (r *TestResourceDataModel) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (c *TestResourceDataModel) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (c *TestResourceDataModel) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
-func (c *TestResourceDataModel) OutputResources() []outputresource.OutputResource {
+func (c *TestResourceDataModel) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *TestResourceDataModel) ResourceMetadata() *rp.BasicResourceProperties {
+func (h *TestResourceDataModel) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
 // TestResourceDataModelProperties represents the properties of TestResourceDataModel.
 type TestResourceDataModelProperties struct {
-	rp.BasicResourceProperties
+	rpv1.BasicResourceProperties
 	PropertyA string `json:"propertyA,omitempty"`
 	PropertyB string `json:"propertyB,omitempty"`
 }
@@ -94,7 +94,7 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: &TestResourceDataModelProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -111,21 +111,21 @@ func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(dm.ID)
-	dst.Name = to.StringPtr(dm.Name)
-	dst.Type = to.StringPtr(dm.Type)
+	dst.ID = to.Ptr(dm.ID)
+	dst.Name = to.Ptr(dm.Name)
+	dst.Type = to.Ptr(dm.Type)
 	dst.SystemData = &dm.SystemData
-	dst.Location = to.StringPtr(dm.Location)
+	dst.Location = to.Ptr(dm.Location)
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 	dst.Properties = &TestResourceProperties{
 		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
+			OutputResources: rpv1.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(dm.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.StringPtr(dm.Properties.Environment),
-		Application:       to.StringPtr(dm.Properties.Application),
-		PropertyA:         to.StringPtr(dm.Properties.PropertyA),
-		PropertyB:         to.StringPtr(dm.Properties.PropertyB),
+		Environment:       to.Ptr(dm.Properties.Environment),
+		Application:       to.Ptr(dm.Properties.Application),
+		PropertyA:         to.Ptr(dm.Properties.PropertyA),
+		PropertyB:         to.Ptr(dm.Properties.PropertyB),
 	}
 
 	return nil

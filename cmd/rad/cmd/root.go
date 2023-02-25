@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -30,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
+	recipe_show "github.com/project-radius/radius/pkg/cli/cmd/recipe/show"
 	recipe_unregister "github.com/project-radius/radius/pkg/cli/cmd/recipe/unregister"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
@@ -51,6 +52,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/telemetry/trace"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -75,17 +77,7 @@ var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
-	if new := clients.TryUnfoldErrorResponse(err); new != nil {
-		m, err := prettyPrintJSON(new)
-		if err == nil {
-			return m
-		}
-	} else if new := clients.TryUnfoldServiceError(err); new != nil {
-		m, err := prettyPrintJSON(new)
-		if err == nil {
-			return m
-		}
-	} else if new := clientv2.TryUnfoldResponseError(err); new != nil {
+	if new := clientv2.TryUnfoldResponseError(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m
@@ -105,9 +97,21 @@ func prettyPrintJSON(o any) (string, error) {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
+// It also initializes the tracerprovider for cli.
 func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
-	err := RootCmd.ExecuteContext(ctx)
+
+	shutdown, err := trace.InitTracer(trace.Options{
+		ServiceName: "cli",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		_ = shutdown(ctx)
+	}()
+
+	err = RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -115,6 +119,7 @@ func Execute() {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}
+
 }
 
 func init() {
@@ -166,6 +171,9 @@ func initSubCommands() {
 
 	registerRecipeCmd, _ := recipe_register.NewCommand(framework)
 	recipeCmd.AddCommand(registerRecipeCmd)
+
+	showRecipeCmd, _ := recipe_show.NewCommand(framework)
+	recipeCmd.AddCommand(showRecipeCmd)
 
 	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
 	recipeCmd.AddCommand(unregisterRecipeCmd)

@@ -18,6 +18,8 @@ const (
 	ResourceGroupsSegment = "resourcegroups"
 	SubscriptionsSegment  = "subscriptions"
 	LocationsSegment      = "locations"
+	AccountsSegment       = "accounts"
+	RegionsSegment        = "regions"
 
 	CoreRPNamespace = "Applications.Core"
 	LinkRPNamespace = "Applications.Link"

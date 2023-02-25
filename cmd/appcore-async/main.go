@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
@@ -41,7 +42,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, flush, err := ucplog.NewLogger("applications.core")
+	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)
 	if err != nil {
 		log.Fatal(err)
 	}

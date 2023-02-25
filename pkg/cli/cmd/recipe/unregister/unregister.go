@@ -26,8 +26,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "unregister",
-		Short:   "Unregister a link recipe from an environment",
-		Long:    `Unregister a link recipe from an environment`,
+		Short:   "Unregister a recipe from an environment",
+		Long:    `Unregister a recipe from an environment`,
 		Example: `rad recipe unregister --name cosmosdb`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
@@ -37,7 +37,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	cmd.Flags().String("name", "", "specify the name of the recipe")
+	commonflags.AddRecipeFlag(cmd)
 	_ = cmd.MarkFlagRequired("name")
 
 	return cmd, runner
@@ -81,7 +81,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environment
 
-	recipeName, err := requireRecipeName(cmd)
+	recipeName, err := cli.RequireRecipeName(cmd)
 	if err != nil {
 		return err
 	}
@@ -95,16 +95,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	envResource, err := client.GetEnvDetails(ctx, r.Workspace.Environment)
+
+	envResource, recipeProperties, err := cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName)
 	if err != nil {
 		return err
 	}
 
-	recipeProperties := envResource.Properties.Recipes
-
-	if recipeProperties[r.RecipeName] == nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)}
-	}
 	namespace := cmd.GetNamespace(envResource)
 	delete(recipeProperties, r.RecipeName)
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
@@ -114,12 +110,4 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Successfully unregistered recipe %q from environment %q ", r.RecipeName, r.Workspace.Environment)
 	return nil
-}
-
-func requireRecipeName(cmd *cobra.Command) (string, error) {
-	recipeName, err := cmd.Flags().GetString("name")
-	if err != nil {
-		return recipeName, err
-	}
-	return recipeName, nil
 }

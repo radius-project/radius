@@ -8,8 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // DaprPubSubBroker represents DaprPubSubBroker link resource.
@@ -39,17 +38,18 @@ func (r *DaprPubSubBroker) Transform(outputResources []outputresource.OutputReso
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	return nil
 }
 
 // OutputResources returns the output resources array.
-func (r *DaprPubSubBroker) OutputResources() []outputresource.OutputResource {
+func (r *DaprPubSubBroker) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (r *DaprPubSubBroker) ResourceMetadata() *rp.BasicResourceProperties {
+func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -74,13 +74,13 @@ func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.
 type DaprPubSubBrokerProperties struct {
-	rp.BasicResourceProperties
-	rp.BasicDaprResourceProperties
-	Topic    string         `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
-	Mode     LinkMode       `json:"mode"`
-	Metadata map[string]any `json:"metadata,omitempty"`
-	Recipe   LinkRecipe     `json:"recipe"`
-	Resource string         `json:"resource,omitempty"`
-	Type     string         `json:"type,omitempty"`
-	Version  string         `json:"version,omitempty"`
+	rpv1.BasicResourceProperties
+	rpv1.BasicDaprResourceProperties
+	Topic    string            `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
+	Mode     LinkMode          `json:"mode"`
+	Metadata map[string]any    `json:"metadata,omitempty"`
+	Recipe   linkrp.LinkRecipe `json:"recipe"`
+	Resource string            `json:"resource,omitempty"`
+	Type     string            `json:"type,omitempty"`
+	Version  string            `json:"version,omitempty"`
 }

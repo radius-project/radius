@@ -12,7 +12,6 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
@@ -39,8 +38,6 @@ type Service struct {
 	KubeClient controller_runtime.Client
 	// KubeClientSet is the Kubernetes client.
 	KubeClientSet kubernetes.Interface
-	// SecretClient is the client to fetch secrets.
-	SecretClient rp.SecretValueClient
 }
 
 // Init initializes worker service.
@@ -66,10 +63,6 @@ func (s *Service) Init(ctx context.Context) error {
 	s.KubeClientSet, err = kubernetes.NewForConfig(s.Options.K8sConfig)
 	if err != nil {
 		return err
-	}
-
-	if s.Options.Arm != nil {
-		s.SecretClient = rp.NewSecretValueClient(*s.Options.Arm)
 	}
 
 	return nil

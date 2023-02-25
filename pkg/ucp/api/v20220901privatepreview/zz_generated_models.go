@@ -271,6 +271,11 @@ type PlanesClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// PlanesTypeClientListOptions contains the optional parameters for the PlanesTypeClient.List method.
+type PlanesTypeClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}

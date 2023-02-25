@@ -8,10 +8,9 @@ package v20220315privatepreview
 import (
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	autorestTo "github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
@@ -78,9 +77,9 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 	}
 }
 
-func toRecipeDataModel(r *Recipe) datamodel.LinkRecipe {
-	recipe := datamodel.LinkRecipe{
-		Name: autorestTo.String(r.Name),
+func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
+	recipe := linkrp.LinkRecipe{
+		Name: to.String(r.Name),
 	}
 
 	if r.Parameters != nil {
@@ -89,9 +88,9 @@ func toRecipeDataModel(r *Recipe) datamodel.LinkRecipe {
 	return recipe
 }
 
-func fromRecipeDataModel(r datamodel.LinkRecipe) *Recipe {
+func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
 	return &Recipe{
-		Name:       autorestTo.StringPtr(r.Name),
+		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,
 	}
 }

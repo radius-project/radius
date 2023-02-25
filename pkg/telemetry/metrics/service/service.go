@@ -11,11 +11,12 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 
 type Service struct {
@@ -40,10 +41,13 @@ func (s *Service) Run(ctx context.Context) error {
 
 	pme, err := provider.NewPrometheusExporter()
 	if err != nil {
-		logger.Error(err, "Failed to configure prometheus metrics client")
-		panic(err)
+		return err
 	}
-	global.SetMeterProvider(pme.MeterProvider)
+
+	err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
+	if err != nil {
+		logger.Error(err, "failed to start runtime metrics")
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)

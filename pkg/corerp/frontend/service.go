@@ -40,7 +40,6 @@ func (s *Service) Run(ctx context.Context) error {
 
 	opts := ctrl.Options{
 		DataProvider:  s.StorageProvider,
-		SecretClient:  s.SecretClient,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
 	}
@@ -54,6 +53,7 @@ func (s *Service) Run(ctx context.Context) error {
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
+		EnableMetrics: s.Options.Config.MetricsProvider.Prometheus.Enabled,
 		Configure: func(router *mux.Router) error {
 			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {

@@ -4,6 +4,11 @@
 // ------------------------------------------------------------
 package logging
 
+const (
+	AppCoreLoggerName string = "applications.core"
+	AppLinkLoggerName string = "applications.link"
+)
+
 // Field names for structured logging
 const (
 	LogFieldAction             = "action"

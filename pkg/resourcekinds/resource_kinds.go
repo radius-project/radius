@@ -23,6 +23,8 @@ const (
 	StatefulSet                      = "StatefulSet"
 	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
+	DaprStateStoreAzureTableService  = "dapr.statestore.azuretableservice"
+	DaprStateStoreAzureTable         = "dapr.statestore.azuretable"
 	DaprStateStoreAzureTableStorage  = "state.azure.tablestorage"
 	DaprGeneric                      = "generic"
 	DaprComponent                    = "dapr.io.component"
@@ -38,4 +40,8 @@ const (
 	AzureRedis                       = "azure.redis"
 	AzureFileShare                   = "azure.fileshare"
 	AzureFileShareStorageAccount     = "azure.fileshare.account"
+
+	// AnyResourceType is used to designate a resource handler that can handle any type that belongs to a provider. AnyResourceType
+	// should only be used to register handlers, and not as part of an output resource.
+	AnyResourceType = "*"
 )

@@ -1,0 +1,21 @@
+Deploying Azure Cosmos DB resource
+
+participant CLI
+participant Bicep
+participant UCP
+participant DE
+participant ARM
+participant Radius RP
+
+CLI->Bicep:rad app deploy
+Bicep->Bicep:JSON Template generation
+CLI->UCP:PUT /planes/deployments/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+UCP->DE: PUT /planes/deployments/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+note over DE: TODO Item: DE should send PUT request to UCP and UCP should forward it to ARM instead of DE directly talking to ARM
+DE->ARM: PUT /planes/azure/{azure cloud}/resourcegroups/{rg}/providers/Microsoft.DocumentDB/database/{name}
+DE-->DE:Poll operation completion
+ARM-->ARM: Create CosmosDB resource
+ARM-->DE:Success
+DE-->UCP: Deployment complete
+UCP-->CLI: Success
+

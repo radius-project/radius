@@ -30,7 +30,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: self-hosted
+    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -94,7 +94,7 @@ jobs:
   # - push the image for pushes to master, or to a tag
   images:
     name: Container image build
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -160,7 +160,7 @@ jobs:
   helm:
     name: Helm chart build
     needs: ['images']
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -195,10 +195,10 @@ jobs:
     name: Run Kubernetes tests
     needs: [ 'build', 'images' ]
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       # Timeout used for Kubernetes functional tests
-      K8S_FUNCTIONALTEST_TIMEOUT: 30m
+      K8S_FUNCTIONALTEST_TIMEOUT: 60m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
       RADIUS_CHART_LOCATION: deploy/Chart/
     steps:
@@ -249,7 +249,7 @@ jobs:
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
@@ -321,7 +321,7 @@ jobs:
     name: Delete artifacts
     if: ${{ success() }}
     needs: [ 'build', 'publish' ]
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Delete release artifacts
         uses: geekyeggo/delete-artifact@v1

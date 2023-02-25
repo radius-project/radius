@@ -31,13 +31,13 @@ Enum values are compared *case-insensitively*.
 | RADIUS_MODEL                   | no (`azure`)               | enum    | Configures the application model to use. This defines the set of support components and output resources. Supported values: `azure`, `k8s`.  |
 | ARM_SUBSCRIPTION_ID            | *when ARM is enabled*      | string  | Configures the subscription id used for ARM operations.                                                                                      |
 | ARM_RESOURCE_GROUP             | *when ARM is enabled*      | string  | Configures the resource group used for ARM operations.                                                                                       |
-| ARM_AUTH_METHOD                | no (auto)                  | string  | Configures explicitly which type of credentials the RP will use for ARM (Managed,ServicePrincipal, Cli). By default the RP will autodetect the credential type |
+| ARM_AUTH_METHOD                | no (auto)                  | string  | Configures explicitly which type of credentials the RP will use for ARM (UCPCredential,Managed,ServicePrincipal,Cli). By default the RP will autodetect the credential type |
 | AZURE_CLIENT_ID                | no                         | string  | Configures the client id of a service principal for ARM authentication.                                                                      |
 | AZURE_CLIENT_SECRET            | no                         | string  | Configures the client secret of a service principal for ARM authentication.                                                                  |
 | AZURE_TENANT_ID                | no                         | string  | Configures the AAD tenant of a service principal for ARM authentication.                                                                     |
 | MSI_ENDPOINT/IDENTITY_ENDPOINT | no                         | string  | Used to detect whether the RP should use managed identity for ARM authentication.                                                            |
-| RADIUS_LOG_PROFILE                 | no (`development`)   | string  | Configures the log profile for Radius |
-| RADIUS_LOG_LEVEL                   | *see Logging section*   | string  | Configures the log level for Radius |
+| RADIUS_LOGGING_JSON                 | no (`development`)   | string  | Configures the log profile for Radius |
+| RADIUS_LOGGING_LEVEL                   | *see Logging section*   | string  | Configures the log level for Radius |
 
 ## ARM authentication
 

@@ -53,8 +53,9 @@ func Test_DeleteAWSResource(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -90,8 +91,9 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 		})
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

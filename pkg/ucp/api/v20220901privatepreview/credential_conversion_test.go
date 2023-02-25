@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -107,7 +108,7 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 	}
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &CredentialResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
@@ -179,7 +180,7 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &datamodel.Credential{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)

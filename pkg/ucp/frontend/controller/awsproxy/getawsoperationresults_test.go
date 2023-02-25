@@ -37,8 +37,9 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -69,8 +70,9 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

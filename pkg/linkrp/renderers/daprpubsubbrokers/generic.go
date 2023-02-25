@@ -14,8 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
@@ -43,7 +42,7 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 		},
 		linkrp.PubSubNameKey: {
 			Value:             kubernetes.NormalizeResourceName(resource.Name),
-			LocalID:           outputresource.LocalIDDaprComponent,
+			LocalID:           rpv1.LocalIDDaprComponent,
 			PropertyReference: handlers.ResourceName,
 		},
 		linkrp.TopicNameKey: {
@@ -54,7 +53,7 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 		},
 	}
 
-	secrets := map[string]rp.SecretValueReference{}
+	secrets := map[string]rpv1.SecretValueReference{}
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -64,7 +63,7 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 
 }
 
-func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubBroker, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
+func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubBroker, applicationName string, namespace string) ([]rpv1.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
@@ -75,8 +74,8 @@ func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubB
 		return nil, err
 	}
 
-	output := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDDaprComponent,
+	output := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDDaprComponent,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprComponent,
 			Provider: resourcemodel.ProviderKubernetes,
@@ -84,5 +83,5 @@ func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubB
 		Resource: &daprGenericResource,
 	}
 
-	return []outputresource.OutputResource{output}, nil
+	return []rpv1.OutputResource{output}, nil
 }

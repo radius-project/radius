@@ -22,7 +22,7 @@ func DaprStateStoreBinding(envParams map[string]string) BindingStatus {
 	}
 	defer client.Close()
 	ctx := context.Background()
-	if err := client.SaveState(ctx, stateStoreName, "key", []byte("value")); err != nil {
+	if err := client.SaveState(ctx, stateStoreName, "key", []byte("value"), map[string]string{}); err != nil {
 		log.Println("failed to save to the Dapr state store - ", stateStoreName, " error - ", err.Error())
 		return BindingStatus{false, "failed to save to the Dapr state store"}
 	}

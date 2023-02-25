@@ -10,9 +10,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
@@ -32,7 +31,7 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.RedisCacheProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.GetRedisCacheProperties().Environment),
 				Application: to.String(src.Properties.GetRedisCacheProperties().Application),
 			},
@@ -98,56 +97,56 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(redis.ID)
-	dst.Name = to.StringPtr(redis.Name)
-	dst.Type = to.StringPtr(redis.Type)
+	dst.ID = to.Ptr(redis.ID)
+	dst.Name = to.Ptr(redis.Name)
+	dst.Type = to.Ptr(redis.Type)
 	dst.SystemData = fromSystemDataModel(redis.SystemData)
-	dst.Location = to.StringPtr(redis.Location)
+	dst.Location = to.Ptr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	switch redis.Properties.Mode {
 	case datamodel.LinkModeResource:
 		mode := "resource"
 		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
-			Resource: to.StringPtr(redis.Properties.RedisResourceProperties.Resource),
-			Host:     to.StringPtr(redis.Properties.Host),
-			Port:     to.Int32Ptr(redis.Properties.Port),
-			Username: to.StringPtr(redis.Properties.Username),
+			Resource: to.Ptr(redis.Properties.RedisResourceProperties.Resource),
+			Host:     to.Ptr(redis.Properties.Host),
+			Port:     to.Ptr(redis.Properties.Port),
+			Username: to.Ptr(redis.Properties.Username),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(redis.Properties.Environment),
-			Application:       to.StringPtr(redis.Properties.Application),
+			Environment:       to.Ptr(redis.Properties.Environment),
+			Application:       to.Ptr(redis.Properties.Application),
 		}
 	case datamodel.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
-			Host:     to.StringPtr(redis.Properties.Host),
-			Port:     to.Int32Ptr(redis.Properties.Port),
-			Username: to.StringPtr(redis.Properties.Username),
+			Host:     to.Ptr(redis.Properties.Host),
+			Port:     to.Ptr(redis.Properties.Port),
+			Username: to.Ptr(redis.Properties.Username),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(redis.Properties.Environment),
-			Application:       to.StringPtr(redis.Properties.Application),
+			Environment:       to.Ptr(redis.Properties.Environment),
+			Application:       to.Ptr(redis.Properties.Application),
 		}
 	case datamodel.LinkModeRecipe:
 		mode := "recipe"
 		dst.Properties = &RecipeRedisCacheProperties{
 			Mode:     &mode,
 			Recipe:   fromRecipeDataModel(redis.Properties.Recipe),
-			Host:     to.StringPtr(redis.Properties.Host),
-			Port:     to.Int32Ptr(redis.Properties.Port),
-			Username: to.StringPtr(redis.Properties.Username),
+			Host:     to.Ptr(redis.Properties.Host),
+			Port:     to.Ptr(redis.Properties.Port),
+			Username: to.Ptr(redis.Properties.Username),
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(redis.Properties.Environment),
-			Application:       to.StringPtr(redis.Properties.Application),
+			Environment:       to.Ptr(redis.Properties.Environment),
+			Application:       to.Ptr(redis.Properties.Application),
 		}
 	default:
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", redis.Properties.Mode))
@@ -162,8 +161,8 @@ func (dst *RedisCacheSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.StringPtr(redisSecrets.ConnectionString)
-	dst.Password = to.StringPtr(redisSecrets.Password)
+	dst.ConnectionString = to.Ptr(redisSecrets.ConnectionString)
+	dst.Password = to.Ptr(redisSecrets.Password)
 
 	return nil
 }

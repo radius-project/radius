@@ -11,12 +11,15 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/pkg/version"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -32,6 +35,7 @@ type Options struct {
 	Address           string
 	PathBase          string
 	EnableArmAuth     bool
+	EnableMetrics     bool
 	Configure         func(*mux.Router) error
 	ArmCertMgr        *authentication.ArmCertManager
 }
@@ -59,16 +63,16 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
-	// setup metrics object
-	httpMetrics, err := metrics.NewHTTPMetrics(options.ProviderNamespace)
-	if err != nil {
-		return nil, err
+
+	handlerFunc := middleware.LowercaseURLPath(r)
+	if options.EnableMetrics {
+		handlerFunc = otelhttp.NewHandler(middleware.LowercaseURLPath(r),
+			options.ProviderNamespace, otelhttp.WithMeterProvider(global.MeterProvider()))
 	}
-	r.Use(middleware.MetricsRecorder(httpMetrics))
 
 	server := &http.Server{
 		Addr:    options.Address,
-		Handler: middleware.LowercaseURLPath(r),
+		Handler: handlerFunc,
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},

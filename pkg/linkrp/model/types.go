@@ -11,8 +11,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
+	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 )
 
 // ApplicationModel defines the set of supported resource types and related features.
@@ -50,6 +51,14 @@ func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*Radiu
 func (m ApplicationModel) LookupOutputResourceModel(resourceType resourcemodel.ResourceType) (*OutputResourceModel, error) {
 	resource, ok := m.outputResourceLookup[resourceType]
 	if !ok {
+		wildcard, ok := m.outputResourceLookup[resourcemodel.ResourceType{Type: resourcekinds.AnyResourceType, Provider: resourceType.Provider}]
+		if ok {
+			return &OutputResourceModel{
+				ResourceType:    resourceType,
+				ResourceHandler: wildcard.ResourceHandler,
+			}, nil
+		}
+
 		return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceType)
 	}
 
@@ -68,7 +77,7 @@ type RadiusResourceModel struct {
 type OutputResourceModel struct {
 	ResourceType           resourcemodel.ResourceType
 	ResourceHandler        handlers.ResourceHandler
-	SecretValueTransformer rp.SecretValueTransformer
+	SecretValueTransformer sv.SecretValueTransformer
 }
 
 type RecipeModel struct {

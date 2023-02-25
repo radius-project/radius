@@ -25,7 +25,7 @@ storageProvider:
   # inmemory: true
 
 secretProvider:
-  provider: "kubernetes"
+  provider: kubernetes
 
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
@@ -45,9 +45,20 @@ planes:
     properties:
       kind: "AWS"
 
+identity:
+  authMethod: UCPCredential
+
+ucp:
+  kind: kubernetes
+
 # UCP Metrics Provider
 metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 2222
+    port: 9090
+
+ # Logging configuration   
+logging:
+  level: "info"
+  json: true

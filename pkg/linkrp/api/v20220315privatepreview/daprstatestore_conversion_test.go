@@ -12,7 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +47,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		case *ResourceDaprStateStoreProperties:
 			if payload == "daprstatestoresqlserverresource.json" {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.Resource)
-				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+				require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			} else {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", convertedResource.Properties.Resource)
 			}
@@ -55,7 +55,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "state.zookeeper", convertedResource.Properties.Type)
 			require.Equal(t, "v1", convertedResource.Properties.Version)
 			require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		case *RecipeDaprStateStoreProperties:
 			if payload == "daprstatestoreresource_recipe2.json" {
 				parameters := map[string]any{"port": float64(6081)}

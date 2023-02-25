@@ -21,15 +21,17 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/sdk"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (ApplicationModel, error) {
+func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection sdk.Connection) (ApplicationModel, error) {
 	// Configure the providers supported by the appmodel
 	supportedProviders := map[string]bool{
 		resourcemodel.ProviderKubernetes: true,
+		resourcemodel.ProviderAWS:        true,
 	}
 	if arm != nil {
 		supportedProviders[resourcemodel.ProviderAzure] = true
@@ -95,6 +97,24 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			},
 			ResourceHandler: handlers.NewDaprComponentHandler(k8s),
 		},
+
+		{
+			// Handles any Kubernetes resource type
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AnyResourceType,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+
+		{
+			// Handles any AWS resource type
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AnyResourceType,
+				Provider: resourcemodel.ProviderAWS,
+			},
+			ResourceHandler: handlers.NewAWSHandler(connection),
+		},
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
@@ -136,6 +156,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureTableService,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureTable,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 				Provider: resourcemodel.ProviderAzure,
 			},
@@ -152,7 +186,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 	}
 
 	recipeModel := RecipeModel{
-		RecipeHandler: handlers.NewRecipeHandler(arm),
+		RecipeHandler: handlers.NewRecipeHandler(connection),
 	}
 
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)

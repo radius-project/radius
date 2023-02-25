@@ -14,13 +14,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,8 +37,8 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("delete non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -90,10 +91,10 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 		t.Run(testcase.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
 			req.Header.Set("If-Match", testcase.ifMatchETag)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := testutil.ARMTestContextFromRequest(req)
 			_, daprSecretStoreDataModel, _ := getTestModels20220315privatepreview()
 
 			mStorageClient.
@@ -107,7 +108,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mStorageClient.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -151,8 +152,8 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 		})
 	}
 	t.Run("delete deploymentprocessor error", func(t *testing.T) {
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+		ctx := testutil.ARMTestContextFromRequest(req)
 		_, daprSecretStoreDataModel, _ := getTestModels20220315privatepreview()
 		w := httptest.NewRecorder()
 
@@ -165,7 +166,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					Data:     daprSecretStoreDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
+		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
 
 		opts := frontend_ctrl.Options{
 			Options: ctrl.Options{

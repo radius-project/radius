@@ -14,11 +14,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
@@ -65,7 +64,7 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 	}
 
 	// Update the clientID and tenantID only for azure workload identity.
-	if spc.Annotations != nil && spc.Annotations[kubernetes.AnnotationIdentityType] == string(rp.AzureIdentityWorkload) {
+	if spc.Annotations != nil && spc.Annotations[kubernetes.AnnotationIdentityType] == string(rpv1.AzureIdentityWorkload) {
 		clientID, tenantID, err := extractIdentityInfo(options)
 		if err != nil {
 			return err
@@ -79,7 +78,7 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 }
 
 // MakeKeyVaultSecretProviderClass builds SecretProviderClass CR for keyvault secrets.
-func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.VolumeResource, objSpec string, envOpt *renderers.EnvironmentOptions) (*outputresource.OutputResource, error) {
+func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.VolumeResource, objSpec string, envOpt *renderers.EnvironmentOptions) (*rpv1.OutputResource, error) {
 	prop := res.Properties.AzureKeyVault
 
 	kvResourceID, err := resources.ParseResource(prop.Resource)
@@ -94,7 +93,7 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 	}
 
 	switch envOpt.Identity.Kind {
-	case rp.AzureIdentityWorkload:
+	case rpv1.AzureIdentityWorkload:
 		break
 
 	default:
@@ -120,15 +119,15 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 		},
 	}
 
-	or := outputresource.NewKubernetesOutputResource(
+	or := rpv1.NewKubernetesOutputResource(
 		resourcekinds.SecretProviderClass,
-		outputresource.LocalIDSecretProviderClass,
+		rpv1.LocalIDSecretProviderClass,
 		secretProvider,
 		secretProvider.ObjectMeta)
 
-	or.Dependencies = []outputresource.Dependency{
+	or.Dependencies = []rpv1.Dependency{
 		{
-			LocalID: outputresource.LocalIDServiceAccount,
+			LocalID: rpv1.LocalIDServiceAccount,
 		},
 	}
 

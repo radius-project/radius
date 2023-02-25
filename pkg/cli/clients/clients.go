@@ -151,44 +151,9 @@ type ApplicationsManagementClient interface {
 	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
 	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220901privatepreview.ResourceGroupResource, error)
 	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)
-}
 
-//go:generate mockgen -destination=./mock_cloudproviderclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients CloudProviderManagementClient
-
-// CloudProviderManagementClient is used to interface with cloud provider configuration and credentials.
-type CloudProviderManagementClient interface {
-	// TODO: this interface is being added as part of v0.13 before we've nailed down completely the interactions
-	// between cloud providers, UCP, and the CLI. We expect changes or possibily that this interface could be
-	// replaced in the future.
-	Get(ctx context.Context, name string) (CloudProviderResource, error)
-	List(ctx context.Context) ([]CloudProviderResource, error)
-	Put(ctx context.Context, provider AzureCloudProviderResource) error
-	Delete(ctx context.Context, name string) (bool, error)
-}
-
-// CloudProviderResource is the representation of a cloud provider configuration.
-type CloudProviderResource struct {
-	// TODO: this is not a real resource yet. See the notes on CloudProviderManagementClient. We expect this to change significantly
-	// in the future.
-
-	// Name is the name/kind of the provider. For right now this only supports Azure.
-	Name string
-
-	// Enabled is the enabled/disabled status of the provider.
-	Enabled bool
-}
-
-type AzureCloudProviderResource struct {
-	CloudProviderResource
-
-	// Credentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	Credentials *ServicePrincipalCredentials
-}
-
-type ServicePrincipalCredentials struct {
-	ClientID     string
-	ClientSecret string
-	TenantID     string
+	// ShowRecipe shows recipe details including list of all parameters for a given recipe registered to an environment
+	ShowRecipe(ctx context.Context, environmentName string, recipeName string) (corerp.EnvironmentRecipeProperties, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

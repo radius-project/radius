@@ -15,6 +15,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
 	"github.com/project-radius/radius/test/radcli"
@@ -52,6 +54,7 @@ type OutputResourceResponse struct {
 	LocalID  string
 	Provider string
 	Identity any
+	Name     string // Name of the underlying resource within its platform (Azure/AWS/Kubernetes)
 }
 
 type CoreRPResourceSet struct {
@@ -85,7 +88,7 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 	return nil
 }
 
-func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, verifyRecipeResource bool, client clients.ApplicationsManagementClient) {
+func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {
 			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
@@ -139,12 +142,19 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 					for _, actualOutputResource := range outputResources {
 						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
 							found = true
-							if verifyRecipeResource {
-								identity := actualOutputResource.Identity.(map[string]interface{})
-								actualID := identity["id"].(string)
-								actualResourceName := strings.Split(actualID, "/")[len(strings.Split(actualID, "/"))-1]
-								if expectedOutputResource.Identity != actualResourceName {
-									found = false
+							// if the test has the OutputResourceResponse.Name set then validate
+							// the actual outputresource name with the expected resource name based on the provider type.
+							if expectedOutputResource.Name != "" {
+								if expectedOutputResource.Provider == resourcemodel.ProviderAzure {
+									identity := actualOutputResource.Identity.(map[string]interface{})
+									actualID := identity["id"].(string)
+									actualResource, err := resources.ParseResource(actualID)
+									require.NoError(t, err)
+									require.Equal(t, expectedOutputResource.Name, actualResource.Name())
+								}
+								if expectedOutputResource.Provider == resourcemodel.ProviderKubernetes {
+									identity := actualOutputResource.Identity.(map[string]interface{})
+									require.Equal(t, expectedOutputResource.Name, identity["name"].(string))
 								}
 							}
 							break

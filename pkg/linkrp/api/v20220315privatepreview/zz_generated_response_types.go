@@ -87,8 +87,7 @@ type DaprStateStoreClientCreateOrUpdateResponse struct {
 
 // DaprStateStoreClientDeleteResponse contains the response from method DaprStateStoreClient.Delete.
 type DaprStateStoreClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // DaprStateStoreClientGetResponse contains the response from method DaprStateStoreClient.Get.
@@ -136,8 +135,7 @@ type MongoDatabasesClientCreateOrUpdateResponse struct {
 
 // MongoDatabasesClientDeleteResponse contains the response from method MongoDatabasesClient.Delete.
 type MongoDatabasesClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // MongoDatabasesClientGetResponse contains the response from method MongoDatabasesClient.Get.

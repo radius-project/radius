@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -68,14 +68,14 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			providers := []clients.CloudProviderResource{
+			providers := []cli_credential.CloudProviderStatus{
 				{
 					Name:    "azure",
 					Enabled: true,
 				},
 			}
 
-			client := clients.NewMockCloudProviderManagementClient(ctrl)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				List(gomock.Any()).
 				Return(providers, nil).
@@ -84,7 +84,7 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Connection: connection},
 				Format:            "table",
@@ -101,7 +101,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     providers,
-					Options: objectformats.GetCloudProviderTableFormat(),
+					Options: objectformats.CloudProviderTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

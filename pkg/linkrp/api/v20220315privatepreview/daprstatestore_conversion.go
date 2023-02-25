@@ -5,15 +5,14 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
-
-	"github.com/Azure/go-autorest/autorest/to"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		},
@@ -74,11 +73,11 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(daprStateStore.ID)
-	dst.Name = to.StringPtr(daprStateStore.Name)
-	dst.Type = to.StringPtr(daprStateStore.Type)
+	dst.ID = to.Ptr(daprStateStore.ID)
+	dst.Name = to.Ptr(daprStateStore.Name)
+	dst.Type = to.Ptr(daprStateStore.Type)
 	dst.SystemData = fromSystemDataModel(daprStateStore.SystemData)
-	dst.Location = to.StringPtr(daprStateStore.Location)
+	dst.Location = to.Ptr(daprStateStore.Location)
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 
 	switch daprStateStore.Properties.Mode {
@@ -86,45 +85,45 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		mode := "recipe"
 		dst.Properties = &RecipeDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
-			Application:       to.StringPtr(daprStateStore.Properties.Application),
-			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
+			Environment:       to.Ptr(daprStateStore.Properties.Environment),
+			Application:       to.Ptr(daprStateStore.Properties.Application),
+			ComponentName:     to.Ptr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
 			Recipe:            fromRecipeDataModel(daprStateStore.Properties.Recipe),
-			Type:              to.StringPtr(daprStateStore.Properties.Type),
-			Version:           to.StringPtr(daprStateStore.Properties.Version),
+			Type:              to.Ptr(daprStateStore.Properties.Type),
+			Version:           to.Ptr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
 	case datamodel.LinkModeResource:
 		mode := "resource"
 		dst.Properties = &ResourceDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
-			Application:       to.StringPtr(daprStateStore.Properties.Application),
-			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
+			Environment:       to.Ptr(daprStateStore.Properties.Environment),
+			Application:       to.Ptr(daprStateStore.Properties.Application),
+			ComponentName:     to.Ptr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
-			Resource:          to.StringPtr(daprStateStore.Properties.Resource),
+			Resource:          to.Ptr(daprStateStore.Properties.Resource),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
 	case datamodel.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ValuesDaprStateStoreProperties{
 			Status: &ResourceStatus{
-				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
-			Application:       to.StringPtr(daprStateStore.Properties.Application),
-			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
+			Environment:       to.Ptr(daprStateStore.Properties.Environment),
+			Application:       to.Ptr(daprStateStore.Properties.Application),
+			ComponentName:     to.Ptr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
-			Type:              to.StringPtr(daprStateStore.Properties.Type),
-			Version:           to.StringPtr(daprStateStore.Properties.Version),
+			Type:              to.Ptr(daprStateStore.Properties.Type),
+			Version:           to.Ptr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
 	default:

@@ -11,9 +11,9 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/stretchr/testify/require"
+	"github.com/project-radius/radius/test/testutil"
 
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResourceGroupConvertVersionedToDataModel(t *testing.T) {
@@ -40,7 +40,7 @@ func TestResourceGroupConvertVersionedToDataModel(t *testing.T) {
 
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
-			rawPayload := radiustesting.ReadFixture(tt.filename)
+			rawPayload := testutil.ReadFixture(tt.filename)
 			r := &ResourceGroupResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestResourceGroupConvertVersionedToDataModel(t *testing.T) {
 
 func TestResourceGroupConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("resourcegroupresourcedatamodel.json")
+	rawPayload := testutil.ReadFixture("resourcegroupresourcedatamodel.json")
 	r := &datamodel.ResourceGroup{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
