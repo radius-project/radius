@@ -46,16 +46,12 @@ func UseLogValues(h http.Handler, basePath string, serviceName string) http.Hand
 		attr = AddAttribute(semconv.HTTPUserAgentKey, r.Header.Get(ucplog.HttpUserAgent), attr)
 		attr = AddAttribute(attribute.Key(ucplog.LogFieldCorrelationID), r.Header.Get(ucplog.HttpCorrelationId), attr)
 		if len(attr) > 0 {
-			values = append(values,
-				ucplog.LogFieldAttributes, attr,
-			)
+			values = AddLogValue(ucplog.LogFieldAttributes, attr, values)
 		}
 
 		sc := trace.SpanFromContext(r.Context())
-		values = append(values,
-			ucplog.LogFieldSpanId, sc.SpanContext().SpanID().String(),
-			ucplog.LogFieldTraceId, sc.SpanContext().TraceID().String(),
-		)
+		values = AddLogValue(ucplog.LogFieldSpanId, sc.SpanContext().SpanID().String(), values)
+		values = AddLogValue(ucplog.LogFieldTraceId, sc.SpanContext().TraceID().String(), values)
 
 		logger := logr.FromContextOrDiscard(r.Context()).WithValues(values...)
 		r = r.WithContext(logr.NewContext(r.Context(), logger))
@@ -71,7 +67,7 @@ func GetRelativePath(basePath string, path string) string {
 	return trimmedPath
 }
 
-// Add an optional attribute to the log message
+// Add an optional field to the log message as part of Attributes
 func AddAttribute(attrKey attribute.Key, value string, m map[attribute.Key]string) map[attribute.Key]string {
 	if value != "" {
 		m[attrKey] = value
