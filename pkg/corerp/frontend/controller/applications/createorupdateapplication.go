@@ -21,8 +21,8 @@ import (
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +64,7 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 // +-----------------+--------------------+-------------------------------+-------------------------------+
 
 func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, newResource, old *datamodel.Application) (rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

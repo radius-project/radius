@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 func workaround28169(r *http.Request) {
@@ -43,28 +43,28 @@ func noopResponder(r *http.Response) error {
 }
 
 func logUpstreamRequest(r *http.Request) {
-	logger := logr.FromContextOrDiscard(r.Context())
+	logger := ucplog.FromContext(r.Context())
 	logger.Info("preparing proxy request")
 }
 
 func logDownstreamRequest(r *http.Request) {
-	logger := logr.FromContextOrDiscard(r.Context())
+	logger := ucplog.FromContext(r.Context())
 	logger.Info("sending proxy request to downstream")
 }
 
 func logDownstreamResponse(r *http.Response) error {
-	logger := logr.FromContextOrDiscard(r.Request.Context())
+	logger := ucplog.FromContext(r.Request.Context())
 	logger.Info(fmt.Sprintf("received proxy response HTTP status code from downstream %d", r.StatusCode))
 	return nil
 }
 
 func logUpstreamResponse(r *http.Response) error {
-	logger := logr.FromContextOrDiscard(r.Request.Context())
+	logger := ucplog.FromContext(r.Request.Context())
 	logger.Info(fmt.Sprintf("sending proxy response %d to upstream ", r.StatusCode))
 	return nil
 }
 
 func logConnectionError(w http.ResponseWriter, r *http.Request, err error) {
-	logger := logr.FromContextOrDiscard(r.Context())
+	logger := ucplog.FromContext(r.Context())
 	logger.Error(err, "connection failed to downstream")
 }

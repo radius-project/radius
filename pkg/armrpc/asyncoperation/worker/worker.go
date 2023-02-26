@@ -116,7 +116,7 @@ func New(
 
 // Start starts worker's message loop.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
 	if err != nil {
@@ -213,7 +213,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
 	ctx, span := trace.StartConsumerSpan(ctx, "worker.runOperation receive", trace.BackendTracerName)
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	asyncReq := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, asyncReq); err != nil {
@@ -270,7 +270,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err := w.requestQueue.ExtendMessage(ctx, message); err != nil {
 				logger.Error(err, "fails to extend message lock")
 			} else {
-				logger.Info("Extended message lock duration.", "NextVisibleTime", message.NextVisibleAt.UTC().String())
+				logger.Info("Extended message lock duration.", ucplog.Attributes("nextVisibleTime", message.NextVisibleAt.UTC().String()))
 				metrics.DefaultAsyncOperationMetrics.RecordExtendedAsyncOperation(ctx, asyncReq)
 			}
 			messageExtendAfter = w.getMessageExtendDuration(message.NextVisibleAt)
@@ -296,7 +296,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			metrics.DefaultAsyncOperationMetrics.RecordAsyncOperationDuration(ctx, asyncReq, opStartAt)
 
 			opEndAt := time.Now()
-			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
+			logger.Info("End processing operation.", ucplog.Attributes("startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt)))
 			span.End()
 			return
 		}
@@ -312,7 +312,7 @@ func extractError(err error) v1.ErrorDetails {
 }
 
 func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc store.StorageClient) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
 		logger.Error(err, "failed to unmarshal queue message.")
@@ -336,7 +336,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 }
 
 func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {
@@ -356,7 +356,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	now := time.Now().UTC()
 	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
 	if err != nil {
-		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
+		logger.Error(err, "failed to update operationstatus", ucplog.Attributes("operationID", req.OperationID.String()))
 		return err
 	}
 

@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/metrics/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 
@@ -37,7 +37,7 @@ func (s *Service) Name() string {
 
 // Run method of metrics package creates a new server for exposing an endpoint to collect metrics from
 func (s *Service) Run(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	pme, err := provider.NewPrometheusExporter()
 	if err != nil {

@@ -10,13 +10,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-logr/logr"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -38,7 +38,7 @@ type Service struct {
 
 // Init initializes web service.
 func (s *Service) Init(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
@@ -70,7 +70,7 @@ func (s *Service) Init(ctx context.Context) error {
 
 // Start starts HTTP server.
 func (s *Service) Start(ctx context.Context, opt Options) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)

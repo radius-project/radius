@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
@@ -53,7 +52,7 @@ func (s *EmbeddedETCDService) Name() string {
 }
 
 func (s *EmbeddedETCDService) Run(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 	defer s.cleanup(ctx)
 
 	config := embed.NewConfig()
@@ -190,7 +189,7 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 }
 
 func (s *EmbeddedETCDService) cleanup(ctx context.Context) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 	logger.Info("Cleaning up etcd directories")
 	for _, dir := range s.dirs {
 		err := os.RemoveAll(dir)

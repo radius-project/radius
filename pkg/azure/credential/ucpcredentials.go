@@ -15,8 +15,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
-	"github.com/go-logr/logr"
 	"go.uber.org/atomic"
 )
 
@@ -75,7 +75,7 @@ func (c *UCPCredential) refreshExpiry() {
 }
 
 func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	c.tokenCredMu.Lock()
 	defer c.tokenCredMu.Unlock()
@@ -125,7 +125,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 
 // GetToken requests an access token from the hosting environment. This method is called automatically by Azure SDK clients.
 func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	if c.isExpired() {
 		err := c.refreshCredentials(ctx)

@@ -17,8 +17,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-
-	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -42,7 +41,7 @@ type azureUserAssignedManagedIdentityHandler struct {
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {

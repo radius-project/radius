@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-	"github.com/go-logr/logr"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
@@ -23,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -83,7 +83,7 @@ type azureFederatedIdentityHandler struct {
 
 // Put creates or updates the federated identity resource of the azure identity.
 func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	// Get dependencies
 	identityProp, ok := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]

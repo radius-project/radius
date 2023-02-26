@@ -10,7 +10,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var (
@@ -51,7 +51,7 @@ type Client interface {
 
 // StartDequeuer starts a dequeuer to consume the message from the queue and return the output channel.
 func StartDequeuer(ctx context.Context, cli Client, opts ...DequeueOptions) (<-chan *Message, error) {
-	log := logr.FromContextOrDiscard(ctx)
+	log := ucplog.FromContext(ctx)
 	out := make(chan *Message, 1)
 
 	go func() {

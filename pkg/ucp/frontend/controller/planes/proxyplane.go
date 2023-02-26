@@ -11,7 +11,6 @@ import (
 	http "net/http"
 	"net/url"
 
-	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -39,11 +38,11 @@ func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 
 	logger.Info("starting proxy request")
 	for key, value := range req.Header {
-		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
+		logger.V(ucplog.Debug).Info("incoming request header", ucplog.Attributes("key", key, "value", value))
 	}
 
 	req.URL.Path = p.GetRelativePath(req.URL.Path)
@@ -168,7 +167,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
-	logger = logr.FromContextOrDiscard(ctx)
+	logger = ucplog.FromContext(ctx)
 	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
 	// The upstream response has already been sent at this point. Therefore, return nil response here

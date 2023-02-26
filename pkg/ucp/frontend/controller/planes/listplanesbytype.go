@@ -11,7 +11,6 @@ import (
 	http "net/http"
 	"strings"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -21,6 +20,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*ListPlanesByType)(nil)
@@ -44,7 +44,7 @@ func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *
 		IsScopeQuery: true,
 		ResourceType: planeType,
 	}
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Listing planes in scope %s/%s", query.RootScope, planeType))
 	result, err := e.StorageClient().Query(ctx, query)
 	if err != nil {

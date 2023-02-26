@@ -8,13 +8,13 @@ package worker
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,7 +70,7 @@ func (s *Service) Init(ctx context.Context) error {
 
 // Start starts the worker.
 func (s *Service) Start(ctx context.Context, opt Options) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	// Create and start worker.

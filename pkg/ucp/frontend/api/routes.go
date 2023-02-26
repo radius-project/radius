@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -24,6 +23,7 @@ import (
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 )
@@ -76,7 +76,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		BasePath: baseURL,
 	})
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
