@@ -264,7 +264,11 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 
 // ARMRequestContextFromContext extracts ARMRPContext from http context.
 func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
-	return ctx.Value(armContextKey).(*ARMRequestContext)
+	val := ctx.Value(armContextKey)
+	if val == nil {
+		panic("@@@@ ARMRequestContextFromContext: ARMRequestContext not found in context")
+	}
+	return val.(*ARMRequestContext)
 }
 
 // WithARMRequestContext injects ARMRequestContext into the given http context.

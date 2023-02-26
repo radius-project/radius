@@ -41,6 +41,7 @@ func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler 
 			}
 
 			r = r.WithContext(v1.WithARMRequestContext(r.Context(), rpcContext))
+			fmt.Println("@@@@@ Added ARMRequestContext to request context @@@@@", r.URL.Path)
 			h.ServeHTTP(w, r)
 		}
 
