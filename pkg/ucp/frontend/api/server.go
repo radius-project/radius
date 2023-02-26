@@ -246,10 +246,10 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, location string, d
 		if err != nil {
 			return err
 		}
-		ctx = v1.WithARMRequestContext(ctx, rpcContext)
+		wrappedCtx := v1.WithARMRequestContext(ctx, rpcContext)
 
 		// Call the planes controller to configure the default planes
-		_, err = planesCtrl.Run(ctx, nil, request)
+		_, err = planesCtrl.Run(wrappedCtx, nil, request)
 		if err != nil {
 			return err
 		}
