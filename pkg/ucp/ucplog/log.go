@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -25,11 +26,6 @@ const (
 	DefaultLoggerName string = "radius"
 	LogLevel          string = "RADIUS_LOGGING_LEVEL" // Env variable that determines the log level
 	LogProfile        string = "RADIUS_LOGGING_JSON"  // Env variable that determines the logger config presets
-
-	// keys to conform with otel log schema
-	LogMessageKey string = "message"
-	LogTimeKey    string = "timestamp"
-	LogLevelKey   string = "severity"
 )
 
 // Log levels
@@ -46,10 +42,10 @@ const (
 )
 
 const (
-	VerbosityLevelInfo  string = "info"
-	VerbosityLevelDebug string = "debug"
-	VerbosityLevelError string = "error"
-	VerbosityLevelWarn  string = "warn"
+	VerbosityLevelInfo  string = "INFO"
+	VerbosityLevelDebug string = "DEBUG"
+	VerbosityLevelError string = "ERROR"
+	VerbosityLevelWarn  string = "WARN"
 )
 
 // Logger Profiles which determines the logger configuration
@@ -105,11 +101,14 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 		}
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
 	}
-	cfg.EncoderConfig.CallerKey = zapcore.OmitKey
+
+	cfg.EncoderConfig.NameKey = "name"
+	cfg.EncoderConfig.CallerKey = "scope"
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	cfg.EncoderConfig.MessageKey = LogMessageKey
-	cfg.EncoderConfig.LevelKey = LogLevelKey
-	cfg.EncoderConfig.TimeKey = LogTimeKey
+	cfg.EncoderConfig.MessageKey = "message"
+	cfg.EncoderConfig.LevelKey = "severity"
+	cfg.EncoderConfig.TimeKey = "timestamp"
+
 	// Build the logger config based on profile and custom presets
 	logger, err := cfg.Build()
 	if err != nil {
@@ -129,7 +128,8 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 	if err != nil {
 		return logr.Discard(), nil, err
 	}
-	logger := zapr.NewLogger(zapLogger).WithName(name)
+	logger := zapr.NewLoggerWithOptions(zapLogger, zapr.AllowZapFields(true)).WithName(name)
+	logger = logger.WithValues("resource", NewResourceObject(name))
 
 	// The underlying zap logger needs to be flushed before server exits
 	flushLogs := func() {
@@ -151,8 +151,7 @@ func NewTestLogger(t *testing.T) (logr.Logger, error) {
 // WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
-	ctx = logr.NewContext(ctx, logger.WithValues(keyValues...))
-	return ctx
+	return logr.NewContext(ctx, logger.WithValues(keyValues...))
 }
 
 // Unwrap returns the underlying zap logger of logr.Logger
@@ -163,4 +162,17 @@ func Unwrap(logger logr.Logger) *zap.Logger {
 	}
 
 	return nil
+}
+
+// FromContext returns logger from Context.
+func FromContext(ctx context.Context) logr.Logger {
+	logger := logr.FromContextOrDiscard(ctx)
+
+	// Populate trace id and span id when caller gets logger from context
+	// because span id can be changed.
+	sc := trace.SpanFromContext(ctx)
+	return logger.WithValues(
+		LogFieldTraceId, sc.SpanContext().TraceID().String(),
+		LogFieldSpanId, sc.SpanContext().SpanID().String(),
+	)
 }

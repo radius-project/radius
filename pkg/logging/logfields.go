@@ -28,7 +28,7 @@ const (
 	LogFieldDequeueCount       = "dequeueCount"
 	LogFieldOperationStatus    = "operationStatus"
 	LogFieldResourceGroup      = "resourceGroup"
-	LogFieldResourceID         = "resourceID"
+	LogFieldResourceID         = "resourceId"
 	LogFieldResourceName       = "resourceName"
 	LogFieldResourceProperties = "resourceProperties"
 	LogFieldResourceType       = "resourceType"
