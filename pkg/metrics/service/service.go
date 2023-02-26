@@ -14,17 +14,16 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/metrics/provider"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 
 type Service struct {
-	Options hostoptions.HostOptions
+	Options HostOptions
 }
 
 // NewService of metrics package returns a new Service with the configs needed
-func NewService(options hostoptions.HostOptions) *Service {
+func NewService(options HostOptions) *Service {
 	return &Service{
 		Options: options,
 	}

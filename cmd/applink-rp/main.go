@@ -19,9 +19,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/backend"
 	"github.com/project-radius/radius/pkg/linkrp/frontend"
 	"github.com/project-radius/radius/pkg/logging"
-	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
-	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"github.com/project-radius/radius/pkg/telemetry/trace"
+	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
+	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
@@ -49,7 +48,7 @@ func main() {
 	}
 	hostingSvc := []hosting.Service{frontend.NewService(options)}
 
-	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions := metricsservice.NewHostOptionsFromEnvironment(*options.Config)
 	if metricOptions.Config.Prometheus.Enabled {
 		hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
 	}
