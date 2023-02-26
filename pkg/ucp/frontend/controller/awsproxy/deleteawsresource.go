@@ -38,9 +38,13 @@ func NewDeleteAWSResource(awsOpts *AWSOptions) (ctrl.Controller, error) {
 }
 
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	// serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
+	serviceCtx := servicecontext.AWSRequestContext{}
+	serviceCtx.ResourceID = id
+	serviceCtx.ResourceType = resourceType
 
-	_, err := p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	_, err = p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
