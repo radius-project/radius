@@ -55,6 +55,11 @@ type AzureCredentialClientListByRootScopeResponse struct {
 	AzureCredentialResourceListResult
 }
 
+// PlaneTypesClientGetResponse contains the response from method PlaneTypesClient.Get.
+type PlaneTypesClientGetResponse struct {
+	PlaneResource
+}
+
 // PlanesClientCreateOrUpdateResponse contains the response from method PlanesClient.CreateOrUpdate.
 type PlanesClientCreateOrUpdateResponse struct {
 	PlaneResource
@@ -75,11 +80,6 @@ type PlanesClientGetResponse struct {
 
 // PlanesClientListByRootScopeResponse contains the response from method PlanesClient.ListByRootScope.
 type PlanesClientListByRootScopeResponse struct {
-	PlaneResourceListResult
-}
-
-// PlanesTypeClientListResponse contains the response from method PlanesTypeClient.List.
-type PlanesTypeClientListResponse struct {
 	PlaneResourceListResult
 }
 

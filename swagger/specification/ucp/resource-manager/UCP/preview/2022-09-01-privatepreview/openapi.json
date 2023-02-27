@@ -43,6 +43,9 @@
       "name": "Planes"
     },
     {
+      "name": "PlaneTypes"
+    },
+    {
       "name": "ResourceGroups"
     },
     {
@@ -86,42 +89,37 @@
     },
     "/planes/{planeType}": {
       "get": {
-        "description": "List all planes of {planeType}.",
-        "operationId": "PlanesType_List",
-        "produces": [
-          "application/json"
-        ],
-        "x-ms-examples": {
-          "RadiusPlanesList": {
-            "$ref": "./examples/PlanesTypeList.json"
-          }
-        },
         "tags": [
-          "PlanesType"
+          "PlaneTypes"
         ],
+        "operationId": "PlaneTypes_Get",
+        "description": "Retrieves information about a PlaneResource",
         "parameters": [
           {
-            "$ref": "#/parameters/PlaneTypeParameter"
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           }
         ],
         "responses": {
           "200": {
-            "description": "Plane list.",
+            "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/PlaneResourceList"
+              "$ref": "#/definitions/PlaneResource"
             }
           },
           "default": {
-            "description": "Error response describing why the operation failed.",
+            "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/ErrorResponse"
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "deprecated": false
+        }
       }
     },
     "/planes/{planeType}/{planeName}": {

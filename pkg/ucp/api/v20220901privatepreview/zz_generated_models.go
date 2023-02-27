@@ -341,6 +341,11 @@ type PlaneResourceProperties struct {
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
+// PlaneTypesClientGetOptions contains the optional parameters for the PlaneTypesClient.Get method.
+type PlaneTypesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
 // PlanesClientCreateOrUpdateOptions contains the optional parameters for the PlanesClient.CreateOrUpdate method.
 type PlanesClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -358,11 +363,6 @@ type PlanesClientGetOptions struct {
 
 // PlanesClientListByRootScopeOptions contains the optional parameters for the PlanesClient.ListByRootScope method.
 type PlanesClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// PlanesTypeClientListOptions contains the optional parameters for the PlanesTypeClient.List method.
-type PlanesTypeClientListOptions struct {
 	// placeholder for future optional parameters
 }
 

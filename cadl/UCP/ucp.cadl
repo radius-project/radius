@@ -228,6 +228,14 @@ interface Planes
       PlaneNameParameter
     > {}
 
+@armResourceOperations
+interface PlaneTypes
+extends Radius.PlaneTypeOperations<
+  PlaneResource,
+  PlaneResourceProperties,
+  {}
+> {}
+
 model Root<PlaneResource> {
     ...KeysOf<PlaneResource>,
     ...PlaneNameParameter
@@ -257,4 +265,3 @@ interface AWSCredential
         AWSCredentialProperties,
         AWSPlaneNameParameter
         > {}
-
