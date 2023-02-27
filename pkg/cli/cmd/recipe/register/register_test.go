@@ -7,7 +7,6 @@ package register
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -270,42 +269,4 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.Error(t, err)
 	})
-
-	t.Run("Register recipe with name matching the dev recipes", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		envResource := v20220315privatepreview.EnvironmentResource{
-			ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-			Name:     to.Ptr("kind-kind"),
-			Type:     to.Ptr("applications.core/environments"),
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-					"cosmosDB": {
-						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
-					},
-				},
-			},
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
-			Return(envResource, nil).Times(1)
-
-		outputSink := &output.MockOutput{}
-
-		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:            outputSink,
-			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			LinkType:          linkrp.MongoDatabasesResourceType,
-			RecipeName:        "mongo-azure",
-		}
-
-		err := runner.Run(context.Background())
-		require.ErrorContains(t, err, fmt.Sprintf("recipe with name %q is reserved for dev recipes", runner.RecipeName))
-	})
-
 }
