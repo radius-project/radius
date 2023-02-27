@@ -52,7 +52,7 @@ func (s *EmbeddedETCDService) Name() string {
 }
 
 func (s *EmbeddedETCDService) Run(ctx context.Context) error {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	defer s.cleanup(ctx)
 
 	config := embed.NewConfig()
@@ -189,7 +189,7 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 }
 
 func (s *EmbeddedETCDService) cleanup(ctx context.Context) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	logger.Info("Cleaning up etcd directories")
 	for _, dir := range s.dirs {
 		err := os.RemoveAll(dir)

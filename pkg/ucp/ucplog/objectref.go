@@ -63,7 +63,7 @@ func WithAttribute(ctx context.Context, keysAndValues ...any) context.Context {
 	return context.WithValue(ctx, radiusAttributeContextKey, keysAndValues)
 }
 
-// Attributes creates attributes object including the additional properties and info for Radius.
+// Attributes creates attributes object including the additional properties and info for Radius log.
 // This leverages zapcore.ObjectMarshaler to define the custom attributes, so it works only for uber/zap.
 func Attributes(ctx context.Context, keysAndValues ...any) zap.Field {
 	attr, ok := ctx.Value(radiusAttributeContextKey).([]any)

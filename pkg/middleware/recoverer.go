@@ -19,7 +19,7 @@ func Recoverer(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log := ucplog.FromContext(r.Context())
+				log := ucplog.FromContextWithSpan(r.Context())
 
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
 				log.V(ucplog.Error).Info(msg)

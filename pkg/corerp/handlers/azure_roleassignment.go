@@ -38,7 +38,7 @@ type azureRoleAssignmentHandler struct {
 
 // Put assigns the selected roles to the identity.
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {

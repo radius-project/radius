@@ -64,7 +64,7 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 // +-----------------+--------------------+-------------------------------+-------------------------------+
 
 func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, newResource, old *datamodel.Application) (rest.Response, error) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

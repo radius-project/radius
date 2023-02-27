@@ -34,7 +34,7 @@ func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, er
 
 func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	resourceID, err := resources.ParseScope(path)
 	if err != nil {

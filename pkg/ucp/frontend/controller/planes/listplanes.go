@@ -34,7 +34,7 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	query := store.Query{
 		RootScope:    path,

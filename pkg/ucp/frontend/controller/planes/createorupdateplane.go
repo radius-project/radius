@@ -72,7 +72,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 	planeExists := true
 	existingResource := datamodel.Plane{}
 	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			planeExists = false

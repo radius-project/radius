@@ -60,7 +60,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
 
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 
 	recipeData := make(map[string]any)

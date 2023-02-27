@@ -33,7 +33,7 @@ func (s *SystemService) Name() string {
 }
 
 func (s *SystemService) Run(ctx context.Context) error {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/version", version.ReportVersionHandler)

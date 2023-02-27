@@ -132,7 +132,7 @@ func validationFailedResponse(qualifiedName string, valErrs []ValidationError) r
 }
 
 func handleError(ctx context.Context, w http.ResponseWriter, err error) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	w.WriteHeader(http.StatusInternalServerError)
 	logger.Error(err, "error writing marshaled data to output")
 }

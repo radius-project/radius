@@ -85,7 +85,7 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	credProviders := []func(*config.LoadOptions) error{}
 
 	switch s.options.Identity.AuthMethod {
@@ -242,7 +242,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 }
 
 func (s *Service) Run(ctx context.Context) error {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	service, err := s.Initialize(ctx)
 	if err != nil {
 		return err

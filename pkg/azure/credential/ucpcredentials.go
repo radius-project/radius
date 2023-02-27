@@ -75,7 +75,7 @@ func (c *UCPCredential) refreshExpiry() {
 }
 
 func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	c.tokenCredMu.Lock()
 	defer c.tokenCredMu.Unlock()
@@ -125,7 +125,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 
 // GetToken requests an access token from the hosting environment. This method is called automatically by Azure SDK clients.
 func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	if c.isExpired() {
 		err := c.refreshCredentials(ctx)

@@ -169,7 +169,7 @@ type ARMRequestContext struct {
 
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
-	log := ucplog.FromContext(r.Context())
+	log := ucplog.FromContextWithSpan(r.Context())
 	refererUri := r.Header.Get(RefererHeader)
 	refererURL, err := url.Parse(refererUri)
 	if refererUri == "" || err != nil {

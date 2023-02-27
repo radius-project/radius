@@ -35,7 +35,7 @@ func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, err
 
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	var query store.Query
 	planeType, planeName, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
 	if err != nil {

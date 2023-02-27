@@ -51,7 +51,7 @@ type Client interface {
 
 // StartDequeuer starts a dequeuer to consume the message from the queue and return the output channel.
 func StartDequeuer(ctx context.Context, cli Client, opts ...DequeueOptions) (<-chan *Message, error) {
-	log := ucplog.FromContext(ctx)
+	log := ucplog.FromContextWithSpan(ctx)
 	out := make(chan *Message, 1)
 
 	go func() {

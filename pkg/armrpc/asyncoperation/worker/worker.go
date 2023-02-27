@@ -108,7 +108,7 @@ func New(
 
 // Start starts worker's message loop.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
 	if err != nil {
@@ -140,7 +140,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				logging.LogFieldOperationType, op.OperationType,
 				logging.LogFieldDequeueCount, msgreq.DequeueCount,
 			)
-			opLogger := ucplog.FromContext(reqCtx)
+			opLogger := ucplog.FromContextWithSpan(reqCtx)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
 			if !ok {
@@ -197,7 +197,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
 	ctx, span := trace.StartConsumerSpan(ctx, "worker.runOperation receive", trace.BackendTracerName)
 
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	asyncReq := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, asyncReq); err != nil {
@@ -296,7 +296,7 @@ func extractError(err error) v1.ErrorDetails {
 }
 
 func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc store.StorageClient) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
 		logger.Error(err, "failed to unmarshal queue message.", ucplog.Attributes(ctx))
@@ -320,7 +320,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 }
 
 func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {

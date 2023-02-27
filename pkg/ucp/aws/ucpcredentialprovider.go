@@ -55,7 +55,7 @@ func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSC
 
 // Retrieve fetches the secret access key using UCP credential API.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
 	if err != nil {
 		return aws.Credentials{}, err

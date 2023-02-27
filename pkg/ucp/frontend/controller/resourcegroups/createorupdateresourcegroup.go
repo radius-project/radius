@@ -58,7 +58,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	newResource.Name = id.Name()
 	newResource.Type = ResourceGroupType
 
-	logger := ucplog.FromContext(ctx)
+	logger := ucplog.FromContextWithSpan(ctx)
 
 	existingResource := datamodel.ResourceGroup{}
 	rgExists := true
