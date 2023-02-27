@@ -67,21 +67,6 @@ func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// ComputedValues returns the computed values on the link.
-func (r *RedisCache) GetComputedValues() map[string]any {
-	return r.LinkMetadata.ComputedValues
-}
-
-// SecretValues returns the secret values for the link.
-func (r *RedisCache) GetSecretValues() map[string]rpv1.SecretValueReference {
-	return r.LinkMetadata.SecretValues
-}
-
-// RecipeData returns the recipe data for the link.
-func (r *RedisCache) GetRecipeData() linkrp.RecipeData {
-	return r.LinkMetadata.RecipeData
-}
-
 func (redis *RedisCache) ResourceTypeName() string {
 	return linkrp.RedisCachesResourceType
 }

@@ -46,21 +46,6 @@ func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// ComputedValues returns the computed values on the link.
-func (r *DaprPubSubBroker) GetComputedValues() map[string]any {
-	return r.LinkMetadata.ComputedValues
-}
-
-// SecretValues returns the secret values for the link.
-func (r *DaprPubSubBroker) GetSecretValues() map[string]rpv1.SecretValueReference {
-	return r.LinkMetadata.SecretValues
-}
-
-// RecipeData returns the recipe data for the link.
-func (r *DaprPubSubBroker) GetRecipeData() linkrp.RecipeData {
-	return r.LinkMetadata.RecipeData
-}
-
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 	return linkrp.DaprPubSubBrokersResourceType
 }

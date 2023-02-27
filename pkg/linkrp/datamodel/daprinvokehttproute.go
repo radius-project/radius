@@ -43,21 +43,6 @@ func (r *DaprInvokeHttpRoute) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// ComputedValues returns the computed values on the link.
-func (r *DaprInvokeHttpRoute) GetComputedValues() map[string]any {
-	return r.LinkMetadata.ComputedValues
-}
-
-// SecretValues returns the secret values for the link.
-func (r *DaprInvokeHttpRoute) GetSecretValues() map[string]rpv1.SecretValueReference {
-	return r.LinkMetadata.SecretValues
-}
-
-// RecipeData returns the recipe data for the link.
-func (r *DaprInvokeHttpRoute) GetRecipeData() linkrp.RecipeData {
-	return r.LinkMetadata.RecipeData
-}
-
 func (httpRoute *DaprInvokeHttpRoute) ResourceTypeName() string {
 	return linkrp.DaprInvokeHttpRoutesResourceType
 }
