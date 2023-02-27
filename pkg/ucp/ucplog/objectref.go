@@ -6,6 +6,7 @@
 package ucplog
 
 import (
+	"context"
 	"errors"
 	"os"
 
@@ -15,7 +16,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var errNonStringKey = errors.New("non-string key type")
+type contextKey struct {
+	keyType string
+}
+
+var (
+	errNonStringKey                      = errors.New("non-string key type")
+	radiusAttributeContextKey contextKey = contextKey{"radius-attribute"}
+)
 
 // NewResourceObject returns the resource object which includes the system info.
 func NewResourceObject(serviceName string) map[string]any {
@@ -27,32 +35,74 @@ func NewResourceObject(serviceName string) map[string]any {
 	}
 }
 
-// Attributes creates attributes object including the additional properties and info for Radius.
-// This leverages zapcore.ObjectMarshaler to define the custom attributes, so it works only for uber/zap.
-func Attributes(keysAndValues ...any) zap.Field {
+func validateKeyValues(keysAndValues ...any) bool {
 	l := len(keysAndValues)
 	if l%2 != 0 {
+		return false
+	}
+
+	for i := 0; i < l; i += 2 {
+		_, ok := keysAndValues[i].(string)
+		if !ok {
+			return false
+		}
+	}
+
+	return true
+}
+
+// WithAttribute returns a copy of parent in which radiusAttributeContextKey are added.
+// radiusAttributeContextKey is valid only in the current context-scope.
+func WithAttribute(ctx context.Context, keysAndValues ...any) context.Context {
+	if ctx == nil {
+		ctx = context.TODO()
+	}
+	if !validateKeyValues(keysAndValues...) {
+		return ctx
+	}
+	return context.WithValue(ctx, radiusAttributeContextKey, keysAndValues)
+}
+
+// Attributes creates attributes object including the additional properties and info for Radius.
+// This leverages zapcore.ObjectMarshaler to define the custom attributes, so it works only for uber/zap.
+func Attributes(ctx context.Context, keysAndValues ...any) zap.Field {
+	attr, ok := ctx.Value(radiusAttributeContextKey).([]any)
+	if !ok {
+		attr = nil
+	}
+	if !validateKeyValues(keysAndValues...) {
 		return zap.String(LogFieldAttributes, "invalid key and value pairs")
 	}
-	attr := &attributeMarshaller{keysAndValues: keysAndValues}
-	return zap.Object(LogFieldAttributes, attr)
+	marshaller := &attributeMarshaller{contextAttributes: attr, keysAndValues: keysAndValues}
+	return zap.Object(LogFieldAttributes, marshaller)
 }
 
 var _ zapcore.ObjectMarshaler = (*attributeMarshaller)(nil)
 
 type attributeMarshaller struct {
-	keysAndValues []any
+	contextAttributes []any
+	keysAndValues     []any
 }
 
 func (r *attributeMarshaller) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	l := len(r.keysAndValues)
-	for i := 0; i < l; i += 2 {
-		key, ok := r.keysAndValues[i].(string)
-		if !ok {
-			return errNonStringKey
+	fn := func(kv []any) error {
+		if kv == nil {
+			return nil
 		}
-		val := r.keysAndValues[i+1]
-		zap.Any(key, val).AddTo(enc)
+		for i := 0; i < len(kv); i += 2 {
+			key, ok := kv[i].(string)
+			if !ok {
+				return errNonStringKey
+			}
+			val := kv[i+1]
+			zap.Any(key, val).AddTo(enc)
+		}
+		return nil
 	}
-	return nil
+
+	if err := fn(r.contextAttributes); err != nil {
+		return err
+	}
+
+	return fn(r.keysAndValues)
 }

@@ -93,12 +93,12 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 	// Provider config will specify the Azure and AWS scopes (if provided).
 	providerConfig := createProviderConfig(deploymentID.FindScope(resources.ResourceGroupsSegment), envProviders)
 
-	logger.Info("deploying bicep template for recipe", ucplog.Attributes("deploymentID", deploymentID))
+	logger.Info("deploying bicep template for recipe", ucplog.Attributes(ctx, "deploymentID", deploymentID))
 	if providerConfig.AWS != nil {
-		logger.Info("using AWS provider", ucplog.Attributes("deploymentID", deploymentID, "scope", providerConfig.AWS.Value.Scope))
+		logger.Info("using AWS provider", ucplog.Attributes(ctx, "deploymentID", deploymentID, "scope", providerConfig.AWS.Value.Scope))
 	}
 	if providerConfig.Az != nil {
-		logger.Info("using Azure provider", ucplog.Attributes("deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope))
+		logger.Info("using Azure provider", ucplog.Attributes(ctx, "deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope))
 	}
 
 	poller, err := client.CreateOrUpdate(

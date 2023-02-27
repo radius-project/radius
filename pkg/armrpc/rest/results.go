@@ -58,7 +58,7 @@ func NewOKResponseWithHeaders(body any, headers map[string]string) Response {
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusOK), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusOK))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusOK), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusOK))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -97,7 +97,7 @@ func NewCreatedResponse(body any) Response {
 
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusCreated))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusCreated))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -129,7 +129,7 @@ func NewCreatedAsyncResponse(body any, location string, scheme string) Response 
 
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusCreated))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusCreated))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -179,7 +179,7 @@ func NewAcceptedAsyncResponse(body any, location string, scheme string) Response
 
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusAccepted))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusAccepted))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -375,7 +375,7 @@ func NewBadRequestARMResponse(body v1.ErrorResponse) Response {
 
 func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusBadRequest))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusBadRequest))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -420,7 +420,7 @@ func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 
 func (r *ValidationErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusBadRequest))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusBadRequest))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -494,7 +494,7 @@ func NewNotFoundAPIVersionResponse(resourceType string, namespace string, apiVer
 
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusNotFound))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusNotFound))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -531,7 +531,7 @@ func NewConflictResponse(message string) Response {
 
 func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusConflict), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusConflict))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusConflict), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusConflict))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -560,7 +560,7 @@ func NewInternalServerErrorARMResponse(body v1.ErrorResponse) Response {
 
 func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusInternalServerError), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusInternalServerError))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusInternalServerError), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusInternalServerError))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -596,7 +596,7 @@ func NewPreconditionFailedResponse(target string, message string) Response {
 
 func (r *PreconditionFailedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusPreconditionFailed), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusPreconditionFailed))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusPreconditionFailed), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusPreconditionFailed))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -630,7 +630,7 @@ func NewClientAuthenticationFailedARMResponse() Response {
 }
 func (r *ClientAuthenticationFailed) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusUnauthorized), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusUnauthorized))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusUnauthorized), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusUnauthorized))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -659,7 +659,7 @@ func NewAsyncOperationResultResponse(headers map[string]string) Response {
 
 func (r *AsyncOperationResultResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusAccepted))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusAccepted))
 
 	w.Header().Add("Content-Type", "application/json")
 
@@ -692,7 +692,7 @@ func NewMethodNotAllowedResponse(target string, message string) Response {
 
 func (r *MethodNotAllowedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContext(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusMethodNotAllowed), ucplog.Attributes(logging.LogHTTPStatusCode, http.StatusMethodNotAllowed))
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusMethodNotAllowed), ucplog.Attributes(ctx, logging.LogHTTPStatusCode, http.StatusMethodNotAllowed))
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
