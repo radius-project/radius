@@ -65,7 +65,7 @@ ctx = ucplog.WithAttributes(ctx,
 //   "timestamp": "2023-02-26T20:14:09.334-0800",
 //   "name": "application.core",
 //   "scope": "startup.go:279",
-//   "message": "hello world",
+//   "message": "hello radius",
 //   "resource": {
 //     "host.name": "appcore-rp",
 //     "service.name": "applications.core",
@@ -84,7 +84,7 @@ logger.Info("hello radius")
 //   "timestamp": "2023-02-26T20:14:09.334-0800",
 //   "name": "application.core",
 //   "scope": "startup.go:279",
-//   "message": "hello world",
+//   "message": "hello radius",
 //   "resource": {
 //     "host.name": "appcore-rp",
 //     "service.name": "applications.core",
@@ -107,7 +107,7 @@ logger.Info("hello radius", ucplog.Attributes(ctx))
 //   "timestamp": "2023-02-26T20:14:09.334-0800",
 //   "name": "application.core",
 //   "scope": "startup.go:279",
-//   "message": "hello world",
+//   "message": "hello radius",
 //   "resource": {
 //     "host.name": "appcore-rp",
 //     "service.name": "applications.core",
