@@ -52,7 +52,8 @@ func validateKeyValues(keysAndValues ...any) bool {
 }
 
 // WithAttribute returns a copy of parent in which radiusAttributeContextKey are added.
-// radiusAttributeContextKey is valid only in the current context-scope.
+// To use attributes in context, ucplog.Attribute(ctx) must be included in logger as a key value.
+// For instance, logger.Info("hello radius", ucplog.Attribute(ctx))
 func WithAttribute(ctx context.Context, keysAndValues ...any) context.Context {
 	if ctx == nil {
 		ctx = context.TODO()

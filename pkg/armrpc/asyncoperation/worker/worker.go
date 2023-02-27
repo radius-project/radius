@@ -132,7 +132,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 
 			reqCtx := trace.WithTraceparent(ctx, op.TraceparentID)
-			// Populate the default attributes in the current context.
+			// Populate the default attributes in the current context so all logs will have these fields.
 			reqCtx = ucplog.WithAttribute(
 				reqCtx,
 				logging.LogFieldResourceID, op.ResourceID,
