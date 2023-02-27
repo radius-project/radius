@@ -22,7 +22,7 @@ import (
 // CreateOrUpdateResource is the controller implementation to create or update any link resource.
 type CreateOrUpdateResource[P interface {
 	*T
-	datamodel.Link
+	rpv1.RadiusResourceModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 	KubeClient kube.Client
@@ -33,7 +33,7 @@ type CreateOrUpdateResource[P interface {
 // NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
 func NewCreateOrUpdateResource[P interface {
 	*T
-	datamodel.Link
+	rpv1.RadiusResourceModel
 }, T any](opts Options, op ctrl.Operation[P, T], isDapr bool) (ctrl.Controller, error) {
 	return &CreateOrUpdateResource[P, T]{
 		Operation:  op,
