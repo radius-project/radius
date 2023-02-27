@@ -22,23 +22,17 @@ type SqlDatabase struct {
 	LinkMetadata
 }
 
-func (r *SqlDatabase) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
-	r.Properties.Status.OutputResources = outputResources
-	r.ComputedValues = computedValues
-	r.SecretValues = secretValues
-	if server, ok := computedValues[linkrp.ServerNameValue].(string); ok {
-		r.Properties.Server = server
-	}
-	if database, ok := computedValues[linkrp.DatabaseNameValue].(string); ok {
-		r.Properties.Database = database
-	}
-
-	return nil
-}
-
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if server, ok := do.ComputedValues[linkrp.ServerNameValue].(string); ok {
+		r.Properties.Server = server
+	}
+	if database, ok := do.ComputedValues[linkrp.DatabaseNameValue].(string); ok {
+		r.Properties.Database = database
+	}
 	return nil
 }
 
@@ -58,12 +52,12 @@ func (r *SqlDatabase) GetComputedValues() map[string]any {
 }
 
 // SecretValues returns the secret values for the link.
-func (r *SqlDatabase) GetSecretValues() map[string]rp.SecretValueReference {
+func (r *SqlDatabase) GetSecretValues() map[string]rpv1.SecretValueReference {
 	return r.LinkMetadata.SecretValues
 }
 
 // RecipeData returns the recipe data for the link.
-func (r *SqlDatabase) GetRecipeData() RecipeData {
+func (r *SqlDatabase) GetRecipeData() linkrp.RecipeData {
 	return r.LinkMetadata.RecipeData
 }
 

@@ -35,12 +35,3 @@ const (
 	// RecipeContextParameter is the parameter context for recipe deployment
 	RecipeContextParameter string = "context"
 )
-
-type Link interface {
-	rp.RadiusResourceModel
-
-	Transform([]outputresource.OutputResource, map[string]any, map[string]rp.SecretValueReference) error
-	GetComputedValues() map[string]any
-	GetSecretValues() map[string]rp.SecretValueReference
-	GetRecipeData() RecipeData
-}

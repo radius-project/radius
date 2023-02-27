@@ -15,7 +15,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
@@ -24,9 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	radiustesting "github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,7 +172,7 @@ func TestCreateOrUpdateLinkResource_20220315PrivatePreview(t *testing.T) {
 				if !testcase.shouldFail {
 					mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 					mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-					mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+					mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 					mStorageClient.
 						EXPECT().
@@ -230,7 +229,7 @@ func TestCreateOrUpdateLinkResource_20220315PrivatePreview(t *testing.T) {
 	}
 }
 
-func getDeploymentProcessorOutputs(resourceType string, buildComputedValueReferences bool) (rendererOutput renderers.RendererOutput, deploymentOutput deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs(resourceType string, buildComputedValueReferences bool) (rendererOutput renderers.RendererOutput, deploymentOutput rpv1.DeploymentOutput) {
 	switch strings.ToLower(resourceType) {
 	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
 		rendererOutput = renderers.RendererOutput{
@@ -241,12 +240,12 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{},
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{},
 		}
 	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
-		output := outputresource.OutputResource{
-			LocalID: outputresource.LocalIDAzureServiceBusNamespace,
+		output := rpv1.OutputResource{
+			LocalID: rpv1.LocalIDAzureServiceBusNamespace,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 				Provider: resourcemodel.ProviderAzure,
@@ -265,11 +264,11 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		}
 		values := map[string]renderers.ComputedValueReference{
 			linkrp.NamespaceNameKey: {
-				LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
+				LocalID:           rpv1.LocalIDAzureServiceBusNamespace,
 				PropertyReference: handlers.ServiceBusNamespaceNameKey,
 			},
 			linkrp.PubSubNameKey: {
-				LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
+				LocalID:           rpv1.LocalIDAzureServiceBusNamespace,
 				PropertyReference: handlers.ResourceName,
 			},
 			linkrp.TopicNameKey: {
@@ -280,15 +279,15 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 		rendererOutput = renderers.RendererOutput{
-			Resources:      []outputresource.OutputResource{output},
-			SecretValues:   map[string]rp.SecretValueReference{},
+			Resources:      []rpv1.OutputResource{output},
+			SecretValues:   map[string]rpv1.SecretValueReference{},
 			ComputedValues: values,
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureServiceBusNamespace,
+					LocalID: rpv1.LocalIDAzureServiceBusNamespace,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 						Provider: resourcemodel.ProviderAzure,
@@ -302,9 +301,9 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		}
 	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		rendererOutput = renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{
+			Resources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDDaprComponent,
+					LocalID: rpv1.LocalIDDaprComponent,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.DaprComponent,
 						Provider: resourcemodel.ProviderKubernetes,
@@ -312,7 +311,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 					Identity: resourcemodel.ResourceIdentity{},
 				},
 			},
-			SecretValues: map[string]rp.SecretValueReference{},
+			SecretValues: map[string]rpv1.SecretValueReference{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				"componentName": {
 					Value: "test-app-test-secret-store",
@@ -320,10 +319,10 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDDaprComponent,
+					LocalID: rpv1.LocalIDDaprComponent,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.DaprComponent,
 						Provider: resourcemodel.ProviderKubernetes,
@@ -336,9 +335,9 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		}
 	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		rendererOutput = renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{
+			Resources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDDaprComponent,
+					LocalID: rpv1.LocalIDDaprComponent,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.DaprComponent,
 						Provider: resourcemodel.ProviderKubernetes,
@@ -346,7 +345,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 					Identity: resourcemodel.ResourceIdentity{},
 				},
 			},
-			SecretValues: map[string]rp.SecretValueReference{},
+			SecretValues: map[string]rpv1.SecretValueReference{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				"componentName": {
 					Value: "test-app-test-resource",
@@ -354,10 +353,10 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDDaprComponent,
+					LocalID: rpv1.LocalIDDaprComponent,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.DaprComponent,
 						Provider: resourcemodel.ProviderKubernetes,
@@ -370,7 +369,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		}
 	case strings.ToLower(linkrp.ExtendersResourceType):
 		rendererOutput = renderers.RendererOutput{
-			SecretValues: map[string]rp.SecretValueReference{
+			SecretValues: map[string]rpv1.SecretValueReference{
 				"secretname": {
 					Value: "secretvalue",
 				},
@@ -382,14 +381,14 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{},
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{},
 		}
 	case strings.ToLower(linkrp.MongoDatabasesResourceType):
 		rendererOutput := renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{
+			Resources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureCosmosAccount,
+					LocalID: rpv1.LocalIDAzureCosmosAccount,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureCosmosAccount,
 						Provider: resourcemodel.ProviderAzure,
@@ -397,7 +396,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 					Identity: resourcemodel.ResourceIdentity{},
 				},
 			},
-			SecretValues: map[string]rp.SecretValueReference{
+			SecretValues: map[string]rpv1.SecretValueReference{
 				linkrp.UsernameStringValue:      {Value: "testUser"},
 				renderers.PasswordStringHolder:  {Value: "testPassword"},
 				renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
@@ -409,10 +408,10 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureCosmosAccount,
+					LocalID: rpv1.LocalIDAzureCosmosAccount,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureCosmosAccount,
 						Provider: resourcemodel.ProviderAzure,
@@ -425,7 +424,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		}
 	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		rendererOutput = renderers.RendererOutput{
-			SecretValues: map[string]rp.SecretValueReference{
+			SecretValues: map[string]rpv1.SecretValueReference{
 				renderers.ConnectionStringValue: {
 					Value: "testConnectionString",
 				},
@@ -437,8 +436,8 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			},
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{},
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{},
 		}
 	case strings.ToLower(linkrp.RedisCachesResourceType):
 		var computedValues map[string]renderers.ComputedValueReference
@@ -446,11 +445,11 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		if buildComputedValueReferences {
 			computedValues = map[string]renderers.ComputedValueReference{
 				linkrp.Host: {
-					LocalID:     outputresource.LocalIDAzureRedis,
+					LocalID:     rpv1.LocalIDAzureRedis,
 					JSONPointer: "/properties/hostName",
 				},
 				linkrp.Port: {
-					LocalID:     outputresource.LocalIDAzureRedis,
+					LocalID:     rpv1.LocalIDAzureRedis,
 					JSONPointer: "/properties/sslPort",
 				},
 				linkrp.UsernameStringValue: {
@@ -475,9 +474,9 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			}
 		}
 		rendererOutput = renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{
+			Resources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureRedis,
+					LocalID: rpv1.LocalIDAzureRedis,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureRedis,
 						Provider: resourcemodel.ProviderAzure,
@@ -485,7 +484,7 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 					Identity: resourcemodel.ResourceIdentity{},
 				},
 			},
-			SecretValues: map[string]rp.SecretValueReference{
+			SecretValues: map[string]rpv1.SecretValueReference{
 				renderers.ConnectionStringValue: {Value: "test-connection-string"},
 				renderers.PasswordStringHolder:  {Value: "testpassword"},
 				linkrp.UsernameStringValue:      {Value: "redisusername"},
@@ -493,10 +492,10 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 			ComputedValues: computedValues,
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureRedis,
+					LocalID: rpv1.LocalIDAzureRedis,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureRedis,
 						Provider: resourcemodel.ProviderAzure,
@@ -512,9 +511,9 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 
 	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		rendererOutput = renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{
+			Resources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureSqlServer,
+					LocalID: rpv1.LocalIDAzureSqlServer,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureSqlServer,
 						Provider: resourcemodel.ProviderAzure,
@@ -522,22 +521,22 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 					Identity: resourcemodel.ResourceIdentity{},
 				},
 			},
-			SecretValues: map[string]rp.SecretValueReference{},
+			SecretValues: map[string]rpv1.SecretValueReference{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				linkrp.DatabaseNameValue: {
 					Value: "db",
 				},
 				linkrp.ServerNameValue: {
-					LocalID:     outputresource.LocalIDAzureSqlServer,
+					LocalID:     rpv1.LocalIDAzureSqlServer,
 					JSONPointer: "/properties/fullyQualifiedDomainName",
 				},
 			},
 		}
 
-		deploymentOutput = deployment.DeploymentOutput{
-			Resources: []outputresource.OutputResource{
+		deploymentOutput = rpv1.DeploymentOutput{
+			DeployedOutputResources: []rpv1.OutputResource{
 				{
-					LocalID: outputresource.LocalIDAzureSqlServer,
+					LocalID: rpv1.LocalIDAzureSqlServer,
 					ResourceType: resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureSqlServer,
 						Provider: resourcemodel.ProviderAzure,

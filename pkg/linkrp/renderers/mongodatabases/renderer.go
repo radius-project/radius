@@ -82,7 +82,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 	secretValues := buildSecretValueReferenceForAzure(resource.Properties)
 
 	computedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
+		linkrp.DatabaseNameValue: {
 			LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
 		},
@@ -178,7 +178,7 @@ func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[s
 	secretValues := map[string]rpv1.SecretValueReference{}
 	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Username != "" {
-			secretValues[renderers.UsernameStringValue] = rpv1.SecretValueReference{Value: properties.Secrets.Username}
+			secretValues[linkrp.UsernameStringValue] = rpv1.SecretValueReference{Value: properties.Secrets.Username}
 		}
 		if properties.Secrets.Password != "" {
 			secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{Value: properties.Secrets.Password}

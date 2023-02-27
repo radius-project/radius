@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	kube "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -86,14 +86,14 @@ func (link *CreateOrUpdateResource[P, T]) Run(ctx context.Context, w http.Respon
 		return nil, err
 	}
 
-	err = P(newResource).Transform(deploymentOutput.Resources, deploymentOutput.ComputedValues, deploymentOutput.SecretValues)
+	err = P(newResource).ApplyDeploymentOutput(deploymentOutput)
 	if err != nil {
 		return nil, err
 	}
 
 	if old != nil {
-		diff := outputresource.GetGCOutputResources(P(newResource).OutputResources(), P(old).OutputResources())
-		err = link.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: P(newResource), OutputResources: diff, ComputedValues: P(newResource).GetComputedValues(), SecretValues: P(newResource).GetSecretValues(), RecipeData: P(newResource).GetRecipeData()})
+		diff := rpv1.GetGCOutputResources(P(newResource).OutputResources(), P(old).OutputResources())
+		err = link.dp.Delete(ctx, serviceCtx.ResourceID, diff)
 		if err != nil {
 			return nil, err
 		}

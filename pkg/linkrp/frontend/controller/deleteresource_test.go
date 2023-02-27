@@ -18,12 +18,12 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	radiustesting "github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,7 +116,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 					})
 
 				if !testcase.shouldFail {
-					mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+					mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 					mStorageClient.
 						EXPECT().
 						Delete(gomock.Any(), gomock.Any()).
@@ -175,7 +175,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 							Data:     dataModel,
 						}, nil
 					})
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
 
 				opts := Options{
 					Options: ctrl.Options{

@@ -12,6 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
@@ -87,7 +88,7 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Run(ctx context.Context, w h
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 
-	if componentName, ok := deploymentOutput.ComputedValues[renderers.ComponentNameKey].(string); ok {
+	if componentName, ok := deploymentOutput.ComputedValues[linkrp.ComponentNameKey].(string); ok {
 		newResource.Properties.ComponentName = componentName
 	}
 

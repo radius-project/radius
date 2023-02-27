@@ -22,20 +22,14 @@ type DaprSecretStore struct {
 	LinkMetadata
 }
 
-func (r *DaprSecretStore) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
-	r.Properties.Status.OutputResources = outputResources
-	r.ComputedValues = computedValues
-	r.SecretValues = secretValues
-	if componentName, ok := computedValues[linkrp.ComponentNameKey].(string); ok {
-		r.Properties.ComponentName = componentName
-	}
-
-	return nil
-}
-
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if componentName, ok := do.ComputedValues[linkrp.ComponentNameKey].(string); ok {
+		r.Properties.ComponentName = componentName
+	}
 	return nil
 }
 
@@ -55,12 +49,12 @@ func (r *DaprSecretStore) GetComputedValues() map[string]any {
 }
 
 // SecretValues returns the secret values for the link.
-func (r *DaprSecretStore) GetSecretValues() map[string]rp.SecretValueReference {
+func (r *DaprSecretStore) GetSecretValues() map[string]rpv1.SecretValueReference {
 	return r.LinkMetadata.SecretValues
 }
 
 // RecipeData returns the recipe data for the link.
-func (r *DaprSecretStore) GetRecipeData() RecipeData {
+func (r *DaprSecretStore) GetRecipeData() linkrp.RecipeData {
 	return r.LinkMetadata.RecipeData
 }
 

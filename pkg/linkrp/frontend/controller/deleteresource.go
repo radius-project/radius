@@ -13,15 +13,15 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // DeleteResource is the controller implementation to delete a link resource.
 type DeleteResource[P interface {
 	*T
-	datamodel.Link
+	rpv1.RadiusResourceModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 	dp deployment.DeploymentProcessor
@@ -30,7 +30,7 @@ type DeleteResource[P interface {
 // NewDeleteResource creates a new instance DeleteResource.
 func NewDeleteResource[P interface {
 	*T
-	datamodel.Link
+	rpv1.RadiusResourceModel
 }, T any](opts Options, op ctrl.Operation[P, T]) (ctrl.Controller, error) {
 	return &DeleteResource[P, T]{
 		Operation: op,
@@ -60,7 +60,7 @@ func (link *DeleteResource[P, T]) Run(ctx context.Context, w http.ResponseWriter
 	}
 
 	oldP := P(old)
-	err = link.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: oldP, OutputResources: oldP.OutputResources(), ComputedValues: oldP.GetComputedValues(), SecretValues: oldP.GetSecretValues(), RecipeData: oldP.GetRecipeData()})
+	err = link.dp.Delete(ctx, serviceCtx.ResourceID, oldP.OutputResources())
 	if err != nil {
 		return nil, err
 	}

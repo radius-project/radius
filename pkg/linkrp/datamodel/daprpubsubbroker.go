@@ -22,24 +22,17 @@ type DaprPubSubBroker struct {
 	LinkMetadata
 }
 
-func (r *DaprPubSubBroker) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
-	r.Properties.Status.OutputResources = outputResources
-	r.ComputedValues = computedValues
-	r.SecretValues = secretValues
-	if topic, ok := computedValues[linkrp.TopicNameKey].(string); ok {
-		r.Properties.Topic = topic
-	}
-
-	if componentName, ok := computedValues[linkrp.ComponentNameKey].(string); ok {
-		r.Properties.ComponentName = componentName
-	}
-
-	return nil
-}
-
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if topic, ok := do.ComputedValues[linkrp.TopicNameKey].(string); ok {
+		r.Properties.Topic = topic
+	}
+	if componentName, ok := do.ComputedValues[linkrp.ComponentNameKey].(string); ok {
+		r.Properties.ComponentName = componentName
+	}
 	return nil
 }
 
@@ -59,12 +52,12 @@ func (r *DaprPubSubBroker) GetComputedValues() map[string]any {
 }
 
 // SecretValues returns the secret values for the link.
-func (r *DaprPubSubBroker) GetSecretValues() map[string]rp.SecretValueReference {
+func (r *DaprPubSubBroker) GetSecretValues() map[string]rpv1.SecretValueReference {
 	return r.LinkMetadata.SecretValues
 }
 
 // RecipeData returns the recipe data for the link.
-func (r *DaprPubSubBroker) GetRecipeData() RecipeData {
+func (r *DaprPubSubBroker) GetRecipeData() linkrp.RecipeData {
 	return r.LinkMetadata.RecipeData
 }
 

@@ -423,7 +423,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 3)
 	require.Equal(t, expectedOutputResources, result.Resources)
-	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[linkrp.ComponentNameKey].Value)
 	require.Equal(t, resource.Properties.Recipe.Name, result.RecipeData.Name)
 	require.Equal(t, clientv2.StateStoreClientAPIVersion, result.RecipeData.APIVersion)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/daprstatestores:v1", result.RecipeData.TemplatePath)

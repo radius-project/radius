@@ -45,7 +45,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentO
 			linkrp.DatabaseNameValue: {
 				Value: "db",
 			},
-			renderers.ServerNameValue: {
+			linkrp.ServerNameValue: {
 				LocalID:     rpv1.LocalIDAzureSqlServer,
 				JSONPointer: "/properties/fullyQualifiedDomainName",
 			},

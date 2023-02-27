@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	radiustesting "github.com/project-radius/radius/test/testutil"
 )
 
 func getTestModels20220315privatepreview[P interface {

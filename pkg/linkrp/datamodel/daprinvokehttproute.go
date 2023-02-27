@@ -22,20 +22,14 @@ type DaprInvokeHttpRoute struct {
 	LinkMetadata
 }
 
-func (r *DaprInvokeHttpRoute) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
-	r.Properties.Status.OutputResources = outputResources
-	r.ComputedValues = computedValues
-	r.SecretValues = secretValues
-	if appId, ok := computedValues[linkrp.AppIDKey].(string); ok {
-		r.Properties.AppId = appId
-	}
-
-	return nil
-}
-
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprInvokeHttpRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if appId, ok := do.ComputedValues[linkrp.AppIDKey].(string); ok {
+		r.Properties.AppId = appId
+	}
 	return nil
 }
 
@@ -55,12 +49,12 @@ func (r *DaprInvokeHttpRoute) GetComputedValues() map[string]any {
 }
 
 // SecretValues returns the secret values for the link.
-func (r *DaprInvokeHttpRoute) GetSecretValues() map[string]rp.SecretValueReference {
+func (r *DaprInvokeHttpRoute) GetSecretValues() map[string]rpv1.SecretValueReference {
 	return r.LinkMetadata.SecretValues
 }
 
 // RecipeData returns the recipe data for the link.
-func (r *DaprInvokeHttpRoute) GetRecipeData() RecipeData {
+func (r *DaprInvokeHttpRoute) GetRecipeData() linkrp.RecipeData {
 	return r.LinkMetadata.RecipeData
 }
 

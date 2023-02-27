@@ -22,20 +22,14 @@ type RabbitMQMessageQueue struct {
 	LinkMetadata
 }
 
-func (r *RabbitMQMessageQueue) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
-	r.Properties.Status.OutputResources = outputResources
-	r.ComputedValues = computedValues
-	r.SecretValues = secretValues
-	if queue, ok := computedValues[linkrp.QueueNameKey].(string); ok {
-		r.Properties.Queue = queue
-	}
-
-	return nil
-}
-
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if queue, ok := do.ComputedValues[linkrp.QueueNameKey].(string); ok {
+		r.Properties.Queue = queue
+	}
 	return nil
 }
 
@@ -55,12 +49,12 @@ func (r *RabbitMQMessageQueue) GetComputedValues() map[string]any {
 }
 
 // SecretValues returns the secret values for the link.
-func (r *RabbitMQMessageQueue) GetSecretValues() map[string]rp.SecretValueReference {
+func (r *RabbitMQMessageQueue) GetSecretValues() map[string]rpv1.SecretValueReference {
 	return r.LinkMetadata.SecretValues
 }
 
 // RecipeData returns the recipe data for the link.
-func (r *RabbitMQMessageQueue) GetRecipeData() RecipeData {
+func (r *RabbitMQMessageQueue) GetRecipeData() linkrp.RecipeData {
 	return r.LinkMetadata.RecipeData
 }
 

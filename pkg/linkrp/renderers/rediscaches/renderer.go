@@ -114,29 +114,29 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 
 	if _, ok := computedValues[linkrp.Host]; !ok {
 		computedValues[linkrp.Host] = renderers.ComputedValueReference{
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
 	if _, ok := computedValues[linkrp.Port]; !ok {
 		computedValues[linkrp.Port] = renderers.ComputedValueReference{
-			LocalID:     outputresource.LocalIDAzureRedis,
+			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
 	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
-		secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{
-			LocalID:       outputresource.LocalIDAzureRedis,
+		secretValues[renderers.PasswordStringHolder] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 		}
 	}
 
 	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
-		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
-			LocalID:       outputresource.LocalIDAzureRedis,
+		secretValues[renderers.ConnectionStringValue] = rpv1.SecretValueReference{
+			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 			Transformer: resourcemodel.ResourceType{
@@ -207,15 +207,15 @@ func buildSecretValueReference(secretValues map[string]rpv1.SecretValueReference
 }
 
 func buildComputedValuesReference(computedValues map[string]renderers.ComputedValueReference) {
-	if _, ok := computedValues[renderers.Host]; !ok {
-		computedValues[renderers.Host] = renderers.ComputedValueReference{
+	if _, ok := computedValues[linkrp.Host]; !ok {
+		computedValues[linkrp.Host] = renderers.ComputedValueReference{
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
-	if _, ok := computedValues[renderers.Port]; !ok {
-		computedValues[renderers.Port] = renderers.ComputedValueReference{
+	if _, ok := computedValues[linkrp.Port]; !ok {
+		computedValues[linkrp.Port] = renderers.ComputedValueReference{
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}

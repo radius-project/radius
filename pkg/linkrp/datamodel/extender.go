@@ -22,16 +22,11 @@ type Extender struct {
 	LinkMetadata
 }
 
-func (r *Extender) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
-	r.Properties.Status.OutputResources = outputResources
-	r.ComputedValues = computedValues
-	r.SecretValues = secretValues
-	return nil
-}
-
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *Extender) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
 	return nil
 }
 
@@ -51,12 +46,12 @@ func (r *Extender) GetComputedValues() map[string]any {
 }
 
 // SecretValues returns the secret values for the link.
-func (r *Extender) GetSecretValues() map[string]rp.SecretValueReference {
+func (r *Extender) GetSecretValues() map[string]rpv1.SecretValueReference {
 	return r.LinkMetadata.SecretValues
 }
 
 // RecipeData returns the recipe data for the link.
-func (r *Extender) GetRecipeData() RecipeData {
+func (r *Extender) GetRecipeData() linkrp.RecipeData {
 	return r.LinkMetadata.RecipeData
 }
 

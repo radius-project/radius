@@ -161,11 +161,11 @@ func buildRendererOutputRedis() renderers.RendererOutput {
 	// Note: all of these computed values and secrets will be ignored
 	// unless the recipe output contains an Azure redis.
 	computedValues := map[string]renderers.ComputedValueReference{
-		renderers.Host: {
+		linkrp.Host: {
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName",
 		},
-		renderers.Port: {
+		linkrp.Port: {
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort",
 		},
@@ -227,7 +227,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	secretValues := map[string]rpv1.SecretValueReference{}
 	if mode == modeResource || mode == modeRecipe {
 		computedValues = map[string]renderers.ComputedValueReference{
-			renderers.DatabaseNameValue: {
+			linkrp.DatabaseNameValue: {
 				LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
 				JSONPointer: "/properties/resource/id",
 			},
@@ -255,7 +255,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 		}
 
 		secretValues = map[string]rpv1.SecretValueReference{
-			renderers.UsernameStringValue:   {Value: "testUser"},
+			linkrp.UsernameStringValue:      {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: cosmosConnectionString},
 		}
@@ -869,7 +869,7 @@ func Test_Deploy(t *testing.T) {
 		deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{linkrp.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
 	})
 	t.Run("Verify deploy success with redis recipe (azure resource binding)", func(t *testing.T) {
 		mocks := setup(t)
@@ -887,7 +887,7 @@ func Test_Deploy(t *testing.T) {
 		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "myrediscache.redis.cache.windows.net"}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{linkrp.Port: 6379, linkrp.Host: "myrediscache.redis.cache.windows.net"}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify recipe can override values and secrets with redis recipe (azure resource binding)", func(t *testing.T) {
@@ -900,7 +900,7 @@ func Test_Deploy(t *testing.T) {
 				renderers.PasswordStringHolder: "override",
 			},
 			Values: map[string]any{
-				renderers.Host: "override.example.com",
+				linkrp.Host: "override.example.com",
 			},
 		}
 		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(&resources, nil)
@@ -916,7 +916,7 @@ func Test_Deploy(t *testing.T) {
 		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, expectedSecrets, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "override.example.com"}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{linkrp.Port: 6379, linkrp.Host: "override.example.com"}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy success with redis recipe (kubernetes value-based)", func(t *testing.T) {
@@ -945,7 +945,7 @@ func Test_Deploy(t *testing.T) {
 		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, transformRecipeResponseToSecrets(resources.Secrets), deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "redis.mynamespace.svc.cluster.local"}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{linkrp.Port: 6379, linkrp.Host: "redis.mynamespace.svc.cluster.local"}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy success with redis recipe (aws value-based)", func(t *testing.T) {
@@ -971,7 +971,7 @@ func Test_Deploy(t *testing.T) {
 		deploymentOutput, err := dp.Deploy(ctx, redisLinkResourceId, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, transformRecipeResponseToSecrets(resources.Secrets), deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.Port: 6379, renderers.Host: "mycluster.us-west-2.amazonaws.com"}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{linkrp.Port: 6379, linkrp.Host: "mycluster.us-west-2.amazonaws.com"}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy failure with recipe", func(t *testing.T) {

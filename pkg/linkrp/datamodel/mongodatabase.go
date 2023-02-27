@@ -8,7 +8,6 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -44,23 +43,12 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 	return mongoSecrets == MongoDatabaseSecrets{}
 }
 
-func (r *MongoDatabase) Transform(outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference) error {
-	r.Properties.Status.OutputResources = outputResources
-	r.ComputedValues = computedValues
-	r.SecretValues = secretValues
-	if database, ok := computedValues[linkrp.DatabaseNameValue].(string); ok {
-		r.Properties.Database = database
-	}
-
-	return nil
-}
-
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
 	r.SecretValues = do.SecretValues
-	if database, ok := do.ComputedValues[renderers.DatabaseNameValue].(string); ok {
+	if database, ok := do.ComputedValues[linkrp.DatabaseNameValue].(string); ok {
 		r.Properties.Database = database
 	}
 
@@ -83,12 +71,12 @@ func (r *MongoDatabase) GetComputedValues() map[string]any {
 }
 
 // SecretValues returns the secret values for the link.
-func (r *MongoDatabase) GetSecretValues() map[string]rp.SecretValueReference {
+func (r *MongoDatabase) GetSecretValues() map[string]rpv1.SecretValueReference {
 	return r.LinkMetadata.SecretValues
 }
 
 // RecipeData returns the recipe data for the link.
-func (r *MongoDatabase) GetRecipeData() RecipeData {
+func (r *MongoDatabase) GetRecipeData() linkrp.RecipeData {
 	return r.LinkMetadata.RecipeData
 }
 

@@ -360,7 +360,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
+		linkrp.DatabaseNameValue: {
 			LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id",
 		},

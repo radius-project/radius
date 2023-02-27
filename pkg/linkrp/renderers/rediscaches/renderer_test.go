@@ -70,11 +70,11 @@ func Test_Render_Success(t *testing.T) {
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.Host: {
+		linkrp.Host: {
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName",
 		},
-		renderers.Port: {
+		linkrp.Port: {
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort",
 		},
@@ -337,11 +337,11 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.Host: {
+		linkrp.Host: {
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName",
 		},
-		renderers.Port: {
+		linkrp.Port: {
 			LocalID:     rpv1.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort",
 		},
