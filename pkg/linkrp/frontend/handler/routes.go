@@ -620,7 +620,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		{
 			ParentRouter: extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.ExtendersResourceType,
-			Method:       extender_ctrl.OperationListSecret,
+			Method:       link_frontend_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return extender_ctrl.NewListSecretsExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
