@@ -148,6 +148,9 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	awsOpts := &awsproxy.AWSOptions{
+		Options: ctrl.Options{
+			BasePath: s.options.BasePath,
+		},
 		AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
 		AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
 	}
