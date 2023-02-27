@@ -37,14 +37,14 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 
 	t.Parallel()
 	for _, resourceType := range LinkTypes {
-		if resourceType == linkrp.MongoDatabasesResourceType {
+		if resourceType == linkrp.MongoDatabasesResourceType || resourceType == linkrp.RedisCachesResourceType {
 			//MongoDatabases uses an async controller that has separate test code.
 			continue
 		}
 
 		t.Run(resourceType+"-"+"delete non-existing resource", func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(linkrp.RedisCachesResourceType), nil)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(resourceType), nil)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
 			mStorageClient.
@@ -98,7 +98,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 			t.Run(resourceType+"-"+testcase.desc, func(t *testing.T) {
 				w := httptest.NewRecorder()
 
-				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(linkrp.RedisCachesResourceType), nil)
+				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(resourceType), nil)
 				req.Header.Set("If-Match", testcase.ifMatchETag)
 
 				ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -161,7 +161,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 			})
 
 			t.Run(resourceType+"-"+"delete deploymentprocessor error", func(t *testing.T) {
-				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(linkrp.RedisCachesResourceType), nil)
+				req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, getTestHeaderFileName(resourceType), nil)
 				ctx := radiustesting.ARMTestContextFromRequest(req)
 				dataModel := createDataModelForLinkType(resourceType)
 				w := httptest.NewRecorder()
@@ -277,19 +277,6 @@ func createDeleteController(resourceType string, opts Options) (controller ctrl.
 		resourceOptions := ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 			RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 			ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
-		}
-
-		operation := ctrl.NewOperation(opts.Options,
-			resourceOptions)
-
-		return NewDeleteResource(
-			opts,
-			operation,
-		)
-	case strings.ToLower(linkrp.RedisCachesResourceType):
-		resourceOptions := ctrl.ResourceOptions[datamodel.RedisCache]{
-			RequestConverter:  converter.RedisCacheDataModelFromVersioned,
-			ResponseConverter: converter.RedisCacheDataModelToVersioned,
 		}
 
 		operation := ctrl.NewOperation(opts.Options,

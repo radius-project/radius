@@ -25,6 +25,14 @@ type DaprPubSubBroker struct {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if topic, ok := do.ComputedValues[linkrp.TopicNameKey].(string); ok {
+		r.Properties.Topic = topic
+	}
+	if componentName, ok := do.ComputedValues[linkrp.ComponentNameKey].(string); ok {
+		r.Properties.ComponentName = componentName
+	}
 	return nil
 }
 

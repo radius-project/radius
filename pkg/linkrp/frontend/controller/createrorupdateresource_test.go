@@ -41,6 +41,11 @@ func TestCreateOrUpdateLinkResource_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 
 	for _, resourceType := range LinkTypes {
+		if resourceType == linkrp.MongoDatabasesResourceType || resourceType == linkrp.RedisCachesResourceType {
+			//MongoDatabases uses an async controller that has separate test code.
+			continue
+		}
+
 		createNewResourceTestCases := []struct {
 			desc               string
 			headerKey          string
@@ -384,44 +389,6 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		deploymentOutput = rpv1.DeploymentOutput{
 			DeployedOutputResources: []rpv1.OutputResource{},
 		}
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		rendererOutput := renderers.RendererOutput{
-			Resources: []rpv1.OutputResource{
-				{
-					LocalID: rpv1.LocalIDAzureCosmosAccount,
-					ResourceType: resourcemodel.ResourceType{
-						Type:     resourcekinds.AzureCosmosAccount,
-						Provider: resourcemodel.ProviderAzure,
-					},
-					Identity: resourcemodel.ResourceIdentity{},
-				},
-			},
-			SecretValues: map[string]rpv1.SecretValueReference{
-				linkrp.UsernameStringValue:      {Value: "testUser"},
-				renderers.PasswordStringHolder:  {Value: "testPassword"},
-				renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
-			},
-			ComputedValues: map[string]renderers.ComputedValueReference{
-				linkrp.DatabaseNameValue: {
-					Value: "db",
-				},
-			},
-		}
-
-		deploymentOutput = rpv1.DeploymentOutput{
-			DeployedOutputResources: []rpv1.OutputResource{
-				{
-					LocalID: rpv1.LocalIDAzureCosmosAccount,
-					ResourceType: resourcemodel.ResourceType{
-						Type:     resourcekinds.AzureCosmosAccount,
-						Provider: resourcemodel.ProviderAzure,
-					},
-				},
-			},
-			ComputedValues: map[string]any{
-				"database": rendererOutput.ComputedValues["database"].Value,
-			},
-		}
 	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		rendererOutput = renderers.RendererOutput{
 			SecretValues: map[string]rpv1.SecretValueReference{
@@ -439,76 +406,6 @@ func getDeploymentProcessorOutputs(resourceType string, buildComputedValueRefere
 		deploymentOutput = rpv1.DeploymentOutput{
 			DeployedOutputResources: []rpv1.OutputResource{},
 		}
-	case strings.ToLower(linkrp.RedisCachesResourceType):
-		var computedValues map[string]renderers.ComputedValueReference
-		var portValue any
-		if buildComputedValueReferences {
-			computedValues = map[string]renderers.ComputedValueReference{
-				linkrp.Host: {
-					LocalID:     rpv1.LocalIDAzureRedis,
-					JSONPointer: "/properties/hostName",
-				},
-				linkrp.Port: {
-					LocalID:     rpv1.LocalIDAzureRedis,
-					JSONPointer: "/properties/sslPort",
-				},
-				linkrp.UsernameStringValue: {
-					Value: "redisusername",
-				},
-			}
-
-			portValue = "10255"
-		} else {
-			portValue = float64(10255)
-
-			computedValues = map[string]renderers.ComputedValueReference{
-				linkrp.Host: {
-					Value: "myrediscache.redis.cache.windows.net",
-				},
-				linkrp.Port: {
-					Value: portValue,
-				},
-				linkrp.UsernameStringValue: {
-					Value: "redisusername",
-				},
-			}
-		}
-		rendererOutput = renderers.RendererOutput{
-			Resources: []rpv1.OutputResource{
-				{
-					LocalID: rpv1.LocalIDAzureRedis,
-					ResourceType: resourcemodel.ResourceType{
-						Type:     resourcekinds.AzureRedis,
-						Provider: resourcemodel.ProviderAzure,
-					},
-					Identity: resourcemodel.ResourceIdentity{},
-				},
-			},
-			SecretValues: map[string]rpv1.SecretValueReference{
-				renderers.ConnectionStringValue: {Value: "test-connection-string"},
-				renderers.PasswordStringHolder:  {Value: "testpassword"},
-				linkrp.UsernameStringValue:      {Value: "redisusername"},
-			},
-			ComputedValues: computedValues,
-		}
-
-		deploymentOutput = rpv1.DeploymentOutput{
-			DeployedOutputResources: []rpv1.OutputResource{
-				{
-					LocalID: rpv1.LocalIDAzureRedis,
-					ResourceType: resourcemodel.ResourceType{
-						Type:     resourcekinds.AzureRedis,
-						Provider: resourcemodel.ProviderAzure,
-					},
-				},
-			},
-			ComputedValues: map[string]any{
-				linkrp.Host:                "myrediscache.redis.cache.windows.net",
-				linkrp.Port:                portValue,
-				linkrp.UsernameStringValue: "redisusername",
-			},
-		}
-
 	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		rendererOutput = renderers.RendererOutput{
 			Resources: []rpv1.OutputResource{
@@ -621,38 +518,10 @@ func createCreateOrUpdateController(resourceType string, opts Options) (controll
 			operation,
 			false,
 		)
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		resourceOptions := ctrl.ResourceOptions[datamodel.MongoDatabase]{
-			RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
-			ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
-		}
-
-		operation := ctrl.NewOperation(opts.Options,
-			resourceOptions)
-
-		return NewCreateOrUpdateResource(
-			opts,
-			operation,
-			false,
-		)
 	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		resourceOptions := ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 			RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 			ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
-		}
-
-		operation := ctrl.NewOperation(opts.Options,
-			resourceOptions)
-
-		return NewCreateOrUpdateResource(
-			opts,
-			operation,
-			false,
-		)
-	case strings.ToLower(linkrp.RedisCachesResourceType):
-		resourceOptions := ctrl.ResourceOptions[datamodel.RedisCache]{
-			RequestConverter:  converter.RedisCacheDataModelFromVersioned,
-			ResponseConverter: converter.RedisCacheDataModelToVersioned,
 		}
 
 		operation := ctrl.NewOperation(opts.Options,

@@ -83,15 +83,7 @@ func createDataModelForLinkType(resourceType string) (dataModel any) {
 		dataModel := new(datamodel.DaprInvokeHttpRoute)
 		getTestDataModel20220315privatepreview(dataModel)
 		return dataModel
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		dataModel := new(datamodel.DaprInvokeHttpRoute)
-		getTestDataModel20220315privatepreview(dataModel)
-		return dataModel
 	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
-		dataModel := new(datamodel.DaprInvokeHttpRoute)
-		getTestDataModel20220315privatepreview(dataModel)
-		return dataModel
-	case strings.ToLower(linkrp.RedisCachesResourceType):
 		dataModel := new(datamodel.DaprInvokeHttpRoute)
 		getTestDataModel20220315privatepreview(dataModel)
 		return dataModel
@@ -181,21 +173,6 @@ func createDataForLinkType(resourceType string, useDiff bool) (input any, dataMo
 		actualOutput := new(v20220315privatepreview.ExtenderResource)
 
 		return input, dataModel, expectedOutput, actualOutput, testHeaderFileName
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		input := new(v20220315privatepreview.MongoDatabaseResource)
-		dataModel := new(datamodel.MongoDatabase)
-		expectedOutput := new(v20220315privatepreview.MongoDatabaseResource)
-		testHeaderFileName = getTestModels20220315privatepreview(input, dataModel, expectedOutput, useDiff)
-
-		expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
-		expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
-		expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
-
-		// First time created objects should have the same lastModifiedAt and createdAt
-		dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
-		actualOutput := new(v20220315privatepreview.MongoDatabaseResource)
-
-		return input, dataModel, expectedOutput, actualOutput, testHeaderFileName
 	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		input := new(v20220315privatepreview.RabbitMQMessageQueueResource)
 		dataModel := new(datamodel.RabbitMQMessageQueue)
@@ -209,21 +186,6 @@ func createDataForLinkType(resourceType string, useDiff bool) (input any, dataMo
 		// First time created objects should have the same lastModifiedAt and createdAt
 		dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
 		actualOutput := new(v20220315privatepreview.RabbitMQMessageQueueResource)
-
-		return input, dataModel, expectedOutput, actualOutput, testHeaderFileName
-	case strings.ToLower(linkrp.RedisCachesResourceType):
-		input := new(v20220315privatepreview.RedisCacheResource)
-		dataModel := new(datamodel.RedisCache)
-		expectedOutput := new(v20220315privatepreview.RedisCacheResource)
-		testHeaderFileName = getTestModels20220315privatepreview(input, dataModel, expectedOutput, useDiff)
-
-		expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
-		expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
-		expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
-
-		// First time created objects should have the same lastModifiedAt and createdAt
-		dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
-		actualOutput := new(v20220315privatepreview.RedisCacheResource)
 
 		return input, dataModel, expectedOutput, actualOutput, testHeaderFileName
 	case strings.ToLower(linkrp.SqlDatabasesResourceType):
