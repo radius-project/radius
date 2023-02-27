@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
@@ -70,7 +69,7 @@ type EnvironmentMetadata struct {
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error) {
-	logger := ucplog.FromContext(ctx).WithValues(logging.LogFieldResourceID, id.String())
+	logger := ucplog.FromContext(ctx)
 	logger.Info("Rendering resource")
 
 	renderer, err := dp.getResourceRenderer(id)
@@ -151,7 +150,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
 func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
-	logger := ucplog.FromContext(ctx).WithValues(logging.LogFieldResourceID, resourceID.String())
+	logger := ucplog.FromContext(ctx)
 	// Deploy
 	logger.Info("Deploying radius resource")
 
@@ -417,7 +416,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error {
-	logger := ucplog.FromContext(ctx).WithValues(logging.LogFieldResourceID, id)
+	logger := ucplog.FromContext(ctx)
 
 	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
 	if err != nil {

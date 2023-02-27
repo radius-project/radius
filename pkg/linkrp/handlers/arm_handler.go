@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
@@ -62,7 +61,7 @@ func (handler *armHandler) Delete(ctx context.Context, resource *rpv1.OutputReso
 		return err
 	}
 
-	logger := ucplog.FromContext(ctx).WithValues(logging.LogFieldArmResourceID, id)
+	logger := ucplog.FromContext(ctx)
 	logger.Info("Deleting ARM resource")
 	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
@@ -110,7 +109,7 @@ func getByID(ctx context.Context, options *clientv2.Options, id, apiVersion stri
 		return nil, err
 	}
 
-	logger := ucplog.FromContext(ctx).WithValues(logging.LogFieldArmResourceID, id)
+	logger := ucplog.FromContext(ctx)
 	logger.Info("Fetching arm resource by id")
 
 	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), options)

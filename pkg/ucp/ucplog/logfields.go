@@ -21,6 +21,9 @@ const (
 	// LogFieldServiceID represents the name of the service generating the log entry
 	LogFieldServiceID string = "serviceId"
 
+	// LogFieldResource represents the resource including service information associated with a log message
+	LogFieldResource string = "resource"
+
 	// LogFieldAttributes represents the optional attributes associated with a log message
 	LogFieldAttributes string = "attributes"
 

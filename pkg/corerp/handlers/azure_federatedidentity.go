@@ -162,9 +162,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 		},
 	}
 
-	logger.WithValues(
-		logging.LogFieldResourceID, identityID,
-		logging.LogFieldLocalID, rpv1.LocalIDFederatedIdentity).Info("Created federated identity for Azure AD identity.")
+	logger.Info("Created federated identity for Azure AD identity.", ucplog.Attributes(ctx, logging.LogFieldLocalID, rpv1.LocalIDFederatedIdentity))
 
 	return map[string]string{}, nil
 }

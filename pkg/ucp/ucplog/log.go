@@ -129,7 +129,7 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 		return logr.Discard(), nil, err
 	}
 	logger := zapr.NewLoggerWithOptions(zapLogger, zapr.AllowZapFields(true)).WithName(name)
-	logger = logger.WithValues("resource", NewResourceObject(name))
+	logger = logger.WithValues(LogFieldResource, NewResourceObject(name))
 
 	// The underlying zap logger needs to be flushed before server exits
 	flushLogs := func() {

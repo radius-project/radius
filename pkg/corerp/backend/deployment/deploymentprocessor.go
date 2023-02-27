@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
@@ -284,7 +283,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []rpv1.OutputResource) error {
-	logger := ucplog.FromContext(ctx).WithValues(logging.LogFieldOperationID, id)
+	logger := ucplog.FromContext(ctx)
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
