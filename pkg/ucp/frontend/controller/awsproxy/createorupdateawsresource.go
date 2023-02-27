@@ -42,16 +42,13 @@ func NewCreateOrUpdateAWSResource(awsOpts *AWSOptions) (ctrl.Controller, error) 
 }
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	// serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	serviceCtx := servicecontext.AWSRequestContext{}
-	serviceCtx.ResourceID = id
-	serviceCtx.ResourceType = resourceType
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
 
 	body := map[string]any{}
-	err = decoder.Decode(&body)
+	err := decoder.Decode(&body)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
