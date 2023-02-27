@@ -171,8 +171,11 @@ func FromContext(ctx context.Context) logr.Logger {
 	// Populate trace id and span id when caller gets logger from context
 	// because span id can be changed.
 	sc := trace.SpanFromContext(ctx)
-	return logger.WithValues(
-		LogFieldTraceId, sc.SpanContext().TraceID().String(),
-		LogFieldSpanId, sc.SpanContext().SpanID().String(),
-	)
+	if sc.SpanContext().HasTraceID() && sc.SpanContext().HasSpanID() {
+		logger = logger.WithValues(
+			LogFieldTraceId, sc.SpanContext().TraceID().String(),
+			LogFieldSpanId, sc.SpanContext().SpanID().String(),
+		)
+	}
+	return logger
 }
