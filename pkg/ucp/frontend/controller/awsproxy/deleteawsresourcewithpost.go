@@ -43,11 +43,14 @@ func NewDeleteAWSResourceWithPost(awsOpts *AWSOptions) (ctrl.Controller, error) 
 
 func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	// serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	serviceCtx := servicecontext.AWSRequestContext{}
-	serviceCtx.ResourceID = id
-	serviceCtx.ResourceType = resourceType
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+
+	
+
+	// resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
+	// serviceCtx := servicecontext.AWSRequestContext{}
+	// serviceCtx.ResourceID = id
+	// serviceCtx.ResourceType = resourceType
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {

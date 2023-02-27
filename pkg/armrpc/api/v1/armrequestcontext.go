@@ -268,7 +268,9 @@ func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 	if val == nil {
 		panic("@@@@ ARMRequestContextFromContext: ARMRequestContext not found in context")
 	}
-	return val.(*ARMRequestContext)
+	armCtx := val.(*ARMRequestContext)
+	fmt.Println("@@@@@@ Returning ARMRequestContextFromContext: ", armCtx)
+	return armCtx
 }
 
 // WithARMRequestContext injects ARMRequestContext into the given http context.

@@ -7,6 +7,7 @@ package servicecontext
 
 import (
 	"context"
+	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -31,6 +32,8 @@ func AWSRequestContextFromContext(ctx context.Context) *AWSRequestContext {
 	c := AWSRequestContext{
 		ARMRequestContext: *v1.ARMRequestContextFromContext(ctx),
 	}
+	fmt.Println("@@@@@@ AWSRequestContextFromContext: c.ResourceID = ", c.ResourceID)
 	c.ResourceType = resources.ToAWSResourceType(c.ResourceID)
+	fmt.Println("@@@@@@ AWSRequestContextFromContext: c.ResourceType = ", c.ResourceType)
 	return &c
 }
