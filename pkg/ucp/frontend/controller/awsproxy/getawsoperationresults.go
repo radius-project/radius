@@ -38,11 +38,7 @@ func NewGetAWSOperationResults(awsOpts *AWSOptions) (ctrl.Controller, error) {
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	// serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	resourceType, id, err := ParseAWSRequest(ctx, p.AWSOptions, req)
-	serviceCtx := servicecontext.AWSRequestContext{}
-	serviceCtx.ResourceID = id
-	serviceCtx.ResourceType = resourceType
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	response, err := p.AWSOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
