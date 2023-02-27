@@ -25,14 +25,6 @@ type SqlDatabase struct {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if server, ok := do.ComputedValues[linkrp.ServerNameValue].(string); ok {
-		r.Properties.Server = server
-	}
-	if database, ok := do.ComputedValues[linkrp.DatabaseNameValue].(string); ok {
-		r.Properties.Database = database
-	}
 	return nil
 }
 

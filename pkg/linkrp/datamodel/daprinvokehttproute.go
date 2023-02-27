@@ -25,11 +25,6 @@ type DaprInvokeHttpRoute struct {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprInvokeHttpRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if appId, ok := do.ComputedValues[linkrp.AppIDKey].(string); ok {
-		r.Properties.AppId = appId
-	}
 	return nil
 }
 

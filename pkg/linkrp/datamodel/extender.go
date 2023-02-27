@@ -25,8 +25,6 @@ type Extender struct {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *Extender) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
 	return nil
 }
 

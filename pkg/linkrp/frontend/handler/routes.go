@@ -22,9 +22,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
+	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprinvokehttproutes"
 	daprPubSub_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprpubsubbrokers"
 	daprSecretStore_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprsecretstores"
-	daprStateStore_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprstatestores"
 	extender_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
@@ -196,17 +196,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				options := link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp}
-				operation := frontend_ctrl.NewOperation(options.Options,
-					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
-						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
-						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
-					})
-				return link_frontend_ctrl.NewCreateOrUpdateResource(
-					options,
-					operation,
-					false,
-				)
+				return daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
 		},
 		{
@@ -214,33 +204,14 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				options := link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp}
-				operation := frontend_ctrl.NewOperation(options.Options,
-					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
-						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
-						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
-					})
-				return link_frontend_ctrl.NewCreateOrUpdateResource(
-					options,
-					operation,
-					false,
-				)
+				return daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			}},
 		{
 			ParentRouter: daprHttpRouteResourceRouter,
 			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				options := link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp}
-				operation := frontend_ctrl.NewOperation(options.Options,
-					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
-						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
-						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
-					})
-				return link_frontend_ctrl.NewDeleteResource(
-					options,
-					operation,
-				)
+				return daprHttpRoute_ctrl.NewDeleteDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			}},
 		{
 			ParentRouter: daprPubSubRTSubrouter,
@@ -367,7 +338,17 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				options := link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp}
+				operation := frontend_ctrl.NewOperation(options.Options,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
+					})
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
+					options,
+					operation,
+					false,
+				)
 			},
 		},
 		{
@@ -375,7 +356,17 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				options := link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp}
+				operation := frontend_ctrl.NewOperation(options.Options,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
+					})
+				return link_frontend_ctrl.NewCreateOrUpdateResource(
+					options,
+					operation,
+					false,
+				)
 			},
 		},
 		{
@@ -383,7 +374,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprStateStore_ctrl.NewDeleteDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				options := link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp}
+				operation := frontend_ctrl.NewOperation(options.Options,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
+					})
+				return link_frontend_ctrl.NewDeleteResource(
+					options,
+					operation,
+				)
 			},
 		},
 		{
@@ -620,7 +620,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		{
 			ParentRouter: extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.ExtendersResourceType,
-			Method:       link_frontend_ctrl.OperationListSecret,
+			Method:       extender_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return extender_ctrl.NewListSecretsExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},

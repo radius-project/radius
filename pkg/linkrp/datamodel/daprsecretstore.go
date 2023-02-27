@@ -25,11 +25,6 @@ type DaprSecretStore struct {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if componentName, ok := do.ComputedValues[linkrp.ComponentNameKey].(string); ok {
-		r.Properties.ComponentName = componentName
-	}
 	return nil
 }
 
