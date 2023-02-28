@@ -1,8 +1,8 @@
 {
   "__inputs": [
     {
-      "name": "DS_PROMETHEUS",
-      "label": "Prometheus",
+      "name": "DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL",
+      "label": "Managed_Prometheus_radius-longhaul",
       "description": "",
       "type": "datasource",
       "pluginId": "prometheus",
@@ -75,7 +75,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "fieldConfig": {
         "defaults": {
@@ -158,7 +158,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(rate(container_cpu_usage_seconds_total{container=\"appcore-rp\"}[5m])) by (container)",
@@ -173,7 +173,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "When a container exceeds its CPU limits, OS will throttle the container and record the amount of time it was throttled.",
       "fieldConfig": {
@@ -248,7 +248,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(rate(container_cpu_cfs_throttled_seconds_total{container=\"appcore-rp\"}[5m])) by (container)",
@@ -263,7 +263,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "This is an estimate of how much memory cannot be evicted.",
       "fieldConfig": {
@@ -342,7 +342,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{container=\"appcore-rp\"}) by (container)",
@@ -357,7 +357,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Go heap size (allocated objects in use plus allocated objects not in use anymore but not yet garbage-collected).",
       "fieldConfig": {
@@ -436,7 +436,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{container=\"appcore-rp\"}) by (container) / ignoring (container) group_left sum(machine_memory_bytes{}) * 100",
@@ -451,7 +451,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "fieldConfig": {
         "defaults": {
@@ -534,7 +534,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(rate(container_fs_writes_bytes_total{container=\"appcore-rp\"}[5m])) by (container,device)",
@@ -545,7 +545,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(rate(container_fs_reads_bytes_total{container=\"appcore-rp\"}[5m])) by (container,device)",
@@ -557,7 +557,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(rate(container_fs_writes_bytes_total{container=\"appcore-rp\"}[5m])) by (container,device) + sum(rate(container_fs_reads_bytes_total{container=\"appcore-rp\"}[5m])) by (container,device)",
@@ -586,7 +586,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Availability",
       "fieldConfig": {
@@ -661,7 +661,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "100 - sum(rate(http_server_duration_count{http_status_code=~\"[45]..\"}[5m])) / ignoring (http_method, http_status_code) group_left sum(rate(http_server_duration_count[5m]))",
@@ -678,7 +678,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Per-second rate of HTTP requests as averaged over a time window of 5 minutes",
       "fieldConfig": {
@@ -757,7 +757,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(rate(http_server_duration_count[5m]))",
@@ -774,7 +774,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Total Error Ratio (Last 5 Minutes)",
       "fieldConfig": {
@@ -853,10 +853,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(http_server_duration_count{http_status_code=~\"[45]..\"}[5m])) / ignoring (http_method, http_status_code) group_left sum(rate(http_server_duration_count[5m])) * 100",
+          "expr": "sum(rate(http_server_duration_count{http_status_code=~\"[45]..\"}[5m])) / ignoring (http_method, http_status_code) group_left sum(rate(http_server_duration_count[5m]))",
           "hide": false,
           "interval": "",
           "legendFormat": "Error Ratio",
@@ -870,7 +870,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Response Time (p99, p75, p50)",
       "fieldConfig": {
@@ -954,7 +954,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum by (le)(rate(http_server_duration_bucket[5m])))",
@@ -966,7 +966,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.75, sum by (le)(rate(http_server_duration_bucket[5m])))",
@@ -979,7 +979,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.5, sum by (le)(rate(http_server_duration_bucket[5m])))",
@@ -996,7 +996,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Response Time by HTTP Method",
       "fieldConfig": {
@@ -1080,7 +1080,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum by (http_,http_method)(rate(http_server_duration_count{control_plane=\"appcore-rp\"}[5m]))",
@@ -1096,7 +1096,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "P99 Response Time by Status Code",
       "fieldConfig": {
@@ -1180,7 +1180,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum by (http_status_code)(rate(http_server_duration_count{control_plane=\"appcore-rp\"}[5m]))",
@@ -1209,7 +1209,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Number of incoming async operation requests per second over the last 5 minutes",
       "fieldConfig": {
@@ -1288,7 +1288,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "sum(rate(asyncoperation_queued_operation_total{control_plane=\"appcore-rp\", resource_type!=\"\"}[5m]))",
@@ -1303,7 +1303,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Number of failed operations",
       "fieldConfig": {
@@ -1382,7 +1382,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "count(rate(asyncoperation_operation_total{control_plane=\"appcore-rp\", resource_type!=\"\", operation_state=\"failed\"}[5m]))",
@@ -1397,7 +1397,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "Average Async Operation Duration",
       "fieldConfig": {
@@ -1481,7 +1481,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum by (le)(rate(asyncoperation_duration_bucket{control_plane=\"appcore-rp\", resource_type!=\"\"}[5m])))",
@@ -1492,7 +1492,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.75, sum by (le)(rate(asyncoperation_duration_bucket{control_plane=\"appcore-rp\", resource_type!=\"\"}[5m])))",
@@ -1504,7 +1504,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "expr": "histogram_quantile(0.5, sum by (le)(rate(asyncoperation_duration_bucket{control_plane=\"appcore-rp\", resource_type!=\"\"}[5m])))",
@@ -1520,7 +1520,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
       },
       "description": "",
       "fieldConfig": {
@@ -1604,7 +1604,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${DS_MANAGED_PROMETHEUS_RADIUS-LONGHAUL}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1629,8 +1629,8 @@
       {
         "current": {
           "selected": false,
-          "text": "Prometheus",
-          "value": "Prometheus"
+          "text": "Managed_Prometheus_radius-longhaul",
+          "value": "Managed_Prometheus_radius-longhaul"
         },
         "hide": 0,
         "includeAll": false,
@@ -1655,6 +1655,6 @@
   "timezone": "",
   "title": "Core RP & Link RP",
   "uid": "MCy2akJ4k",
-  "version": 3,
+  "version": 2,
   "weekStart": ""
 }
