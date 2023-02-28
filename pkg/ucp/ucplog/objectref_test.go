@@ -13,30 +13,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func TestAttributes_InvalidKeyValuePairs(t *testing.T) {
-	keyPairTests := []struct {
-		name string
-		in   []any
-	}{
-		{
-			name: "odd number of key value item",
-			in:   []any{"key", "value", "key2"},
-		},
-		{
-			name: "invalid key type",
-			in:   []any{"key", "value", struct{}{}, "value2"},
-		},
-	}
-
-	for _, tc := range keyPairTests {
-		t.Run(tc.name, func(t *testing.T) {
-			field := Attributes(context.TODO(), tc.in...)
-			require.Equal(t, LogFieldAttributes, field.Key)
-			require.Equal(t, "invalid key and value pairs", field.String)
-		})
-	}
-}
-
 func TestAttributeMarshaller(t *testing.T) {
 	marshallerTests := []struct {
 		name      string
@@ -81,7 +57,7 @@ func TestAttributeMarshaller(t *testing.T) {
 
 	for _, tc := range marshallerTests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := WithAttribute(tc.ctx, tc.contextKV...)
+			ctx := WithAttributes(tc.ctx, tc.contextKV...)
 			field := Attributes(ctx, tc.kv...)
 			require.Equal(t, LogFieldAttributes, field.Key)
 			require.Equal(t, zapcore.ObjectMarshalerType, field.Type)

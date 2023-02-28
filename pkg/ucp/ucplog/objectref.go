@@ -35,44 +35,21 @@ func NewResourceObject(serviceName string) map[string]any {
 	}
 }
 
-func validateKeyValues(keysAndValues ...any) bool {
-	l := len(keysAndValues)
-	if l%2 != 0 {
-		return false
-	}
-
-	for i := 0; i < l; i += 2 {
-		_, ok := keysAndValues[i].(string)
-		if !ok {
-			return false
-		}
-	}
-
-	return true
-}
-
-// WithAttribute returns a copy of parent in which radiusAttributeContextKey are added.
-// To use attributes in context, ucplog.Attribute(ctx) must be included in logger as a key value.
-// For instance, logger.Info("hello radius", ucplog.Attribute(ctx))
-func WithAttribute(ctx context.Context, keysAndValues ...any) context.Context {
+// WithAttributes returns a copy of parent context with additional attribute properties for logger.
+// To emit the additional properties, ucplog.Attribute(ctx) should be used in logger's arguments
+// along with message.
+func WithAttributes(ctx context.Context, keysAndValues ...any) context.Context {
 	if ctx == nil {
-		ctx = context.TODO()
-	}
-	if !validateKeyValues(keysAndValues...) {
-		return ctx
+		panic("ctx is nil")
 	}
 	return context.WithValue(ctx, radiusAttributeContextKey, keysAndValues)
 }
 
 // Attributes creates attributes object including the additional properties and info for Radius log.
-// This leverages zapcore.ObjectMarshaler to define the custom attributes, so it works only for uber/zap.
 func Attributes(ctx context.Context, keysAndValues ...any) zap.Field {
 	attr, ok := ctx.Value(radiusAttributeContextKey).([]any)
 	if !ok {
 		attr = nil
-	}
-	if !validateKeyValues(keysAndValues...) {
-		return zap.String(LogFieldAttributes, "invalid key and value pairs")
 	}
 	marshaller := &attributeMarshaller{contextAttributes: attr, keysAndValues: keysAndValues}
 	return zap.Object(LogFieldAttributes, marshaller)

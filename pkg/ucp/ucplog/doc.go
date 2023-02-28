@@ -37,8 +37,8 @@ well-defined API set and helpers to emit the log without knowing the specific lo
 this is not enough to generate the streamlined logs across the codebase. Package ucplog includes the following
 utilities to streamline the log format as well as provide standard developer experiences to the contributers.
 
-- ucplog.FromContextWithSpan(ctx context.Context)
-- ucplog.WithAttribute(ctx context.Context, keysAndValues ...any)
+- ucplog.FromContextOrDiscard(ctx context.Context)
+- ucplog.WithAttributes(ctx context.Context, keysAndValues ...any)
 - ucplog.Attributes(ctx context.Context, keysAndValues ...any)
 
 # Example
@@ -49,10 +49,10 @@ instead of creating new logger.
 
 // Extract logger from context injected previously and add traceId and spanId fields.
 // If you do not like to add traceId and spanId to your log, use logr.FromContext(ctx).
-logger := ucplog.FromContextWithSpan(ctx)
+logger := ucplog.FromContextOrDiscard(ctx)
 
 // Set the default attributes in the request-scope context.
-ctx = ucplog.WithAttributes(ctx,
+ctx = ucplog.WithAttributess(ctx,
 	"resourceId", "<ResourceID>",
 	"operationID", "0136b023-78c5-440a-b7d3-858120a328f1")
 

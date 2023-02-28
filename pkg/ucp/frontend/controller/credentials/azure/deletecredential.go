@@ -37,7 +37,7 @@ func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error
 
 func (p *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceID, err := resources.ParseResource(path)
 	if err != nil {

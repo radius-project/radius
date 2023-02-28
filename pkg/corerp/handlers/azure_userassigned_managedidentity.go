@@ -41,7 +41,7 @@ type azureUserAssignedManagedIdentityHandler struct {
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {

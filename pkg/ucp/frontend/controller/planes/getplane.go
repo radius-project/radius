@@ -36,7 +36,7 @@ func NewGetPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 
 func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil

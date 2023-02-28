@@ -70,7 +70,7 @@ func (s *Service) Init(ctx context.Context) error {
 
 // Start starts the worker.
 func (s *Service) Start(ctx context.Context, opt Options) error {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	// Create and start worker.

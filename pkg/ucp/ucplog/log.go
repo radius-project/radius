@@ -164,12 +164,9 @@ func Unwrap(logger logr.Logger) *zap.Logger {
 	return nil
 }
 
-// FromContextWithSpan returns logger from context with trace id and span id values.
-// The returned logger should not be reused for injecting logger into context because
-// traceId and spanId will be duplicated for the next FromContextWithSpan call.
-// To inject logger into context with the unexpected result, logr.FromContext or
-// logr.FromContextOrDiscard is recommeded.
-func FromContextWithSpan(ctx context.Context) logr.Logger {
+// FromContextOrDiscard returns logger from context with trace id and span id values.
+// In order to get logger without span, use logr.FromContextOrDiscard(ctx context.Context).
+func FromContextOrDiscard(ctx context.Context) logr.Logger {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	// Populate trace id and span id when caller gets logger from context

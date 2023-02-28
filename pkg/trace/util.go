@@ -60,7 +60,7 @@ func SetAsyncResultStatus(result ctrl.Result, span trace.Span) {
 	}
 	if result.Error != nil {
 		span.SetStatus(otelcodes.Error, result.Error.Message)
-		opts := trace.WithAttributes(
+		opts := trace.WithAttributess(
 			semconv.ExceptionType(result.Error.Code),
 			semconv.ExceptionMessage(result.Error.Message),
 		)

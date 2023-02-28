@@ -38,7 +38,7 @@ type Service struct {
 
 // Init initializes web service.
 func (s *Service) Init(ctx context.Context) error {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
@@ -70,7 +70,7 @@ func (s *Service) Init(ctx context.Context) error {
 
 // Start starts HTTP server.
 func (s *Service) Start(ctx context.Context, opt Options) error {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)

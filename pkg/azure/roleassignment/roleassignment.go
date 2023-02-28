@@ -29,7 +29,7 @@ import (
 // '/subscriptions/{subscription-id}/resourceGroups/{resource-group-name}/providers/{resource-provider}/{resource-type}/{resource-name}'
 // roleNameOrID - Name of the role ('Reader') or definition id ('acdd72a7-3385-48ef-bd42-f606fba81ae7') for the role to be assigned.
 func Create(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, principalID, scope, roleNameOrID string) (*armauthorization.RoleAssignment, error) {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	roleDefinitionID, err := GetRoleDefinitionID(ctx, armConfig, subscriptionID, scope, roleNameOrID)
 	if err != nil {

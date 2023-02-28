@@ -149,7 +149,7 @@ func ConfigureDefaultHandlers(
 
 // Responds with an HTTP 500
 func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
 
 	var response rest.Response

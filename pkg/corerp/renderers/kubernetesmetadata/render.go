@@ -202,7 +202,7 @@ func mergeMaps(ctx context.Context, mergeMap map[string]string, newInputMap map[
 
 // Reject custom user entries that would affect Radius reserved keys
 func rejectReservedEntries(ctx context.Context, inputMap map[string]string) map[string]string {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	for k := range inputMap {
 		if strings.HasPrefix(k, kubernetes.RadiusDevPrefix) {

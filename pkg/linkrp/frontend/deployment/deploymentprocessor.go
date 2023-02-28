@@ -69,7 +69,7 @@ type EnvironmentMetadata struct {
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error) {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Rendering resource")
 
 	renderer, err := dp.getResourceRenderer(id)
@@ -150,7 +150,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
 func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	// Deploy
 	logger.Info("Deploying radius resource")
 
@@ -364,7 +364,7 @@ func (dp *deploymentProcessor) processRecipeOutputResources(resourceID resources
 }
 
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *rpv1.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]any, err error) {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
@@ -416,7 +416,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
 	if err != nil {

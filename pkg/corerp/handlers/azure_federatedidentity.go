@@ -83,7 +83,7 @@ type azureFederatedIdentityHandler struct {
 
 // Put creates or updates the federated identity resource of the azure identity.
 func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Get dependencies
 	identityProp, ok := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]

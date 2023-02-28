@@ -19,7 +19,7 @@ import (
 func InitTracer(opts Options) (func(context.Context) error, error) {
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(resource.NewWithAttributes(
+		sdktrace.WithResource(resource.NewWithAttributess(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(opts.ServiceName),
 		)),

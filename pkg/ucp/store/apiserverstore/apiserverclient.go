@@ -117,7 +117,7 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 			if err != nil {
 				// Ignore invalid IDs when querying, we don't want a single piece of bad data to
 				// break all queries.
-				logger := ucplog.FromContextWithSpan(ctx)
+				logger := ucplog.FromContextOrDiscard(ctx)
 				logger.Error(err, "found an invalid resource id as part of a query", "name", resource.Name, "namespace", resource.Namespace)
 				continue
 			}

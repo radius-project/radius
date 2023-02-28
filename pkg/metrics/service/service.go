@@ -37,7 +37,7 @@ func (s *Service) Name() string {
 
 // Run method of metrics package creates a new server for exposing an endpoint to collect metrics from
 func (s *Service) Run(ctx context.Context) error {
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	pme, err := provider.NewPrometheusExporter()
 	if err != nil {

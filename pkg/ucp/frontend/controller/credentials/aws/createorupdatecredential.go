@@ -68,7 +68,7 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	newResource.Name = id.Name()
 	newResource.Type = id.Type()
 
-	logger := ucplog.FromContextWithSpan(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Check if the credential already exists in database
 	existingResource := datamodel.Credential{}
