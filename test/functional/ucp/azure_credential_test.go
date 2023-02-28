@@ -33,12 +33,15 @@ func Test_Azure_Credential_Operations(t *testing.T) {
 func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AzureCredentialResource, expectedCredential ucp.AzureCredentialResource) {
 	// Create credential operation
 	createAzureTestCredential(t, roundTripper, resourceUrl, createCredential)
+
 	// Create duplicate credential
 	createAzureTestCredential(t, roundTripper, resourceUrl, createCredential)
+
 	// List credential operation
 	credentialList := listAzureTestCredential(t, roundTripper, collectionUrl)
-	require.Equal(t, len(credentialList), 1)
-	assert.DeepEqual(t, credentialList[0], expectedCredential)
+	index := getIndexOfAzureTestCredential(*expectedCredential.ID, credentialList)
+	require.Positive(t, index)
+	require.Equal(t, credentialList[index], expectedCredential)
 
 	// Check for correctness of credential
 	createdCredential, statusCode := getAzureTestCredential(t, roundTripper, resourceUrl)
@@ -167,4 +170,24 @@ func getExpectedAzureTestCredentialObject() ucp.AzureCredentialResource {
 			},
 		},
 	}
+}
+
+// Gets the index of the credential ID'd by testCredentialId, if it doesn't exist in credentialList
+// or the ID occurs more than once, will return -1
+func getIndexOfAzureTestCredential(testCredentialId string, credentialList []ucp.AzureCredentialResource) int {
+	found := false
+	testCredentialIndex := -1
+
+	for index := range credentialList {
+		if *credentialList[index].ID == testCredentialId {
+			// Hasn't been seen yet
+			if found {
+				testCredentialIndex = index
+			} else {
+				return -1
+			}
+		}
+	}
+
+	return testCredentialIndex
 }

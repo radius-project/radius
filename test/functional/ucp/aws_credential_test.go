@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_AWS_Credential_Operations(t *testing.T) {
@@ -33,18 +32,22 @@ func Test_AWS_Credential_Operations(t *testing.T) {
 func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AWSCredentialResource, expectedCredential ucp.AWSCredentialResource) {
 	// Create credential operation
 	createAWSTestCredential(t, roundTripper, resourceUrl, createCredential)
+
 	// Create duplicate credential
 	createAWSTestCredential(t, roundTripper, resourceUrl, createCredential)
+
 	// List credential operation
 	credentialList := listAWSTestCredential(t, roundTripper, collectionUrl)
-	require.Equal(t, len(credentialList), 1)
-	assert.DeepEqual(t, credentialList[0], expectedCredential)
+
+	index := getIndexOfAWSTestCredential(*expectedCredential.ID, credentialList)
+	require.Positive(t, index)
+	require.Equal(t, credentialList[index], expectedCredential)
 
 	// Check for correctness of credential
 	createdCredential, statusCode := getAWSTestCredential(t, roundTripper, resourceUrl)
 
 	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, createdCredential, expectedCredential)
+	require.Equal(t, createdCredential, expectedCredential)
 
 	// Delete credential operation
 	statusCode, err := deleteAWSTestCredential(t, roundTripper, resourceUrl)
@@ -151,7 +154,7 @@ func getAWSTestCredentialObject() ucp.AWSCredentialResource {
 func getExpectedAWSTestCredentialObject() ucp.AWSCredentialResource {
 	return ucp.AWSCredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
+		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
 		Tags: map[string]*string{
@@ -166,4 +169,24 @@ func getExpectedAWSTestCredentialObject() ucp.AWSCredentialResource {
 			},
 		},
 	}
+}
+
+// Gets the index of the credential ID'd by testCredentialId, if it doesn't exist in credentialList
+// or the ID occurs more than once, will return -1
+func getIndexOfAWSTestCredential(testCredentialId string, credentialList []ucp.AWSCredentialResource) int {
+	found := false
+	testCredentialIndex := -1
+
+	for index := range credentialList {
+		if *credentialList[index].ID == testCredentialId {
+			// Hasn't been seen yet
+			if found {
+				testCredentialIndex = index
+			} else {
+				return -1
+			}
+		}
+	}
+
+	return testCredentialIndex
 }
