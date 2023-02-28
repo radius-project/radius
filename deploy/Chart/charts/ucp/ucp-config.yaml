@@ -66,4 +66,4 @@ logging:
 tracerProvider:
   serviceName: "ucp"
   zipkin:
-    url: "http://zipkin.radius-system:9411/api/v2/spans"
+    url: "http://jaeger-collector.radius-system:9411/api/v2/spans"
