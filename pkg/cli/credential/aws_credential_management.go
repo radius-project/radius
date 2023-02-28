@@ -45,7 +45,7 @@ type AWSCredentialManagementClientInterface interface {
 // Put registers credentials with the provided credential config
 func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential ucp.AWSCredentialResource) error {
 	if strings.EqualFold(*credential.Type, AWSCredential) {
-		_, err := cpm.AWSCredentialClient.CreateOrUpdate(ctx, AWSPlaneName, *credential.Name, credential, nil)
+		_, err := cpm.AWSCredentialClient.CreateOrUpdate(ctx, AWSPlaneName, defaultSecretName, credential, nil)
 		return err
 	}
 	return &ErrUnsupportedCloudProvider{}

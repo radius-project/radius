@@ -77,7 +77,7 @@ func (fe *ErrUnsupportedCloudProvider) Is(target error) bool {
 // Put registers credentials with the provided credential config
 func (cpm *AzureCredentialManagementClient) Put(ctx context.Context, credential ucp.AzureCredentialResource) error {
 	if strings.EqualFold(*credential.Type, AzureCredential) {
-		_, err := cpm.AzureCredentialClient.CreateOrUpdate(ctx, AzurePlaneName, *credential.Name, credential, nil)
+		_, err := cpm.AzureCredentialClient.CreateOrUpdate(ctx, AzurePlaneName, defaultSecretName, credential, nil)
 		return err
 	}
 
