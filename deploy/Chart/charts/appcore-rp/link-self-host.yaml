@@ -37,4 +37,4 @@ ucp:
 tracerProvider:
   serviceName: "applications.link"
   zipkin:
-    url: "http://jaeger-collector.radius-system:9411/api/v2/spans"
+    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
