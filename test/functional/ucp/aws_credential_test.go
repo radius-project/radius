@@ -30,6 +30,7 @@ func Test_AWS_Credential_Operations(t *testing.T) {
 
 	test.Test(t)
 }
+
 func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AWSCredentialResource, expectedCredential ucp.AWSCredentialResource) {
 	// Create credential operation
 	createAWSCredential(t, roundTripper, resourceUrl, createCredential)
@@ -142,7 +143,7 @@ func getAWSCredentialObject() ucp.AWSCredentialResource {
 			Kind:            to.Ptr("AccessKey"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
-				SecretName: to.Ptr("aws-awscloud-default"),
+				SecretName: to.Ptr("aws-aws-default"),
 			},
 		},
 	}
@@ -162,7 +163,7 @@ func getExpectedAWSCredentialObject() ucp.AWSCredentialResource {
 			Kind:        to.Ptr("AccessKey"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
-				SecretName: to.Ptr("aws-awscloud-default"),
+				SecretName: to.Ptr("aws-aws-default"),
 			},
 		},
 	}
