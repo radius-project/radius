@@ -41,6 +41,8 @@ func TestCreateOrUpdateLinkResource_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 
 	for _, resourceType := range LinkTypes {
+		// Theses tests currently test all link types that can be supported by the sync generic controller.
+		// It is not limited to just the ones that are actually using it (based on routes).
 		if resourceType == linkrp.MongoDatabasesResourceType || resourceType == linkrp.RedisCachesResourceType {
 			//MongoDatabases uses an async controller that has separate test code.
 			continue
