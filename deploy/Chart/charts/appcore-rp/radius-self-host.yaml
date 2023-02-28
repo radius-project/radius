@@ -34,3 +34,7 @@ workerServer:
   maxOperationRetryCount: 2
 ucp:
   kind: kubernetes
+tracerProvider:
+  serviceName: "applications.core"
+  zipkin:
+    url: "http://zipkin.radius-system:9411/api/v2/spans"
