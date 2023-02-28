@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -22,10 +21,10 @@ import (
 
 func Test_Azure_Credential_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_Azure_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceTypePath := "/planes/azure/azurecloud/providers/System.Azure/credentials"
+		resourceTypePath := "/planes/azure/azuretest/providers/System.Azure/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
 		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
-		runAzureCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureCredentialObject(), getExpectedAzureCredentialObject())
+		runAzureCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureTestCredentialObject(), getExpectedAzureTestCredentialObject())
 	})
 
 	test.Test(t)
@@ -33,31 +32,31 @@ func Test_Azure_Credential_Operations(t *testing.T) {
 
 func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AzureCredentialResource, expectedCredential ucp.AzureCredentialResource) {
 	// Create credential operation
-	createAzureCredential(t, roundTripper, resourceUrl, createCredential)
+	createAzureTestCredential(t, roundTripper, resourceUrl, createCredential)
 	// Create duplicate credential
-	createAzureCredential(t, roundTripper, resourceUrl, createCredential)
+	createAzureTestCredential(t, roundTripper, resourceUrl, createCredential)
 	// List credential operation
-	credentialList := listAzureCredential(t, roundTripper, collectionUrl)
+	credentialList := listAzureTestCredential(t, roundTripper, collectionUrl)
 	require.Equal(t, len(credentialList), 1)
 	assert.DeepEqual(t, credentialList[0], expectedCredential)
 
 	// Check for correctness of credential
-	createdCredential, statusCode := getAzureCredential(t, roundTripper, resourceUrl)
+	createdCredential, statusCode := getAzureTestCredential(t, roundTripper, resourceUrl)
 	require.Equal(t, http.StatusOK, statusCode)
 	assert.DeepEqual(t, createdCredential, expectedCredential)
 
 	// Delete credential operation
-	statusCode, err := deleteAzureCredential(t, roundTripper, resourceUrl)
+	statusCode, err := deleteAzureTestCredential(t, roundTripper, resourceUrl)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
 
 	// Delete non-existent credential
-	statusCode, err = deleteAzureCredential(t, roundTripper, resourceUrl)
+	statusCode, err = deleteAzureTestCredential(t, roundTripper, resourceUrl)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNoContent, statusCode)
 }
 
-func createAzureCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.AzureCredentialResource) {
+func createAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.AzureCredentialResource) {
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
 	createRequest, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
@@ -70,7 +69,7 @@ func createAzureCredential(t *testing.T, roundTripper http.RoundTripper, url str
 	t.Logf("Credential: %s created/updated successfully", url)
 }
 
-func getAzureCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.AzureCredentialResource, int) {
+func getAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.AzureCredentialResource, int) {
 	getCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
@@ -89,7 +88,7 @@ func getAzureCredential(t *testing.T, roundTripper http.RoundTripper, url string
 	return credential, result.StatusCode
 }
 
-func deleteAzureCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
+func deleteAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
 	deleteCredentialRequest, err := http.NewRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 
@@ -97,16 +96,16 @@ func deleteAzureCredential(t *testing.T, roundTripper http.RoundTripper, url str
 	return res.StatusCode, err
 }
 
-func listAzureCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.AzureCredentialResource {
+func listAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.AzureCredentialResource {
 	listCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(listCredentialRequest)
 	require.NoError(t, err)
-	return getAzureCredentialList(t, res)
+	return getAzureTestCredentialList(t, res)
 }
 
-func getAzureCredentialList(t *testing.T, res *http.Response) []ucp.AzureCredentialResource {
+func getAzureTestCredentialList(t *testing.T, res *http.Response) []ucp.AzureCredentialResource {
 	body := res.Body
 	defer body.Close()
 
@@ -127,10 +126,10 @@ func getAzureCredentialList(t *testing.T, res *http.Response) []ucp.AzureCredent
 	return credentialList
 }
 
-func getAzureCredentialObject() ucp.AzureCredentialResource {
+func getAzureTestCredentialObject() ucp.AzureCredentialResource {
 	return ucp.AzureCredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
 		Tags: map[string]*string{
@@ -142,17 +141,17 @@ func getAzureCredentialObject() ucp.AzureCredentialResource {
 			ClientSecret: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:         to.Ptr("ServicePrincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
-				SecretName: to.Ptr("azure-azurecloud-default"),
+				Kind:       to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				SecretName: to.Ptr("azure-azuretest-default"),
 			},
 		},
 	}
 }
 
-func getExpectedAzureCredentialObject() ucp.AzureCredentialResource {
+func getExpectedAzureTestCredentialObject() ucp.AzureCredentialResource {
 	return ucp.AzureCredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
 		Tags: map[string]*string{
@@ -163,8 +162,8 @@ func getExpectedAzureCredentialObject() ucp.AzureCredentialResource {
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:     to.Ptr("ServicePrincipal"),
 			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
-				SecretName: to.Ptr("azure-azurecloud-default"),
+				Kind:       to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				SecretName: to.Ptr("azure-azuretest-default"),
 			},
 		},
 	}
