@@ -39,8 +39,8 @@ func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl strin
 	// List credential operation
 	credentialList := listAWSTestCredential(t, roundTripper, collectionUrl)
 
-	index := getIndexOfAWSTestCredential(*expectedCredential.ID, credentialList)
-	require.Positive(t, index)
+	index, err := getIndexOfAWSTestCredential(*expectedCredential.ID, credentialList)
+	require.NoError(t, err)
 	require.Equal(t, credentialList[index], expectedCredential)
 
 	// Check for correctness of credential
@@ -50,7 +50,7 @@ func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl strin
 	require.Equal(t, createdCredential, expectedCredential)
 
 	// Delete credential operation
-	statusCode, err := deleteAWSTestCredential(t, roundTripper, resourceUrl)
+	statusCode, err = deleteAWSTestCredential(t, roundTripper, resourceUrl)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
 
@@ -171,22 +171,26 @@ func getExpectedAWSTestCredentialObject() ucp.AWSCredentialResource {
 	}
 }
 
-// Gets the index of the credential ID'd by testCredentialId, if it doesn't exist in credentialList
-// or the ID occurs more than once, will return -1
-func getIndexOfAWSTestCredential(testCredentialId string, credentialList []ucp.AWSCredentialResource) int {
+func getIndexOfAWSTestCredential(testCredentialId string, credentialList []ucp.AWSCredentialResource) (int, error) {
 	found := false
+	foundCredentials := make([]string, len(credentialList))
 	testCredentialIndex := -1
 
 	for index := range credentialList {
+		foundCredentials[index] = *credentialList[index].ID
 		if *credentialList[index].ID == testCredentialId {
-			// Hasn't been seen yet
-			if found {
+			if !found {
 				testCredentialIndex = index
+				found = true
 			} else {
-				return -1
+				return -1, fmt.Errorf("credential %s duplicated in credentialList: %v", testCredentialId, foundCredentials)
 			}
 		}
 	}
 
-	return testCredentialIndex
+	if !found {
+		return -1, fmt.Errorf("credential: %s not found in credentialList: %v", testCredentialId, foundCredentials)
+	}
+
+	return testCredentialIndex, nil
 }
