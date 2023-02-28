@@ -41,7 +41,7 @@ spec:
         - name: ASPNETCORE_Logging__LogLevel__Default
           value: "Debug"
         - name: ASPNETCORE_Zipkin__Endpoint
-          value: "http://jaeger:9411/api/v2/spans"
+          value: "http://jaeger-collector.radius-monitoring:9411/api/v2/spans"
         image: {{ .Values.global.engine.image }}:{{ .Values.global.engine.tag }}
         name: de
         ports:

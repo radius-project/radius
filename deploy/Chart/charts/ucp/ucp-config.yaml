@@ -62,3 +62,8 @@ metricsProvider:
 logging:
   level: "info"
   json: true
+
+tracerProvider:
+  serviceName: "ucp"
+  zipkin:
+    url: "http://jaeger-collector.radius-system:9411/api/v2/spans"
