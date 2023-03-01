@@ -28,3 +28,6 @@ workerServer:
   maxOperationRetryCount: 2
 ucp:
   kind: kubernetes
+logging:
+  level: "info"
+  json: false

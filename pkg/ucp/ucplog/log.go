@@ -128,7 +128,9 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 	if err != nil {
 		return logr.Discard(), nil, err
 	}
-	logger := zapr.NewLoggerWithOptions(zapLogger).WithName(name)
+	logger := zapr.NewLogger(zapLogger).WithName(name)
+
+	// Add the default resource key values, such as version, to new logger.
 	logger = logger.WithValues(NewResourceObject(name)...)
 
 	// The underlying zap logger needs to be flushed before server exits
