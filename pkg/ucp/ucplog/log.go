@@ -15,7 +15,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"github.com/project-radius/radius/pkg/version"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -105,7 +104,6 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	}
 
 	cfg.EncoderConfig.NameKey = "name"
-	cfg.EncoderConfig.CallerKey = "scope"
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	cfg.EncoderConfig.MessageKey = "message"
 	cfg.EncoderConfig.LevelKey = "severity"
@@ -130,8 +128,10 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 	if err != nil {
 		return logr.Discard(), nil, err
 	}
-	logger := zapr.NewLoggerWithOptions(zapLogger, zapr.AllowZapFields(true)).WithName(name)
-	logger = logger.WithValues(LogFieldResource, NewResourceObject(name))
+	logger := zapr.NewLogger(zapLogger).WithName(name)
+
+	// Add the default resource key values, such as version, to new logger.
+	logger = logger.WithValues(NewResourceObject(name)...)
 
 	// The underlying zap logger needs to be flushed before server exits
 	flushLogs := func() {
@@ -184,11 +184,11 @@ func FromContextOrDiscard(ctx context.Context) logr.Logger {
 }
 
 // NewResourceObject returns the resource object which includes the system info.
-func NewResourceObject(serviceName string) map[string]any {
+func NewResourceObject(serviceName string) []any {
 	host, _ := os.Hostname()
-	return map[string]any{
-		string(semconv.ServiceNameKey):    serviceName,
-		string(semconv.ServiceVersionKey): version.Channel(),
-		string(semconv.HostNameKey):       host,
+	return []any{
+		LogFieldServiceID, serviceName,
+		LogFieldVersion, version.Channel(),
+		LogFieldHostname, host,
 	}
 }

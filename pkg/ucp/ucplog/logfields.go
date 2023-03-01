@@ -12,6 +12,12 @@ const (
 
 // Field names for structured logging
 const (
+	// LogFieldHostName represents the current hostname.
+	LogFieldHostname string = "hostname"
+
+	// LogFieldVersion represents the version of service.
+	LogFieldVersion string = "version"
+
 	// LogFieldResourceID represents the Radius Resource ID.
 	LogFieldResourceID string = "resourceId"
 
@@ -20,12 +26,6 @@ const (
 
 	// LogFieldServiceID represents the name of the service generating the log entry
 	LogFieldServiceID string = "serviceId"
-
-	// LogFieldResource represents the resource including service information associated with a log message
-	LogFieldResource string = "resource"
-
-	// LogFieldAttributes represents the optional attributes associated with a log message
-	LogFieldAttributes string = "attributes"
 
 	// LogFieldTraceId represents the traceId retrieved from traceparent header of the current HTTP request
 	LogFieldTraceId string = "traceId"
