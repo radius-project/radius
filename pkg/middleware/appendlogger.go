@@ -23,8 +23,7 @@ func AppendLogValues(serviceName string) func(h http.Handler) http.Handler {
 				return
 			}
 
-			ctx := ucplog.WrapLogContext(r.Context())
-			ctx = ucplog.WithAttributes(ctx, ucplog.LogFieldResourceID, id.String())
+			ctx := ucplog.WrapLogContext(r.Context(), ucplog.LogFieldResourceID, id.String())
 
 			r = r.WithContext(ctx)
 			h.ServeHTTP(w, r)
