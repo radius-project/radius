@@ -133,18 +133,16 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			reqCtx := trace.WithTraceparent(ctx, op.TraceparentID)
 			// Populate the default attributes in the current context so all logs will have these fields.
-			reqCtx = ucplog.WithAttributes(
-				reqCtx,
+			opLogger := ucplog.FromContextOrDiscard(reqCtx).WithValues(
 				logging.LogFieldResourceID, op.ResourceID,
 				logging.LogFieldOperationID, op.OperationID,
 				logging.LogFieldOperationType, op.OperationType,
 				logging.LogFieldDequeueCount, msgreq.DequeueCount,
 			)
-			opLogger := ucplog.FromContextOrDiscard(reqCtx)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
 			if !ok {
-				opLogger.V(ucplog.Error).Info("failed to parse operation type.", ucplog.Attributes(reqCtx))
+				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
 				return
 			}
 
@@ -153,7 +151,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			if asyncCtrl == nil {
 				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
-					opLogger.Error(err, "failed to finish the message", ucplog.Attributes(reqCtx))
+					opLogger.Error(err, "failed to finish the message")
 				}
 				return
 			}
@@ -174,11 +172,11 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			dup, err := w.isDuplicated(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
-				opLogger.Error(err, "failed to check potential deduplication.", ucplog.Attributes(reqCtx))
+				opLogger.Error(err, "failed to check potential deduplication.")
 				return
 			}
 			if dup {
-				opLogger.V(ucplog.Warn).Info("duplicated message detected", ucplog.Attributes(reqCtx))
+				opLogger.V(ucplog.Warn).Info("duplicated message detected")
 				return
 			}
 
@@ -201,7 +199,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 	asyncReq := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, asyncReq); err != nil {
-		logger.Error(err, "failed to unmarshal queue message.", ucplog.Attributes(ctx))
+		logger.Error(err, "failed to unmarshal queue message.")
 		return
 	}
 	asyncReqCtx, opCancel := context.WithCancel(ctx)
@@ -228,7 +226,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			}
 		}(opDone)
 
-		logger.Info("Start processing operation.", ucplog.Attributes(ctx))
+		logger.Info("Start processing operation.")
 		result, err := asyncCtrl.Run(asyncReqCtx, asyncReq)
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
@@ -238,7 +236,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err != nil {
 				armErr := extractError(err)
 				result.SetFailed(armErr, false)
-				logger.Error(err, "Operation Failed", ucplog.Attributes(ctx))
+				logger.Error(err, "Operation Failed")
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
@@ -252,9 +250,9 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		select {
 		case <-time.After(messageExtendAfter):
 			if err := w.requestQueue.ExtendMessage(ctx, message); err != nil {
-				logger.Error(err, "fails to extend message lock", ucplog.Attributes(ctx))
+				logger.Error(err, "fails to extend message lock")
 			} else {
-				logger.Info("Extended message lock duration.", ucplog.Attributes(ctx, "nextVisibleTime", message.NextVisibleAt.UTC().String()))
+				logger.Info("Extended message lock duration.", "nextVisibleTime", message.NextVisibleAt.UTC().String())
 				metrics.DefaultAsyncOperationMetrics.RecordExtendedAsyncOperation(ctx, asyncReq)
 			}
 			messageExtendAfter = w.getMessageExtendDuration(message.NextVisibleAt)
@@ -271,7 +269,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			return
 
 		case <-ctx.Done():
-			logger.Info("Stopping processing async operation. This operation will be reprocessed.", ucplog.Attributes(ctx))
+			logger.Info("Stopping processing async operation. This operation will be reprocessed.")
 			span.End()
 			return
 
@@ -280,7 +278,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			metrics.DefaultAsyncOperationMetrics.RecordAsyncOperationDuration(ctx, asyncReq, opStartAt)
 
 			opEndAt := time.Now()
-			logger.Info("End processing operation.", ucplog.Attributes(ctx, "startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt)))
+			logger.Info("End processing operation.", "startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt))
 			span.End()
 			return
 		}
@@ -299,20 +297,20 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	logger := ucplog.FromContextOrDiscard(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
-		logger.Error(err, "failed to unmarshal queue message.", ucplog.Attributes(ctx))
+		logger.Error(err, "failed to unmarshal queue message.")
 		return
 	}
 
 	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
 	if err != nil {
-		logger.Error(err, "failed to update resource and/or operation status", ucplog.Attributes(ctx))
+		logger.Error(err, "failed to update resource and/or operation status")
 		return
 	}
 
 	// Finish the message only if Requeue is false. Otherwise, AsyncRequestProcessWorker will requeue the message and process it again.
 	if !result.Requeue {
 		if err := w.requestQueue.FinishMessage(ctx, message); err != nil {
-			logger.Error(err, "failed to finish the message", ucplog.Attributes(ctx))
+			logger.Error(err, "failed to finish the message")
 		}
 	}
 
@@ -324,7 +322,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 
 	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {
-		logger.Error(err, "failed to parse resource ID", ucplog.Attributes(ctx))
+		logger.Error(err, "failed to parse resource ID")
 		return err
 	}
 
@@ -332,7 +330,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 
 	err = updateResourceState(ctx, sc, rID.String(), state)
 	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{}, err)) {
-		logger.Error(err, "failed to update the provisioningState in resource.", ucplog.Attributes(ctx))
+		logger.Error(err, "failed to update the provisioningState in resource.")
 		return err
 	}
 
@@ -340,7 +338,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	now := time.Now().UTC()
 	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
 	if err != nil {
-		logger.Error(err, "failed to update operationstatus", ucplog.Attributes(ctx, "operationID", req.OperationID.String()))
+		logger.Error(err, "failed to update operationstatus", "operationID", req.OperationID.String())
 		return err
 	}
 

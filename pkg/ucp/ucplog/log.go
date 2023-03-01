@@ -14,6 +14,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"github.com/project-radius/radius/pkg/version"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -179,4 +181,14 @@ func FromContextOrDiscard(ctx context.Context) logr.Logger {
 		)
 	}
 	return logger
+}
+
+// NewResourceObject returns the resource object which includes the system info.
+func NewResourceObject(serviceName string) map[string]any {
+	host, _ := os.Hostname()
+	return map[string]any{
+		string(semconv.ServiceNameKey):    serviceName,
+		string(semconv.ServiceVersionKey): version.Channel(),
+		string(semconv.HostNameKey):       host,
+	}
 }

@@ -42,7 +42,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	logger.Info("starting proxy request")
 	for key, value := range req.Header {
-		logger.V(ucplog.Debug).Info("incoming request header", ucplog.Attributes(ctx, "key", key, "value", value))
+		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
 	}
 
 	req.URL.Path = p.GetRelativePath(req.URL.Path)

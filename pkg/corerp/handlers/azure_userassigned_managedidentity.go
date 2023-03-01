@@ -93,7 +93,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	properties[UserAssignedIdentityTenantIDKey] = to.String(identity.Properties.TenantID)
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clientv2.MSIClientAPIVersion)
-	logger.Info("Created managed identity for KeyVault access", ucplog.Attributes(ctx, logging.LogFieldLocalID, rpv1.LocalIDUserAssignedManagedIdentity))
+	logger.Info("Created managed identity for KeyVault access", logging.LogFieldLocalID, rpv1.LocalIDUserAssignedManagedIdentity)
 
 	return properties, nil
 }

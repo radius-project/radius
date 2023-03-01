@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const ShutdownTimeout = time.Second * 10
@@ -130,7 +129,7 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 		close(timeout)
 	}()
 
-	logger.Info("Started all services", ucplog.Attributes(ctx, "count", len(host.Services)))
+	logger.Info("Started all services", "count", len(host.Services))
 
 	// Now that all services are running we just need to wait for all services to stop, or for a timeout
 	// to occur

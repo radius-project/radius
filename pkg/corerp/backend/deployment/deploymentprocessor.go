@@ -219,7 +219,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Deploy
-	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()), ucplog.Attributes(ctx))
+	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
 
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := rpv1.OrderOutputResources(rendererOutput.Resources)
@@ -235,7 +235,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	deployedOutputResourceProperties := map[string]map[string]string{}
 
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType), ucplog.Attributes(ctx))
+		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {

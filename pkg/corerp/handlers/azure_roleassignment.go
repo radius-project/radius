@@ -73,7 +73,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
 			roleName, principalID, scope, err)
 	}
-	logger.Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope), ucplog.Attributes(ctx, logging.LogFieldLocalID, rpv1.LocalIDRoleAssignmentKVKeys))
+	logger.Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope), logging.LogFieldLocalID, rpv1.LocalIDRoleAssignmentKVKeys)
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clientv2.RoleAssignmentClientAPIVersion)
 	return properties, nil
