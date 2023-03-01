@@ -40,8 +40,9 @@ spec:
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
         - name: ASPNETCORE_Logging__LogLevel__Default
           value: "Debug"
-        - name: ASPNETCORE_Zipkin__Endpoint
-          value: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+# TODO: Enable trace provider in 0.19
+#        - name: ASPNETCORE_Zipkin__Endpoint
+#          value: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
         image: {{ .Values.global.engine.image }}:{{ .Values.global.engine.tag }}
         name: de
         ports:
