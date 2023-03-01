@@ -8,13 +8,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
-	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -22,6 +22,7 @@ import (
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
@@ -37,7 +38,7 @@ func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.
 }
 
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
@@ -106,7 +107,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	}
 
 	if existing {
-		logger.Info("Updating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+		logger.Info(fmt.Sprintf("Updating resource : resourceType %q resourceID %q", resourceType, awsResourceIdentifier))
 
 		// Generate patch
 		currentState := []byte(*getResponse.ResourceDescription.Properties)
@@ -151,7 +152,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return resp, nil
 		}
 	} else {
-		logger.Info("Creating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
+		logger.Info(fmt.Sprintf("Creating resource : resourceType %q resourceID %q", resourceType, awsResourceIdentifier))
 		response, err := cloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),

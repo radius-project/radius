@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/azure/roleassignment"
@@ -18,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -38,7 +38,7 @@ type azureRoleAssignmentHandler struct {
 
 // Put assigns the selected roles to the identity.
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {
@@ -73,7 +73,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
 			roleName, principalID, scope, err)
 	}
-	logger.WithValues(logging.LogFieldLocalID, rpv1.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope))
+	logger.Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope), logging.LogFieldLocalID, rpv1.LocalIDRoleAssignmentKVKeys)
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clientv2.RoleAssignmentClientAPIVersion)
 	return properties, nil

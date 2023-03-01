@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-logr/logr"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/spec"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -71,7 +70,7 @@ func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 
 // LoadSpec loads the swagger files and caches the validator.
 func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePrefix string, rootScopeParam string) (*Loader, error) {
-	log := logr.FromContextOrDiscard(ctx)
+	log := ucplog.FromContextOrDiscard(ctx)
 	l := &Loader{
 		providerName:      providerName,
 		validators:        map[string]validator{},

@@ -13,7 +13,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/go-logr/logr"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -22,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -60,7 +60,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 
 	recipeData := make(map[string]any)

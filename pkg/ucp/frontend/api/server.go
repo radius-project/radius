@@ -31,14 +31,15 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
@@ -84,7 +85,7 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	credProviders := []func(*config.LoadOptions) error{}
 
 	switch s.options.Identity.AuthMethod {
@@ -166,8 +167,8 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	app := http.Handler(r)
-	app = middleware.UseLogValues(app, s.options.BasePath)
 	app = servicecontext.ARMRequestCtx(s.options.BasePath, "global")(app)
+	app = middleware.AppendLogValues("ucp")(app)
 
 	if s.options.EnableMetrics {
 		app = otelhttp.NewHandler(app, "ucp", otelhttp.WithMeterProvider(global.MeterProvider()))
@@ -179,7 +180,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
 		// TODO: Once https://github.com/project-radius/radius/issues/3582 is fixed, we could use the lowercase middleware
-		Handler: middleware.NormalizePath(app),
+		Handler: otelhttp.NewHandler(middleware.NormalizePath(app), "ucp", otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator())),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},
@@ -241,7 +242,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 }
 
 func (s *Service) Run(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	service, err := s.Initialize(ctx)
 	if err != nil {
 		return err

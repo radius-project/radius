@@ -6,8 +6,8 @@
 package hostoptions
 
 import (
-	metricsprovider "github.com/project-radius/radius/pkg/telemetry/metrics/provider"
-	"github.com/project-radius/radius/pkg/telemetry/trace"
+	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
+	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/rest"

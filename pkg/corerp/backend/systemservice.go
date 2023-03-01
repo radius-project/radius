@@ -11,8 +11,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -33,7 +33,7 @@ func (s *SystemService) Name() string {
 }
 
 func (s *SystemService) Run(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/version", version.ReportVersionHandler)

@@ -12,12 +12,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -149,7 +149,7 @@ func ConfigureDefaultHandlers(
 
 // Responds with an HTTP 500
 func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
 
 	var response rest.Response

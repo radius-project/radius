@@ -13,18 +13,18 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
+	"github.com/project-radius/radius/pkg/metrics"
+	"github.com/project-radius/radius/pkg/metrics/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 
 type Service struct {
-	Options hostoptions.HostOptions
+	Options HostOptions
 }
 
 // NewService of metrics package returns a new Service with the configs needed
-func NewService(options hostoptions.HostOptions) *Service {
+func NewService(options HostOptions) *Service {
 	return &Service{
 		Options: options,
 	}
@@ -37,7 +37,7 @@ func (s *Service) Name() string {
 
 // Run method of metrics package creates a new server for exposing an endpoint to collect metrics from
 func (s *Service) Run(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	pme, err := provider.NewPrometheusExporter()
 	if err != nil {
@@ -47,6 +47,11 @@ func (s *Service) Run(ctx context.Context) error {
 	err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
 	if err != nil {
 		logger.Error(err, "failed to start runtime metrics")
+	}
+
+	err = metrics.InitMetrics()
+	if err != nil {
+		logger.Error(err, "failed to initialize metrics")
 	}
 
 	mux := http.NewServeMux()
