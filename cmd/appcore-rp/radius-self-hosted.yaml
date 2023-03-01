@@ -30,7 +30,6 @@ ucp:
   kind: kubernetes
 logging:
   level: "info"
-  json: true
 # Tracing configuration
 tracerProvider:
   serviceName: "rp"
