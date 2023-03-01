@@ -12,7 +12,7 @@ const (
 
 // Field names for structured logging
 const (
-	// LogFieldUCPHost represents the Radius Resource ID.
+	// LogFieldResourceID represents the Radius Resource ID.
 	LogFieldResourceID string = "resourceId"
 
 	// LogFieldCorrelationID represents the X-Correlation-ID that may be present in the incoming request.
@@ -20,6 +20,9 @@ const (
 
 	// LogFieldServiceID represents the name of the service generating the log entry
 	LogFieldServiceID string = "serviceId"
+
+	// LogFieldResource represents the resource including service information associated with a log message
+	LogFieldResource string = "resource"
 
 	// LogFieldAttributes represents the optional attributes associated with a log message
 	LogFieldAttributes string = "attributes"

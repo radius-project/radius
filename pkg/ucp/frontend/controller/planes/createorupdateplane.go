@@ -10,7 +10,6 @@ import (
 	"fmt"
 	http "net/http"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -22,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/planes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdatePlane)(nil)
@@ -72,7 +72,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 	planeExists := true
 	existingResource := datamodel.Plane{}
 	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			planeExists = false

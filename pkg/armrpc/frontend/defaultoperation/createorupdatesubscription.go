@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateSubscription)(nil)
@@ -32,7 +32,7 @@ func NewCreateOrUpdateSubscription(opts ctrl.Options) (ctrl.Controller, error) {
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#subscription-lifecycle-api-reference
 func (a *CreateOrUpdateSubscription) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	// TODO: implement data store check for subscriptions
-	log := logr.FromContextOrDiscard(ctx)
+	log := ucplog.FromContextOrDiscard(ctx)
 	log.Info("Within Create or Update Subscription")
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 	switch sCtx.APIVersion {

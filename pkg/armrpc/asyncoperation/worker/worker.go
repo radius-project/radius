@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,18 +22,11 @@ import (
 	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
-	"github.com/project-radius/radius/pkg/version"
-
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
-	"github.com/go-logr/logr"
 	"github.com/google/uuid"
-
-	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
-	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -116,7 +108,7 @@ func New(
 
 // Start starts worker's message loop.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
 	if err != nil {
@@ -139,22 +131,13 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			ctx := trace.WithTraceparent(ctx, op.TraceparentID)
-			sc := oteltrace.SpanFromContext(ctx)
-
-			// TODO: refactor the below with logr.Marshaller.
-			attr := map[attribute.Key]string{}
-			attr[semconv.ServiceNameKey] = logging.ServiceName
-			attr[semconv.ServiceVersionKey] = version.Channel()
-			attr[attribute.Key(logging.LogFieldOperationID)] = op.OperationID.String()
-			attr[attribute.Key(logging.LogFieldOperationType)] = op.OperationType
-			attr[attribute.Key(logging.LogFieldResourceID)] = op.ResourceID
-			attr[attribute.Key(logging.LogFieldDequeueCount)] = strconv.Itoa(msgreq.DequeueCount)
-			opLogger := logger.WithValues(
-				"attributes", attr,
-				"spanID", sc.SpanContext().SpanID().String(),
-				"traceID", sc.SpanContext().TraceID().String(),
-				"corrleationID", op.CorrelationID,
+			reqCtx := trace.WithTraceparent(ctx, op.TraceparentID)
+			// Populate the default attributes in the current context so all logs will have these fields.
+			opLogger := ucplog.FromContextOrDiscard(reqCtx).WithValues(
+				logging.LogFieldResourceID, op.ResourceID,
+				logging.LogFieldOperationID, op.OperationID,
+				logging.LogFieldOperationType, op.OperationType,
+				logging.LogFieldDequeueCount, msgreq.DequeueCount,
 			)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
@@ -167,7 +150,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			if asyncCtrl == nil {
 				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
-				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
+				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}
 				return
@@ -197,12 +180,11 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			if err = w.updateResourceAndOperationStatus(ctx, asyncCtrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
+			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
 				return
 			}
 
-			opCtx := logr.NewContext(ctx, opLogger)
-			w.runOperation(opCtx, msgreq, asyncCtrl)
+			w.runOperation(reqCtx, msgreq, asyncCtrl)
 		}(msg)
 	}
 
@@ -213,7 +195,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
 	ctx, span := trace.StartConsumerSpan(ctx, "worker.runOperation receive", trace.BackendTracerName)
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	asyncReq := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, asyncReq); err != nil {
@@ -270,7 +252,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err := w.requestQueue.ExtendMessage(ctx, message); err != nil {
 				logger.Error(err, "fails to extend message lock")
 			} else {
-				logger.Info("Extended message lock duration.", "NextVisibleTime", message.NextVisibleAt.UTC().String())
+				logger.Info("Extended message lock duration.", "nextVisibleTime", message.NextVisibleAt.UTC().String())
 				metrics.DefaultAsyncOperationMetrics.RecordExtendedAsyncOperation(ctx, asyncReq)
 			}
 			messageExtendAfter = w.getMessageExtendDuration(message.NextVisibleAt)
@@ -296,7 +278,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			metrics.DefaultAsyncOperationMetrics.RecordAsyncOperationDuration(ctx, asyncReq, opStartAt)
 
 			opEndAt := time.Now()
-			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
+			logger.Info("End processing operation.", "startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt))
 			span.End()
 			return
 		}
@@ -312,7 +294,7 @@ func extractError(err error) v1.ErrorDetails {
 }
 
 func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc store.StorageClient) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
 		logger.Error(err, "failed to unmarshal queue message.")
@@ -336,7 +318,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 }
 
 func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {
@@ -356,7 +338,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	now := time.Now().UTC()
 	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
 	if err != nil {
-		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
+		logger.Error(err, "failed to update operationstatus", "operationID", req.OperationID.String())
 		return err
 	}
 

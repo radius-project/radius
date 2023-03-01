@@ -10,7 +10,6 @@ import (
 	"fmt"
 	http "net/http"
 
-	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -19,6 +18,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateResourceGroup)(nil)
@@ -58,7 +58,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	newResource.Name = id.Name()
 	newResource.Type = ResourceGroupType
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	existingResource := datamodel.ResourceGroup{}
 	rgExists := true

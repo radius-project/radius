@@ -17,8 +17,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-
-	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -42,7 +41,7 @@ type azureUserAssignedManagedIdentityHandler struct {
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {
@@ -94,9 +93,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	properties[UserAssignedIdentityTenantIDKey] = to.String(identity.Properties.TenantID)
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clientv2.MSIClientAPIVersion)
-	logger.WithValues(
-		logging.LogFieldResourceID, *identity.ID,
-		logging.LogFieldLocalID, rpv1.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")
+	logger.Info("Created managed identity for KeyVault access", logging.LogFieldLocalID, rpv1.LocalIDUserAssignedManagedIdentity)
 
 	return properties, nil
 }

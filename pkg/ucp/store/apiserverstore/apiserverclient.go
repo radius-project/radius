@@ -37,11 +37,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/project-radius/radius/pkg/ucp/store/storeutil"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,7 +117,7 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 			if err != nil {
 				// Ignore invalid IDs when querying, we don't want a single piece of bad data to
 				// break all queries.
-				logger := logr.FromContextOrDiscard(ctx)
+				logger := ucplog.FromContextOrDiscard(ctx)
 				logger.Error(err, "found an invalid resource id as part of a query", "name", resource.Name, "namespace", resource.Namespace)
 				continue
 			}

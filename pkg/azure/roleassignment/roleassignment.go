@@ -2,6 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
+
 package roleassignment
 
 import (
@@ -13,13 +14,13 @@ import (
 	"time"
 
 	armauthorization "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
-	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/to"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // Create assigns the specified role name to the Identity over the specified scope
@@ -28,7 +29,7 @@ import (
 // '/subscriptions/{subscription-id}/resourceGroups/{resource-group-name}/providers/{resource-provider}/{resource-type}/{resource-name}'
 // roleNameOrID - Name of the role ('Reader') or definition id ('acdd72a7-3385-48ef-bd42-f606fba81ae7') for the role to be assigned.
 func Create(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, principalID, scope, roleNameOrID string) (*armauthorization.RoleAssignment, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	roleDefinitionID, err := GetRoleDefinitionID(ctx, armConfig, subscriptionID, scope, roleNameOrID)
 	if err != nil {
