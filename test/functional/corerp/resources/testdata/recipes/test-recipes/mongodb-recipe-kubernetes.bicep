@@ -28,6 +28,7 @@ resource mongo 'apps/Deployment@v1' = {
         labels: {
           app: 'mongo'
           resource: context.resource.name
+          // Core RP adds these labels on Radius containers. These labels aren't required in customer recipes but test framework pod validation currently expects these to present.
           'radius.dev/application': 'corerp-resources-mongodb-recipe'
           'radius.dev/resource': 'mongo-recipe-resource'
         }
