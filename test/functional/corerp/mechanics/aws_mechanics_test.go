@@ -17,42 +17,40 @@ import (
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
-	name := "ms" + uuid.New().String()
+	name := "radiusfunctionaltestbucket-" + uuid.New().String()
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "streamName="+name),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), " bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.KinesisResourceType,
+						Type:       validation.AWSS3BucketResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"Name":                 name,
-							"RetentionPeriodHours": float64(168),
-							"ShardCount":           float64(3),
+							"BucketName":    name,
+							"AccessControl": "PublicRead",
 						},
 					},
 				},
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "streamName="+name),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), " bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.KinesisResourceType,
+						Type:       validation.AWSS3BucketResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"Name":                 name,
-							"RetentionPeriodHours": float64(48),
-							"ShardCount":           float64(3),
+							"BucketName":    name,
+							"AccessControl": "Private",
 						},
 					},
 				},
@@ -76,7 +74,7 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.DBInstanceResourceType,
+						Type:       validation.AWSRDSDBInstanceResourceType,
 						Identifier: name,
 						Properties: map[string]any{
 							"Endpoint": map[string]any{
@@ -95,7 +93,7 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.DBInstanceResourceType,
+						Type:       validation.AWSRDSDBInstanceResourceType,
 						Identifier: name,
 						Properties: map[string]any{
 							"Endpoint": map[string]any{
