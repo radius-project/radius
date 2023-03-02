@@ -13,7 +13,7 @@ const (
 // Field names for structured logging
 const (
 	// LogFieldHostName represents the current hostname.
-	LogFieldHostname string = "hostname"
+	LogFieldHostname string = "hostName"
 
 	// LogFieldVersion represents the version of service.
 	LogFieldVersion string = "version"
@@ -24,8 +24,8 @@ const (
 	// LogFieldCorrelationID represents the X-Correlation-ID that may be present in the incoming request.
 	LogFieldCorrelationID string = "correlationId"
 
-	// LogFieldServiceID represents the name of the service generating the log entry
-	LogFieldServiceID string = "serviceId"
+	// LogFieldServiceName represents the name of the service generating the log entry
+	LogFieldServiceName string = "serviceName"
 
 	// LogFieldTraceId represents the traceId retrieved from traceparent header of the current HTTP request
 	LogFieldTraceId string = "traceId"
