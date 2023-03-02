@@ -2,7 +2,7 @@
 param location string = resourceGroup().location
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'accnt-${uniqueString(resourceGroup().name)}'
+  name: 'accnt-${uniqueString(resourceGroup().id, deployment().name)}'
   location: location
   kind: 'MongoDB'
   tags: {
@@ -23,7 +23,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   }
 
   resource dbinner 'mongodbDatabases' = {
-    name: 'mdb-${uniqueString(resourceGroup().name)}'
+    name: 'mdb-${uniqueString(resourceGroup().id, deployment().name)}'
     properties: {
       resource: {
         id: 'mongodb-1'

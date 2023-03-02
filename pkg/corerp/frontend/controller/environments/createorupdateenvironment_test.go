@@ -600,6 +600,10 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 						LinkType:     to.Ptr("Applications.Link/redisCaches"),
 						TemplatePath: to.Ptr("radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"),
 					},
+					"redis-aws": {
+						LinkType:     to.Ptr("Applications.Link/redisCaches"),
+						TemplatePath: to.Ptr("radius.azurecr.io/recipes/rediscaches/aws:1.0"),
+					},
 				},
 			},
 		}
@@ -700,6 +704,10 @@ func TestGetDevRecipes(t *testing.T) {
 			"redis-kubernetes": {
 				LinkType:     linkrp.RedisCachesResourceType,
 				TemplatePath: "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0",
+			},
+			"redis-aws": {
+				LinkType:     linkrp.RedisCachesResourceType,
+				TemplatePath: "radius.azurecr.io/recipes/rediscaches/aws:1.0",
 			},
 		}
 		require.Equal(t, devRecipes, expectedRecipes)

@@ -21,7 +21,11 @@
             "redis-kubernetes": {
                 "linkType": "Applications.Link/redisCaches",
                 "templatePath": "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"
-            }
+            },
+            "redis-aws": {
+				"linkType": "Applications.Link/redisCaches",
+				"templatePath": "radius.azurecr.io/recipes/rediscaches/aws:1.0"
+			}
         },
         "useDevRecipes": true,
         "provisioningState": "Succeeded"
