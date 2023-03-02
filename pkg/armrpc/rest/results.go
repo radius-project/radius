@@ -8,7 +8,6 @@ package rest
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/textproto"
@@ -292,7 +291,7 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		return "", err
 	}
 	if referer.Host == "" {
-		return "", errors.New("the hostname in Referer URL is empty")
+		referer.Host = req.Host
 	}
 
 	base := v1.ParsePathBase(referer.Path)
