@@ -26,10 +26,6 @@
         "linkType": "Applications.Link/redisCaches",
         "templatePath": "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"
       },
-      "redis-aws": {
-				"linkType": "Applications.Link/redisCaches",
-				"templatePath": "radius.azurecr.io/recipes/rediscaches/aws:1.0"
-			},
       "sql": {
         "linkType": "Applications.Link/sqlDatabases",
         "templatePath": "radiusdev.azurecr.io/sql:1.0"
