@@ -42,7 +42,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/gorilla/mux"
-	etcdclient "go.etcd.io/etcd/client/v3"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 )
 
 const (
@@ -50,8 +51,8 @@ const (
 )
 
 type ServiceOptions struct {
+	ProviderName            string
 	Address                 string
-	ClientConfigSource      *hosting.AsyncValue[etcdclient.Client]
 	Configure               func(*mux.Router)
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
@@ -59,6 +60,7 @@ type ServiceOptions struct {
 	BasePath                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
 	SecretProviderOptions   provider.SecretProviderOptions
+	QueueProviderOptions    qprovider.QueueProviderOptions
 	InitialPlanes           []rest.Plane
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
@@ -66,10 +68,11 @@ type ServiceOptions struct {
 }
 
 type Service struct {
-	options         ServiceOptions
-	storageProvider dataprovider.DataStorageProvider
-	secretProvider  *provider.SecretProvider
-	secretClient    secret.Client
+	options                ServiceOptions
+	storageProvider        dataprovider.DataStorageProvider
+	secretProvider         *provider.SecretProvider
+	secretClient           secret.Client
+	operationStatusManager manager.StatusManager
 }
 
 var _ hosting.Service = (*Service)(nil)
@@ -114,8 +117,7 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 
-	s.storageProvider = s.initializeStorageProvider(ctx)
-
+	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
 	// TODO: this is used EVERYWHERE right now. We'd like to pass
 	// around storage provider instead but will have to refactor
 	// tons of stuff.
@@ -124,7 +126,13 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
-	if err = s.initializeSecretClient(ctx); err != nil {
+	s.secretProvider = provider.NewSecretProvider(s.options.SecretProviderOptions)
+	s.secretClient, err = s.secretProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.initializeStatusManager(ctx); err != nil {
 		return nil, err
 	}
 
@@ -144,12 +152,12 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		Options: armrpc_controller.Options{
 			DataProvider:  s.storageProvider,
 			StorageClient: db,
+			StatusManager: s.operationStatusManager,
 
 			// TODO: These fields are not used in UCP. We'd like to unify these
 			// options types eventually, but that will take some time.
-			SecretClient:  nil,
-			KubeClient:    nil,
-			StatusManager: nil,
+			SecretClient: nil,
+			KubeClient:   nil,
 		},
 	}
 
@@ -191,26 +199,17 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	return server, nil
 }
 
-func (s *Service) initializeStorageProvider(ctx context.Context) dataprovider.DataStorageProvider {
-	if s.options.StorageProviderOptions.Provider == dataprovider.TypeETCD {
-		s.options.StorageProviderOptions.ETCD.Client = s.options.ClientConfigSource
-	}
-
-	return dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
-}
-
-// initializeSecretClient initializes secret client on server startup.
-func (s *Service) initializeSecretClient(ctx context.Context) error {
-	if s.options.SecretProviderOptions.Provider == provider.TypeETCDSecret {
-		s.options.SecretProviderOptions.ETCD.Client = s.options.ClientConfigSource
-	}
-	s.secretProvider = provider.NewSecretProvider(s.options.SecretProviderOptions)
-
-	var err error
-	s.secretClient, err = s.secretProvider.GetClient(ctx)
+func (s *Service) initializeStatusManager(ctx context.Context) error {
+	qp := qprovider.New(s.options.ProviderName, s.options.QueueProviderOptions)
+	opSC, err := s.storageProvider.GetStorageClient(ctx, s.options.ProviderName+"/operationstatuses")
 	if err != nil {
 		return err
 	}
+	reqQueueClient, err := qp.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+	s.operationStatusManager = manager.New(opSC, reqQueueClient, s.options.ProviderName, s.options.Location)
 	return nil
 }
 
