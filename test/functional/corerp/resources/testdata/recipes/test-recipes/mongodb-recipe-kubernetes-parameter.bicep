@@ -29,6 +29,7 @@ resource mongo 'apps/Deployment@v1' = {
         labels: {
           app: 'mongo'
           resource: context.resource.name
+          // Adding radius lables for pod validation.
           'radius.dev/application': 'corerp-resources-mongodb-recipe-parameters'
           'radius.dev/resource': mongodbName
         }

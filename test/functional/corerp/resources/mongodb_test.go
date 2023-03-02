@@ -116,7 +116,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 // the creation of a mongoDB from recipe
 // container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe(t *testing.T) {
-	// template using recipe testdata/mongodb-recipe-kubernetes.bicep
+	// template using recipe testdata/recipes/test-recipes/mongodb-recipe-kubernetes.bicep
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
 	appNamespace := "corerp-resources-mongodb-recipe-app"
