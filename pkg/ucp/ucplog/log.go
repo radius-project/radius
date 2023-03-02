@@ -187,7 +187,7 @@ func FromContextOrDiscard(ctx context.Context) logr.Logger {
 func NewResourceObject(serviceName string) []any {
 	host, _ := os.Hostname()
 	return []any{
-		LogFieldServiceID, serviceName,
+		LogFieldServiceName, serviceName,
 		LogFieldVersion, version.Channel(),
 		LogFieldHostname, host,
 	}
