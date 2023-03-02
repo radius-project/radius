@@ -36,22 +36,24 @@ if (Test-Path $RadiusCliFilePath -PathType Leaf) {
     Write-Output "Previous rad CLI detected: $RadiusCliFilePath"
     try {
         $CurrentVersion = Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version"
-        Write-Output "Previous version: $CurrentVersion"
+        Write-Output "Previous version: $CurrentVersion`r`n"
     }
     catch {
-        Write-Output "Current installation corrupted"
+        Write-Output "Current installation corrupted`r`n"
     }
-    Write-Output "Reinstalling rad CLI...`r`n"
+    Write-Output "Reinstalling rad CLI..."
 }
 else {
-    Write-Output "Installing rad CLI..`r`n."
+    Write-Output "Installing rad CLI..."
 }
 
 # Create Radius Directory
-Write-Output "Creating $RadiusRoot directory..."
-New-Item -ErrorAction Ignore -Path $RadiusRoot -ItemType "directory"
-if (!(Test-Path $RadiusRoot -PathType Container)) {
-    throw "Cannot create $RadiusRoot"
+if (-Not (Test-Path $RadiusRoot -PathType Container)) {
+    Write-Output "Creating $RadiusRoot directory..."
+    New-Item -ErrorAction Ignore -Path $RadiusRoot -ItemType "directory" | Out-Null
+    if (!(Test-Path $RadiusRoot -PathType Container)) {
+        throw "Cannot create $RadiusRoot"
+    }
 }
 
 if ($Version -eq "") {
@@ -89,18 +91,15 @@ $UserPathEnvironmentVar = (Get-Item -Path HKCU:\Environment).GetValue(
     $null, # the default value to return if no such value exists.
     'DoNotExpandEnvironmentNames' # the option that suppresses expansion
 )
-  
-if ($UserPathEnvironmentVar -like '*radius*') {
-    Write-Output "$RadiusRoot already in User Path"
-}
-else {
-    Write-Host "Adding $InstallFolder to User Path"
+
+Write-Output "Adding $RadiusRoot to User Path..."  
+if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
     # [Environment]::SetEnvironmentVariable sets the value kind as REG_SZ, use the function below to set a value of kind REG_EXPAND_SZ
     Set-ItemProperty HKCU:\Environment "PATH" "$UserPathEnvironmentVar$RadiusRoot" -Type ExpandString
     # Also add the path to the current session
     $env:PATH += ";$RadiusRoot"
 }
-Write-Output "rad CLI has been successfully installed"
+Write-Output "✅ rad CLI has been successfully installed"
 
 Write-Output "`r`nInstalling Bicep..."
 $cmd = (Start-Process -NoNewWindow -FilePath $RadiusCliFilePath -ArgumentList "bicep download" -PassThru -Wait)
@@ -108,7 +107,7 @@ if ($cmd.ExitCode -ne 0) {
     Write-Warning "`r`nFailed to install rad-bicep"
 }
 else {
-    Write-Output "Bicep successfully installed"
+    Write-Output "✅ Bicep has been successfully installed"
 }
 
 Write-Output "`r`nTo get started with Project Radius, please visit https://docs.radapp.dev/getting-started/"
