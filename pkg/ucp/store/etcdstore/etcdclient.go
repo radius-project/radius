@@ -43,6 +43,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/store/storeutil"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
@@ -108,6 +109,9 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 }
 
 func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("etcd: Get - id: ", "resourceID", id)
+
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -123,6 +127,7 @@ func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOpt
 	}
 
 	key := keyFromID(parsed)
+	logger.Info("etcd: Get - key: ", "key", key)
 	response, err := c.client.Get(ctx, key)
 	if err != nil {
 		return nil, err

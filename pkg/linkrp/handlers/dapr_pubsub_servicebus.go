@@ -34,6 +34,7 @@ const (
 type daprPubSubServiceBusBaseHandler struct {
 	arm *armauth.ArmConfig
 }
+
 type daprPubSubServiceBusHandler struct {
 	daprPubSubServiceBusBaseHandler
 	daprComponentHandler
@@ -93,6 +94,8 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *r
 
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
 	properties := resource.Resource.(map[string]any)
+
+	fmt.Printf("Deleting Dapr service bus component %s\n", resource.Identity.GetID())
 
 	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {

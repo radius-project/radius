@@ -122,6 +122,8 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			break
 		}
 
+		fmt.Printf("WORKER - %s - Message Got Picked Up\n", msg.ID)
+
 		go func(msgreq *queue.Message) {
 			defer w.sem.Release(1)
 
@@ -149,15 +151,15 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			opType, ok := v1.ParseOperationType(armReqCtx.OperationType)
 			if !ok {
-				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
+				opLogger.V(ucplog.Error).Info("WORKER - failed to parse operation type.")
 				return
 			}
 
 			asyncCtrl := w.registry.Get(opType)
 			if asyncCtrl == nil {
-				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
+				opLogger.V(ucplog.Error).Info("WORKER - cannot process the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
-					opLogger.Error(err, "failed to finish the message")
+					opLogger.Error(err, "WORKER - failed to finish the message")
 				}
 				return
 			}
@@ -165,6 +167,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
 				opLogger.V(ucplog.Error).Info(errMsg)
+				fmt.Printf("WORKER - %s - Dequeue Limit Reached\n", op.OperationID)
 				failed := ctrl.NewFailedResult(v1.ErrorDetails{
 					Code:    v1.CodeInternal,
 					Message: errMsg,
@@ -179,11 +182,11 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			dup, err := w.isDuplicated(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
-				opLogger.Error(err, "failed to check potential deduplication.")
+				opLogger.Error(err, "WORKER - failed to check potential deduplication.")
 				return
 			}
 			if dup {
-				opLogger.V(ucplog.Warn).Info("duplicated message detected")
+				opLogger.V(ucplog.Warn).Info("WORKER - duplicated message detected")
 				return
 			}
 
@@ -195,7 +198,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 		}(msg)
 	}
 
-	logger.Info("Message loop stopped...")
+	logger.Info("WORKER - Message loop stopped...")
 	return nil
 }
 
@@ -223,8 +226,9 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		defer func(done chan struct{}) {
 			close(done)
 			if err := recover(); err != nil {
-				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
+				msg := fmt.Sprintf("WORKER - recovering from panic %v: %s", err, debug.Stack())
 				logger.V(ucplog.Error).Info(msg)
+				fmt.Printf("WORKER - %s - Panic - Error - %v\n", asyncReq.OperationID, err)
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).
 				// After message lock is expired, message will be reprocessed 'w.options.MaxOperationRetryCount' times and
@@ -233,7 +237,12 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			}
 		}(opDone)
 
-		logger.Info("Start processing operation.")
+		logger.Info("WORKER - %s - START", "operationID", asyncReq.OperationID)
+		fmt.Printf("WORKER - %s - START\n", asyncReq.OperationID)
+
+		logger.Info("WORKER - %s - START - ResourceID - %s", "operationID", asyncReq.OperationID, "resourceID", asyncReq.ResourceID)
+		fmt.Printf("WORKER - %s - START - ResourceID - %s\n", asyncReq.OperationID, asyncReq.ResourceID)
+
 		result, err := asyncCtrl.Run(asyncReqCtx, asyncReq)
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
@@ -243,7 +252,9 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err != nil {
 				armErr := extractError(err)
 				result.SetFailed(armErr, false)
-				logger.Error(err, "Operation Failed")
+				logger.Error(err, "WORKER - Operation Failed")
+				fmt.Printf("WORKER - %s - Operation Failed\n", asyncReq.OperationID)
+				fmt.Printf("WORKER - %s - Operation Failed - Err - %s\n", asyncReq.OperationID, err.Error())
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
@@ -257,15 +268,18 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		select {
 		case <-time.After(messageExtendAfter):
 			if err := w.requestQueue.ExtendMessage(ctx, message); err != nil {
-				logger.Error(err, "fails to extend message lock")
+				logger.Error(err, "WORKER - fails to extend message lock")
+				fmt.Printf("WORKER - %s - fails to extend message lock\n", asyncReq.OperationID)
 			} else {
-				logger.Info("Extended message lock duration.", "nextVisibleTime", message.NextVisibleAt.UTC().String())
+				logger.Info("WORKER - Extended message lock duration.", "nextVisibleTime", message.NextVisibleAt.UTC().String())
+				fmt.Printf("WORKER - %s - Extended message lock duration. NextVisibleTime - %s\n",
+					asyncReq.OperationID, message.NextVisibleAt.UTC().String())
 				metrics.DefaultAsyncOperationMetrics.RecordExtendedAsyncOperation(ctx, asyncReq)
 			}
 			messageExtendAfter = w.getMessageExtendDuration(message.NextVisibleAt)
 
 		case <-operationTimeoutAfter:
-			logger.Info("Cancelling async operation.")
+			logger.Info("WORKER - Cancelling async operation.")
 
 			opCancel()
 			errMessage := fmt.Sprintf("Operation (%s) has timed out because it was processing longer than %d s.", asyncReq.OperationType, int(asyncReq.Timeout().Seconds()))
@@ -276,7 +290,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			return
 
 		case <-ctx.Done():
-			logger.Info("Stopping processing async operation. This operation will be reprocessed.")
+			logger.Info("WORKER - Stopping processing async operation. This operation will be reprocessed.")
+			fmt.Printf("WORKER - %s - Stopping processing async operation. This operation will be reprocessed.", asyncReq.OperationID)
 			span.End()
 			return
 
@@ -285,7 +300,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			metrics.DefaultAsyncOperationMetrics.RecordAsyncOperationDuration(ctx, asyncReq, opStartAt)
 
 			opEndAt := time.Now()
-			logger.Info("End processing operation.", "startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt))
+			logger.Info("WORKER - End processing operation.", "startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt))
+			fmt.Printf("WORKER - %s - END\n", asyncReq.OperationID)
 			span.End()
 			return
 		}
@@ -304,22 +320,27 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	logger := ucplog.FromContextOrDiscard(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
-		logger.Error(err, "failed to unmarshal queue message.")
+		logger.Error(err, "WORKER - failed to unmarshal queue message.")
+		fmt.Printf("WORKER - %s - failed to unmarshal queue message\n", req.OperationID)
 		return
 	}
 
 	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
 	if err != nil {
-		logger.Error(err, "failed to update resource and/or operation status")
+		logger.Error(err, "WORKER - failed to update resource and/or operation status")
+		fmt.Printf("WORKER - %s - failed to update resource and/or operation status\n", req.OperationID)
 		return
 	}
 
 	// Finish the message only if Requeue is false. Otherwise, AsyncRequestProcessWorker will requeue the message and process it again.
 	if !result.Requeue {
 		if err := w.requestQueue.FinishMessage(ctx, message); err != nil {
-			logger.Error(err, "failed to finish the message")
+			logger.Error(err, "WORKER - failed to finish the message")
+			fmt.Printf("WORKER - %s - Failed to finish the message\n", req.OperationID)
 		}
 	}
+
+	fmt.Printf("WORKER - %s - Operation Completed - Status - %s\n", req.OperationID, result.ProvisioningState())
 
 	metrics.DefaultAsyncOperationMetrics.RecordAsyncOperation(ctx, req, &result)
 }
@@ -329,7 +350,8 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 
 	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {
-		logger.Error(err, "failed to parse resource ID")
+		logger.Error(err, "WORKER - failed to parse resource ID")
+		fmt.Printf("WORKER - %s - Failed to parse resource ID\n", req.OperationID)
 		return err
 	}
 
@@ -337,7 +359,8 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 
 	err = updateResourceState(ctx, sc, rID.String(), state)
 	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{}, err)) {
-		logger.Error(err, "failed to update the provisioningState in resource.")
+		logger.Error(err, "WORKER - failed to update the provisioningState in resource.")
+		fmt.Printf("WORKER - %s - Failed to update the provisioningState in resource\n", req.OperationID)
 		return err
 	}
 
@@ -345,9 +368,12 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	now := time.Now().UTC()
 	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
 	if err != nil {
-		logger.Error(err, "failed to update operationstatus", "operationID", req.OperationID.String())
+		logger.Error(err, "WORKER - failed to update operationstatus", "operationID", req.OperationID.String())
+		fmt.Printf("WORKER - %s - Failed to update operationStatus\n", req.OperationID)
 		return err
 	}
+
+	fmt.Printf("WORKER - %s - Update resource and operation status\n", req.OperationID)
 
 	return nil
 }
@@ -363,8 +389,11 @@ func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.S
 		return false, err
 	}
 
-	if status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
-		status.LastUpdatedTime.Add(w.options.DeduplicationDuration).After(time.Now().UTC()) {
+	if (status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
+		status.LastUpdatedTime.Add(w.options.DeduplicationDuration).After(time.Now().UTC())) ||
+		// This means that this message has already been processed
+		// TODO: Should we try if the status is Failed or Cancelled?
+		status.Status.IsTerminal() {
 		return true, nil
 	}
 
@@ -396,6 +425,7 @@ func updateResourceState(ctx context.Context, sc store.StorageClient, id string,
 
 	objmap["provisioningState"] = string(state)
 
+	fmt.Printf("WORKER - Update resource state - id: %s\n", id)
 	err = sc.Save(ctx, obj, store.WithETag(obj.ETag))
 	if err != nil {
 		return err

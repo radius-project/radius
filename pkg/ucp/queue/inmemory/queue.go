@@ -7,6 +7,7 @@ package inmemory
 
 import (
 	"container/list"
+	"fmt"
 	"sync"
 	"time"
 
@@ -66,6 +67,7 @@ func (q *InmemQueue) Enqueue(msg *client.Message) {
 	msg.Metadata.ExpireAt = time.Now().UTC().Add(messageExpireDuration)
 
 	q.v.PushBack(&element{val: msg, visible: true})
+	fmt.Println("inMemory - client - Enqueue - should be enqueued now")
 }
 
 func (q *InmemQueue) Dequeue() *client.Message {
@@ -76,6 +78,8 @@ func (q *InmemQueue) Dequeue() *client.Message {
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.visible {
 			elem.val.DequeueCount++
+			// FIXME: There might be a small delay between setting the nextVisibleAt and actual finishing of the processing
+			// nextVisibleAt = time.Now().Add(q.lockDuration) + (time it takes to do the changes as in the function and worker)
 			elem.val.NextVisibleAt = time.Now().Add(q.lockDuration)
 			elem.visible = false
 			found = elem.val
@@ -108,8 +112,11 @@ func (q *InmemQueue) Complete(msg *client.Message) error {
 func (q *InmemQueue) Extend(msg *client.Message) error {
 	found := false
 	now := time.Now()
+	// Would it be possible to just update the nextVisibleAt of this specific message without iterating through the whole list?
+	// By using pointers?
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
+			// Why do we set the visibility of this message to false?
 			if elem.val.NextVisibleAt.UnixNano() < now.UnixNano() || elem.val.DequeueCount != msg.DequeueCount {
 				elem.visible = false
 				return false
@@ -131,6 +138,8 @@ func (q *InmemQueue) Extend(msg *client.Message) error {
 }
 
 func (q *InmemQueue) updateQueue() {
+	// FIXME: There might be a small delay between setting the nextVisibleAt and actual finishing of the processing
+	// nextVisibleAt = time.Now().Add(q.lockDuration) + (time it takes to do the changes as in the function and worker)
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		now := time.Now().UTC()
 		if elem.val.ExpireAt.UnixNano() < now.UnixNano() {

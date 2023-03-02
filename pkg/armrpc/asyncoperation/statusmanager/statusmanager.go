@@ -71,6 +71,10 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		return errors.New("*servicecontext.ARMRequestContext is unset")
 	}
 
+	fmt.Printf("QueueAsyncOperation - resourceID: %s\n", sCtx.ResourceID.String())
+	fmt.Printf("QueueAsyncOperation - operationType: %s\n", sCtx.OperationType)
+	fmt.Printf("QueueAsyncOperation - operationID: %s\n", sCtx.OperationID.String())
+
 	opID := aom.operationStatusResourceID(sCtx.ResourceID, sCtx.OperationID)
 	aos := &Status{
 		AsyncOperationStatus: v1.AsyncOperationStatus{
@@ -89,12 +93,13 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		Metadata: store.Metadata{ID: opID},
 		Data:     aos,
 	})
-
 	if err != nil {
+		fmt.Printf("QueueAsyncOperation - Failed to save async operation: %s\n", err.Error())
 		return err
 	}
 
 	if err = aom.queueRequestMessage(ctx, sCtx, aos, operationTimeout); err != nil {
+		fmt.Printf("QueueAsyncOperation - Failed to queue message: %s\n", err.Error())
 		delErr := aom.storeClient.Delete(ctx, opID)
 		if delErr != nil {
 			return delErr

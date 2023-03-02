@@ -7,6 +7,7 @@ package inmemory
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/project-radius/radius/pkg/ucp/queue/client"
@@ -41,9 +42,11 @@ func NewNamedQueue(name string) *Client {
 
 // Enqueue enqueues message to the in-memory queue.
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
+	fmt.Println("inMemory - client - Enqueue - start")
 	if msg == nil || msg.Data == nil || len(msg.Data) == 0 {
 		return client.ErrEmptyMessage
 	}
+	fmt.Println("inMemory - client - Enqueue - beforeEnqueue")
 	c.queue.Enqueue(msg)
 	return nil
 }

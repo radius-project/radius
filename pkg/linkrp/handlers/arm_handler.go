@@ -53,16 +53,18 @@ func (handler *armHandler) Put(ctx context.Context, resource *rpv1.OutputResourc
 }
 
 func (handler *armHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
-	if resource.RadiusManaged == nil || !*resource.RadiusManaged {
-		return nil
-	}
 	id, apiVersion, err := resource.Identity.RequireARM()
 	if err != nil {
 		return err
 	}
 
-	logger := ucplog.FromContextOrDiscard(ctx)
-	logger.Info("Deleting ARM resource")
+	if resource.RadiusManaged == nil || !*resource.RadiusManaged {
+		fmt.Printf("Not Radius managed %s\n", id)
+		return nil
+	}
+
+	fmt.Printf("Deleting ARM resource: %s\n", id)
+
 	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
 		return err
@@ -79,6 +81,7 @@ func (handler *armHandler) Delete(ctx context.Context, resource *rpv1.OutputReso
 	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
+	// TODO: handle 404
 	if err != nil {
 		return fmt.Errorf("failed to delete resource %q: %w", id, err)
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
@@ -293,12 +294,16 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 
 // Get gets the resource data using id.
 func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...store.GetOptions) (*store.Object, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("cosmosdb: Get - id: %s", "resourceID", id)
+
 	parsedID, err := resources.Parse(id)
 	if err != nil {
 		return nil, err
 	}
 
 	partitionKey, err := GetPartitionKey(parsedID)
+	fmt.Printf("partitionKey: %s\n", partitionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -308,6 +313,7 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 	}
 
 	docID, err := GenerateCosmosDBKey(parsedID)
+	logger.Info("cosmosdb: Get - docID: ", "docID", docID)
 	if err != nil {
 		return nil, err
 	}

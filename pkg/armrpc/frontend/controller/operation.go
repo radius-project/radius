@@ -85,6 +85,7 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 
 // GetResource is the helper to get the resource via storage client.
 func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out *T, etag string, err error) {
+	fmt.Printf("Getting resource with id: %s\n", id.String())
 	etag = ""
 	out = new(T)
 	var res *store.Object
@@ -97,6 +98,7 @@ func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out
 
 	out = nil
 	if errors.Is(&store.ErrNotFound{}, err) {
+		fmt.Printf("GetResource - store.ErrNotFound\n")
 		err = nil
 	}
 	return
@@ -110,6 +112,7 @@ func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, et
 		},
 		Data: in,
 	}
+	fmt.Printf("Saving resource with id: %s\n", id)
 	err := c.StorageClient().Save(ctx, nr, store.WithETag(etag))
 	if err != nil {
 		return "", err
@@ -164,6 +167,7 @@ func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource
 	}
 
 	if err := c.StatusManager().QueueAsyncOperation(ctx, serviceCtx, asyncTimeout); err != nil {
+		fmt.Printf("Failed to queue async operation: %s\n", err.Error())
 		P(newResource).SetProvisioningState(v1.ProvisioningStateFailed)
 		_, rbErr := c.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, *etag)
 		if rbErr != nil {

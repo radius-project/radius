@@ -51,7 +51,10 @@ func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*Radiu
 func (m ApplicationModel) LookupOutputResourceModel(resourceType resourcemodel.ResourceType) (*OutputResourceModel, error) {
 	resource, ok := m.outputResourceLookup[resourceType]
 	if !ok {
-		wildcard, ok := m.outputResourceLookup[resourcemodel.ResourceType{Type: resourcekinds.AnyResourceType, Provider: resourceType.Provider}]
+		wildcard, ok := m.outputResourceLookup[resourcemodel.ResourceType{
+			Type:     resourcekinds.AnyResourceType,
+			Provider: resourceType.Provider,
+		}]
 		if ok {
 			return &OutputResourceModel{
 				ResourceType:    resourceType,

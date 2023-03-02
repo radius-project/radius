@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -147,6 +148,9 @@ func (amc *ARMApplicationsManagementClient) ShowResource(ctx context.Context, re
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error) {
+	fmt.Printf("[Deleting resource] RootScope: %s\n", amc.RootScope)
+	fmt.Printf("[Deleting resource] ResourceType: %s\n", resourceType)
+	fmt.Printf("[Deleting resource] ResourceName: %s\n", resourceName)
 	client, err := generated.NewGenericResourcesClient(amc.RootScope, resourceType, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
@@ -155,6 +159,9 @@ func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	var respFromCtx *http.Response
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
+	// TODO: Delete me after testing
+	fmt.Printf("Deleting resource of type: %s - %s\n", resourceName, resourceType)
+
 	poller, err := client.BeginDelete(ctxWithResp, resourceName, nil)
 	if err != nil {
 		return false, err
@@ -162,9 +169,12 @@ func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, 
 
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
+		fmt.Printf("error: Deleting resource of type: %s - %s\n", resourceName, resourceType)
+		fmt.Printf("error: %s", err.Error())
 		return false, err
 	}
 
+	fmt.Printf("respFromCtx.StatusCode: %d\n", respFromCtx.StatusCode)
 	return respFromCtx.StatusCode != 204, nil
 }
 
@@ -222,6 +232,8 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (bool, error) {
+	fmt.Printf("Deleting application and its resources: %s\n", applicationName)
+
 	// This handles the case where the application doesn't exist.
 	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
 	if err != nil && !clientv2.Is404Error(err) {
@@ -230,9 +242,15 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 
 	g, groupCtx := errgroup.WithContext(ctx)
 	for _, resource := range resourcesWithApplication {
-		resource := resource
+		res := resource
+		// TODO: Suspecting...
+		// The first error cancel the group's context?
+		// A few operations wait to get a goroutine because of the limit.
+		//
 		g.Go(func() error {
-			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.Name)
+			fmt.Printf("in g.Go - Deleting resource with id: %s\n", *res.ID)
+			fmt.Printf("in g.Go - Deleting resource of type for app: %s - %s - %s\n", *res.Name, *res.Type, applicationName)
+			_, err := amc.DeleteResource(groupCtx, *res.Type, *res.Name)
 			if err != nil {
 				return err
 			}
@@ -253,11 +271,15 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	var respFromCtx *http.Response
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
+	fmt.Printf("Deleting application after deleting all of its resources: %s\n", applicationName)
+
 	_, err = client.Delete(ctxWithResp, applicationName, nil)
 	if err != nil {
+		fmt.Printf("error while deleting application: %s", err.Error())
 		return false, err
 	}
 
+	fmt.Printf("respFromCtx.StatusCode: %d\n", respFromCtx.StatusCode)
 	return respFromCtx.StatusCode != 204, nil
 }
 
@@ -447,12 +469,15 @@ func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, e
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (bool, error) {
+	fmt.Printf("Deleting environment %s\n", envName)
+
 	applicationsWithEnv, err := amc.ListApplicationsByEnv(ctx, envName)
 	if err != nil {
 		return false, err
 	}
 
 	for _, application := range applicationsWithEnv {
+		fmt.Printf("Deleting application for environment: %s - %s\n", *application.Name, envName)
 		_, err := amc.DeleteApplication(ctx, *application.Name)
 		if err != nil {
 			return false, err
@@ -467,6 +492,7 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 	var respFromCtx *http.Response
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
+	fmt.Printf("Deleting environment after deleting all of its applications: %s\n", envName)
 	_, err = envClient.Delete(ctxWithResp, envName, nil)
 	if err != nil {
 		return false, err

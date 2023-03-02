@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -28,15 +27,19 @@ type daprComponentHandler struct {
 }
 
 func (handler *daprComponentHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (resourcemodel.ResourceIdentity, map[string]string, error) {
-	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	// fmt.Printf("daprComponentHandler %s - PUT - START\n", resource.Identity.GetID())
+	// FIXME: This returns nil reference error because it doesn't have the `armrpc` key set.
+	// serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	item, err := convertToUnstructured(*resource)
 	if err != nil {
+		fmt.Printf("daprComponentHandler %s - conversion - err\n", resource.Identity.GetID())
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	err = handler.PatchNamespace(ctx, item.GetNamespace())
 	if err != nil {
+		fmt.Printf("daprComponentHandler %s - patch ns - err\n", resource.Identity.GetID())
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
@@ -51,13 +54,16 @@ func (handler *daprComponentHandler) Put(ctx context.Context, resource *rpv1.Out
 		return resourcemodel.ResourceIdentity{}, properties, nil
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, properties[ResourceName], properties[KubernetesNamespaceKey], serviceCtx.ResourceID.Type())
+	// FIXME: IS resource.ProviderResourceType the right thing to use here?
+	err = checkResourceNameUniqueness(ctx, handler.k8s, properties[ResourceName], properties[KubernetesNamespaceKey], resource.ProviderResourceType)
 	if err != nil {
+		fmt.Printf("daprComponentHandler %s - resourceName uniqueness - err\n", resource.Identity.GetID())
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
+		fmt.Printf("daprComponentHandler %s - k8s.PATCH - err\n", resource.Identity.GetID())
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
@@ -73,6 +79,8 @@ func (handler *daprComponentHandler) Put(ctx context.Context, resource *rpv1.Out
 			APIVersion: item.GetAPIVersion(),
 		},
 	}
+
+	fmt.Printf("daprComponentHandler %s - PUT - END\n", resource.Identity.GetID())
 
 	return resourcemodel.ResourceIdentity{}, properties, err
 }
@@ -100,6 +108,7 @@ func (handler *daprComponentHandler) PatchNamespace(ctx context.Context, namespa
 }
 
 func (handler *daprComponentHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
+	fmt.Printf("daprComponentHandler %s - DELETE - START\n", resource.Identity.GetID())
 	identity := &resourcemodel.KubernetesIdentity{}
 	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
 		return err
@@ -115,6 +124,8 @@ func (handler *daprComponentHandler) Delete(ctx context.Context, resource *rpv1.
 			},
 		},
 	}
+
+	fmt.Printf("daprComponentHandler %s - DELETE - END\n", resource.Identity.GetID())
 
 	return client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 }

@@ -144,6 +144,9 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 }
 
 func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("apiServer: Get - id: ", "id", id)
+
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -163,6 +166,8 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 	resource := ucpv1alpha1.Resource{}
 	err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
 	if err != nil && apierrors.IsNotFound(err) {
+		logger.Info("apiServer: NotFound - id: ", "id", id)
+		fmt.Printf("apiServer: NotFound - id: %s\n", id)
 		return nil, &store.ErrNotFound{}
 	} else if err != nil {
 		return nil, err
@@ -172,6 +177,8 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 	if err != nil {
 		return nil, err
 	} else if obj == nil {
+		logger.Info("apiServer: NotFound - id: ", "id", id)
+		fmt.Printf("apiServer: NotFound - obj == nil - id: %s\n", id)
 		return nil, &store.ErrNotFound{}
 	}
 
@@ -179,6 +186,10 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 }
 
 func (c *APIServerClient) Delete(ctx context.Context, id string, options ...store.DeleteOptions) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("apiServer: Delete - id: ", "id", id)
+	fmt.Printf("apiServer: Delete - id: %s\n", id)
+
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -200,6 +211,11 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 	err = c.doWithRetry(ctx, func() (bool, error) {
 		resource := ucpv1alpha1.Resource{}
 		err := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
+
+		if err != nil {
+			fmt.Printf("apiServer: Delete - err: %v\n", err.Error())
+		}
+
 		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
 			return false, &store.ErrConcurrency{}
 		} else if err != nil && apierrors.IsNotFound(err) {
@@ -210,6 +226,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 
 		index := findIndex(&resource, parsed)
 		if index == nil {
+			fmt.Print("apiServer: Delete - err: index is nil\n")
 			return false, &store.ErrNotFound{}
 		}
 
@@ -229,6 +246,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 			}
 			err := c.client.Delete(ctx, &resource, &options)
 			if err != nil && apierrors.IsNotFound(err) {
+				fmt.Print("apiServer: Delete - Delete\n")
 				return false, &store.ErrNotFound{}
 			} else if apierrors.IsConflict(err) {
 				return true, err // RETRY this!
@@ -236,6 +254,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 				return false, err
 			}
 		} else {
+			fmt.Print("apiServer: Delete - Found more than 1\n")
 			// If there was more than one resource we need to update. There's no need to explicitly
 			// pass the options here as OCC is implicit.
 			resource.Entries = append(resource.Entries[:*index], resource.Entries[*index+1:]...)

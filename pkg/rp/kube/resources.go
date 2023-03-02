@@ -8,6 +8,7 @@ package kube
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	cdm "github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -36,6 +37,7 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 
 	res, err := client.Get(ctx, id.String())
 	if err != nil {
+		fmt.Printf("id: %s\n", id.String())
 		return
 	}
 	if err = res.As(env); err != nil {

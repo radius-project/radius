@@ -122,7 +122,7 @@ func copyMessage(msg *client.Message, queueMessage *v1alpha1.QueueMessage) {
 // New creates the queue backed by Kubernetes API server KV store. name is unique name for each service which will consume the queue.
 func New(client runtimeclient.Client, options Options) (*Client, error) {
 	if options.Name == "" || options.Namespace == "" {
-		return nil, errors.New("Name and Namespace are required")
+		return nil, errors.New("name and namespace are required")
 	}
 
 	if options.MessageLockDuration == time.Duration(0) {
@@ -145,6 +145,7 @@ func (c *Client) generateID() (string, error) {
 }
 
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
+	fmt.Println("apiServer - client - Enqueue - start")
 	if msg == nil || msg.Data == nil || len(msg.Data) == 0 {
 		return client.ErrEmptyMessage
 	}
@@ -176,6 +177,8 @@ func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...cl
 			Data:         &runtime.RawExtension{Raw: msg.Data},
 		},
 	}
+
+	fmt.Println("apiServer - client - Enqueue - beforeCreate")
 
 	return c.client.Create(ctx, resource)
 }

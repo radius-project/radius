@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*DeleteResource)(nil)
@@ -31,6 +32,10 @@ func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("DeleteResource.Run()")
+	fmt.Printf("DeleteResource.Run() - resourceID: %s\n", request.ResourceID)
+
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
@@ -41,6 +46,8 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
+	logger.Info("DeleteResource - id: ", "id", id.String())
 
 	dataModel, err := getDataModel(id)
 	if err != nil {

@@ -28,7 +28,7 @@ type ErrNotFound struct {
 }
 
 func (e *ErrNotFound) Error() string {
-	return "the resource was not found"
+	return "ucp/store - the resource was not found"
 }
 
 func (e *ErrNotFound) Is(target error) bool {

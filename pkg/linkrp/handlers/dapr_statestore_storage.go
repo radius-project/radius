@@ -41,6 +41,7 @@ type daprStateStoreAzureStorageHandler struct {
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resource *rpv1.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+	fmt.Printf("daprStateStoreAzureStorageHandler - Put - id: %s\n", resource.Identity.GetID())
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
@@ -92,6 +93,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
+	fmt.Printf("Deleting Dapr State Store Azure Storage resource %s\n", resource.Identity.GetID())
 	err := handler.deleteDaprStateStore(ctx, resource)
 	if err != nil {
 		return err
@@ -192,6 +194,8 @@ func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx conte
 			},
 		},
 	}
+
+	fmt.Printf("Deleting Dapr state store %s\n", resource.Identity.GetID())
 
 	armHandler := NewARMHandler(handler.arm)
 	err := armHandler.Delete(ctx, resource)

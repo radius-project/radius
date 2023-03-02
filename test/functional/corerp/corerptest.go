@@ -132,6 +132,7 @@ func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
 
 func (ct CoreRPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
 	for i := len(resources) - 1; i >= 0; i-- {
+		fmt.Println("Deleting resource", resources[i].GetName())
 		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
 	}
 }

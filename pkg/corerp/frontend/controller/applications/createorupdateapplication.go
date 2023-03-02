@@ -75,6 +75,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 		kubeNamespace = ext.KubernetesNamespace.Namespace
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
+		logger.Info("newResource.Properties.Environment: %s", "env", newResource.Properties.Environment)
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
 		if err != nil {
 			return rest.NewBadRequestResponse(fmt.Sprintf("Environment could not be constructed: %s", err.Error())), nil
@@ -146,6 +147,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 
 // Run executes CreateOrUpdateApplication operation.
 func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := a.GetResourceFromRequest(ctx, req)
 	if err != nil {
@@ -165,6 +167,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		return r, err
 	}
 
+	logger.Info("createOrUpdateApplication - serviceCtx.ResourceID: %s", "resourceID", serviceCtx.ResourceID)
 	if r, err := a.populateKubernetesNamespace(ctx, newResource, old); r != nil || err != nil {
 		return r, err
 	}

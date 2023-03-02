@@ -57,7 +57,7 @@ type ErrNotFound struct {
 
 // Error returns the error message.
 func (e *ErrNotFound) Error() string {
-	return "the resource was not found"
+	return "secret/client - the resource was not found"
 }
 
 // Is checks for the error type is ErrNotFound.
