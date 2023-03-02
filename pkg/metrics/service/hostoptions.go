@@ -3,11 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package hostoptions
+package metricsservice
 
 import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
+	"github.com/project-radius/radius/pkg/metrics/provider"
 )
 
 // HostOptions defines all of the settings that our metric's execution environment provides.

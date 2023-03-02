@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -20,7 +19,7 @@ func Recoverer(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log := logr.FromContextOrDiscard(r.Context())
+				log := ucplog.FromContextOrDiscard(r.Context())
 
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
 				log.V(ucplog.Error).Info(msg)

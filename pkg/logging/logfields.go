@@ -7,29 +7,33 @@ package logging
 const (
 	AppCoreLoggerName string = "applications.core"
 	AppLinkLoggerName string = "applications.link"
+
+	ServiceName string = "rp"
 )
 
 // Field names for structured logging
 const (
 	LogFieldAction             = "action"
-	LogFieldAppID              = "applicationID"
+	LogFieldAppID              = "applicationId"
 	LogFieldAppName            = "applicationName"
-	LogFieldArmResourceID      = "armResourceID"
-	LogFieldDeploymentID       = "deploymentID"
+	LogFieldCorrelationID      = "correlationId"
+	LogFieldDeploymentID       = "deploymentId"
 	LogFieldDeploymentName     = "deploymentName"
 	LogFieldKind               = "kind"
-	LogFieldLocalID            = "localID"
+	LogFieldLocalID            = "localId"
 	LogFieldNamespace          = "namespace"
-	LogFieldOperationID        = "operationID"
+	LogFieldOperationID        = "operationId"
+	LogFieldOperationType      = "operationType"
+	LogFieldDequeueCount       = "dequeueCount"
 	LogFieldOperationStatus    = "operationStatus"
 	LogFieldResourceGroup      = "resourceGroup"
-	LogFieldResourceID         = "resourceID"
+	LogFieldResourceID         = "resourceId"
 	LogFieldResourceName       = "resourceName"
 	LogFieldResourceProperties = "resourceProperties"
 	LogFieldResourceType       = "resourceType"
 	LogFieldRPIdentifier       = "rpIdentifier"
 	LogFieldScopeName          = "scopeName"
-	LogFieldSubscriptionID     = "subscriptionID"
+	LogFieldSubscriptionID     = "subscriptionId"
 	LogFieldResourceKind       = "resourceKind"
 	LogHTTPStatusCode          = "statusCode"
 )

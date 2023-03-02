@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -20,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
@@ -30,15 +30,6 @@ var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
 // CreateOrUpdateEnvironments is the controller implementation to create or update environment resource.
 type CreateOrUpdateEnvironment struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
-}
-
-// TODO: This is a temporary fix to unblock users to register recipes using bicep, and should be removed after long term fix is implemented as part of https://github.com/project-radius/radius/issues/5179.
-// Currently only 4 dev recipes are supported: https://github.com/project-radius/radius/blob/main/pkg/corerp/frontend/controller/environments/createorupdateenvironment.go#L134. This list should be updated if support for more recipes is added.
-var reservedDevRecipesName = map[string]bool{
-	"mongo-azure":      true,
-	"mongo-kubernetes": true,
-	"redis-kubernetes": true,
-	"redis-azure":      true,
 }
 
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
@@ -80,12 +71,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 			return nil, err
 		}
 		if newResource.Properties.Recipes != nil {
-			// TODO: This is a temporary fix to unblock users to register recipes using bicep, and should be removed
-			// after long term fix is implemented as part of https://github.com/project-radius/radius/issues/5179.
 			errorPrefix := "recipe name(s) reserved for devRecipes for: "
 			var errorRecipes string
+			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
+			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
 			for k, v := range newResource.Properties.Recipes {
-				if ok := reservedDevRecipesName[k]; ok {
+				if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
 					if errorRecipes != "" {
 						errorRecipes += ", "
 					}
@@ -133,7 +124,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
 	recipes := map[string]datamodel.EnvironmentRecipeProperties{}
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesACRPath, err.Error())

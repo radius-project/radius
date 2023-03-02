@@ -6,17 +6,17 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/trace"
+	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var rootCmd = &cobra.Command{
@@ -29,12 +29,16 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		logger, flush, err := ucplog.NewLogger(ucplog.UCPLoggerName, &options.LoggingOptions)
+		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.LoggingOptions)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer flush()
 
+		host, err := server.NewServer(options)
+		if err != nil {
+			return err
+		}
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
 
@@ -48,11 +52,6 @@ var rootCmd = &cobra.Command{
 				log.Fatal("failed to shutdown TracerProvider: %w", err)
 			}
 		}()
-
-		host, err := server.NewServer(options)
-		if err != nil {
-			return err
-		}
 
 		stopped, serviceErrors := host.RunAsync(ctx)
 

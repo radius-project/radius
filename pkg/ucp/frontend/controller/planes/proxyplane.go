@@ -11,7 +11,6 @@ import (
 	http "net/http"
 	"net/url"
 
-	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -21,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const PlanesPath = "/planes"
@@ -38,7 +38,7 @@ func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	logger.Info("starting proxy request")
 	for key, value := range req.Header {
@@ -100,9 +100,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldResourceID, resourceID)
-	logger = logr.FromContextOrDiscard(ctx)
 
 	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
@@ -123,13 +120,10 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 			err = fmt.Errorf("provider %s not configured", resourceID.ProviderNamespace())
 			return nil, err
 		}
-		ctx = ucplog.WrapLogContext(ctx,
-			ucplog.LogFieldPlaneURL, proxyURL)
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
 		// all the requests will be forwarded
 		proxyURL = plane.Properties.URL
-		ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneURL, proxyURL)
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -138,7 +132,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	}
 
 	options := proxy.ReverseProxyOptions{
-		RoundTripper:     http.DefaultTransport,
+		RoundTripper:     otelhttp.NewTransport(http.DefaultTransport),
 		ProxyAddress:     p.Options.Address,
 		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
@@ -149,8 +143,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if req.TLS != nil {
 		httpScheme = "https"
 	}
-
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldHTTPScheme, httpScheme)
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
@@ -175,7 +167,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
-	logger = logr.FromContextOrDiscard(ctx)
+	logger = ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
 	// The upstream response has already been sent at this point. Therefore, return nil response here

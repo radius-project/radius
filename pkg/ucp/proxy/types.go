@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -157,10 +156,6 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	if requestInfo.PlaneKind == "" {
 		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
 	}
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldUCPHost, requestInfo.UCPHost,
-		ucplog.LogFieldHTTPScheme, requestInfo.HTTPScheme,
-	)
 
 	var planeID string
 	if requestInfo.PlaneKind != rest.PlaneKindUCPNative {
@@ -184,7 +179,7 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	// Do not use the Del/Set methods on header as it can change the header casing to canonical form
 	resp.Header[headerName] = []string{val}
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Converting %s header from %s to %s", headerName, header[0], val))
 	return nil
 }

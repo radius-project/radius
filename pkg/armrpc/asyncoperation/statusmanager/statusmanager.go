@@ -11,12 +11,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/metrics"
+	"github.com/project-radius/radius/pkg/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/google/uuid"
 )
 
 // statusManager includes the necessary functions to manage asynchronous operations.
@@ -57,6 +60,9 @@ func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID
 }
 
 func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, operationTimeout time.Duration) error {
+	ctx, span := trace.StartProducerSpan(ctx, "statusmanager.QueueAsyncOperation publish", trace.FrontendTracerName)
+	defer span.End()
+
 	if aom.queue == nil {
 		return errors.New("queue client is unset")
 	}
@@ -95,6 +101,8 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		}
 		return err
 	}
+
+	metrics.DefaultAsyncOperationMetrics.RecordQueuedAsyncOperation(ctx)
 
 	return nil
 }
@@ -154,7 +162,7 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMR
 		OperationType:    sCtx.OperationType,
 		ResourceID:       aos.LinkedResourceID,
 		CorrelationID:    sCtx.CorrelationID,
-		TraceparentID:    sCtx.Traceparent,
+		TraceparentID:    trace.ExtractTraceparent(ctx),
 		AcceptLanguage:   sCtx.AcceptLanguage,
 		HomeTenantID:     sCtx.HomeTenantID,
 		ClientObjectID:   sCtx.ClientObjectID,

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	http "net/http"
 
-	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -35,7 +34,7 @@ func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, er
 
 func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceID, err := resources.ParseScope(path)
 	if err != nil {
@@ -77,7 +76,6 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 }
 
 func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.StorageClient, path string) (datamodel.ResourceList, error) {
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	var query store.Query
 	query.RootScope = path
 	query.ScopeRecursive = true

@@ -33,13 +33,3 @@ jobs:
               fi
             fi
           done
-    
-  project:
-    name: Add Issue to Core Team project
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    steps:
-      - name: Add Issue to Core Team project
-        uses: actions/add-to-project@v0.3.0
-        with:
-          project-url: https://github.com/orgs/project-radius/projects/1
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
