@@ -39,7 +39,7 @@ func (s *Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	pme, err := provider.NewPrometheusExporter()
+	pme, err := provider.NewPrometheusExporter(s.Options.Config)
 	if err != nil {
 		return err
 	}
