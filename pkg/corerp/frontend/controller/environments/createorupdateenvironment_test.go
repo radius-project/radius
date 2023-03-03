@@ -395,6 +395,9 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 }
 
+// Commenting dev recipe tests to unblock the test failures, will uncomment them once this issue is fixed.
+// https://github.com/project-radius/radius/issues/5085
+
 // func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 // 	mctrl := gomock.NewController(t)
 // 	defer mctrl.Finish()
@@ -684,6 +687,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 // }
 
+// Commenting dev recipe tests to unblock the test failures, will uncomment them once this issue is fixed.
+// https://github.com/project-radius/radius/issues/5085
 // func TestGetDevRecipes(t *testing.T) {
 // 	t.Run("Successfully returns dev recipes", func(t *testing.T) {
 // 		ctx := context.Background()
@@ -703,53 +708,53 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 // 	})
 // }
 
-// func TestParseRepoPathForMetadata(t *testing.T) {
-// 	t.Run("Successfully returns metadata", func(t *testing.T) {
-// 		link, provider := parseRepoPathForMetadata("recipes/linkName/providerName")
-// 		require.Equal(t, "linkName", link)
-// 		require.Equal(t, "providerName", provider)
-// 	})
+func TestParseRepoPathForMetadata(t *testing.T) {
+	t.Run("Successfully returns metadata", func(t *testing.T) {
+		link, provider := parseRepoPathForMetadata("recipes/linkName/providerName")
+		require.Equal(t, "linkName", link)
+		require.Equal(t, "providerName", provider)
+	})
 
-// 	tests := []struct {
-// 		name             string
-// 		repo             string
-// 		expectedLink     string
-// 		expectedProvider string
-// 	}{
-// 		{
-// 			"Repo isn't related to recipes",
-// 			"randomRepo",
-// 			"",
-// 			"",
-// 		},
-// 		{
-// 			"Repo for recipes doesn't have link and provider names",
-// 			"recipes/noLinkAndProvider",
-// 			"",
-// 			"",
-// 		},
-// 		{
-// 			"Repo for recipes has extra path component",
-// 			"recipes/link/provider/randomValue",
-// 			"",
-// 			"",
-// 		},
-// 		{
-// 			"Repo name has a link and no provider",
-// 			"recipes/linkName/",
-// 			"linkName",
-// 			"",
-// 		},
-// 	}
+	tests := []struct {
+		name             string
+		repo             string
+		expectedLink     string
+		expectedProvider string
+	}{
+		{
+			"Repo isn't related to recipes",
+			"randomRepo",
+			"",
+			"",
+		},
+		{
+			"Repo for recipes doesn't have link and provider names",
+			"recipes/noLinkAndProvider",
+			"",
+			"",
+		},
+		{
+			"Repo for recipes has extra path component",
+			"recipes/link/provider/randomValue",
+			"",
+			"",
+		},
+		{
+			"Repo name has a link and no provider",
+			"recipes/linkName/",
+			"linkName",
+			"",
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			link, provider := parseRepoPathForMetadata(tt.repo)
-// 			require.Equal(t, tt.expectedLink, link)
-// 			require.Equal(t, tt.expectedProvider, provider)
-// 		})
-// 	}
-// }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			link, provider := parseRepoPathForMetadata(tt.repo)
+			require.Equal(t, tt.expectedLink, link)
+			require.Equal(t, tt.expectedProvider, provider)
+		})
+	}
+}
 
 func TestFindHighestVersion(t *testing.T) {
 	t.Run("Max version is returned when tags are int/float values with float max", func(t *testing.T) {
