@@ -17,7 +17,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -29,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -145,7 +145,7 @@ func Start(t *testing.T) *TestServer {
 		&awsproxy.AWSOptions{})
 	require.NoError(t, err)
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Starting HTTP server...")
 	server.Start()
 	logger.Info(fmt.Sprintf("Started HTTP server on %s...", server.URL))

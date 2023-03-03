@@ -73,12 +73,11 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 		require.NoError(t, err, "failed to marshal resource group")
 	}
 
-	createRequest, err := http.NewRequest(
+	createRequest, err := NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(b))
 	require.NoError(t, err, "")
-	createRequest.Header.Add("Content-Type", "application/json")
 
 	res, err := roundTripper.RoundTrip(createRequest)
 	require.NoError(t, err, "")
@@ -88,13 +87,12 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 }
 
 func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.ResourceGroupResourceList {
-	listRgsRequest, err := http.NewRequest(
+	listRgsRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
 	)
 	require.NoError(t, err, "")
-	listRgsRequest.Header.Add("Content-Type", "application/json")
 
 	result, err := roundTripper.RoundTrip(listRgsRequest)
 	require.NoError(t, err, "")
@@ -113,13 +111,12 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 }
 
 func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (v20220901privatepreview.ResourceGroupResource, int) {
-	getRgRequest, err := http.NewRequest(
+	getRgRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
 	)
 	require.NoError(t, err, "")
-	getRgRequest.Header.Add("Content-Type", "application/json")
 
 	result, err := roundTripper.RoundTrip(getRgRequest)
 	require.NoError(t, err, "")
@@ -137,13 +134,12 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 }
 
 func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) int {
-	deleteRgRequest, err := http.NewRequest(
+	deleteRgRequest, err := NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,
 	)
 	require.NoError(t, err, "")
-	deleteRgRequest.Header.Add("Content-Type", "application/json")
 
 	res, err := roundTripper.RoundTrip(deleteRgRequest)
 	require.NoError(t, err, "")

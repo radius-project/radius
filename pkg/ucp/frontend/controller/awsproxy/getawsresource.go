@@ -39,7 +39,7 @@ func NewGetAWSResource(awsOpts *AWSOptions) (ctrl.Controller, error) {
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
-	response, err := p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	response, err := p.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})

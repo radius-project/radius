@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const ShutdownTimeout = time.Second * 10
@@ -68,7 +69,7 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 		return errors.New("at least one service is required")
 	}
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger = logger.WithValues(host.LoggerValues...)
 	ctx = logr.NewContext(ctx, logger)
 
@@ -168,7 +169,7 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 
 func (host *Host) runService(ctx context.Context, service Service, messages chan<- LifecycleMessage) error {
 	// Create a new logger and context for the service to use.
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger = logger.WithName(service.Name())
 	ctx = logr.NewContext(ctx, logger)
 

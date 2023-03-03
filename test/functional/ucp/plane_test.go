@@ -83,12 +83,11 @@ func Test_Plane_Operations(t *testing.T) {
 func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20220901privatepreview.PlaneResource) {
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(
+	createRequest, err := NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(body))
 	require.NoError(t, err, "")
-	createRequest.Header.Add("Content-Type", "application/json")
 
 	res, err := roundTripper.RoundTrip(createRequest)
 	require.NoError(t, err, "")
@@ -98,13 +97,12 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 }
 
 func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Plane, int) {
-	getRequest, err := http.NewRequest(
+	getRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
 	)
 	require.NoError(t, err, "")
-	getRequest.Header.Add("Content-Type", "application/json")
 
 	result, err := roundTripper.RoundTrip(getRequest)
 	require.NoError(t, err, "")
@@ -121,13 +119,12 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 }
 
 func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.PlanesClientListResponse {
-	listRequest, err := http.NewRequest(
+	listRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
 	)
 	require.NoError(t, err, "")
-	listRequest.Header.Add("Content-Type", "application/json")
 
 	result, err := roundTripper.RoundTrip(listRequest)
 	require.NoError(t, err, "")
@@ -143,14 +140,13 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 }
 
 func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
-	deleteRgRequest, err := http.NewRequest(
+	deleteRgRequest, err := NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,
 	)
 	require.NoError(t, err, "")
 
-	deleteRgRequest.Header.Add("Content-Type", "application/json")
 	res, err := roundTripper.RoundTrip(deleteRgRequest)
 	require.NoError(t, err)
 	t.Logf("Plane: %s deleted successfully", url)

@@ -77,7 +77,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	// we're working on exists already.
 
 	existing := true
-	getResponse, err := p.AWSOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	getResponse, err := p.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
@@ -110,7 +110,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	if existing {
 		// Get resource type schema
-		describeTypeOutput, err := p.AWSOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		describeTypeOutput, err := p.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 			Type:     types.RegistryTypeResource,
 			TypeName: aws.String(serviceCtx.ResourceType),
 		})
@@ -133,7 +133,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				return awserror.HandleAWSError(err)
 			}
 
-			response, err := p.AWSOptions.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := p.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      &serviceCtx.ResourceType,
 				Identifier:    aws.String(serviceCtx.ResourceID.Name()),
 				PatchDocument: aws.String(string(marshaled)),
@@ -161,7 +161,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			return resp, nil
 		}
 	} else {
-		response, err := p.AWSOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		response, err := p.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &serviceCtx.ResourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})

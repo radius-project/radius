@@ -40,7 +40,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	// TODO pagination
-	response, err := p.AWSOptions.AWSCloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
+	response, err := p.AWSCloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
 		TypeName: &serviceCtx.ResourceType,
 	})
 	if err != nil {

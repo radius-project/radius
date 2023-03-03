@@ -41,5 +41,5 @@ func (a *AWSResource) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.
 
 // Dummy interface implementation of ResourceTypeName to ensure that AWSResource implements ResourceDataModel.
 func (a *AWSResource) ResourceTypeName() string {
-	return "AWSResource"
+	return "UCP/AWSResource"
 }

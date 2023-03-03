@@ -9,7 +9,6 @@ import (
 	"fmt"
 	http "net/http"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -19,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*GetPlane)(nil)
@@ -39,7 +39,7 @@ func NewGetPlane(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options().BasePath, req.URL.Path)
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	_, err := resources.ParseScope(path)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil

@@ -10,7 +10,6 @@ import (
 	http "net/http"
 	"strings"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -18,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*GetResourceGroup)(nil)
@@ -42,7 +42,7 @@ func NewGetResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
 func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	path := middleware.GetRelativePath(r.Options().BasePath, req.URL.Path)
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	id := strings.ToLower(path)
 	resourceID, err := resources.ParseScope(id)
 	if err != nil {
