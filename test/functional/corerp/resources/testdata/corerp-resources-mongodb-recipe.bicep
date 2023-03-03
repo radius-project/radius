@@ -3,7 +3,8 @@ import radius as radius
 param rg string = resourceGroup().name
 
 param sub string = subscription().subscriptionId
-param magpieimage string
+
+param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-environment-recipes-env'
@@ -22,7 +23,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       mongodb: {
           linkType: 'Applications.Link/mongoDatabases' 
-          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/valuebacked/mongodatabases/kubernetes:1.0' 
+          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0' 
       }
     }
   }
