@@ -33,6 +33,7 @@ import (
 
 const (
 	HTTPServerStopTimeout = time.Second * 10
+	ServiceName           = "ucp"
 )
 
 type Options struct {
@@ -121,7 +122,6 @@ func NewServer(options Options) (*hosting.Host, error) {
 			InitialPlanes:          options.InitialPlanes,
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
-			EnableMetrics:          options.MetricsProviderOptions.Prometheus.Enabled,
 		}),
 	}
 
@@ -135,6 +135,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: clientconfigSource}))
 	}
 
+	options.MetricsProviderOptions.ServiceName = ServiceName
 	if options.MetricsProviderOptions.Prometheus.Enabled {
 		metricOptions := metricsservice.HostOptions{
 			Config: &options.MetricsProviderOptions,

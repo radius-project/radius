@@ -31,6 +31,8 @@ import (
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
+const serviceName = "applications.core"
+
 func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
 	hostings := []hosting.Service{}
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
@@ -73,6 +75,7 @@ func main() {
 	hostingSvc := []hosting.Service{frontend.NewService(options)}
 
 	metricOptions := metricsservice.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions.Config.ServiceName = serviceName
 	if metricOptions.Config.Prometheus.Enabled {
 		hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
 	}
@@ -124,6 +127,7 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 
 	tracerOpts := options.Config.TracerProvider
+	tracerOpts.ServiceName = serviceName
 	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
 		log.Fatal(err)

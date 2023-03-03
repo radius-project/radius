@@ -12,6 +12,8 @@ import (
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric/global"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
 // PrometheusExporter is the struct that holds the metrics reklated data
@@ -24,13 +26,19 @@ type PrometheusExporter struct {
 }
 
 // NewPrometheusExporter builds and returns prometheus exporter used for metrics collection
-func NewPrometheusExporter() (*PrometheusExporter, error) {
+func NewPrometheusExporter(options *MetricsProviderOptions) (*PrometheusExporter, error) {
 	exporter, err := prometheus.New()
 	if err != nil {
 		return nil, err
 	}
 
-	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+	mp := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(exporter),
+		sdkmetric.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(options.ServiceName),
+		)))
+
 	global.SetMeterProvider(mp)
 
 	return &PrometheusExporter{
