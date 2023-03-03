@@ -30,4 +30,4 @@ ucp:
   kind: kubernetes
 logging:
   level: "info"
-  json: true
+  json: false
