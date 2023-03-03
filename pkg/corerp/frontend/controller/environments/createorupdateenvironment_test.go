@@ -395,7 +395,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 }
 
-// Commenting dev recipe tests to unblock the test failures, will uncomment them once this issue is fixed. https://github.com/project-radius/radius/issues/5085
+// Commenting dev recipe tests to unblock the test failures, will uncomment them once this issue is fixed.
+// https://github.com/project-radius/radius/issues/5085
 
 // func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 // 	mctrl := gomock.NewController(t)
@@ -686,6 +687,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 // }
 
+// Commenting dev recipe tests to unblock the test failures, will uncomment them once this issue is fixed.
+// https://github.com/project-radius/radius/issues/5085
 // func TestGetDevRecipes(t *testing.T) {
 // 	t.Run("Successfully returns dev recipes", func(t *testing.T) {
 // 		ctx := context.Background()
