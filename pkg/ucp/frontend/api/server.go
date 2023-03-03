@@ -61,7 +61,6 @@ type ServiceOptions struct {
 	InitialPlanes           []rest.Plane
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
-	EnableMetrics           bool
 }
 
 type Service struct {
@@ -170,9 +169,11 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = servicecontext.ARMRequestCtx(s.options.BasePath, "global")(app)
 	app = middleware.AppendLogValues("ucp")(app)
 
-	if s.options.EnableMetrics {
-		app = otelhttp.NewHandler(app, "ucp", otelhttp.WithMeterProvider(global.MeterProvider()))
-	}
+	app = otelhttp.NewHandler(
+		middleware.NormalizePath(app),
+		"ucp",
+		otelhttp.WithMeterProvider(global.MeterProvider()),
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	server := &http.Server{
 		Addr: s.options.Address,
@@ -180,7 +181,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
 		// TODO: Once https://github.com/project-radius/radius/issues/3582 is fixed, we could use the lowercase middleware
-		Handler: otelhttp.NewHandler(middleware.NormalizePath(app), "ucp", otelhttp.WithTracerProvider(otel.GetTracerProvider()), otelhttp.WithPropagators(otel.GetTextMapPropagator())),
+		Handler: app,
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},

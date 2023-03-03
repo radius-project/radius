@@ -31,4 +31,4 @@ ucp:
  # Logging configuration   
 logging:
   level: "info"
-  json: false
+  json: true

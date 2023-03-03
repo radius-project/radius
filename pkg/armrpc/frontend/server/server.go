@@ -36,7 +36,6 @@ type Options struct {
 	Address           string
 	PathBase          string
 	EnableArmAuth     bool
-	EnableMetrics     bool
 	Configure         func(*mux.Router) error
 	ArmCertMgr        *authentication.ArmCertManager
 }
@@ -66,11 +65,11 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 
-	handlerFunc := middleware.LowercaseURLPath(r)
-	if options.EnableMetrics {
-		handlerFunc = otelhttp.NewHandler(middleware.LowercaseURLPath(r),
-			options.ProviderNamespace, otelhttp.WithMeterProvider(global.MeterProvider()), otelhttp.WithTracerProvider(otel.GetTracerProvider()))
-	}
+	handlerFunc := otelhttp.NewHandler(
+		middleware.LowercaseURLPath(r),
+		options.ProviderNamespace,
+		otelhttp.WithMeterProvider(global.MeterProvider()),
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	server := &http.Server{
 		Addr:    options.Address,

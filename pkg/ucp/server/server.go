@@ -121,7 +121,6 @@ func NewServer(options Options) (*hosting.Host, error) {
 			InitialPlanes:          options.InitialPlanes,
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
-			EnableMetrics:          options.MetricsProviderOptions.Prometheus.Enabled,
 		}),
 	}
 
