@@ -33,8 +33,8 @@ func getTestModels20220315privatepreview() (*v20220315privatepreview.Environment
 	return envInput, envDataModel, expectedOutput
 }
 
-//commenting these functions as we disabled dev recipe tests. will uncomment as part of fix for https://github.com/project-radius/radius/issues/5085
-
+// Commenting these functions as we disabled dev recipe tests.
+// Will uncomment as part of fix for https://github.com/project-radius/radius/issues/5085
 // func getTestModelsWithDevRecipes20220315privatepreview() (*v20220315privatepreview.EnvironmentResource, *datamodel.Environment, *v20220315privatepreview.EnvironmentResource) {
 // 	rawInput := testutil.ReadFixture("environmentwithdevrecipes20220315privatepreview_input.json")
 // 	envInput := &v20220315privatepreview.EnvironmentResource{}

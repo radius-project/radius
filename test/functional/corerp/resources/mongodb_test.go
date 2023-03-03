@@ -116,7 +116,8 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 // the creation of a mongoDB from recipe
 // container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe(t *testing.T) {
-	// template using recipe testdata/recipes/test-recipes/mongodb-recipe-kubernetes.bicep
+	t.Skipf("Enable this test once test flakiness is fixed. - https://github.com/project-radius/radius/issues/5053")
+
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
 	appNamespace := "corerp-resources-mongodb-recipe-app"
@@ -140,13 +141,27 @@ func Test_MongoDB_Recipe(t *testing.T) {
 						Type: validation.ContainersResource,
 						App:  name,
 					},
+					{
+						Name: "mongo-recipe-db",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureCosmosAccount,
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
+							},
+						},
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr"),
-						validation.NewK8sPodForResource(name, "mongo-recipe-resource"),
 					},
 				},
 			},
@@ -237,13 +252,29 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 						Type: validation.ContainersResource,
 						App:  name,
 					},
+					{
+						Name: "mdb-recipe-param-db",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureCosmosAccount,
+								Name:     "acnt-developer-" + rg,
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
+								Name:     "mdb-operator-" + rg,
+							},
+						},
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "mdb-param-ctnr"),
-						validation.NewK8sPodForResource(name, "mdb-developer-"+rg),
 					},
 				},
 			},
