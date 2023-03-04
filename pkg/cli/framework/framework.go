@@ -7,7 +7,9 @@ package framework
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -20,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Factory interface handles resources for interfacing with corerp and configs
@@ -131,7 +134,10 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-
+		if cli.ReadDebugFlag(cmd) {
+			sc := trace.SpanContextFromContext(cmd.Context())
+			fmt.Print("\nTraceID is ", sc.TraceID())
+		}
 		return nil
 	}
 }
