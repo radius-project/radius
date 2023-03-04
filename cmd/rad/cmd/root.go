@@ -54,6 +54,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/trace"
+	"go.opentelemetry.io/otel"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -112,15 +113,19 @@ func Execute() {
 		_ = shutdown(ctx)
 	}()
 
+	tr := otel.Tracer("cli")
+	ctx, span := tr.Start(ctx, "cli")
 	err = RootCmd.ExecuteContext(ctx)
+
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
+		fmt.Println("\nTraceID:", span.SpanContext().TraceID())
 		os.Exit(1)
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
+		fmt.Println("\nTraceID:", span.SpanContext().TraceID())
 		os.Exit(1)
 	}
-
 }
 
 func init() {
@@ -130,6 +135,9 @@ func init() {
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	RootCmd.PersistentFlags().StringP("output", "o", output.DefaultFormat, outputDescription)
+
+	debugDescription := "debug option prints the W3C traceID which can be used for server side tracing and log corelation"
+	RootCmd.PersistentFlags().Bool("debug", false, debugDescription)
 	initSubCommands()
 }
 
@@ -223,6 +231,7 @@ func initSubCommands() {
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
 	envCmd.AddCommand(envSwitchCmd)
+
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
