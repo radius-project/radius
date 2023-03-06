@@ -82,10 +82,8 @@ jobs:
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
-          go tool cover -func=./dist/coverage_src.out
-          # Exclude mocks and generated files.
-          cat ./dist/coverage_src.out|grep -v  "mock_"|grep -v  "zz_" > $COVERAGE_FILE
-          go tool cover -html=$COVERAGE_FILE -o coverage.html
+          go tool cover -func=./dist/coverage_src.out | grep -v  "mock_"|grep -v  "zz_" > $COVERAGE_FILE
+          go tool cover -html=$COVERAGE_FILE -o ./dist/coverage.html
           TOTAL_COVERAGE=`cat $COVERAGE_FILE | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
 
           echo "Test coverage : $TOTAL_COVERAGE"
