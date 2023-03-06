@@ -21,7 +21,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), " bucketName="+name),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
@@ -39,7 +39,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), " bucketName="+name),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
