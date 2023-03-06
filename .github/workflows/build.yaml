@@ -76,9 +76,40 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
-          GOTEST_OPTS: '-race'
+          GOTEST_OPTS: '-race -coverprofile ./dist/coverage_src.out'
         run: |
           make test
+      - name: Generate unit-test coverage files
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        run: |
+          go tool cover -func=./dist/coverage_src.out
+          # Exclude mocks and generated files.
+          cat ./dist/coverage_src.out|grep -v  "mock_"|grep -v  "zz_" > $COVERAGE_FILE
+          go tool cover -html=$COVERAGE_FILE -o coverage.html
+          TOTAL_COVERAGE=`cat $COVERAGE_FILE | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
+
+          echo "Test coverage : $TOTAL_COVERAGE"
+          if (( $(echo "$TOTAL_COVERAGE <= 50" | bc -l) )) ; then
+            COLOR=red
+          elif (( $(echo "$TOTAL_COVERAGE > 80" | bc -l) )); then
+            COLOR=green
+          else
+            COLOR=orange
+          fi
+
+          curl "https://img.shields.io/badge/coverage-$TOTAL_COVERAGE%25-$COLOR" > ./dist/coverage.svg
+        env:
+          COVERAGE_FILE: ./dist/coverage.out
+      - name: Upload test coverage artifact
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        uses: actions/upload-artifact@master
+        with:
+          name: coverage_${{ matrix.target_os}}_${{ matrix.target_arch}}
+          path: |
+            ./dist/coverage_orig.out
+            ./dist/coverage.out
+            ./dist/coverage.html
+            ./dist/coverage.svg
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:
