@@ -240,6 +240,7 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    ```bash
    git cherry-pick -x <COMMIT HASH>
    ```
+5. Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.17) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to <major>.<minor> (eg. 0.17) for downloading the `rad-bicep-corerp`.
 4. Push the commit to the remote and create a pull request targeting the release branch.
    ```bash
    git push origin <USERNAME>/<BRANCHNAME>
