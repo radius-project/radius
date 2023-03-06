@@ -145,7 +145,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'The unit-test coverage is ' + coverageNumber +  '%. You can find the detail test coverage output in "unit_test_coverage" artifact.'
+              body: 'The unit-test coverage is ' + coverageNumber +  '%. You can find the detail unit-test coverage output in "unit_test_coverage" artifact.'
             });
       - name: Upload test coverage artifact
         uses: actions/upload-artifact@master
