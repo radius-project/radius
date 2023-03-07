@@ -399,6 +399,6 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 }
 
 func isEmpty(chartArgs *setup.ChartArgs) bool {
-	var emptyChartArgs setup.ChartArgs
-	return (chartArgs == nil || *chartArgs == emptyChartArgs)
+	//var emptyChartArgs setup.ChartArgs
+	return (chartArgs == nil)
 }
