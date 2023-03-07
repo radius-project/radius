@@ -134,6 +134,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
+/*
 func GetTracerProvider(options RadiusOptions, kubeContext string) {
 
 	var helmOutput strings.Builder
@@ -241,6 +242,7 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 	return &azProvider, nil
 
 }
+*/
 
 func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
