@@ -121,12 +121,13 @@ jobs:
             ./dist/coverage.html
             ./dist/coverage.svg
       - uses: actions/github-script@v6
-        if: ${{ github.event.pull_request }}
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && ${{ github.event.pull_request }}
         env:
           COVERAGE: ${{ env.ut_coverage }}
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
+            // TODO: Once we make repo public, we need to adopt https://about.codecov.io/.
             const coverageNumber = process.env['COVERAGE'];
             github.rest.issues.createComment({
               issue_number: context.issue.number,
