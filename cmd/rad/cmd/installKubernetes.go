@@ -52,6 +52,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 			AppCoreImage:           chartArgs.AppCoreImage,
 			AppCoreTag:             chartArgs.AppCoreTag,
 			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
+			Values:                 chartArgs.Values,
 		},
 	}
 
@@ -61,6 +62,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	helm.GetTracerProvider(cliOptions.Radius, kubeContext)
 
 	//installation completed. update workspaces, if any.
 	if !alreadyInstalled {

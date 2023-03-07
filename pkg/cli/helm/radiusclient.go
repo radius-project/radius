@@ -44,6 +44,7 @@ type RadiusOptions struct {
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
 	AWSProvider            *aws.Provider
+	Values                 []string
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
@@ -75,6 +76,13 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	err = addRadiusValues(helmChart, &options)
 	if err != nil {
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	if len(options.Values) > 0 {
+		err = addChartValues(helmChart, options.Values)
+		if err != nil {
+			return false, fmt.Errorf("failed to set chart args, err: %w, helm output: %s", err, helmOutput.String())
+		}
 	}
 
 	if options.AzureProvider != nil {
@@ -124,6 +132,46 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 	}
 	return alreadyInstalled, err
+}
+
+func GetTracerProvider(options RadiusOptions, kubeContext string) {
+
+	var helmOutput strings.Builder
+
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, _ := HelmConfig(&helmOutput, &flags)
+
+	histClient := helm.NewHistory(helmConf)
+	histClient.Max = 1 // Only need to check if at least 1 exists
+	rel, err := histClient.Run(radiusReleaseName)
+	if err != nil {
+		return
+	}
+
+	if len(rel) == 0 {
+		return
+	}
+	cfg := rel[0].Config
+
+	_, ok := cfg["global"]
+	if !ok {
+		return
+	}
+	global := cfg["global"].(map[string]any)
+
+	_, ok = global["rp"]
+	if !ok {
+		return
+	}
+	rp := global["rp"].(map[string]any)
+
+	fmt.Print(rp["tracerprovider"])
+
 }
 
 func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, error) {
@@ -211,6 +259,38 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	installClient.Timeout = installTimeout
 	installClient.Recreate = true //force recreating radius pods on adding or modfying azprovider
 	return runUpgrade(installClient, releaseName, helmChart)
+}
+
+func addChartValues(helmChart *chart.Chart, values []string) error {
+	for _, value := range values {
+		chartKeyVal := strings.Split(value, "=")
+		err := addRadiusChartValues(helmChart, chartKeyVal[0], chartKeyVal[1])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func addRadiusChartValues(helmChart *chart.Chart, key string, val string) error {
+
+	// global.engine.image = "de:latest" here, image is the string key in de map whose value is the image name (also string).
+	// we need to construct a map or traverse one that is already existing, until we reach the last (leaf) which is just a key of type string, pointing to the actual value.
+	keys := strings.Split(key, ".")
+	leaf := keys[len(keys)-1]
+	keys = keys[:len(keys)-1]
+	values := helmChart.Values
+
+	for _, key := range keys {
+		_, ok := values[key]
+		if !ok {
+			values[key] = make(map[string]any)
+		} else {
+			values = values[key].(map[string]any)
+		}
+	}
+	values[leaf] = val
+	return nil
 }
 
 func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {

@@ -105,7 +105,9 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	if cliOptions.Radius.AWSProvider != nil {
 		options.Radius.AWSProvider = cliOptions.Radius.AWSProvider
 	}
-
+	if len(cliOptions.Radius.Values) > 0 {
+		options.Radius.Values = cliOptions.Radius.Values
+	}
 	return options
 }
 
