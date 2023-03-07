@@ -131,6 +131,7 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		return nil
 	}
 }
