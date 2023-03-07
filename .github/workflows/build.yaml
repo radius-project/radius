@@ -82,22 +82,15 @@ jobs:
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
+          # TODO: Migrate it to https://github.com/codecov/codecov-action once we make this repo public.
           # Remove mock, generated files, and datamodels from original coverage output.
           cat ./dist/ut_coverage_orig.out | grep -v  "mock_" | grep -v  "zz_" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
-
+          # Generate reports.
           $GO_TOOL_COVER -func=$COVERAGE_FILE -o ./dist/ut_coverage.txt
           $GO_TOOL_COVER -html=$COVERAGE_FILE -o ./dist/ut_coverage.html
-
+          # Parse total coverage rate from report.
           UT_COVERAGE=`cat ./dist/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
           echo "Test coverage : $UT_COVERAGE"
-          if (( $(echo "$UT_COVERAGE <= 50" | bc -l) )) ; then
-            COLOR=red
-          elif (( $(echo "$UT_COVERAGE > 80" | bc -l) )); then
-            COLOR=green
-          else
-            COLOR=orange
-          fi
-          curl "https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" > ./dist/ut_coverage.svg
 
           echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
         env:
@@ -120,7 +113,6 @@ jobs:
             ./dist/ut_coverage.out
             ./dist/ut_coverage.txt
             ./dist/ut_coverage.html
-            ./dist/ut_coverage.svg
       - name: Post unit-test coverage result comment
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
         uses: actions/github-script@v6
@@ -129,7 +121,7 @@ jobs:
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            // TODO: Once we make repo public, we need to adopt https://about.codecov.io/.
+            // TODO: Migrate it to https://github.com/codecov/codecov-action once we make this repo public.
             const coverageNumber = process.env['COVERAGE'];
             github.rest.issues.createComment({
               issue_number: context.issue.number,
