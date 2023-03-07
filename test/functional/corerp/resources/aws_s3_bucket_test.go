@@ -76,6 +76,8 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 				},
 			},
 		},
+		// The following step deploys an existing resource and validates that it retrieves the same
+		// resource as was deployed above
 		{
 			Executor:                               step.NewDeployExecutor(templateExisting, "bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
