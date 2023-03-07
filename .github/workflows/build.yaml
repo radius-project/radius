@@ -76,17 +76,19 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
-          GOTEST_OPTS: '-race -coverprofile ./dist/coverage_orig.out'
+          GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
         run: |
           make test
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
-          cat ./dist/coverage_orig.out | grep -v  "mock_" | grep -v  "zz_" > $COVERAGE_FILE
-          go tool cover -func=$COVERAGE_FILE -o ./dist/coverage.txt
-          go tool cover -html=$COVERAGE_FILE -o ./dist/coverage.html
+          # Remove mock and generated files from original coverage output.
+          cat ./dist/ut_coverage_orig.out | grep -v  "mock_" | grep -v  "zz_" > $COVERAGE_FILE
 
-          UT_COVERAGE=`cat ./dist/coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
+          go tool cover -func=$COVERAGE_FILE -o ./dist/ut_coverage.txt
+          go tool cover -html=$COVERAGE_FILE -o ./dist/ut_coverage.html
+
+          UT_COVERAGE=`cat ./dist/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
           echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
 
           echo "Test coverage : $UT_COVERAGE"
@@ -99,9 +101,9 @@ jobs:
           fi
 
           # TODO: Upload badge to blob storage.
-          curl "https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" > ./dist/coverage.svg
+          curl "https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" > ./dist/ut_coverage.svg
         env:
-          COVERAGE_FILE: ./dist/coverage.out
+          COVERAGE_FILE: ./dist/ut_coverage.out
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:
@@ -116,12 +118,13 @@ jobs:
           name: unit_test_coverage
           path: |
             ./dist/coverage_orig.out
-            ./dist/coverage.out
-            ./dist/coverage.txt
-            ./dist/coverage.html
-            ./dist/coverage.svg
-      - uses: actions/github-script@v6
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && ${{ github.event.pull_request }}
+            ./dist/ut_coverage.out
+            ./dist/ut_coverage.txt
+            ./dist/ut_coverage.html
+            ./dist/ut_coverage.svg
+      - name: Post test coverage result.
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        uses: actions/github-script@v6
         env:
           COVERAGE: ${{ env.ut_coverage }}
         with:
