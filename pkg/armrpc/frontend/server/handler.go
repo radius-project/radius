@@ -145,7 +145,7 @@ func ConfigureDefaultHandlers(
 	return nil
 }
 
-// Responds with an HTTP 500
+// HandleError creates the internal error respones with 500 code.
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
