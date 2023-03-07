@@ -97,7 +97,7 @@ jobs:
     name: Generate test coverage
     needs: [ 'build' ]
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    if: ${{ github.event.issue.pull_request }}
+    if: ${{ github.event.pull_request }}
     steps:
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
