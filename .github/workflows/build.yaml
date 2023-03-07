@@ -76,16 +76,32 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
-          GOTEST_OPTS: '-race -coverprofile ./dist/coverage_src.out'
+          GOTEST_OPTS: '-race -coverprofile ./dist/coverage_orig.out'
         run: |
           make test
-      - name: Upload test coverage artifact
+      - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: actions/upload-artifact@master
-        with:
-          name: unit_test_coverage
-          path: |
-            ./dist/coverage_src.out
+        run: |
+          cat ./dist/coverage_orig.out | grep -v  "mock_" | grep -v  "zz_" > $COVERAGE_FILE
+          go tool cover -func=$COVERAGE_FILE -o ./dist/coverage.txt
+          go tool cover -html=$COVERAGE_FILE -o ./dist/coverage.html
+
+          UT_COVERAGE=`cat ./dist/coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
+          echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
+
+          echo "Test coverage : $UT_COVERAGE"
+          if (( $(echo "$UT_COVERAGE <= 50" | bc -l) )) ; then
+            COLOR=red
+          elif (( $(echo "$UT_COVERAGE > 80" | bc -l) )); then
+            COLOR=green
+          else
+            COLOR=orange
+          fi
+
+          # TODO: Upload badge to blob storage.
+          curl "https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" > ./dist/coverage.svg
+        env:
+          COVERAGE_FILE: ./dist/coverage.out
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:
@@ -93,50 +109,21 @@ jobs:
           path: |
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
-  coverage:
-    name: Generate test coverage
-    needs: [ 'build' ]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    if: ${{ github.event.pull_request }}
-    steps:
-      - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ env.GOVER }}
-      - name: Download release artifacts
-        uses: actions/download-artifact@v3
+      - name: Upload test coverage artifact
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        uses: actions/upload-artifact@v3
         with:
           name: unit_test_coverage
-          path: coverage_output
-      - name: Generate unit-test coverage files
-        run: |
-          pushd ./coverage_output
-
-          cat ./coverage_src.out | grep -v  "mock_" | grep -v  "zz_" > $COVERAGE_FILE
-          go tool cover -func=$COVERAGE_FILE -o ./coverage.txt
-          go tool cover -html=$COVERAGE_FILE -o ./coverage.html
-
-          TOTAL_COVERAGE=`cat ./coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
-          echo "coverage=$TOTAL_COVERAGE" >> $GITHUB_ENV
-
-          echo "Test coverage : $TOTAL_COVERAGE"
-          if (( $(echo "$TOTAL_COVERAGE <= 50" | bc -l) )) ; then
-            COLOR=red
-          elif (( $(echo "$TOTAL_COVERAGE > 80" | bc -l) )); then
-            COLOR=green
-          else
-            COLOR=orange
-          fi
-
-          # TODO: Upload badge to blob storage.
-          curl "https://img.shields.io/badge/coverage-$TOTAL_COVERAGE%25-$COLOR" > ./dist/coverage.svg
-
-          popd
-        env:
-          COVERAGE_FILE: ./coverage.out
+          path: |
+            ./dist/coverage_orig.out
+            ./dist/coverage.out
+            ./dist/coverage.txt
+            ./dist/coverage.html
+            ./dist/coverage.svg
       - uses: actions/github-script@v6
+        if: ${{ github.event.pull_request }}
         env:
-          COVERAGE: ${{ env.coverage }}
+          COVERAGE: ${{ env.ut_coverage }}
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
@@ -145,17 +132,8 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'The unit-test coverage is ' + coverageNumber +  '%. You can find the detail unit-test coverage output in "unit_test_coverage" artifact.'
+              body: '## Coverage report\n\nThe unit-test coverage is ' + coverageNumber + '%. You can find the unit-test coverage reports in "unit_test_coverage" artifact.'
             });
-      - name: Upload test coverage artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: unit_test_coverage
-          path: |
-            ./coverage_output/coverage.out
-            ./coverage_output/coverage.txt
-            ./coverage_output/coverage.html
-            ./coverage_output/coverage.svg
 
   # Logic here:
   # - always do a docker build for validation
