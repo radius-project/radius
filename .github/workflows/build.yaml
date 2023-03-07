@@ -111,7 +111,7 @@ jobs:
           path: |
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
-      - name: Upload test coverage artifact
+      - name: Upload unit-test coverage artifact
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: actions/upload-artifact@v3
         with:
@@ -122,7 +122,7 @@ jobs:
             ./dist/ut_coverage.txt
             ./dist/ut_coverage.html
             ./dist/ut_coverage.svg
-      - name: Post test coverage result.
+      - name: Post unit-test coverage result comment
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
         uses: actions/github-script@v6
         env:
