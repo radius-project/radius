@@ -40,12 +40,14 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	testResourceGroupName := "test-rg"
 	path := testResourceGroupID + "?api-version=2022-09-01-privatepreview"
 	rg := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:       testResourceGroupID,
-			Name:     testResourceGroupName,
-			Type:     ResourceGroupType,
-			Location: v1.LocationGlobal,
-			Tags:     map[string]string{},
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       testResourceGroupID,
+				Name:     testResourceGroupName,
+				Type:     ResourceGroupType,
+				Location: v1.LocationGlobal,
+				Tags:     map[string]string{},
+			},
 		},
 	}
 

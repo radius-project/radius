@@ -36,10 +36,12 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	require.NoError(t, err)
 
 	rg := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/planes/radius/local/resourceGroups/default",
-			Name: "default",
-			Type: ResourceGroupType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/planes/radius/local/resourceGroups/default",
+				Name: "default",
+				Type: ResourceGroupType,
+			},
 		},
 	}
 
@@ -79,10 +81,12 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	rg := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/planes/radius/local/resourceGroups/default",
-			Name: "default",
-			Type: ResourceGroupType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/planes/radius/local/resourceGroups/default",
+				Name: "default",
+				Type: ResourceGroupType,
+			},
 		},
 	}
 

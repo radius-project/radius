@@ -71,10 +71,12 @@ var applicationList = []map[string]any{
 }
 
 var testUCPNativePlane = datamodel.Plane{
-	TrackedResource: armrpc_v1.TrackedResource{
-		ID:   "/planes/radius/local",
-		Type: "radius",
-		Name: "local",
+	BaseResource: v1.BaseResource{
+		TrackedResource: armrpc_v1.TrackedResource{
+			ID:   "/planes/radius/local",
+			Type: "radius",
+			Name: "local",
+		},
 	},
 	Properties: datamodel.PlaneProperties{
 		Kind: rest.PlaneKindUCPNative,

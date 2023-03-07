@@ -30,7 +30,7 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := &v1.ErrModelConversion{PropertyName: "namespace", ValidValue: "63 characters or less"}
-	handleError(context.Background(), responseWriter, req, err)
+	HandleError(context.Background(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -52,7 +52,7 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
-	handleError(context.Background(), responseWriter, req, v1.ErrInvalidModelConversion)
+	HandleError(context.Background(), responseWriter, req, v1.ErrInvalidModelConversion)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -75,7 +75,7 @@ func Test_HandlerErrInternal(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := errors.New("Internal error")
-	handleError(context.Background(), responseWriter, req, err)
+	HandleError(context.Background(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)

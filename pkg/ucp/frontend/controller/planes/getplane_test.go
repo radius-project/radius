@@ -41,10 +41,12 @@ func Test_GetPlaneByID(t *testing.T) {
 	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
 
 	dbPlane := datamodel.Plane{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/planes/radius/local",
-			Type: "radius",
-			Name: "local",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/planes/radius/local",
+				Type: "radius",
+				Name: "local",
+			},
 		},
 		Properties: datamodel.PlaneProperties{
 			Kind: rest.PlaneKindUCPNative,

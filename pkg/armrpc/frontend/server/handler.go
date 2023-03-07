@@ -54,13 +54,13 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 		response, err := ctrl.Run(hctx, w, req)
 		if err != nil {
-			handleError(hctx, w, req, err)
+			HandleError(hctx, w, req, err)
 			return
 		}
 
 		err = response.Apply(hctx, w, req)
 		if err != nil {
-			handleError(hctx, w, req, err)
+			HandleError(hctx, w, req, err)
 			return
 		}
 	}
@@ -146,7 +146,7 @@ func ConfigureDefaultHandlers(
 }
 
 // Responds with an HTTP 500
-func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
+func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
 

@@ -21,7 +21,7 @@ type PlaneProperties struct {
 
 // Plane represents UCP Plane.
 type Plane struct {
-	v1.TrackedResource
+	v1.BaseResource
 
 	// Properties is the properties of the resource.
 	Properties PlaneProperties `json:"properties"`
