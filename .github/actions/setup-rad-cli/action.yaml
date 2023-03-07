@@ -4,7 +4,7 @@ runs:
   using: "composite"
   steps:
     - name: Set up Go ${{ env.GOVER }}
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.GOVER }}
     - name: Get Go Cache path
@@ -27,7 +27,7 @@ runs:
       shell: bash
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: rad_cli_linux_amd64
         path: dist

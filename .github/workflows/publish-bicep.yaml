@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GOVER }}
       - name: Setup npm
@@ -60,8 +60,8 @@ jobs:
       - id: get_radius_commit_hash
         name: Get commit hash (project-radius/radius)
         run: |
-          echo "::set-output name=commit_hash_short::$(git rev-parse HEAD --short)"
-          echo "::set-output name=gh_uri::https://github.com/project-radius/radius/tree/$(git rev-parse HEAD)/hack/bicep-types-radius/generated"
+          echo "commit_hash_short=$(git rev-parse HEAD --short)" >> $GITHUB_OUTPUT
+          echo "gh_uri=https://github.com/project-radius/radius/tree/$(git rev-parse HEAD)/hack/bicep-types-radius/generated" >> $GITHUB_OUTPUT
 
       - name: Clone https://github.com/project-radius/bicep
         uses: actions/checkout@v3

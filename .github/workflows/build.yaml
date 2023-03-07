@@ -51,17 +51,17 @@ jobs:
             target_arch: amd64
     steps:
       - name: Check out repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GOVER }}
       - name: Get Go Cache path
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
-      - uses: actions/cache@v2
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -92,11 +92,21 @@ jobs:
           echo "Test coverage : $UT_COVERAGE"
 
           echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
+
+          if (( $(echo "$UT_COVERAGE <= 50" | bc -l) )) ; then
+            COLOR=red
+          elif (( $(echo "$UT_COVERAGE > 80" | bc -l) )); then
+            COLOR=green
+          else
+            COLOR=orange
+          fi
+
+          echo "coverage_img=https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" >> $GITHUB_ENV
         env:
           COVERAGE_FILE: ./dist/ut_coverage.out
           GO_TOOL_COVER: go tool cover
       - name: Upload CLI binary
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v3
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
           path: |
@@ -112,24 +122,16 @@ jobs:
             ./dist/ut_coverage.out
             ./dist/ut_coverage.txt
             ./dist/ut_coverage.html
-      - name: Post unit-test coverage result comment
+      - name: Add coverage result comment
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
-        uses: actions/github-script@v6
-        env:
-          COVERAGE: ${{ env.ut_coverage }}
+        uses: peter-evans/create-or-update-comment@v2.1.1
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            // TODO: Migrate it to codecov.io once we make this repo public - https://github.com/project-radius/radius/issues/5240
-            const coverageNumber = process.env['COVERAGE'];
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '## Unit-test coverage result\n\nThe unit-test coverage rate is **' + coverageNumber + '%**. ' 
-                  + 'If you want to see the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.\n\n'
-                  + '> **This result does not include the functional test coverage.**'
-            });
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Unit-test coverage result
+            > **This result does not include the functional test coverage.**
+            The unit-test coverage rate is ![${{ env.ut_coverage }}](${{ env.coverage_img }})
+            For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
 
   # Logic here:
   # - always do a docker build for validation
@@ -141,18 +143,18 @@ jobs:
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GOVER }}
       - name: Get Go Cache path
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
       - uses: actions/cache@v2
         with:
           path: |
@@ -210,9 +212,9 @@ jobs:
       HELM_PACKAGE_DIR: helm
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install helm
-        uses: Azure/setup-helm@v1
+        uses: Azure/setup-helm@v3
         with:
           version: latest
       - name: Setup Azure CLI
@@ -247,11 +249,11 @@ jobs:
       RADIUS_CHART_LOCATION: deploy/Chart/
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Setup rad CLI
       uses: ./.github/actions/setup-rad-cli
     - name: Create KinD Cluster
-      uses: helm/kind-action@v1.2.0
+      uses: helm/kind-action@v1.4.0
       with:
         cluster_name: radius
         version:  v0.11.0
@@ -280,7 +282,7 @@ jobs:
         make test-functional-kubernetes
     - name: Upload container logs
       if: always()
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v3
       with:
         name: container_logs
         path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -297,63 +299,63 @@ jobs:
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: rad_cli_darwin_amd64
           path: rad_cli_darwin_amd64
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: rad_cli_linux_arm
           path: rad_cli_linux_arm
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: rad_cli_linux_arm64
           path: rad_cli_linux_arm64
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: rad_cli_linux_amd64
           path: rad_cli_linux_amd64
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: rad_cli_windows_amd64
           path: rad_cli_windows_amd64
-      - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_darwin_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300 --overwrite true'
-      - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300 --overwrite true'
-      - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_arm
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm/ --pattern rad --timeout 300 --overwrite true'
-      - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_arm64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm64/ --pattern rad --timeout 300 --overwrite true'
-      - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_windows_amd64
           container_name: 'tools'
