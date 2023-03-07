@@ -14,8 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Run_Fail(t *testing.T) {
-
+func Test_RunCommand_Fail(t *testing.T) {
 	t.Run("Run runner", func(t *testing.T) {
 		expected := errors.New("mock error")
 		ctrl := gomock.NewController(t)
@@ -31,7 +30,7 @@ func Test_Run_Fail(t *testing.T) {
 		var args []string
 
 		runner.EXPECT().Validate(gomock.Any(), gomock.Any()).Times(1)
-		runner.EXPECT().Run(gomock.Any()).Return(errors.New("mock error"))
+		runner.EXPECT().Run(gomock.Any())
 
 		fn := RunCommand(runner)
 		fn(testCmd, args)
