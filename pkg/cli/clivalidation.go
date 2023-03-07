@@ -369,16 +369,6 @@ func ReadWorkspaceNameSecondArg(cmd *cobra.Command, args []string) (string, erro
 	return name, err
 }
 
-// ReadDebugFlag is used to get the debug flag that is supplied using a --debug flag
-func ReadDebugFlag(cmd *cobra.Command) bool {
-	debug, err := cmd.Flags().GetBool("debug")
-	if err != nil {
-		return false
-	}
-
-	return debug
-}
-
 func RequireRadYAML(cmd *cobra.Command) (string, error) {
 	radFile, err := cmd.Flags().GetString("radfile")
 	if err != nil {

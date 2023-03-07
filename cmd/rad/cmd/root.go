@@ -135,9 +135,6 @@ func init() {
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	RootCmd.PersistentFlags().StringP("output", "o", output.DefaultFormat, outputDescription)
-
-	debugDescription := "debug option prints the W3C traceID which can be used for server side tracing and log corelation"
-	RootCmd.PersistentFlags().Bool("debug", false, debugDescription)
 	initSubCommands()
 }
 
@@ -231,7 +228,6 @@ func initSubCommands() {
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
 	envCmd.AddCommand(envSwitchCmd)
-
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
