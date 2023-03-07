@@ -119,13 +119,14 @@ func Execute() {
 
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
-		fmt.Println("\nTraceID:", span.SpanContext().TraceID())
+		span.End()
 		os.Exit(1)
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
-		fmt.Println("\nTraceID:", span.SpanContext().TraceID())
+		span.End()
 		os.Exit(1)
 	}
+
 }
 
 func init() {
