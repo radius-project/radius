@@ -137,7 +137,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '## Coverage report\n\nThe unit-test coverage is ' + coverageNumber + '%. You can find the unit-test coverage reports in `unit_test_coverage` artifact of the check build.'
+              body: '## Unit-test Coverage result\n\nThe unit-test coverage is ' + coverageNumber + '%. Please note that the total test coverage is higher than this coverage because this number does not include the functional tests. If you want to see the detail report, please go to `Checks tab`, click `Build and Test`, and then download the `unit_test_coverage` artifact at the bottem of build page.'
             });
 
   # Logic here:
