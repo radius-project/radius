@@ -89,8 +89,6 @@ jobs:
           $GO_TOOL_COVER -html=$COVERAGE_FILE -o ./dist/ut_coverage.html
 
           UT_COVERAGE=`cat ./dist/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
-          echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
-
           echo "Test coverage : $UT_COVERAGE"
           if (( $(echo "$UT_COVERAGE <= 50" | bc -l) )) ; then
             COLOR=red
@@ -99,9 +97,9 @@ jobs:
           else
             COLOR=orange
           fi
-
-          # TODO: Upload badge to blob storage.
           curl "https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" > ./dist/ut_coverage.svg
+
+          echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
         env:
           COVERAGE_FILE: ./dist/ut_coverage.out
           GO_TOOL_COVER: go tool cover
@@ -137,7 +135,9 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '## Unit-test coverage result\n\nThe unit-test coverage rate is **' + coverageNumber + '%**. Please note that this coverage rate does not include the functional tests. If you want to see the detail report, please go to `Checks tab`, click `Build and Test`, and then download the `unit_test_coverage` artifact at the bottem of build page.'
+              body: '## Unit-test coverage result\n\nThe unit-test coverage rate is **' + coverageNumber + '%**. ' 
+                    + 'If you want to see the detail report, please go to `Checks tab`, click `Build and Test`, and then download the `unit_test_coverage` artifact at the bottom of build page.\n\n'
+                    + '> Note that this coverage rate does not include the functional tests.'
             });
 
   # Logic here:
