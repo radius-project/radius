@@ -15,7 +15,7 @@ import (
 )
 
 func Test_AWS_S3Bucket(t *testing.T) {
-	template := "testdata/s3-bucket.bicep"
+	template := "testdata/aws-s3-bucket.bicep"
 	name := generateS3BucketName()
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
@@ -30,7 +30,13 @@ func Test_AWS_S3Bucket(t *testing.T) {
 						Type:       validation.AWSS3BucketResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"AccessControl": "Private",
+							"BucketName": name,
+							"Tags": []map[string]any{
+								{
+									"Key":   "testKey",
+									"Value": "testValue",
+								},
+							},
 						},
 					},
 				},
@@ -42,8 +48,8 @@ func Test_AWS_S3Bucket(t *testing.T) {
 }
 
 func Test_AWS_S3Bucket_Existing(t *testing.T) {
-	template := "testdata/s3-bucket.bicep"
-	templateExisting := "testdata/s3-bucket-existing.bicep"
+	template := "testdata/aws-s3-bucket.bicep"
+	templateExisting := "testdata/aws-s3-bucket-existing.bicep"
 	name := generateS3BucketName()
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
@@ -58,7 +64,13 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 						Type:       validation.AWSS3BucketResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"AccessControl": "Private",
+							"BucketName": name,
+							"Tags": []map[string]any{
+								{
+									"Key":   "testKey",
+									"Value": "testValue",
+								},
+							},
 						},
 					},
 				},
@@ -75,7 +87,13 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 						Type:       validation.AWSS3BucketResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"AccessControl": "Private",
+							"BucketName": name,
+							"Tags": []map[string]any{
+								{
+									"Key":   "testKey",
+									"Value": "testValue",
+								},
+							},
 						},
 					},
 				},

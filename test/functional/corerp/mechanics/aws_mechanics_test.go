@@ -31,8 +31,13 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Type:       validation.AWSS3BucketResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"BucketName":    name,
-							"AccessControl": "PublicRead",
+							"BucketName": name,
+							"Tags": []map[string]any{
+								{
+									"Key":   "testKey",
+									"Value": "testValue",
+								},
+							},
 						},
 					},
 				},
@@ -49,8 +54,13 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Type:       validation.AWSS3BucketResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"BucketName":    name,
-							"AccessControl": "Private",
+							"BucketName": name,
+							"Tags": []map[string]any{
+								{
+									"Key":   "testKey",
+									"Value": "testValue2",
+								},
+							},
 						},
 					},
 				},
