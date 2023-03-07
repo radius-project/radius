@@ -83,7 +83,7 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
           # Remove mock, generated files, and datamodels from original coverage output.
-          cat ./dist/ut_coverage_orig.out | grep -v  "mock_" | grep -v  "zz_" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
+          cat ./dist/ut_coverage_orig.out | grep -v  "mock" | grep -v  "zz_" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
           # Generate reports.
           $GO_TOOL_COVER -func=$COVERAGE_FILE -o ./dist/ut_coverage.txt
           $GO_TOOL_COVER -html=$COVERAGE_FILE -o ./dist/ut_coverage.html
