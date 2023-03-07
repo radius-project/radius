@@ -19,7 +19,6 @@ func Test_RunCommand_Fail(t *testing.T) {
 		expected := errors.New("mock error")
 		ctrl := gomock.NewController(t)
 		runner := NewMockRunner(ctrl)
-
 		testCmd := &cobra.Command{
 			Use:   "test",
 			Short: "short description",
@@ -27,15 +26,15 @@ func Test_RunCommand_Fail(t *testing.T) {
 			Run: func(cmd *cobra.Command, args []string) {
 			},
 		}
-		var args []string
+		var testArgs []string
 
 		runner.EXPECT().Validate(gomock.Any(), gomock.Any()).Times(1)
 		runner.EXPECT().Run(gomock.Any())
 
 		fn := RunCommand(runner)
-		fn(testCmd, args)
+		err := fn(testCmd, testArgs)
 
-		require.Error(t, expected)
+		require.ErrorIs(t, err, expected)
 
 	})
 }
