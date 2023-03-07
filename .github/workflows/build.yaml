@@ -128,8 +128,8 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '## Unit-test coverage result\n\nThe unit-test coverage rate is **' + coverageNumber + '%**. ' 
-                    + 'If you want to see the detail report, please go to `Checks tab`, click `Build and Test`, and then download the `unit_test_coverage` artifact at the bottom of build page.\n\n'
-                    + '> Note that this coverage rate does not include the functional tests.'
+                  + 'If you want to see the detail report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.\n\n'
+                  + '> This coverage rate does not include the functional tests.'
             });
 
   # Logic here:
