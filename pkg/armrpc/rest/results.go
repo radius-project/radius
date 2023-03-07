@@ -290,6 +290,8 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		return "", err
 	}
 	if referer.Host == "" {
+		// Certain AWS requests don't forward the scheme/host
+		// This case is to backfill the host for those AWS integration test requests
 		referer.Host = req.Host
 	}
 

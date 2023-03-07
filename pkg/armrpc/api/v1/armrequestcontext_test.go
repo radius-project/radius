@@ -176,6 +176,18 @@ func TestParsePathBase(t *testing.T) {
 			"",
 			"",
 		},
+		{
+			"With api prefix (/subscription/ path)",
+			"/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
+			"/apis/api.ucp.dev/v1alpha3",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
+		},
+		{
+			"Without api prefix (/subscription/ path)",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
+			"",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
+		},
 	}
 
 	for _, tt := range prefixTests {
