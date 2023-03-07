@@ -3,10 +3,9 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package mechanics_test
+package resource_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,13 +14,13 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
-	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
-	name := "radiusfunctionaltestbucket-" + uuid.New().String()
+func Test_AWS_S3Bucket(t *testing.T) {
+	template := "testdata/aws-s3-bucket.bicep"
+	name := generateS3BucketName()
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "bucketName="+name),
+			Executor:                               step.NewDeployExecutor(template, "bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
@@ -43,8 +42,19 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 				},
 			},
 		},
+	})
+
+	test.Test(t)
+}
+
+func Test_AWS_S3Bucket_Existing(t *testing.T) {
+	template := "testdata/aws-s3-bucket.bicep"
+	templateExisting := "testdata/aws-s3-bucket-existing.bicep"
+	name := generateS3BucketName()
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "bucketName="+name),
+			Executor:                               step.NewDeployExecutor(template, "bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
@@ -58,7 +68,32 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 							"Tags": []any{
 								map[string]any{
 									"Key":   "testKey",
-									"Value": "testValue2",
+									"Value": "testValue",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		// The following step deploys an existing resource and validates that it retrieves the same
+		// resource as was deployed above
+		{
+			Executor:                               step.NewDeployExecutor(templateExisting, "bucketName="+name),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			AWSResources: &validation.AWSResourceSet{
+				Resources: []validation.AWSResource{
+					{
+						Name:       name,
+						Type:       validation.AWSS3BucketResourceType,
+						Identifier: name,
+						Properties: map[string]any{
+							"BucketName": name,
+							"Tags": []any{
+								map[string]any{
+									"Key":   "testKey",
+									"Value": "testValue",
 								},
 							},
 						},
@@ -67,53 +102,10 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 	})
+
 	test.Test(t)
 }
 
-func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
-	t.Skip("This test will fail because step 2 is updating a create-and-write-only property.")
-	name := "my-db"
-	templateFmt := "testdata/aws-mechanics-redeploy-withcreateandwriteonlypropertyupdate.step%d.bicep"
-
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1)),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			AWSResources: &validation.AWSResourceSet{
-				Resources: []validation.AWSResource{
-					{
-						Name:       name,
-						Type:       validation.AWSRDSDBInstanceResourceType,
-						Identifier: name,
-						Properties: map[string]any{
-							"Endpoint": map[string]any{
-								"Port": 1444,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2)),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			AWSResources: &validation.AWSResourceSet{
-				Resources: []validation.AWSResource{
-					{
-						Name:       name,
-						Type:       validation.AWSRDSDBInstanceResourceType,
-						Identifier: name,
-						Properties: map[string]any{
-							"Endpoint": map[string]any{
-								"Port": 1444,
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-	test.Test(t)
+func generateS3BucketName() string {
+	return "radiusfunctionaltestbucket-" + uuid.New().String()
 }
