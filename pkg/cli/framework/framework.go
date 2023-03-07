@@ -117,6 +117,7 @@ func (i *Impl) GetSetupInterface() setup.Interface {
 	return i.SetupInterface
 }
 
+//go:generate mockgen -destination=./mock_framework.go -package=framework -self_package github.com/project-radius/radius/pkg/cli/framework github.com/project-radius/radius/pkg/cli/framework Runner
 type Runner interface {
 	Validate(cmd *cobra.Command, args []string) error
 	Run(ctx context.Context) error
