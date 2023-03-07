@@ -32,8 +32,8 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"BucketName": name,
-							"Tags": []map[string]any{
-								{
+							"Tags": []any{
+								map[string]any{
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
@@ -55,8 +55,8 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"BucketName": name,
-							"Tags": []map[string]any{
-								{
+							"Tags": []any{
+								map[string]any{
 									"Key":   "testKey",
 									"Value": "testValue2",
 								},

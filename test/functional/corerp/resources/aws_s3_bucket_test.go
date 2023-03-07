@@ -31,8 +31,8 @@ func Test_AWS_S3Bucket(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"BucketName": name,
-							"Tags": []map[string]any{
-								{
+							"Tags": []any{
+								map[string]any{
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
@@ -65,8 +65,8 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"BucketName": name,
-							"Tags": []map[string]any{
-								{
+							"Tags": []any{
+								map[string]any{
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
@@ -88,8 +88,8 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"BucketName": name,
-							"Tags": []map[string]any{
-								{
+							"Tags": []any{
+								map[string]any{
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
