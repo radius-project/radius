@@ -89,7 +89,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 			annMap.EnvMap = envOpts.KubernetesMetadata.Annotations
 		}
 		if appKmeExists && appOpts.KubernetesMetadata.Annotations != nil {
-			annMap.AppMap = envOpts.KubernetesMetadata.Annotations
+			annMap.AppMap = appOpts.KubernetesMetadata.Annotations
 		}
 
 		// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
@@ -110,10 +110,10 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 		}
 
 		if envKmeExists && envOpts.KubernetesMetadata.Labels != nil {
-			annMap.EnvMap = envOpts.KubernetesMetadata.Labels
+			lblMap.EnvMap = envOpts.KubernetesMetadata.Labels
 		}
 		if appKmeExists && appOpts.KubernetesMetadata.Labels != nil {
-			annMap.AppMap = envOpts.KubernetesMetadata.Labels
+			lblMap.AppMap = appOpts.KubernetesMetadata.Labels
 		}
 
 		// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
