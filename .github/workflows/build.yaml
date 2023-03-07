@@ -82,7 +82,6 @@ jobs:
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
-          # TODO: Migrate it to https://github.com/codecov/codecov-action once we make this repo public.
           # Remove mock, generated files, and datamodels from original coverage output.
           cat ./dist/ut_coverage_orig.out | grep -v  "mock_" | grep -v  "zz_" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
           # Generate reports.
@@ -121,15 +120,15 @@ jobs:
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            // TODO: Migrate it to https://github.com/codecov/codecov-action once we make this repo public.
+            // TODO: Migrate it to codecov.io once we make this repo public - https://github.com/project-radius/radius/issues/5240
             const coverageNumber = process.env['COVERAGE'];
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '## Unit-test coverage result\n\nThe unit-test coverage rate is **' + coverageNumber + '%**. ' 
-                  + 'If you want to see the detail report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.\n\n'
-                  + '> This coverage rate does not include the functional tests.'
+                  + 'If you want to see the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.\n\n'
+                  + '> **This result does not include the functional test coverage.**'
             });
 
   # Logic here:
