@@ -76,9 +76,25 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
-          GOTEST_OPTS: '-race'
+          GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
         run: |
           make test
+      - name: Generate unit-test coverage files
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        run: |
+          # Remove mock, generated files, and datamodels from original coverage output.
+          cat ./dist/ut_coverage_orig.out | grep -v  "mock" | grep -v  "zz_" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
+          # Generate reports.
+          $GO_TOOL_COVER -func=$COVERAGE_FILE -o ./dist/ut_coverage.txt
+          $GO_TOOL_COVER -html=$COVERAGE_FILE -o ./dist/ut_coverage.html
+          # Parse total coverage rate from report.
+          UT_COVERAGE=`cat ./dist/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
+          echo "Test coverage : $UT_COVERAGE"
+
+          echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
+        env:
+          COVERAGE_FILE: ./dist/ut_coverage.out
+          GO_TOOL_COVER: go tool cover
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:
@@ -86,6 +102,34 @@ jobs:
           path: |
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
+      - name: Upload unit-test coverage artifact
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        uses: actions/upload-artifact@v3
+        with:
+          name: unit_test_coverage
+          path: |
+            ./dist/coverage_orig.out
+            ./dist/ut_coverage.out
+            ./dist/ut_coverage.txt
+            ./dist/ut_coverage.html
+      - name: Post unit-test coverage result comment
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        uses: actions/github-script@v6
+        env:
+          COVERAGE: ${{ env.ut_coverage }}
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            // TODO: Migrate it to codecov.io once we make this repo public - https://github.com/project-radius/radius/issues/5240
+            const coverageNumber = process.env['COVERAGE'];
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## Unit-test coverage result\n\nThe unit-test coverage rate is **' + coverageNumber + '%**. ' 
+                  + 'If you want to see the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.\n\n'
+                  + '> **This result does not include the functional test coverage.**'
+            });
 
   # Logic here:
   # - always do a docker build for validation
@@ -245,7 +289,7 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         rad env uninstall kubernetes
         ./.github/scripts/namespace-is-empty.sh
-  
+
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
