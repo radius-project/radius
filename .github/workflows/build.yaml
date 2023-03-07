@@ -129,9 +129,13 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ## Unit-test coverage result
-            > **This result does not include the functional test coverage.**
-            The unit-test coverage rate is ![${{ env.ut_coverage }}](${{ env.coverage_img }})
-            For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
+
+            The unit-test coverage rate is ![${{ env.ut_coverage }}](${{ env.coverage_img }}).
+            The small code change will not increase or decrease total test coverage. For the detailed report,
+            please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact
+            at the bottom of build page.
+
+            > **This result does not include the functional test coverage.** 
 
   # Logic here:
   # - always do a docker build for validation
