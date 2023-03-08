@@ -177,16 +177,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		env.Properties.Providers = &corerp.Providers{}
 	}
 	// only update azure provider info if user requires it.
-	if r.providers.Azure != nil && r.providers.Azure.Scope != nil {
-		env.Properties.Providers.Azure = r.providers.Azure
-	} else if r.clearEnvAzure {
+	if r.clearEnvAzure {
 		env.Properties.Providers.Azure = nil
+	} else if r.providers.Azure != nil && r.providers.Azure.Scope != nil {
+		env.Properties.Providers.Azure = r.providers.Azure
 	}
 	// only update aws provider info if user requires it.
-	if r.providers.Aws != nil && r.providers.Aws.Scope != nil {
-		env.Properties.Providers.Aws = r.providers.Aws
-	} else if r.clearEnvAws {
+	if r.clearEnvAws {
 		env.Properties.Providers.Aws = nil
+	} else if r.providers.Aws != nil && r.providers.Aws.Scope != nil {
+		env.Properties.Providers.Aws = r.providers.Aws
 	}
 
 	isEnvUpdated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, env.Properties)
