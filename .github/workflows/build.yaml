@@ -136,6 +136,13 @@ jobs:
             ./dist/ut_coverage.out
             ./dist/ut_coverage.txt
             ./dist/ut_coverage.html
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: ./dist/cache
+          container_name: 'coverage'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: 'true'
+          extra_args: '--destination ut --include-pattern *.txt --timeout 300'
       - name: Add coverage result comment
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
         uses: peter-evans/create-or-update-comment@v2.1.1
@@ -357,40 +364,35 @@ jobs:
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300'
-          overwrite: 'true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/macos-x64/ --include-pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300'
-          overwrite: 'true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-x64/ --include-pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_arm
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-arm/ --pattern rad --timeout 300'
-          overwrite: 'true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-arm/ --include-pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_arm64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-arm64/ --pattern rad --timeout 300'
-          overwrite: 'true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-arm64/ --include-pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_windows_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300'
-          overwrite: 'true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/windows-x64/ --include-pattern rad.exe --timeout 300'
 
   delete_artifacts:
     name: Delete artifacts
