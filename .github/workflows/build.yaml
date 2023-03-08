@@ -106,7 +106,7 @@ jobs:
           fi
           echo "prev_coverage=$PREV_COVERAGE" >> $GITHUB_ENV
 
-          if (( $(echo "$UT_COVERAGE <= $PREV_COVERAGE" | bc -l) )) ; then
+          if (( $(echo "$UT_COVERAGE < $PREV_COVERAGE" | bc -l) )) ; then
             COLOR=red
           else
             COLOR=green
@@ -144,10 +144,12 @@ jobs:
             ## Unit-test coverage result
 
             ![${{ env.ut_coverage }}](${{ env.coverage_img }})
-
-            The small code change will not increase or decrease total test coverage. For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
+            For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
+            
             * Previous coverage: ${{ env.prev_coverage }} %
-            * New coverage: ${{ env.ut_coverage }} % (**This result does not include the functional test coverage.** )
+            * New coverage: ${{ env.ut_coverage }} %
+
+            > This result does not include the functional test coverage. 
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
