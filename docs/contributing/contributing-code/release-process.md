@@ -125,14 +125,14 @@ If sample validation passes, we can start the process of creating the final rele
 1. Go through steps 1-3 of "Creating an RC release" above, substituting the final release version instead of the RC version.
 
    For example, if the RC version is `v0.17.0-rc1`, the final release version would be `v0.17.0`.
-   
-4. Check the stable version marker
+1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)  
+1. Check the stable version marker
 
    The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.
    
    You can find this file in the storage account under `version/stable.txt`.
 
-5. Update the project-radius/docs repository
+1. Update the project-radius/docs repository
 
    Assuming that we are using v0.16.
    
@@ -145,10 +145,10 @@ If sample validation passes, we can start the process of creating the final rele
       - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
    1. In `docs/content/getting-started/_index.md` update the binary download links with the new version number
    1. Commit and push updates to be the new `v0.16` branch you created above.
-   1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version. This requires Admin/PM action and is restricted to that set of people.
+   1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version. This requires Admin/PM action and is restricted to that set of people, so ping one of the PMs to edit this value.
    1. Verify https://radapp.dev now shows the new version.
 
-6. Update the project-radius/samples repository to point to latest release
+1. Update the project-radius/samples repository to point to latest release
 
    ```
    git checkout edge
