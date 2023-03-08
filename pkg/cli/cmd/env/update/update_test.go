@@ -32,7 +32,7 @@ func Test_Validate(t *testing.T) {
 
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Update Env Command without pro",
+			Name:          "Update Env Command without any flags",
 			Input:         []string{"default"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{

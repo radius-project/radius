@@ -90,6 +90,7 @@ type Runner struct {
 	clearEnvAzure bool
 	clearEnvAws   bool
 	providers     *corerp.Providers
+	noFlagsSet    bool
 }
 
 // NewRunner creates a new instance of the `rad env update` runner.
@@ -103,6 +104,10 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad env update` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	if cmd.Flags().NFlag() == 0 {
+		r.noFlagsSet = true
+		return cmd.Help()
+	}
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
@@ -129,7 +134,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
+	if azureSubId != "" && azureRgId != "" {
+		r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
+	}
 
 	r.clearEnvAzure, err = cmd.Flags().GetBool(commonflags.ClearEnvAzureFlag)
 	if err != nil {
@@ -147,7 +154,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
+	if awsRegion != "" && awsAccountId != "" {
+		r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
+	}
 
 	r.clearEnvAws, err = cmd.Flags().GetBool(commonflags.ClearEnvAWSFlag)
 	if err != nil {
@@ -159,8 +168,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad env update` command.
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Updating Environment...")
-
+	if r.noFlagsSet {
+		return nil
+	}
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -173,21 +183,26 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		return err
 	}
-	if env.Properties.Providers == nil {
-		env.Properties.Providers = &corerp.Providers{}
-	}
 	// only update azure provider info if user requires it.
-	if r.clearEnvAzure {
+	if r.clearEnvAzure && env.Properties.Providers != nil {
 		env.Properties.Providers.Azure = nil
 	} else if r.providers.Azure != nil && r.providers.Azure.Scope != nil {
+		if env.Properties.Providers == nil {
+			env.Properties.Providers = &corerp.Providers{}
+		}
 		env.Properties.Providers.Azure = r.providers.Azure
 	}
 	// only update aws provider info if user requires it.
-	if r.clearEnvAws {
+	if r.clearEnvAws && env.Properties.Providers != nil {
 		env.Properties.Providers.Aws = nil
 	} else if r.providers.Aws != nil && r.providers.Aws.Scope != nil {
+		if env.Properties.Providers == nil {
+			env.Properties.Providers = &corerp.Providers{}
+		}
 		env.Properties.Providers.Aws = r.providers.Aws
 	}
+
+	r.Output.LogInfo("Updating Environment...")
 
 	isEnvUpdated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, env.Properties)
 	if err != nil || !isEnvUpdated {

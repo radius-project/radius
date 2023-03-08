@@ -200,6 +200,7 @@ type OutputEnvObject struct {
 	Providers   int
 }
 
+// GetUpdateEnvironmentTableFormat returns the fields to output from env object after upation.
 func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -208,7 +209,7 @@ func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 				JSONPath: "{ .EnvName }",
 			},
 			{
-				Heading:  "COMPUTE_KIND",
+				Heading:  "COMPUTE",
 				JSONPath: "{ .ComputeKind }",
 			},
 			{

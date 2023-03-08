@@ -40,6 +40,6 @@ func Test_EnvTableFormat(t *testing.T) {
 	err := output.Write(output.FormatTable, obj, buffer, GetUpdateEnvironmentTableFormat())
 	require.NoError(t, err)
 
-	expected := "NAME               COMPUTE_KIND  RECIPES   PROVIDERS\ntest_env_resource  kubernetes    3         2\n"
+	expected := "NAME               COMPUTE     RECIPES   PROVIDERS\ntest_env_resource  kubernetes  3         2\n"
 	require.Equal(t, expected, buffer.String())
 }
