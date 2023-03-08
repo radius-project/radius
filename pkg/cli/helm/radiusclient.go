@@ -134,46 +134,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
-func GetTracerProvider(options RadiusOptions, kubeContext string) {
-
-	var helmOutput strings.Builder
-
-	namespace := RadiusSystemNamespace
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
-		Context:   &kubeContext,
-	}
-
-	helmConf, _ := HelmConfig(&helmOutput, &flags)
-
-	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
-	rel, err := histClient.Run(radiusReleaseName)
-	if err != nil {
-		return
-	}
-
-	if len(rel) == 0 {
-		return
-	}
-	cfg := rel[0].Config
-
-	_, ok := cfg["global"]
-	if !ok {
-		return
-	}
-	global := cfg["global"].(map[string]any)
-
-	_, ok = global["rp"]
-	if !ok {
-		return
-	}
-	rp := global["rp"].(map[string]any)
-
-	fmt.Print(rp["tracerprovider"])
-
-}
-
 func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, error) {
 
 	var helmOutput strings.Builder
@@ -285,9 +245,9 @@ func addRadiusChartValues(helmChart *chart.Chart, key string, val string) error 
 		_, ok := values[key]
 		if !ok {
 			values[key] = make(map[string]any)
-		} else {
-			values = values[key].(map[string]any)
 		}
+		values = values[key].(map[string]any)
+
 	}
 	values[leaf] = val
 	return nil
