@@ -101,13 +101,13 @@ jobs:
           echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
 
           mkdir -p ./dist/cache
-          PREV_COVERAGE=0
+          MAIN_COVERAGE=0
           if [ -f "./dist/cache/ut_coverage.txt" ]; then
-            PREV_COVERAGE=$(cat ./dist/cache/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+')
+            MAIN_COVERAGE=$(cat ./dist/cache/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+')
           fi
-          echo "prev_coverage=$PREV_COVERAGE" >> $GITHUB_ENV
+          echo "main_coverage=$MAIN_COVERAGE" >> $GITHUB_ENV
 
-          if (( $(echo "$UT_COVERAGE < $PREV_COVERAGE" | bc -l) )) ; then
+          if (( $(echo "$UT_COVERAGE < $MAIN_COVERAGE" | bc -l) )) ; then
             COLOR=red
           else
             COLOR=green
@@ -147,13 +147,12 @@ jobs:
             For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
 
             * Your PR branch coverage: ${{ env.ut_coverage }} %
-            * main branch coverage: ${{ env.prev_coverage }} %
+            * main branch coverage: ${{ env.main_coverage }} %
 
             > The coverage result does not include the functional test coverage. 
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
-        # if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           path: ./dist/cache
           key: ${{ steps.radius-coverage-main.outputs.cache-primary-key }}
