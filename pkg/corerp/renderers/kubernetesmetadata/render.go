@@ -64,64 +64,65 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 			continue
 		}
 
-		inputAnnotations := map[string]string{}
-		inputLabels := map[string]string{}
-
-		if kubeMetadataExt != nil && kubeMetadataExt.Annotations != nil {
-			inputAnnotations = kubeMetadataExt.Annotations
-		}
-
-		existingMetaAnnotations, existingSpecAnnotations := getAnnotations(dep)
-
-		//Create KubernetesMetadata struct to merge annotations
-		annMap := &kube.KubernetesMetadataMap{
-			InputMap:    inputAnnotations,
-			CurrMetaMap: existingMetaAnnotations,
-			CurrSpecMap: existingSpecAnnotations,
-		}
-
-		envOpts := &options.Environment
-		appOpts := &options.Application
-		envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
-		appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
-
-		if envKmeExists && envOpts.KubernetesMetadata.Annotations != nil {
-			annMap.EnvMap = envOpts.KubernetesMetadata.Annotations
-		}
-		if appKmeExists && appOpts.KubernetesMetadata.Annotations != nil {
-			annMap.AppMap = appOpts.KubernetesMetadata.Annotations
-		}
-
-		// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-		updMetaAnnotations, updSpecAnnotations := annMap.Merge(ctx)
-		setAnnotations(dep, updMetaAnnotations, updSpecAnnotations)
-
-		if kubeMetadataExt != nil && kubeMetadataExt.Labels != nil {
-			inputLabels = kubeMetadataExt.Labels
-		}
-
-		existingMetaLabels, existingSpecLabels := getLabels(dep)
-
-		//Create KubernetesMetadata struct to merge labels
-		lblMap := &kube.KubernetesMetadataMap{
-			InputMap:    inputLabels,
-			CurrMetaMap: existingMetaLabels,
-			CurrSpecMap: existingSpecLabels,
-		}
-
-		if envKmeExists && envOpts.KubernetesMetadata.Labels != nil {
-			lblMap.EnvMap = envOpts.KubernetesMetadata.Labels
-		}
-		if appKmeExists && appOpts.KubernetesMetadata.Labels != nil {
-			lblMap.AppMap = appOpts.KubernetesMetadata.Labels
-		}
-
-		// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-		updMetaLabels, updSpecLabels := lblMap.Merge(ctx)
-		setLabels(dep, updMetaLabels, updSpecLabels)
+		processAnnotations(ctx, options, dep, kubeMetadataExt)
+		processLabels(ctx, options, dep, kubeMetadataExt)
 	}
 
 	return output, nil
+}
+
+func processAnnotations(ctx context.Context, options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
+	existingMetaAnnotations, existingSpecAnnotations := getAnnotations(dep)
+
+	//Create KubernetesMetadata struct to merge annotations
+	ann := &kube.Metadata{
+		CurrObjectMeta: existingMetaAnnotations,
+		CurrSpec:       existingSpecAnnotations,
+	}
+
+	if kubeMetadataExt != nil && kubeMetadataExt.Annotations != nil {
+		ann.Input = kubeMetadataExt.Annotations
+	}
+
+	envOpts := &options.Environment
+	appOpts := &options.Application
+	if envOpts != nil && envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Annotations != nil {
+		ann.EnvData = envOpts.KubernetesMetadata.Annotations
+	}
+	if appOpts != nil && appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Annotations != nil {
+		ann.AppData = appOpts.KubernetesMetadata.Annotations
+	}
+
+	// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
+	updMetaAnnotations, updSpecAnnotations := ann.Merge(ctx)
+	setAnnotations(dep, updMetaAnnotations, updSpecAnnotations)
+}
+
+func processLabels(ctx context.Context, options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
+	existingMetaLabels, existingSpecLabels := getLabels(dep)
+
+	//Create KubernetesMetadata struct to merge labels
+	lbl := &kube.Metadata{
+		CurrObjectMeta: existingMetaLabels,
+		CurrSpec:       existingSpecLabels,
+	}
+
+	if kubeMetadataExt != nil && kubeMetadataExt.Labels != nil {
+		lbl.Input = kubeMetadataExt.Labels
+	}
+
+	envOpts := &options.Environment
+	appOpts := &options.Application
+	if envOpts != nil && envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Labels != nil {
+		lbl.EnvData = envOpts.KubernetesMetadata.Labels
+	}
+	if appOpts != nil && appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Labels != nil {
+		lbl.AppData = appOpts.KubernetesMetadata.Labels
+	}
+
+	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
+	updObjectMetaLabels, updSpecLabels := lbl.Merge(ctx)
+	setLabels(dep, updObjectMetaLabels, updSpecLabels)
 }
 
 func getAnnotations(dep *appsv1.Deployment) (map[string]string, map[string]string) {
