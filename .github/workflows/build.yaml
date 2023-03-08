@@ -70,11 +70,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Restore the previous coverage
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        id: radius-coverage-main
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: actions/cache/restore@v3
         with:
           path: ./dist/cache
-          key: radius-coverage-
+          key: radius-coverage-main
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -142,7 +143,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ![${{ env.ut_coverage }}](${{ env.coverage_img }})
-            
+
             For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
 
             * Your PR branch coverage: ${{ env.ut_coverage }} %
@@ -151,10 +152,11 @@ jobs:
             > The coverage result does not include the functional test coverage. 
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
+        # if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         with:
           path: ./dist/cache
-          key: radius-coverage-${{ github.sha }}-${{ github.run_number }}
+          key: ${{ steps.radius-coverage-main.outputs.cache-primary-key }}
 
   # Logic here:
   # - always do a docker build for validation
