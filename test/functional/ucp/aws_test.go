@@ -20,7 +20,6 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/test/validation"
@@ -45,7 +44,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
-		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", uri, resourceID, v20220901privatepreview.Version)
+		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20220901privatepreview.Version)
 		deleteRequestBody := map[string]any{
 			"properties": map[string]any{
 				"BucketName": bucketName,
@@ -57,12 +56,6 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		// Issue the Delete Request
 		deleteRequest, err := http.NewRequest(http.MethodPost, deleteURL, bytes.NewBuffer(deleteBody))
 		require.NoError(t, err)
-		refererURL := url.URL{
-			Host:   deleteRequest.URL.Host,
-			Scheme: deleteRequest.URL.Scheme,
-			Path:   deleteRequest.URL.Path,
-		}
-		deleteRequest.Header.Add(v1.RefererHeader, refererURL.String())
 		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)
