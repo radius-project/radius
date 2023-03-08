@@ -142,7 +142,7 @@ jobs:
           container_name: 'coverage'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination ut --include-pattern *.txt --timeout 300'
+          extra_args: '--destination ut --include-pattern ut_coverage.txt --timeout 300'
       - name: Add coverage result comment
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
         uses: peter-evans/create-or-update-comment@v2.1.1
