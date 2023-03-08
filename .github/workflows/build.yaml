@@ -69,6 +69,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: Restore the previous coverage
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        uses: actions/cache/restore@v3
+        with:
+          path: ./dist/cache
+          key: radius-coverage-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -93,15 +99,22 @@ jobs:
 
           echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
 
-          if (( $(echo "$UT_COVERAGE <= 50" | bc -l) )) ; then
+          mkdir -p ./dist/cache
+          PREV_COVERAGE=100
+          if [ -f "./dist/cache/ut_coverage.txt" ]; then
+            PREV_COVERAGE=$(cat ./dist/cache/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+')
+            echo "prev_coverage=$PREV_COVERAGE" >> $GITHUB_ENV
+          fi
+
+          if (( $(echo "$UT_COVERAGE <= $PREV_COVERAGE" | bc -l) )) ; then
             COLOR=red
-          elif (( $(echo "$UT_COVERAGE > 80" | bc -l) )); then
-            COLOR=green
           else
-            COLOR=orange
+            COLOR=green
           fi
 
           echo "coverage_img=https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" >> $GITHUB_ENV
+          # copy coverage to cache
+          cp ./dist/ut_coverage.txt ./dist/cache/
         env:
           COVERAGE_FILE: ./dist/ut_coverage.out
           GO_TOOL_COVER: go tool cover
@@ -130,9 +143,18 @@ jobs:
           body: |
             ## Unit-test coverage result
 
-            The unit-test coverage rate is ![${{ env.ut_coverage }}](${{ env.coverage_img }}). The small code change will not increase or decrease total test coverage. For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
+            ![${{ env.ut_coverage }}](${{ env.coverage_img }})
 
-            > **This result does not include the functional test coverage.** 
+            The small code change will not increase or decrease total test coverage. For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
+            * Previous coverage: ${{ env.prev_coverage }} %
+            * New coverage: ${{ env.ut_coverage }} % (**This result does not include the functional test coverage.** )
+      - name: Save coverage (only main push)
+        uses: actions/cache/save@v3
+        # if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && !github.event.pull_request && github.ref == 'refs/heads/main'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        with:
+          path: ./dist/cache
+          key: radius-coverage-${{ github.sha }}-${{ github.run_number }}
 
   # Logic here:
   # - always do a docker build for validation
