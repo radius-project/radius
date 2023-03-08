@@ -42,8 +42,8 @@ var rootCmd = &cobra.Command{
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
 
-		tracerOpts := options.TracerProviderOptions
-		shutdown, err := trace.InitTracer(tracerOpts)
+		options.TracerProviderOptions.ServiceName = server.ServiceName
+		shutdown, err := trace.InitTracer(options.TracerProviderOptions)
 		if err != nil {
 			log.Fatal(err)
 		}

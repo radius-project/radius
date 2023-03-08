@@ -26,18 +26,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var resourceType = "AWS::Kinesis::Stream"
+var (
+	s3BucketResourceType    = "AWS.S3/Bucket"
+	awsS3BucketResourceType = "AWS::S3::Bucket"
+)
 
 func Test_AWS_DeleteResource(t *testing.T) {
-	var streamName = "my-stream" + uuid.NewString()
 	ctx := context.Background()
-	setupTestAWSResource(t, ctx, streamName)
+
+	bucketName := generateS3BucketName()
+	setupTestAWSResource(t, ctx, bucketName)
 
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		ctx := context.Background()
-
-		// Call UCP Delete AWS Resource API
-		resourceID := validation.GetResourceIdentifier(ctx, t, "AWS.Kinesis/Stream", streamName)
+		resourceID := validation.GetResourceIdentifier(ctx, t, s3BucketResourceType, bucketName)
 
 		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
@@ -46,7 +47,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20220901privatepreview.Version)
 		deleteRequestBody := map[string]any{
 			"properties": map[string]any{
-				"Name": streamName,
+				"BucketName": bucketName,
 			},
 		}
 		deleteBody, err := json.Marshal(deleteRequestBody)
@@ -85,20 +86,20 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		}
 		require.True(t, deleteSucceeded)
 	})
-	test.Test(t)
 
+	test.Test(t)
 }
 
 func Test_AWS_ListResources(t *testing.T) {
-	var streamName = "my-stream" + uuid.NewString()
 	ctx := context.Background()
-	setupTestAWSResource(t, ctx, streamName)
+
+	var bucketName = generateS3BucketName()
+	setupTestAWSResource(t, ctx, bucketName)
 
 	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		// Call UCP Delete AWS Resource API
-		resourceID := validation.GetResourceIdentifier(ctx, t, "AWS.Kinesis/Stream", streamName)
+		resourceID := validation.GetResourceIdentifier(ctx, t, s3BucketResourceType, bucketName)
 
-		// Remove the stream name from the to form the post URL and add the stream name to the body
+		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
@@ -132,15 +133,14 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	require.NoError(t, err)
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	desiredState := map[string]any{
-		"Name":                 resourceName,
-		"RetentionPeriodHours": 180,
-		"ShardCount":           4,
+		"BucketName":    resourceName,
+		"AccessControl": "PublicRead",
 	}
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
 
 	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-		TypeName:     &resourceType,
+		TypeName:     &awsS3BucketResourceType,
 		DesiredState: awsgo.String(string(desiredStateBytes)),
 	})
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		// seems to fail if the resource does not exist
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			Identifier: &resourceName,
-			TypeName:   &resourceType,
+			TypeName:   &awsS3BucketResourceType,
 		})
 		if aws.IsAWSResourceNotFound(err) {
 			return
@@ -159,7 +159,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		// Just in case delete fails
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 			Identifier: &resourceName,
-			TypeName:   &resourceType,
+			TypeName:   &awsS3BucketResourceType,
 		})
 		require.NoError(t, err)
 
@@ -177,4 +177,8 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 		RequestToken: requestToken,
 	}, maxWaitTime)
 	require.NoError(t, err)
+}
+
+func generateS3BucketName() string {
+	return "ucpfunctionaltestbucket-" + uuid.NewString()
 }

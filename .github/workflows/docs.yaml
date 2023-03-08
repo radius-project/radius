@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Add comment requiring docs update
-        uses: peter-evans/create-or-update-comment@v2.1.0
+        uses: peter-evans/create-or-update-comment@v2.1.1
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |

@@ -121,7 +121,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
+var getDevRecipes = func(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
 	recipes := map[string]datamodel.EnvironmentRecipeProperties{}
 
 	logger := ucplog.FromContextOrDiscard(ctx)

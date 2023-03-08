@@ -21,16 +21,16 @@ func Test_MicrosoftSQL(t *testing.T) {
 
 	var adminUsername, adminPassword string
 
-	if os.Getenv("MSSQL_RESOURCE_ID") == "" {
-		t.Error("MSSQL_RESOURCE_ID environment variable must be set to run this test.")
+	if os.Getenv("AZURE_MSSQL_RESOURCE_ID") == "" {
+		t.Error("AZURE_MSSQL_RESOURCE_ID environment variable must be set to run this test.")
 	}
-	if os.Getenv("MSSQL_USERNAME") != "" && os.Getenv("MSSQL_PASSWORD") != "" {
-		adminUsername = "adminUsername=" + os.Getenv("MSSQL_USERNAME")
-		adminPassword = "adminPassword=" + os.Getenv("MSSQL_PASSWORD")
+	if os.Getenv("AZURE_MSSQL_USERNAME") != "" && os.Getenv("AZURE_MSSQL_PASSWORD") != "" {
+		adminUsername = "adminUsername=" + os.Getenv("AZURE_MSSQL_USERNAME")
+		adminPassword = "adminPassword=" + os.Getenv("AZURE_MSSQL_PASSWORD")
 	} else {
-		t.Error("MSSQL_USERNAME and MSSQL_PASSWORD environment variable must be set to run this test.")
+		t.Error("AZURE_MSSQL_USERNAME and AZURE_MSSQL_PASSWORD environment variable must be set to run this test.")
 	}
-	mssqlresourceid := "mssqlresourceid=" + os.Getenv("MSSQL_RESOURCE_ID")
+	mssqlresourceid := "mssqlresourceid=" + os.Getenv("AZURE_MSSQL_RESOURCE_ID")
 	appNamespace := "default-corerp-resources-microsoft-sql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{

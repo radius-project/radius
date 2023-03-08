@@ -76,8 +76,6 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 		return
 	}
 
-	labeler.Add(attribute.String("path", req.URL.Path))
-
 	armContext := v1.ARMRequestContextFromContext(ctx)
 	resourceID := armContext.ResourceID
 

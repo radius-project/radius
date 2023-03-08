@@ -29,12 +29,12 @@ func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
 				Resources: []validation.AWSResource{
 					{
 						Name:       logGroupName,
-						Type:       validation.LogGroupResourceType,
+						Type:       validation.AWSLogsLogGroupResourceType,
 						Identifier: logGroupName,
 					},
 					{
 						Name:       filterName,
-						Type:       validation.MetricFilterResourceType,
+						Type:       validation.AWSLogsMetricFilterResourceType,
 						Identifier: logGroupName + "|" + filterName,
 					},
 				},

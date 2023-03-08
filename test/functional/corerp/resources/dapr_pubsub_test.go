@@ -60,10 +60,10 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
 
-	if os.Getenv("SERVICEBUS_RESOURCE_ID") == "" {
-		t.Error("SERVICEBUS_RESOURCE_ID environment variable must be set to run this test.")
+	if os.Getenv("AZURE_SERVICEBUS_RESOURCE_ID") == "" {
+		t.Error("AZURE_SERVICEBUS_RESOURCE_ID environment variable must be set to run this test.")
 	}
-	namespaceresourceid := "namespaceresourceid=" + os.Getenv("SERVICEBUS_RESOURCE_ID")
+	namespaceresourceid := "namespaceresourceid=" + os.Getenv("AZURE_SERVICEBUS_RESOURCE_ID")
 	appNamespace := "default-corerp-resources-dapr-pubsub-servicebus"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
