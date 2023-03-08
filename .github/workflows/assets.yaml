@@ -17,12 +17,12 @@ jobs:
     runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Parse release version and set enviroment variables
         run: python ./.github/scripts/get_release_version.py
       # The install scripts are not versioned. They go to tools/rad/install.{sh,ps1}
       - name: Upload install.sh
-        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: 'deploy'
           container_name: 'tools'
@@ -30,7 +30,7 @@ jobs:
           sync: true
           extra_args: '--destination-path rad --pattern install.sh --overwrite true'
       - name: Upload install.ps1
-        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: 'deploy'
           container_name: 'tools'
@@ -48,7 +48,7 @@ jobs:
       - name: Get version
         id: setcurrentversion
         if: ${{ success() && env.UPDATE_RELEASE == 'true' }}
-        run: echo ::set-output name=version::$(cat current-stable.txt)
+        run: echo "version=$(cat current-stable.txt)" >> $GITHUB_OUTPUT
       - name: Compare versions
         uses: madhead/semver-utils@latest
         if: ${{ success() && env.UPDATE_RELEASE == 'true' }}
@@ -67,7 +67,7 @@ jobs:
         run: |
           echo $REL_CHANNEL > stable.txt
       - name: 'Update latest version marker'
-        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         if: ${{ success() && steps.compare.outputs.comparison-result == '>' }}
         with:
           container_name: 'version'

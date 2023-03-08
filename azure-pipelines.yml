@@ -49,7 +49,7 @@ stages:
     steps:
     - task: GoTool@0
       inputs:
-        version: '1.18'
+        version: '1.20'
     - script: |
         echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
       displayName: Set Go cache paths
@@ -93,7 +93,7 @@ stages:
     - checkout: ProjectRadiusSamples
     - task: GoTool@0
       inputs:
-        version: '1.18'
+        version: '1.20'
     - script: |
         echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
       displayName: Set Go cache paths
