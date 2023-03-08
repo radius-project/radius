@@ -22,7 +22,11 @@ server:
   host: "0.0.0.0"
   port: 8080
   enableArmAuth: false
- # Logging configuration   
+  # Logging configuration
 logging:
   level: "info"
   json: true
+tracerProvider:
+  serviceName: "applications.link"
+  zipkin:
+    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"

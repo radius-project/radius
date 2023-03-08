@@ -134,73 +134,37 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
-/*
-func GetTracerProvider(options RadiusOptions, kubeContext string) {
+func GetZipkinEndpoint(options RadiusOptions, kubeContext string) string {
 
-	var helmOutput strings.Builder
-
-	namespace := RadiusSystemNamespace
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
-		Context:   &kubeContext,
-	}
-
-	helmConf, _ := HelmConfig(&helmOutput, &flags)
-
-	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
-	rel, err := histClient.Run(radiusReleaseName)
+	cfg, err := GetHelmValues(kubeContext)
 	if err != nil {
-		return
+		return ""
 	}
-
-	if len(rel) == 0 {
-		return
-	}
-	cfg := rel[0].Config
-
 	_, ok := cfg["global"]
 	if !ok {
-		return
+		return ""
 	}
+
 	global := cfg["global"].(map[string]any)
-
-	_, ok = global["rp"]
+	_, ok = global["zipkin"]
 	if !ok {
-		return
+		return ""
 	}
-	rp := global["rp"].(map[string]any)
 
-	fmt.Print(rp["tracerprovider"])
-
+	zipkin := global["zipkin"].(map[string]any)
+	endpoint, ok := zipkin["endpoint"]
+	if !ok {
+		return ""
+	}
+	return endpoint.(string)
 }
 
 func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, error) {
 
-	var helmOutput strings.Builder
-
-	namespace := RadiusSystemNamespace
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
-		Context:   &kubeContext,
-	}
-
-	helmConf, err := HelmConfig(&helmOutput, &flags)
+	cfg, err := GetHelmValues(kubeContext)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+		return nil, err
 	}
-
-	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
-	rel, err := histClient.Run(radiusReleaseName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get helm config, err: %w", err)
-	}
-
-	if len(rel) == 0 {
-		return nil, nil
-	}
-	cfg := rel[0].Config
 
 	_, ok := cfg["global"]
 	if !ok {
@@ -242,7 +206,35 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 	return &azProvider, nil
 
 }
-*/
+
+func GetHelmValues(kubeContext string) (map[string]interface{}, error) {
+
+	var helmOutput strings.Builder
+
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, err := HelmConfig(&helmOutput, &flags)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	histClient := helm.NewHistory(helmConf)
+	histClient.Max = 1 // Only need to check if at least 1 exists
+	rel, err := histClient.Run(radiusReleaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get helm config, err: %w", err)
+	}
+
+	if len(rel) == 0 {
+		return nil, nil
+	}
+	return rel[0].Config, nil
+
+}
 
 func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
@@ -275,14 +267,23 @@ func addChartValues(helmChart *chart.Chart, values []string) error {
 }
 
 func addRadiusChartValues(helmChart *chart.Chart, key string, val string) error {
-
-	// global.engine.image = "de:latest" here, image is the string key in de map whose value is the image name (also string).
-	// we need to construct a map or traverse one that is already existing, until we reach the last (leaf) which is just a key of type string, pointing to the actual value.
+	// ex: global.engine.image = "de:latest" - here, image is the string key in de map whose value is the image name (also string).
+	// we need to construct a map or traverse one that is already existing, until we reach the last (leaf) which is just a key of type string,
+	// pointing to the actual value of type string.
+	if key == "" {
+		return fmt.Errorf("cannot use empty key. please make sure the values to --set are of format key=val and multiple key=val are seperated by comma")
+	}
+	if val == "" {
+		return fmt.Errorf("cannot use empty value. please make sure the values to --set are of format key=val and multiple key=val are seperated by comma")
+	}
 	keys := strings.Split(key, ".")
+	if len(keys) <= 1 {
+		return fmt.Errorf("values key is invalid: %s", key)
+	}
+
 	leaf := keys[len(keys)-1]
 	keys = keys[:len(keys)-1]
 	values := helmChart.Values
-
 	for _, key := range keys {
 		_, ok := values[key]
 		if !ok {

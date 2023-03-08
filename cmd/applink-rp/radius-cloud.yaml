@@ -36,7 +36,11 @@ metricsProvider:
     port: 9090
 featureFlags:
   - "PLACEHOLDER"
-   # Logging configuration   
+# Logging configuration
 logging:
   log: "info"
   json: true
+tracerProvider:
+  serviceName: "applications.core"
+  zipkin:
+    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"

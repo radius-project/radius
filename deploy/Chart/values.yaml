@@ -21,3 +21,6 @@ global:
     enabled: true
     path: "/metrics"
     port: 9090
+  tracerProvider:
+    zipkin:
+      url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spanss" #TODO: remove extra s
