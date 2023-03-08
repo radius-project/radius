@@ -188,6 +188,18 @@ func TestParsePathBase(t *testing.T) {
 			"",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
 		},
+		{
+			"With api prefix (AWS path)",
+			"/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1",
+			"/apis/api.ucp.dev/v1alpha3",
+			"/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1",
+		},
+		{
+			"Without api prefix (AWS path)",
+			"/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1",
+			"",
+			"/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1",
+		},
 	}
 
 	for _, tt := range prefixTests {
