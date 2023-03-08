@@ -27,7 +27,7 @@ jobs:
           source_dir: 'deploy'
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          sync: true
+          sync: 'true'
           extra_args: '--destination-path rad --pattern install.sh --overwrite true'
       - name: Upload install.ps1
         uses: bacongobbler/azure-blob-storage-upload@v3.0.0
@@ -35,7 +35,7 @@ jobs:
           source_dir: 'deploy'
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          sync: true
+          sync: 'true'
           extra_args: '--destination-path rad --pattern install.ps1 --overwrite true'
       
       # Logic: If this is a real release (tagged, non-rc) then compare to our existing full
