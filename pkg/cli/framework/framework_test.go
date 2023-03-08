@@ -29,12 +29,12 @@ func Test_RunCommand_Fail(t *testing.T) {
 		var testArgs []string
 
 		runner.EXPECT().Validate(gomock.Any(), gomock.Any()).Times(1)
-		runner.EXPECT().Run(gomock.Any())
+		runner.EXPECT().Run(gomock.Any()).Return(expected)
 
 		fn := RunCommand(runner)
 		err := fn(testCmd, testArgs)
 
-		require.ErrorIs(t, err, expected)
+		require.ErrorIs(t, errors.Unwrap(err), expected)
 
 	})
 }
