@@ -71,11 +71,18 @@ jobs:
             ${{ runner.os }}-go-
       - name: Restore the previous coverage
         id: radius-coverage-main
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: actions/cache/restore@v3
         with:
           path: ./dist/cache
           key: radius-coverage-main
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        with:
+          source_dir: ./dist/cache
+          container_name: 'coverage'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          extra_args: '--destination-path cov/ --pattern ut_coverage.txt --timeout 300'
+          overwrite: 'true'
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -136,13 +143,6 @@ jobs:
             ./dist/ut_coverage.out
             ./dist/ut_coverage.txt
             ./dist/ut_coverage.html
-      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
-        with:
-          source_dir: ./dist/cache
-          container_name: 'coverage'
-          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          extra_args: '--pattern ut_coverage.txt --timeout 300'
-          overwrite: 'true'
       - name: Add coverage result comment
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
         uses: peter-evans/create-or-update-comment@v2.1.1
