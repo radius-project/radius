@@ -136,7 +136,7 @@ jobs:
             ./dist/ut_coverage.txt
             ./dist/ut_coverage.html
       - name: Add coverage result comment
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request && github.event.pull_request.head.repo.full_name == github.repository
         uses: peter-evans/create-or-update-comment@v2.1.1
         with:
           issue-number: ${{ github.event.pull_request.number }}
