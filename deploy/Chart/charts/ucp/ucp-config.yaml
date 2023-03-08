@@ -67,9 +67,7 @@ logging:
   json: true
 
 tracerProvider:
-  serviceName: "applications.core"
-  zipkin:
-    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+  serviceName: "ucp"
 
 # TODO: Enable trace provider in 0.19
 #  zipkin:
