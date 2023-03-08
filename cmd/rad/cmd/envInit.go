@@ -8,6 +8,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -399,6 +400,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 }
 
 func isEmpty(chartArgs *setup.ChartArgs) bool {
-	//var emptyChartArgs setup.ChartArgs
-	return (chartArgs == nil)
+	var emptyChartArgs setup.ChartArgs
+	emptyChartArgs.Values = []string{}
+	return (chartArgs == nil || reflect.DeepEqual(*chartArgs, emptyChartArgs))
 }
