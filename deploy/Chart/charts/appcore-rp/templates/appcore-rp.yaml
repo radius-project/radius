@@ -57,7 +57,7 @@ spec:
         - containerPort: {{ .Values.global.prometheus.port }}
           name: metrics
           protocol: TCP
-        {{ end }}
+        {{ end }}       
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
