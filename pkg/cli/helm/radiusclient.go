@@ -134,7 +134,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
-// TODO: remove this
 func GetZipkinEndpoint(options RadiusOptions, kubeContext string) string {
 
 	cfg, err := GetHelmValues(kubeContext)
