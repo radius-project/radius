@@ -22,20 +22,20 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       # The install scripts are not versioned. They go to tools/rad/install.{sh,ps1}
       - name: Upload install.sh
-        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: 'deploy'
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          sync: true
+          sync: 'true'
           extra_args: '--destination-path rad --pattern install.sh --overwrite true'
       - name: Upload install.ps1
-        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: 'deploy'
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          sync: true
+          sync: 'true'
           extra_args: '--destination-path rad --pattern install.ps1 --overwrite true'
       
       # Logic: If this is a real release (tagged, non-rc) then compare to our existing full
@@ -67,7 +67,7 @@ jobs:
         run: |
           echo $REL_CHANNEL > stable.txt
       - name: 'Update latest version marker'
-        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         if: ${{ success() && steps.compare.outputs.comparison-result == '>' }}
         with:
           container_name: 'version'
