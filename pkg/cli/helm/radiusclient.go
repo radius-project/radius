@@ -233,10 +233,20 @@ func addChartValues(helmChart *chart.Chart, values []string) error {
 }
 
 func addRadiusChartValues(helmChart *chart.Chart, key string, val string) error {
-
-	// global.engine.image = "de:latest" here, image is the string key in de map whose value is the image name (also string).
-	// we need to construct a map or traverse one that is already existing, until we reach the last (leaf) which is just a key of type string, pointing to the actual value.
+	// ex: global.engine.image = "de:latest" - here, image is the string key in de map whose value is the image name (also string).
+	// we need to construct a map or traverse one that is already existing, until we reach the last (leaf) which is just a key of type string,
+	// pointing to the actual value of type string.
+	if key == "" {
+		return fmt.Errorf("cannot use empty key. please make sure the values to --set are of format key=val and multiple key=val are seperated by comma")
+	}
+	if val == "" {
+		return fmt.Errorf("cannot use empty value. please make sure the values to --set are of format key=val and multiple key=val are seperated by comma")
+	}
 	keys := strings.Split(key, ".")
+	if len(keys) <= 1 {
+		return fmt.Errorf("values key is invalid: %s", key)
+	}
+
 	leaf := keys[len(keys)-1]
 	keys = keys[:len(keys)-1]
 	values := helmChart.Values
