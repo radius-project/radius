@@ -357,35 +357,35 @@ jobs:
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300 --overwrite true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300 --overwrite true'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300 --overwrite true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300 --overwrite true'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_arm
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm/ --pattern rad --timeout 300 --overwrite true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-arm/ --pattern rad --timeout 300 --overwrite true'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_arm64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm64/ --pattern rad --timeout 300 --overwrite true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/linux-arm64/ --pattern rad --timeout 300 --overwrite true'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_windows_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: 'true'
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300 --overwrite true'
+          extra_args: '--destination rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300 --overwrite true'
 
   delete_artifacts:
     name: Delete artifacts
