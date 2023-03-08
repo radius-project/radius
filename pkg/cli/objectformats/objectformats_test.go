@@ -15,15 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type updateEnvObject struct {
-	EnvName       string
-	AzureSubId    string
-	AzureRgId     string
-	AWSAccountId  string
-	AWSRegion     string
-	UseDevRecipes bool
-}
-
 func Test_GenericEnvTableFormat(t *testing.T) {
 	obj := v20220315privatepreview.EnvironmentResource{
 		Name: to.Ptr("test_env_resource"),
@@ -38,19 +29,17 @@ func Test_GenericEnvTableFormat(t *testing.T) {
 }
 
 func Test_EnvTableFormat(t *testing.T) {
-	obj := updateEnvObject{
-		EnvName:       "test_env_resource",
-		AzureSubId:    "testSubId",
-		AzureRgId:     "testResourceGroup",
-		AWSAccountId:  "testAccountId",
-		AWSRegion:     "us-west-2",
-		UseDevRecipes: true,
+	obj := OutputEnvObject{
+		EnvName:     "test_env_resource",
+		ComputeKind: "kubernetes",
+		Recipes:     3,
+		Providers:   2,
 	}
 
 	buffer := &bytes.Buffer{}
 	err := output.Write(output.FormatTable, obj, buffer, GetUpdateEnvironmentTableFormat())
 	require.NoError(t, err)
 
-	expected := "NAME               AZURE_SUBSCRIPTION  AZURE_RESOURCE_GROUP  AWS_ACCOUNT    AWS_REGION  DEV_RECIPES\ntest_env_resource  testSubId           testResourceGroup     testAccountId  us-west-2   true\n"
+	expected := "NAME               COMPUTE_KIND  RECIPES   PROVIDERS\ntest_env_resource  kubernetes    3         2\n"
 	require.Equal(t, expected, buffer.String())
 }

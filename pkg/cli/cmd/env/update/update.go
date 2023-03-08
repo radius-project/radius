@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	envNotFoundErrMessage = "Environment does not exist. Please select a new environment and try again"
+	envNotFoundErrMessage = "Environment does not exist. Please select a new environment and try again."
 	azureScopeTemplate    = "/subscriptions/%s/resourceGroups/%s"
 	awsScopeTemplate      = "/planes/aws/aws/accounts/%s/regions/%s"
 )
@@ -39,29 +39,29 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "update [environment]",
-		Short: "Update environment configuration.",
+		Short: "Update environment configuration",
 		Long: `Update environment configuration
 	
-		This command updates the configuration of an environment for properties that are able to be changed.
+This command updates the configuration of an environment for properties that are able to be changed.
 		
-		Updatable properties include:
-		  - providers (Azure, AWS)
+Properties that can be updated include:
+- providers (Azure, AWS)
 		  
-		All other properties require the environment to be deleted and recreated.
-		`,
+All other properties require the environment to be deleted and recreated.
+`,
 		Args: cobra.ExactArgs(1),
 		Example: `
-## Update Azure cloud provider
+## Add Azure cloud provider for deploying Azure resources
 rad env update myenv --azure-subscription-id **** --azure-resource-group myrg
 
-## Update AWS cloud provider
+## Add AWS cloud provider for deploying AWS resources
 rad env update myenv --aws-region us-west-2 --aws-account-id *****
 
-# Remove azure cloud provider on environment
-rad env update my-env --clear-azure
+## Remove Azure cloud provider
+rad env update myenv --clear-azure
 
-# Remove aws cloud provider on environment
-rad env update my-env --clear-aws
+## Remove AWS cloud provider
+rad env update myenv --clear-aws
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -90,11 +90,6 @@ type Runner struct {
 	clearEnvAzure bool
 	clearEnvAws   bool
 	providers     *corerp.Providers
-	AzureSubId    string
-	AzureRgId     string
-	AWSAccountId  string
-	AWSRegion     string
-	UseDevRecipes bool
 }
 
 // NewRunner creates a new instance of the `rad env update` runner.
@@ -114,11 +109,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	scope, err := cli.RequireScope(cmd, *r.Workspace)
+	r.Workspace.Scope, err = cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
 	}
-	r.Workspace.Scope = scope
 
 	r.EnvName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
@@ -126,16 +120,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: Validate Azure scope components (https://github.com/project-radius/radius/issues/5155)
-	r.AzureSubId, err = cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
+	azureSubId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
 	if err != nil {
 		return err
 	}
 
-	r.AzureRgId, err = cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
+	azureRgId, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
 	if err != nil {
 		return err
 	}
-	r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, r.AzureSubId, r.AzureRgId))
+	r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
 
 	r.clearEnvAzure, err = cmd.Flags().GetBool(commonflags.ClearEnvAzureFlag)
 	if err != nil {
@@ -144,16 +138,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// TODO: Validate AWS scope components (https://github.com/project-radius/radius/issues/5155)
 	// stsclient can be used to validate
-	r.AWSRegion, err = cmd.Flags().GetString(commonflags.AWSRegionFlag)
+	awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
 	if err != nil {
 		return err
 	}
 
-	r.AWSAccountId, err = cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
+	awsAccountId, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
 	if err != nil {
 		return err
 	}
-	r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, r.AWSAccountId, r.AWSRegion))
+	r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
 
 	r.clearEnvAws, err = cmd.Flags().GetBool(commonflags.ClearEnvAWSFlag)
 	if err != nil {
@@ -199,9 +193,32 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil || !isEnvUpdated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to configure cloud provider scope to the environment %s: %s", r.EnvName, err.Error())}
 	}
-	r.UseDevRecipes = *env.Properties.UseDevRecipes
 
-	err = r.Output.WriteFormatted("table", r, objectformats.GetUpdateEnvironmentTableFormat())
+	recipeCount := 0
+	if env.Properties.Recipes != nil {
+		recipeCount = len(env.Properties.Recipes)
+	}
+	providerCount := 0
+	if env.Properties.Providers != nil {
+		if env.Properties.Providers.Azure != nil {
+			providerCount++
+		}
+		if env.Properties.Providers.Aws != nil {
+			providerCount++
+		}
+	}
+	computeKind := ""
+	if env.Properties.Compute != nil {
+		computeKind = *env.Properties.Compute.GetEnvironmentCompute().Kind
+	}
+	obj := objectformats.OutputEnvObject{
+		EnvName:     *env.Name,
+		ComputeKind: computeKind,
+		Recipes:     recipeCount,
+		Providers:   providerCount,
+	}
+
+	err = r.Output.WriteFormatted("table", obj, objectformats.GetUpdateEnvironmentTableFormat())
 	if err != nil {
 		return err
 	}

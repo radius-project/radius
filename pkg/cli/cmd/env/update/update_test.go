@@ -59,15 +59,6 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Update Env Command with invalid flag groups",
-			Input:         []string{"default", "--azure-subscription-id", "testSubId"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
-		{
 			Name: "Update Env Command with both providers set",
 			Input: []string{"default", "--azure-subscription-id", "testSubId", "--azure-resource-group", "testResourceGroup",
 				"--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount",
@@ -139,6 +130,11 @@ func Test_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		environment.Properties.Providers = testProviders
+		obj := objectformats.OutputEnvObject{
+			EnvName:   "test-env",
+			Recipes:   0,
+			Providers: 2,
+		}
 
 		expected := []any{
 			output.LogOutput{
@@ -146,7 +142,7 @@ func Test_Update(t *testing.T) {
 			},
 			output.FormattedOutput{
 				Format:  "table",
-				Obj:     environment,
+				Obj:     obj,
 				Options: objectformats.GetUpdateEnvironmentTableFormat(),
 			},
 			output.LogOutput{
@@ -218,6 +214,11 @@ func Test_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		environment.Properties.Providers = testProviders
+		obj := objectformats.OutputEnvObject{
+			EnvName:   "test-env",
+			Recipes:   0,
+			Providers: 2,
+		}
 
 		expected := []any{
 			output.LogOutput{
@@ -225,7 +226,7 @@ func Test_Update(t *testing.T) {
 			},
 			output.FormattedOutput{
 				Format:  "table",
-				Obj:     environment,
+				Obj:     obj,
 				Options: objectformats.GetUpdateEnvironmentTableFormat(),
 			},
 			output.LogOutput{

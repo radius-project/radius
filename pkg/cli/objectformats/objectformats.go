@@ -193,6 +193,13 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 	}
 }
 
+type OutputEnvObject struct {
+	EnvName     string
+	ComputeKind string
+	Recipes     int
+	Providers   int
+}
+
 func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -201,24 +208,16 @@ func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 				JSONPath: "{ .EnvName }",
 			},
 			{
-				Heading:  "AZURE_SUBSCRIPTION",
-				JSONPath: "{ .AzureSubId }",
+				Heading:  "COMPUTE_KIND",
+				JSONPath: "{ .ComputeKind }",
 			},
 			{
-				Heading:  "AZURE_RESOURCE_GROUP",
-				JSONPath: "{ .AzureRgId }",
+				Heading:  "RECIPES",
+				JSONPath: "{ .Recipes }",
 			},
 			{
-				Heading:  "AWS_ACCOUNT",
-				JSONPath: "{ .AWSAccountId }",
-			},
-			{
-				Heading:  "AWS_REGION",
-				JSONPath: "{ .AWSRegion }",
-			},
-			{
-				Heading:  "DEV_RECIPES",
-				JSONPath: "{ .UseDevRecipes }",
+				Heading:  "PROVIDERS",
+				JSONPath: "{ .Providers }",
 			},
 		},
 	}
