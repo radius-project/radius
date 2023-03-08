@@ -141,15 +141,14 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ## Unit-test coverage result
-
             ![${{ env.ut_coverage }}](${{ env.coverage_img }})
-            For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
             
-            * Previous coverage: ${{ env.prev_coverage }} %
-            * New coverage: ${{ env.ut_coverage }} %
+            For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
 
-            > This result does not include the functional test coverage. 
+            * Your PR branch coverage: ${{ env.ut_coverage }} %
+            * main branch coverage: ${{ env.prev_coverage }} %
+
+            > The coverage result does not include the functional test coverage. 
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
