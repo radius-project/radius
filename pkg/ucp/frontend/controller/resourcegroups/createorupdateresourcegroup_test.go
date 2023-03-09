@@ -52,12 +52,14 @@ func Test_CreateResourceGroup(t *testing.T) {
 	testResourceGroupName := "test-rg"
 
 	resourceGroup := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:       testResourceGroupID,
-			Name:     testResourceGroupName,
-			Type:     ResourceGroupType,
-			Location: v1.LocationGlobal,
-			Tags:     map[string]string{},
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       testResourceGroupID,
+				Name:     testResourceGroupName,
+				Type:     ResourceGroupType,
+				Location: v1.LocationGlobal,
+				Tags:     map[string]string{},
+			},
 		},
 	}
 

@@ -50,10 +50,12 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
 
 	dataModelPlane := datamodel.Plane{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/planes/radius/local",
-			Type: "System.Planes/radius",
-			Name: "local",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/planes/radius/local",
+				Type: "System.Planes/radius",
+				Name: "local",
+			},
 		},
 		Properties: datamodel.PlaneProperties{
 			ResourceProviders: map[string]*string{

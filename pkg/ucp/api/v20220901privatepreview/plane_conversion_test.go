@@ -27,10 +27,12 @@ func TestPlaneConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "planeresource.json",
 			expected: &datamodel.Plane{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local",
-					Name: "local",
-					Type: "System.Planes/radius",
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/planes/radius/local",
+						Name: "local",
+						Type: "System.Planes/radius",
+					},
 				},
 				Properties: datamodel.PlaneProperties{
 					Kind: datamodel.PlaneKind(PlaneKindUCPNative),
