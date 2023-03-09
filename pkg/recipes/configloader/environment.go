@@ -13,6 +13,7 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -61,13 +62,13 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 	}
 
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Aws != nil {
-		configuration.Providers["aws"] = map[string]any{
+		configuration.Providers[resourcemodel.ProviderAWS] = map[string]any{
 			"scope": *environment.Properties.Providers.Aws.Scope,
 		}
 	}
 
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Azure != nil {
-		configuration.Providers["azure"] = map[string]any{
+		configuration.Providers[resourcemodel.ProviderAzure] = map[string]any{
 			"scope": *environment.Properties.Providers.Azure.Scope,
 		}
 	}

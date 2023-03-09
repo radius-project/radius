@@ -15,7 +15,7 @@ type Recipe struct {
 	ApplicationID string
 	EnvironmentID string
 	ResourceID    string
-	Parameters    map[string]interface{}
+	Parameters    map[string]any
 }
 
 type ConfigurationLoader interface {
@@ -28,7 +28,7 @@ type Repository interface {
 
 type Configuration struct {
 	Runtime   RuntimeConfiguration
-	Providers map[string]map[string]interface{}
+	Providers map[string]map[string]any
 }
 
 type RuntimeConfiguration struct {
@@ -42,7 +42,7 @@ type KubernetesRuntime struct {
 type Definition struct {
 	Driver       string
 	ResourceType string
-	Parameters   map[string]interface{}
+	Parameters   map[string]any
 	TemplatePath string
 }
 
