@@ -11,6 +11,8 @@ import (
 	http "net/http"
 	"net/url"
 
+	"github.com/go-logr/logr"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -23,7 +25,9 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-const PlanesPath = "/planes"
+const (
+	PlanesPath = "/planes"
+)
 
 var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
 
@@ -43,6 +47,12 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	logger.Info("starting proxy request")
 	for key, value := range req.Header {
 		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
+	}
+
+	refererURL := url.URL{
+		Host:     req.Host,
+		Path:     req.URL.Path,
+		RawQuery: req.URL.RawQuery,
 	}
 
 	req.URL.Path = p.GetRelativePath(req.URL.Path)
@@ -143,6 +153,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if req.TLS != nil {
 		httpScheme = "https"
 	}
+	refererURL.Scheme = httpScheme
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
@@ -154,20 +165,23 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		UCPHost: req.Host + p.Options.BasePath,
 	}
 
-	url, err := url.Parse(newURL.Path)
+	uri, err := url.Parse(newURL.Path)
 	if err != nil {
 		return nil, err
 	}
 
 	// Preserving the query strings on the incoming url on the newly constructed url
-	url.RawQuery = newURL.Query().Encode()
-	req.URL = url
+	uri.RawQuery = newURL.Query().Encode()
+	req.URL = uri
 	req.Header.Set("X-Forwarded-Proto", httpScheme)
+
+	req.Header.Set(v1.RefererHeader, refererURL.String())
+	logger = logr.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("Referer Header: %s", req.Header.Get(v1.RefererHeader)))
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
-	logger = ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
 	// The upstream response has already been sent at this point. Therefore, return nil response here
