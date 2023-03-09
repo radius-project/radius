@@ -57,5 +57,5 @@ func (e *ErrRecipeNotFound) Error() string {
 
 func (e *ErrRecipeNotFound) Is(other error) bool {
 	_, ok := other.(*ErrRecipeNotFound)
-	return ok
+	return !ok
 }

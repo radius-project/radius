@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -17,6 +18,10 @@ import (
 
 var _ recipes.ConfigurationLoader = (*EnvironmentLoader)(nil)
 var _ recipes.Repository = (*EnvironmentLoader)(nil)
+
+const (
+	Bicep = "bicep"
+)
 
 type EnvironmentLoader struct {
 	UCPClientOptions *arm.ClientOptions
@@ -37,12 +42,15 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 		}
 	}
 
-	configuration := recipes.Configuration{Runtime: recipes.RuntimeConfiguration{}, Providers: map[string]map[string]interface{}{}}
+	configuration := recipes.Configuration{Runtime: recipes.RuntimeConfiguration{}, Providers: map[string]map[string]any{}}
 	if *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
 		// This is a Kubernetes environment
 		configuration.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 
-		kubernetes := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
+		kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
+		if !ok {
+			return nil, v1.ErrInvalidModelConversion
+		}
 		configuration.Runtime.Kubernetes.Namespace = *kubernetes.Namespace
 
 		// Prefer application namespace if set
@@ -53,13 +61,13 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 	}
 
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Aws != nil {
-		configuration.Providers["aws"] = map[string]interface{}{
+		configuration.Providers["aws"] = map[string]any{
 			"scope": *environment.Properties.Providers.Aws.Scope,
 		}
 	}
 
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Azure != nil {
-		configuration.Providers["azure"] = map[string]interface{}{
+		configuration.Providers["azure"] = map[string]any{
 			"scope": *environment.Properties.Providers.Azure.Scope,
 		}
 	}
@@ -80,7 +88,7 @@ func (r *EnvironmentLoader) Lookup(ctx context.Context, recipe recipes.Recipe) (
 	}
 
 	return &recipes.Definition{
-		Driver:       "bicep",
+		Driver:       Bicep,
 		ResourceType: *found.LinkType,
 		Parameters:   found.Parameters,
 		TemplatePath: *found.TemplatePath,
