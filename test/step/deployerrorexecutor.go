@@ -48,16 +48,14 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
-	t.Logf("errror is %s ", err.Error())
-	require.ErrorContains(t, err, "deployment %s succeeded when it should have failed", d.Description)
+
+	err1 := cli.Deploy(ctx, templateFilePath, d.Parameters...)
+	require.Error(t, err1, "deployment %s succeeded when it should have failed", d.Description)
 
 	var cliErr *radcli.CLIError
+	err = errors.Unwrap(err1)
 	ok := errors.As(err, &cliErr)
-	t.Logf("ok is %t", ok)
 	require.True(t, ok)
-	t.Logf("expected error code %s versus got error code %s ", d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
-
 	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
 
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
