@@ -22,10 +22,6 @@ type ConfigurationLoader interface {
 	Load(ctx context.Context, recipe Recipe) (*Configuration, error)
 }
 
-type Repository interface {
-	Lookup(ctx context.Context, recipe Recipe) (*Definition, error)
-}
-
 type Configuration struct {
 	Runtime   RuntimeConfiguration
 	Providers map[string]map[string]any
@@ -37,13 +33,6 @@ type RuntimeConfiguration struct {
 
 type KubernetesRuntime struct {
 	Namespace string `json:"namespace,omitempty"`
-}
-
-type Definition struct {
-	Driver       string
-	ResourceType string
-	Parameters   map[string]any
-	TemplatePath string
 }
 
 type ErrRecipeNotFound struct {

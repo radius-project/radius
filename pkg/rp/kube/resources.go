@@ -10,6 +10,8 @@ import (
 	"errors"
 	"strings"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	cdm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -53,4 +55,22 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 	}
 
 	return
+}
+
+// FetchNameSpaceFromEnvironmentResource finds the environment-scope Kuberentes namespace from EnvironmentResource.
+func FetchNameSpaceFromEnvironmentResource(environment *v20220315privatepreview.EnvironmentResource) (string, error) {
+	kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
+	if !ok {
+		return "", v1.ErrInvalidModelConversion
+	}
+	return *kubernetes.Namespace, nil
+}
+
+// FetchNameSpaceFromApplicationResource finds the application-scope Kuberentes namespace from ApplicationResource.
+func FetchNameSpaceFromApplicationResource(application *v20220315privatepreview.ApplicationResource) (string, error) {
+	kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
+	if !ok {
+		return "", v1.ErrInvalidModelConversion
+	}
+	return *kubernetes.Namespace, nil
 }

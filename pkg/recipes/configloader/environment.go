@@ -9,16 +9,14 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/project-radius/radius/pkg/rp/util"
 )
 
 var _ recipes.ConfigurationLoader = (*EnvironmentLoader)(nil)
-var _ recipes.Repository = (*EnvironmentLoader)(nil)
 
 const (
 	Bicep = "bicep"
@@ -30,14 +28,14 @@ type EnvironmentLoader struct {
 
 // Load implements recipes.ConfigurationLoader
 func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*recipes.Configuration, error) {
-	environment, err := r.fetchEnvironment(ctx, recipe.EnvironmentID)
+	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.UCPClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
 	var application *v20220315privatepreview.ApplicationResource
 	if recipe.ApplicationID != "" {
-		application, err = r.fetchApplication(ctx, recipe.ApplicationID)
+		application, err = util.FetchApplication(ctx, recipe.ApplicationID, r.UCPClientOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -50,17 +48,15 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 
 		// Prefer application namespace if set
 		if application != nil {
-			kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
-			if !ok {
-				return nil, v1.ErrInvalidModelConversion
+			configuration.Runtime.Kubernetes.Namespace, err = kube.FetchNameSpaceFromApplicationResource(application)
+			if err != nil {
+				return nil, err
 			}
-			configuration.Runtime.Kubernetes.Namespace = *kubernetes.Namespace
 		} else {
-			kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
-			if !ok {
-				return nil, v1.ErrInvalidModelConversion
+			configuration.Runtime.Kubernetes.Namespace, err = kube.FetchNameSpaceFromEnvironmentResource(environment)
+			if err != nil {
+				return nil, err
 			}
-			configuration.Runtime.Kubernetes.Namespace = *kubernetes.Namespace
 		}
 
 	}
@@ -78,62 +74,4 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 	}
 
 	return &configuration, nil
-}
-
-// Lookup implements recipes.Repository
-func (r *EnvironmentLoader) Lookup(ctx context.Context, recipe recipes.Recipe) (*recipes.Definition, error) {
-	environment, err := r.fetchEnvironment(ctx, recipe.EnvironmentID)
-	if err != nil {
-		return nil, err
-	}
-
-	found, ok := environment.Properties.Recipes[recipe.Name]
-	if !ok {
-		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
-	}
-
-	return &recipes.Definition{
-		Driver:       Bicep,
-		ResourceType: *found.LinkType,
-		Parameters:   found.Parameters,
-		TemplatePath: *found.TemplatePath,
-	}, nil
-}
-
-func (r *EnvironmentLoader) fetchApplication(ctx context.Context, application string) (*v20220315privatepreview.ApplicationResource, error) {
-	applicationID, err := resources.ParseResource(application)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := v20220315privatepreview.NewApplicationsClient(applicationID.RootScope(), &aztoken.AnonymousCredential{}, r.UCPClientOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := client.Get(ctx, applicationID.Name(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &response.ApplicationResource, nil
-}
-
-func (r *EnvironmentLoader) fetchEnvironment(ctx context.Context, environment string) (*v20220315privatepreview.EnvironmentResource, error) {
-	environmentID, err := resources.ParseResource(environment)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := v20220315privatepreview.NewEnvironmentsClient(environmentID.RootScope(), &aztoken.AnonymousCredential{}, r.UCPClientOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := client.Get(ctx, environmentID.Name(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &response.EnvironmentResource, nil
 }
