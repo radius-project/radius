@@ -56,7 +56,10 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 
 		// Prefer application namespace if set
 		if application != nil {
-			kubernetes := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
+			kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
+			if !ok {
+				return nil, v1.ErrInvalidModelConversion
+			}
 			configuration.Runtime.Kubernetes.Namespace = *kubernetes.Namespace
 		}
 	}
