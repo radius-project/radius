@@ -56,8 +56,10 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -160,8 +162,10 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -246,8 +250,10 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},

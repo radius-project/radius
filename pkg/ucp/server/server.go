@@ -48,7 +48,7 @@ type Options struct {
 	InitialPlanes          []rest.Plane
 	Identity               hostoptions.Identity
 	UCPConnection          sdk.Connection
-	DefaultLocation        string
+	Location               string
 }
 
 func NewServerOptionsFromEnvironment() (Options, error) {
@@ -82,9 +82,9 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		identity.AuthMethod = hostoptions.AuthDefault
 	}
 
-	defaultLocation := opts.Config.DefaultLocation
-	if defaultLocation == "" {
-		defaultLocation = "global"
+	location := opts.Config.Location
+	if location == "" {
+		location = "global"
 	}
 
 	var cfg *kube_rest.Config
@@ -112,7 +112,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		InitialPlanes:          planes,
 		Identity:               identity,
 		UCPConnection:          ucpConn,
-		DefaultLocation:        defaultLocation,
+		Location:               location,
 	}, nil
 }
 
@@ -129,7 +129,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 			InitialPlanes:          options.InitialPlanes,
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
-			DefaultLocation:        options.DefaultLocation,
+			Location:               options.Location,
 		}),
 	}
 

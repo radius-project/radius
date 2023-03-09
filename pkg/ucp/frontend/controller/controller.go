@@ -25,25 +25,28 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	// Base path
+	// Base path is the base path of the controller such as /apis/api.ucp.dev/v1alpha3.
 	BasePath string
 
-	// Host Address
+	// Address is the address where the controller is running.
 	Address string
 
 	// SecretClient is the client to fetch secrets.
 	SecretClient secret.Client
 
+	// AWSOptions is the set of options used by AWS controllers.
+	AWSOptions AWSOptions
+
+	// CommonControllerOptions is the set of options used by most of our controllers.
+	CommonControllerOptions armrpc_controller.Options
+}
+
+type AWSOptions struct {
 	// AWSCloudControlClient is the AWS Cloud Control client.
 	AWSCloudControlClient ucp_aws.AWSCloudControlClient
 
 	// AWSCloudFormationClient is the AWS Cloud Formation client.
 	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
-
-	// CommonControllerOptions is the set of options used by most of our controllers.
-	//
-	// TODO: over time we should replace Options with CommonControllerOptions.
-	CommonControllerOptions armrpc_controller.Options
 }
 
 type ControllerFunc func(Options) (armrpc_controller.Controller, error)

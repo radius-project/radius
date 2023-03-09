@@ -59,9 +59,11 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
-		BasePath:                basePath,
-		AWSCloudControlClient:   cloudControlClient,
-		AWSCloudFormationClient: cloudFormationClient,
+		BasePath: basePath,
+		AWSOptions: controller.AWSOptions{
+			AWSCloudControlClient:   cloudControlClient,
+			AWSCloudFormationClient: cloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			DataProvider: provider,
 		},

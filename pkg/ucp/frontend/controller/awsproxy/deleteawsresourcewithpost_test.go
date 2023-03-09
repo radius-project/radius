@@ -64,8 +64,10 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -119,8 +121,10 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 		})
 
 	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -206,8 +210,10 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},

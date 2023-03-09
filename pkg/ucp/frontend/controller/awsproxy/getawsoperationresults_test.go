@@ -38,8 +38,10 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -73,8 +75,10 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},

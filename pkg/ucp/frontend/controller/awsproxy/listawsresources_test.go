@@ -63,8 +63,10 @@ func Test_ListAWSResources(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -113,8 +115,10 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -144,8 +148,10 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
@@ -179,8 +185,10 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},

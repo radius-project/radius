@@ -62,7 +62,7 @@ type ServiceOptions struct {
 	InitialPlanes           []rest.Plane
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
-	DefaultLocation         string
+	Location                string
 }
 
 type Service struct {
@@ -134,12 +134,13 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	ctrlOpts := ctrl.Options{
-		BasePath:                s.options.BasePath,
-		Address:                 s.options.Address,
-		SecretClient:            s.secretClient,
-		AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
-		AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
-
+		BasePath:     s.options.BasePath,
+		Address:      s.options.Address,
+		SecretClient: s.secretClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
+			AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
+		},
 		CommonControllerOptions: armrpc_controller.Options{
 			DataProvider:  s.storageProvider,
 			StorageClient: db,
@@ -161,7 +162,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.Configure(r)
 	}
 
-	err = s.configureDefaultPlanes(ctx, s.options.DefaultLocation, db, s.options.InitialPlanes)
+	err = s.configureDefaultPlanes(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -214,8 +215,8 @@ func (s *Service) initializeSecretClient(ctx context.Context) error {
 }
 
 // configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
-func (s *Service) configureDefaultPlanes(ctx context.Context, location string, dbClient store.StorageClient, planes []rest.Plane) error {
-	for _, plane := range planes {
+func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.StorageClient) error {
+	for _, plane := range s.options.InitialPlanes {
 		body, err := json.Marshal(plane)
 		if err != nil {
 			return err
@@ -240,7 +241,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, location string, d
 
 		// Wrap the request in an ARM RPC context because this call will bypass the middleware
 		// that normally does this for us.
-		rpcContext, err := v1.FromARMRequest(request, s.options.BasePath, location)
+		rpcContext, err := v1.FromARMRequest(request, s.options.BasePath, s.options.Location)
 		if err != nil {
 			return err
 		}

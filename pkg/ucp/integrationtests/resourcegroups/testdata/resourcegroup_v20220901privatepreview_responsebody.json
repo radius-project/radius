@@ -1,11 +1,7 @@
 {
-    "id": "/planes/radius/local",
-    "name": "local",
-    "properties": {
-        "kind": "UCPNative",
-        "resourceProviders": {
-            "test": "http://localhost:9999"
-        }
-    },
-    "type": "System.Planes/radius"
+    "location": "global",
+    "id": "/planes/radius/local/resourcegroups/test-rg",
+    "name": "test-rg",
+    "tags":{},
+    "type": "System.Resources/resourceGroups"
 }

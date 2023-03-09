@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
@@ -29,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
@@ -124,6 +126,7 @@ func Start(t *testing.T) *TestServer {
 	server.Config.BaseContext = func(l net.Listener) context.Context {
 		return ctx
 	}
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 
 	err = api.Register(ctx, router, controller.Options{
 		CommonControllerOptions: armrpc_controller.Options{
@@ -184,23 +187,11 @@ func (ts *TestServer) MakeFixtureRequest(method string, pathAndQuery string, fix
 // MakeRequest sends a request to the server.
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
 	client := ts.server.Client()
-
-	var requestBuffer io.Reader
-	if len(body) > 0 {
-		requestBuffer = bytes.NewBuffer(body)
-
-		// Pretty-print body for logs.
-		var data any
-		err := json.Unmarshal(body, &data)
-		require.NoError(ts.t, err, "unmarshalling request failed")
-
-		text, err := json.MarshalIndent(&data, "", "  ")
-		require.NoError(ts.t, err, "marshalling request failed")
-		ts.t.Log("Request Body: \n" + string(text))
-	}
-
-	request, err := http.NewRequest(method, ts.BaseURL+pathAndQuery, requestBuffer)
+	request, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), method, ts.BaseURL+pathAndQuery, body)
 	require.NoError(ts.t, err, "creating request failed")
+
+	ctx := testutil.ARMTestContextFromRequest(request)
+	request = request.WithContext(ctx)
 
 	response, err := client.Do(request)
 	require.NoError(ts.t, err, "sending request failed")
@@ -266,5 +257,5 @@ func (tr *TestResponse) EqualsResponse(statusCode int, body []byte) {
 	var actual any
 	err = json.Unmarshal(tr.Body.Bytes(), &actual)
 	require.NoError(tr.t, err, "unmarshalling actual response failed")
-
+	require.EqualValues(tr.t, expected, actual, "response body did not match expected")
 }
