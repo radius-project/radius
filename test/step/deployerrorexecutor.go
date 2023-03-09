@@ -7,6 +7,7 @@ package step
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,12 +49,16 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
+	t.Logf("errror is %s ", err.Error())
 	require.ErrorContains(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
-	/*var cliErr *radcli.CLIError
+	var cliErr *radcli.CLIError
 	ok := errors.As(err, &cliErr)
+	t.Logf("ok is %t", ok)
 	require.True(t, ok)
-	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())*/
+	t.Logf("expected error code %s versus got error code %s ", d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
+
+	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
 
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
