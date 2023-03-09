@@ -30,14 +30,14 @@ type EnvironmentLoader struct {
 
 // Load implements recipes.ConfigurationLoader
 func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*recipes.Configuration, error) {
-	environment, err := r.fetchEnvironment(ctx, recipe)
+	environment, err := r.fetchEnvironment(ctx, recipe.EnvironmentID)
 	if err != nil {
 		return nil, err
 	}
 
 	var application *v20220315privatepreview.ApplicationResource
 	if recipe.ApplicationID != "" {
-		application, err = r.fetchApplication(ctx, recipe)
+		application, err = r.fetchApplication(ctx, recipe.ApplicationID)
 		if err != nil {
 			return nil, err
 		}
@@ -48,12 +48,6 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 		// This is a Kubernetes environment
 		configuration.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 
-		kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
-		if !ok {
-			return nil, v1.ErrInvalidModelConversion
-		}
-		configuration.Runtime.Kubernetes.Namespace = *kubernetes.Namespace
-
 		// Prefer application namespace if set
 		if application != nil {
 			kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
@@ -61,7 +55,14 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 				return nil, v1.ErrInvalidModelConversion
 			}
 			configuration.Runtime.Kubernetes.Namespace = *kubernetes.Namespace
+		} else {
+			kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
+			if !ok {
+				return nil, v1.ErrInvalidModelConversion
+			}
+			configuration.Runtime.Kubernetes.Namespace = *kubernetes.Namespace
 		}
+
 	}
 
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Aws != nil {
@@ -81,7 +82,7 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 
 // Lookup implements recipes.Repository
 func (r *EnvironmentLoader) Lookup(ctx context.Context, recipe recipes.Recipe) (*recipes.Definition, error) {
-	environment, err := r.fetchEnvironment(ctx, recipe)
+	environment, err := r.fetchEnvironment(ctx, recipe.EnvironmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +100,8 @@ func (r *EnvironmentLoader) Lookup(ctx context.Context, recipe recipes.Recipe) (
 	}, nil
 }
 
-func (r *EnvironmentLoader) fetchApplication(ctx context.Context, recipe recipes.Recipe) (*v20220315privatepreview.ApplicationResource, error) {
-	applicationID, err := resources.ParseResource(recipe.ApplicationID)
+func (r *EnvironmentLoader) fetchApplication(ctx context.Context, application string) (*v20220315privatepreview.ApplicationResource, error) {
+	applicationID, err := resources.ParseResource(application)
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +119,8 @@ func (r *EnvironmentLoader) fetchApplication(ctx context.Context, recipe recipes
 	return &response.ApplicationResource, nil
 }
 
-func (r *EnvironmentLoader) fetchEnvironment(ctx context.Context, recipe recipes.Recipe) (*v20220315privatepreview.EnvironmentResource, error) {
-	environmentID, err := resources.ParseResource(recipe.EnvironmentID)
+func (r *EnvironmentLoader) fetchEnvironment(ctx context.Context, environment string) (*v20220315privatepreview.EnvironmentResource, error) {
+	environmentID, err := resources.ParseResource(environment)
 	if err != nil {
 		return nil, err
 	}
