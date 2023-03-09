@@ -133,9 +133,9 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 		err = runner.Run(cmd.Context())
 		if err != nil {
 			sc := trace.SpanContextFromContext(cmd.Context())
-			fmt.Printf("traceId is %s", sc.TraceID())
-			//return fmt.Errorf("%w \n traceId is %s", err, sc.TraceID())
-			return err
+			//fmt.Printf("traceId is %s", sc.TraceID())
+			return fmt.Errorf("%w \n traceId is %s", err, sc.TraceID())
+			//return err
 		}
 
 		return nil
