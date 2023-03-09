@@ -49,7 +49,7 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
-	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
+	require.ErrorContains(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
 	var cliErr *radcli.CLIError
 	ok := errors.As(err, &cliErr)
