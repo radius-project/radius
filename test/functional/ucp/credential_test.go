@@ -69,7 +69,7 @@ func runCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, 
 func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.CredentialResource) {
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	createRequest, err := NewUCPRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(createRequest)
@@ -80,7 +80,7 @@ func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, 
 }
 
 func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.CredentialResource, int) {
-	getCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
+	getCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	result, err := roundTripper.RoundTrip(getCredentialRequest)
@@ -99,7 +99,7 @@ func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (uc
 }
 
 func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
-	deleteCredentialRequest, err := http.NewRequest(http.MethodDelete, url, nil)
+	deleteCredentialRequest, err := NewUCPRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(deleteCredentialRequest)
@@ -107,7 +107,7 @@ func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) 
 }
 
 func listCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.CredentialResource {
-	listCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
+	listCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(listCredentialRequest)

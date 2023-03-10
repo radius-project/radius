@@ -22,18 +22,20 @@ var _ armrpc_controller.Controller = (*CreateOrUpdateCredential)(nil)
 
 // CreateOrUpdateCredential is the controller implementation to create/update a UCP credential.
 type CreateOrUpdateCredential struct {
-	ctrl.Operation[*datamodel.Credential, datamodel.Credential]
+	armrpc_controller.Operation[*datamodel.Credential, datamodel.Credential]
+	secretClient secret.Client
 }
 
 // NewCreateOrUpdateCredential creates a new CreateOrUpdateCredential.
 func NewCreateOrUpdateCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateCredential{
-		ctrl.NewOperation(opts,
-			ctrl.ResourceOptions[datamodel.Credential]{
+		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+			armrpc_controller.ResourceOptions[datamodel.Credential]{
 				RequestConverter:  converter.CredentialDataModelFromVersioned,
 				ResponseConverter: converter.CredentialDataModelToVersioned,
 			},
 		),
+		secretClient: opts.SecretClient,
 	}, nil
 }
 
@@ -63,7 +65,7 @@ func (c *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	// Save the credential secret
-	err = secret.SaveSecret(ctx, c.Options().SecretClient, secretName, newResource.Properties.AWSCredential)
+	err = secret.SaveSecret(ctx, c.secretClient, secretName, newResource.Properties.AWSCredential)
 	if err != nil {
 		return nil, err
 	}

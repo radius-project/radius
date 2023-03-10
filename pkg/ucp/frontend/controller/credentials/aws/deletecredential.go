@@ -28,23 +28,27 @@ var _ armrpc_controller.Controller = (*DeleteCredential)(nil)
 
 // DeleteCredential is the controller implementation to delete a UCP credential.
 type DeleteCredential struct {
-	ctrl.Operation[*datamodel.Credential, datamodel.Credential]
+	armrpc_controller.Operation[*datamodel.Credential, datamodel.Credential]
+	secretClient secret.Client
+	basePath     string
 }
 
 // NewDeleteCredential creates a new DeleteCredential.
 func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeleteCredential{
-		ctrl.NewOperation(opts,
-			ctrl.ResourceOptions[datamodel.Credential]{
+		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+			armrpc_controller.ResourceOptions[datamodel.Credential]{
 				RequestConverter:  converter.CredentialDataModelFromVersioned,
 				ResponseConverter: converter.CredentialDataModelToVersioned,
 			},
 		),
+		secretClient: opts.SecretClient,
+		basePath:     opts.BasePath,
 	}, nil
 }
 
 func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(c.BasePath(), req.URL.Path)
+	path := middleware.GetRelativePath(c.basePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 
 	resourceID, err := resources.ParseResource(path)
@@ -64,7 +68,7 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 	secretName := credentials.GetSecretName(resourceID)
 
 	// Delete the credential secret.
-	err = c.Options().SecretClient.Delete(ctx, secretName)
+	err = c.secretClient.Delete(ctx, secretName)
 	if errors.Is(err, &secret.ErrNotFound{}) {
 		return armrpc_rest.NewNoContentResponse(), nil
 	} else if err != nil {
