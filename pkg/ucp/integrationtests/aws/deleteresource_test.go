@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -52,8 +53,12 @@ func Test_DeleteAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	deleteRequest, err := http.NewRequest(http.MethodDelete, ucp.URL+basePath+testProxyRequestAWSPath, nil)
-	require.NoError(t, err)
+	deleteRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodDelete, ucp.URL+basePath+testProxyRequestAWSPath, nil)
+	require.NoError(t, err, "creating request failed")
+
+	ctx := testutil.ARMTestContextFromRequest(deleteRequest)
+	deleteRequest = deleteRequest.WithContext(ctx)
+
 	deleteResponse, err := ucpClient.httpClient.Do(deleteRequest)
 	require.NoError(t, err)
 

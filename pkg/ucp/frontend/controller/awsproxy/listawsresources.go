@@ -14,6 +14,7 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
@@ -22,27 +23,26 @@ var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
 
 // ListAWSResources is the controller implementation to get/list AWS resources.
 type ListAWSResources struct {
-	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	awsOptions ctrl.AWSOptions
 }
 
 // NewListAWSResources creates a new ListAWSResources.
 func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListAWSResources{
-		ctrl.NewOperation(opts,
-			ctrl.ResourceOptions[datamodel.AWSResource]{},
+		Operation: armrpc_controller.NewOperation(opts.Options,
+			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
+		awsOptions: opts.AWSOptions,
 	}, nil
 }
 
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, *p.Options(), req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	// TODO pagination
-	response, err := cloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
-		TypeName: &resourceType,
+	response, err := p.awsOptions.AWSCloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
+		TypeName: &serviceCtx.ResourceType,
 	})
 	if err != nil {
 		return awsclient.HandleAWSError(err)
@@ -64,9 +64,9 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 
 		resourceName := *result.Identifier
 		item := map[string]any{
-			"id":         path.Join(id.String(), resourceName),
+			"id":         path.Join(serviceCtx.ResourceID.String(), resourceName),
 			"name":       result.Identifier,
-			"type":       id.Type(),
+			"type":       serviceCtx.ResourceID.Type(),
 			"properties": properties,
 		}
 		items = append(items, item)

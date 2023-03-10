@@ -28,14 +28,11 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_GetAWSResourceWithPost(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -82,8 +79,9 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
-
 	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
@@ -102,9 +100,6 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -140,8 +135,9 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
-
 	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -150,9 +146,6 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -187,6 +180,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -195,9 +189,6 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -239,6 +230,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -253,12 +245,21 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
+	requestBody := map[string]any{
+		"properties": map[string]any{
+			"ClusterIdentifier": clusterIdentifierValue,
+			"Account":           accountValue,
+		},
+	}
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(requestBodyBytes))
+	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -286,15 +287,6 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]any{
-		"properties": map[string]any{
-			"ClusterIdentifier": clusterIdentifierValue,
-			"Account":           accountValue,
-		},
-	}
-	requestBodyBytes, err := json.Marshal(requestBody)
-	require.NoError(t, err)
-
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
 		AWSOptions: ctrl.AWSOptions{
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
@@ -304,9 +296,6 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			StorageClient: testOptions.StorageClient,
 		},
 	})
-	require.NoError(t, err)
-
-	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

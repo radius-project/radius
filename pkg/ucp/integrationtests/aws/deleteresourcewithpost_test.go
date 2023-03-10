@@ -8,13 +8,13 @@ package aws
 // Tests that test with Mock RP functionality and UCP Server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -79,8 +79,12 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	deleteRequest, err := http.NewRequest(http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:delete", bytes.NewBuffer(body))
-	require.NoError(t, err)
+	deleteRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:delete", body)
+	require.NoError(t, err, "creating request failed")
+
+	ctx := testutil.ARMTestContextFromRequest(deleteRequest)
+	deleteRequest = deleteRequest.WithContext(ctx)
+
 	deleteResponse, err := ucpClient.httpClient.Do(deleteRequest)
 	require.NoError(t, err)
 

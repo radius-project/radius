@@ -16,6 +16,7 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
@@ -24,29 +25,28 @@ var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
 
 // GetAWSOperationStatuses is the controller implementation to get AWS resource operation status.
 type GetAWSOperationStatuses struct {
-	ctrl.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	awsOptions ctrl.AWSOptions
 }
 
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
 func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
-		ctrl.NewOperation(opts,
-			ctrl.ResourceOptions[datamodel.AWSResource]{},
+		Operation: armrpc_controller.NewOperation(opts.Options,
+			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
+		awsOptions: opts.AWSOptions,
 	}, nil
 }
 
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, _, _, id, err := ParseAWSRequest(ctx, *p.Options(), req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
-	response, err := cloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
-		RequestToken: aws.String(id.Name()),
+	response, err := p.awsOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNotFoundResponse(id), nil
+		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
