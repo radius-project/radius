@@ -6,7 +6,6 @@
 package recipes
 
 import (
-	"context"
 	"fmt"
 )
 
@@ -16,23 +15,6 @@ type Recipe struct {
 	EnvironmentID string
 	ResourceID    string
 	Parameters    map[string]any
-}
-
-type ConfigurationLoader interface {
-	Load(ctx context.Context, recipe Recipe) (*Configuration, error)
-}
-
-type Configuration struct {
-	Runtime   RuntimeConfiguration
-	Providers map[string]map[string]any
-}
-
-type RuntimeConfiguration struct {
-	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
-}
-
-type KubernetesRuntime struct {
-	Namespace string `json:"namespace,omitempty"`
 }
 
 type ErrRecipeNotFound struct {
@@ -46,5 +28,5 @@ func (e *ErrRecipeNotFound) Error() string {
 
 func (e *ErrRecipeNotFound) Is(other error) bool {
 	_, ok := other.(*ErrRecipeNotFound)
-	return !ok
+	return ok
 }

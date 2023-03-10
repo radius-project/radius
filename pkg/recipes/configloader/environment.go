@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/util"
 )
 
-var _ recipes.ConfigurationLoader = (*EnvironmentLoader)(nil)
+var _ ConfigurationLoader = (*EnvironmentLoader)(nil)
 
 const (
 	Bicep = "bicep"
@@ -27,7 +27,7 @@ type EnvironmentLoader struct {
 }
 
 // Load implements recipes.ConfigurationLoader
-func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*recipes.Configuration, error) {
+func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*Configuration, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.UCPClientOptions)
 	if err != nil {
 		return nil, err
@@ -40,12 +40,16 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 			return nil, err
 		}
 	}
+	return getConfiguration(environment, application)
 
-	configuration := recipes.Configuration{Runtime: recipes.RuntimeConfiguration{}, Providers: map[string]map[string]any{}}
+}
+
+func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*Configuration, error) {
+	configuration := Configuration{Runtime: RuntimeConfiguration{}, Providers: map[string]map[string]any{}}
 	if *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
 		// This is a Kubernetes environment
-		configuration.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
-
+		configuration.Runtime.Kubernetes = &KubernetesRuntime{}
+		var err error
 		// Prefer application namespace if set
 		if application != nil {
 			configuration.Runtime.Kubernetes.Namespace, err = kube.FetchNameSpaceFromApplicationResource(application)
