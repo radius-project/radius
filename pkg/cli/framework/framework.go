@@ -127,8 +127,8 @@ type Runner interface {
 func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
-		// disable trace id for friendly errors from cli validation and workspace command
-		if err != nil || cmd.Use == workSpaceCmdUsage {
+		// disable trace id for friendly errors from cli validation
+		if err != nil {
 			friendlyErr, ok := (err).(*cli.FriendlyError)
 			if !ok {
 				friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors

@@ -61,8 +61,9 @@ import (
 )
 
 const (
-	ServiceName string = "cli"
-	TracerName  string = "cli"
+	ServiceName      string = "cli"
+	TracerName       string = "cli"
+	workspaceCommand string = "rad workspace"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -119,19 +120,19 @@ func Execute() {
 	}()
 
 	tr := otel.Tracer(TracerName)
-	commandName := "rad "
+	command := "rad "
 	for i := 1; i < len(os.Args); i++ {
-		commandName = commandName + " " + os.Args[i]
+		command = command + " " + os.Args[i]
 	}
 
-	ctx, span := tr.Start(ctx, commandName)
+	ctx, span := tr.Start(ctx, command)
 	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
 
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
 		friendlyErr := err.(*cli.FriendlyError)
-		if !(*friendlyErr).DisableTraceId {
+		if !(*friendlyErr).DisableTraceId && !strings.Contains(command, workspaceCommand) {
 			fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
 		}
 		os.Exit(1)
