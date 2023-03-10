@@ -39,7 +39,7 @@ if (Test-Path $RadiusCliFilePath -PathType Leaf) {
         Write-Output "Previous version: $CurrentVersion`r`n"
     }
     catch {
-        Write-Output "Current installation corrupted`r`n"
+        Write-Output "Previous installation corrupted`r`n"
     }
     Write-Output "Reinstalling rad CLI..."
 }
