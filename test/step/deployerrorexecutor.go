@@ -48,8 +48,8 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	err1 := cli.Deploy(ctx, templateFilePath, d.Parameters...)
-	require.Error(t, err1, "traceId is", d.Description)
+	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
+	require.ErrorContains(t, err, "Failed", d.Description)
 
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
