@@ -88,13 +88,7 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	if cliErr != nil && strings.Contains(out, "Error: {") {
 		var errResponse v1.ErrorResponse
 		idx := strings.Index(out, "Error: {")
-		idxTraceId := strings.Index(out, "traceId")
-		var actualErr string
-		if idxTraceId == -1 {
-			actualErr = "{\"error\": " + out[idx+7:] + "}"
-		} else {
-			actualErr = "{\"error\": " + out[idx+7:idxTraceId] + "}"
-		}
+		actualErr := "{\"error\": " + out[idx+7:] + "}"
 
 		if err := json.Unmarshal([]byte(string(actualErr)), &errResponse); err != nil {
 			return err

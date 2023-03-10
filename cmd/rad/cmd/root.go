@@ -62,6 +62,7 @@ import (
 
 const (
 	ServiceName string = "cli"
+	TracerName  string = "cli"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -117,8 +118,13 @@ func Execute() {
 		_ = shutdown(ctx)
 	}()
 
-	tr := otel.Tracer("cli")
-	ctx, span := tr.Start(ctx, "cli")
+	tr := otel.Tracer(TracerName)
+	commandName := "rad "
+	for i := 1; i < len(os.Args); i++ {
+		commandName = commandName + " " + os.Args[i]
+	}
+
+	ctx, span := tr.Start(ctx, commandName)
 	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
 
