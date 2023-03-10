@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -127,7 +128,12 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
 		if err != nil {
-			return err
+			friendlyErr, ok := (err).(*cli.FriendlyError)
+			if !ok {
+				friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors
+			}
+			friendlyErr.DisableTraceId = true // disable trace id for friendly errors from cli validation
+			return friendlyErr
 		}
 
 		err = runner.Run(cmd.Context())
