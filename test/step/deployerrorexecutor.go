@@ -50,14 +50,12 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	err1 := cli.Deploy(ctx, templateFilePath, d.Parameters...)
-	require.Error(t, err1, "deployment %s succeeded when it should have failed", d.Description)
+	require.Error(t, err1, "traceId is", d.Description)
 
 	var cliErr *radcli.CLIError
 	err = errors.Unwrap(err1)
 	ok := errors.As(err, &cliErr)
-	t.Logf("ok is %t", ok)
 	require.True(t, ok)
-	t.Logf("expected error code: %s but got %s", d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
 	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
 
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
