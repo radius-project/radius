@@ -60,6 +60,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	ServiceName string = "cli"
+)
+
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
 var RootCmd = &cobra.Command{
 	Use:           "rad",
@@ -104,7 +108,7 @@ func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
 	shutdown, err := trace.InitTracer(trace.Options{
-		ServiceName: "cli",
+		ServiceName: ServiceName,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -115,15 +119,14 @@ func Execute() {
 
 	tr := otel.Tracer("cli")
 	ctx, span := tr.Start(ctx, "cli")
+	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
 
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
-		span.End()
 		os.Exit(1)
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
-		span.End()
 		os.Exit(1)
 	}
 
