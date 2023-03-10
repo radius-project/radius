@@ -26,7 +26,7 @@ type CreateOrUpdateResourceGroup struct {
 // NewCreateOrUpdateResourceGroup creates a new CreateOrUpdateResourceGroup.
 func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateResourceGroup{
-		armrpc_controller.NewOperation(opts.CommonControllerOptions,
+		armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.ResourceGroup]{
 				RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,

@@ -63,13 +63,12 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 
 	require.NoError(t, err)
-	expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
+	expectedResponse := armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.ResourceGroupResource{
 		ID:       &testResourceGroupID,
 		Name:     &testResourceGroupName,
 		Type:     to.Ptr(ResourceGroupType),
 		Location: to.Ptr(v1.LocationGlobal),
 		Tags:     *to.Ptr(map[string]*string{}),
-	}
-	expectedResponse := armrpc_rest.NewOKResponse(&expectedResourceGroup)
+	}, map[string]string{"ETag": ""})
 	require.Equal(t, expectedResponse, actualResponse)
 }

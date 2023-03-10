@@ -7,14 +7,12 @@ package resourcegroups
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -124,6 +122,5 @@ func Test_CreateResourceGroup_BadAPIVersion(t *testing.T) {
 	ctx := testutil.ARMTestContextFromRequest(request)
 	response, err := rgCtrl.Run(ctx, w, request)
 	require.Nil(t, response)
-	expectedError := errors.New("unsupported api-version")
-	assert.Equal(t, expectedError.Error(), err.Error())
+	require.ErrorIs(t, v1.ErrUnsupportedAPIVersion, err)
 }
