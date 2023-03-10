@@ -61,7 +61,6 @@ func (err *CLIError) GetFirstErrorCode() string {
 		}
 
 		if len(currentErrorDetail.Details) > 0 {
-			errorQueue = append(errorQueue, currentErrorDetail.Details...)
 		}
 	}
 
