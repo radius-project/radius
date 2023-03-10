@@ -51,11 +51,5 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	err1 := cli.Deploy(ctx, templateFilePath, d.Parameters...)
 	require.Error(t, err1, "traceId is", d.Description)
 
-	//var cliErr *radcli.CLIError
-	//err = errors.Unwrap(err1)
-	//ok := errors.As(err, &cliErr)
-	//require.True(t, ok)
-	//require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
-
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
