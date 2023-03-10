@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -33,7 +32,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	rgCtrl, err := NewListResourceGroups(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -90,5 +89,5 @@ func Test_ListResourceGroups(t *testing.T) {
 	}
 	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroupList)
 
-	assert.DeepEqual(t, expectedResponse, actualResponse)
+	require.Equal(t, expectedResponse, actualResponse)
 }

@@ -67,7 +67,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -166,7 +166,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -261,7 +261,7 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -346,7 +346,7 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -433,7 +433,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -531,7 +531,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})

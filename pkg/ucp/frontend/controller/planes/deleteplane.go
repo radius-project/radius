@@ -31,7 +31,7 @@ type DeletePlane struct {
 // NewDeletePlane creates a new DeletePlane.
 func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeletePlane{
-		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+		Operation: armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,

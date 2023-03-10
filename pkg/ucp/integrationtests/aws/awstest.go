@@ -64,7 +64,7 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 			AWSCloudControlClient:   cloudControlClient,
 			AWSCloudFormationClient: cloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			DataProvider: provider,
 		},
 	})

@@ -60,7 +60,7 @@ func Test_CreateAWSResource(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -166,7 +166,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -254,7 +254,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})

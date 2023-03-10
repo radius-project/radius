@@ -14,21 +14,17 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_ListPlanes(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewListPlanes(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -50,7 +46,9 @@ func Test_ListPlanes(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, actualResponse)
+	require.Equal(t, expectedResponse, actualResponse)
 }

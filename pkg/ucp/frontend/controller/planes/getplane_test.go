@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -33,7 +32,7 @@ func Test_GetPlaneByID(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewGetPlane(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -89,7 +88,7 @@ func Test_GetPlaneByID(t *testing.T) {
 		},
 	}, map[string]string{"ETag": ""})
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, response)
+	require.Equal(t, expectedResponse, response)
 }
 
 func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
@@ -99,7 +98,7 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewGetPlane(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -125,5 +124,5 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedResponse := armrpc_rest.NewNotFoundResponse(resourceID)
-	assert.DeepEqual(t, expectedResponse, response)
+	require.Equal(t, expectedResponse, response)
 }

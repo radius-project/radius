@@ -34,7 +34,7 @@ type ListPlanesByType struct {
 // NewListPlanesByType creates a new ListPlanesByType.
 func NewListPlanesByType(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanesByType{
-		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+		Operation: armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,

@@ -26,7 +26,7 @@ type CreateOrUpdatePlane struct {
 // NewCreateOrUpdatePlane creates a new CreateOrUpdatePlane.
 func NewCreateOrUpdatePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdatePlane{
-		armrpc_controller.NewOperation(opts.CommonControllerOptions,
+		armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,

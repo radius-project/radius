@@ -37,8 +37,8 @@ type Options struct {
 	// AWSOptions is the set of options used by AWS controllers.
 	AWSOptions AWSOptions
 
-	// CommonControllerOptions is the set of options used by most of our controllers.
-	CommonControllerOptions armrpc_controller.Options
+	// BaseControllerOptions is the set of options used by all controllers.
+	armrpc_controller.Options
 }
 
 type AWSOptions struct {
@@ -72,12 +72,12 @@ func NewBaseController(options Options) BaseController {
 }
 
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options) error {
-	storageClient, err := ctrlOpts.CommonControllerOptions.DataProvider.GetStorageClient(ctx, opts.ResourceType)
+	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
 		return err
 	}
-	ctrlOpts.CommonControllerOptions.StorageClient = storageClient
-	ctrlOpts.CommonControllerOptions.ResourceType = opts.ResourceType
+	ctrlOpts.StorageClient = storageClient
+	ctrlOpts.ResourceType = opts.ResourceType
 
 	ctrl, err := opts.HandlerFactory(ctrlOpts)
 	if err != nil {
@@ -113,7 +113,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options)
 
 // StorageClient gets storage client for this controller.
 func (b *BaseController) StorageClient() store.StorageClient {
-	return b.Options.CommonControllerOptions.StorageClient
+	return b.Options.StorageClient
 }
 
 // GetResource is the helper to get the resource via storage client.

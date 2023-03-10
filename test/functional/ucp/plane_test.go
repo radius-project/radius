@@ -18,7 +18,6 @@ import (
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_Plane_Operations(t *testing.T) {
@@ -66,7 +65,7 @@ func Test_Plane_Operations(t *testing.T) {
 		// Get Plane
 		plane, statusCode := getPlane(t, roundTripper, planeURL)
 		require.Equal(t, http.StatusOK, statusCode)
-		assert.DeepEqual(t, testPlaneRest, plane)
+		require.Equal(t, testPlaneRest, plane)
 
 		// Delete Plane
 		statusCode = deletePlane(t, roundTripper, planeURL)

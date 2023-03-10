@@ -45,7 +45,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -92,7 +92,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})

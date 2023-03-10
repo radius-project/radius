@@ -22,7 +22,6 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	"gotest.tools/assert"
 
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -68,7 +67,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -99,7 +98,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, actualResponse)
+	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
@@ -126,7 +125,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -171,7 +170,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -223,7 +222,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})
@@ -301,7 +300,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: testOptions.StorageClient,
 		},
 	})

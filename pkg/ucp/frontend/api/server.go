@@ -141,7 +141,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 			AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
 			AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
 		},
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			DataProvider:  s.storageProvider,
 			StorageClient: db,
 
@@ -223,7 +223,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 		}
 
 		planesCtrl, err := planes_ctrl.NewCreateOrUpdatePlane(controller.Options{
-			CommonControllerOptions: armrpc_controller.Options{
+			Options: armrpc_controller.Options{
 				StorageClient: dbClient,
 			},
 		})

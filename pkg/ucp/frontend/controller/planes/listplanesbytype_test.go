@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_ListPlanesByType(t *testing.T) {
@@ -28,7 +27,7 @@ func Test_ListPlanesByType(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewListPlanesByType(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -53,5 +52,5 @@ func Test_ListPlanesByType(t *testing.T) {
 	require.NoError(t, err)
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, actualResponse)
+	require.Equal(t, expectedResponse, actualResponse)
 }

@@ -12,7 +12,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -31,7 +30,7 @@ type ListPlanes struct {
 // NewListPlanes creates a new ListPlanes.
 func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{
-		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+		Operation: armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,
@@ -42,11 +41,11 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(e.basePath, req.URL.Path)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	query := store.Query{
-		RootScope:    path,
+		RootScope:    serviceCtx.ResourceID.String(),
 		IsScopeQuery: true,
 	}
 	logger.Info(fmt.Sprintf("Listing planes in scope %s", query.RootScope))

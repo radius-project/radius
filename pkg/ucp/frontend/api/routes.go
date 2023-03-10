@@ -210,7 +210,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt.CommonControllerOptions,
+				return defaultoperation.NewListResources(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.Credential]{
 						RequestConverter:  converter.CredentialDataModelFromVersioned,
 						ResponseConverter: converter.CredentialDataModelToVersioned,
@@ -223,7 +223,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
+				return defaultoperation.NewGetResource(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.Credential]{
 						RequestConverter:  converter.CredentialDataModelFromVersioned,
 						ResponseConverter: converter.CredentialDataModelToVersioned,
@@ -248,7 +248,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt.CommonControllerOptions,
+				return defaultoperation.NewListResources(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.Credential]{
 						RequestConverter:  converter.CredentialDataModelFromVersioned,
 						ResponseConverter: converter.CredentialDataModelToVersioned,
@@ -261,7 +261,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
+				return defaultoperation.NewGetResource(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.Credential]{
 						RequestConverter:  converter.CredentialDataModelFromVersioned,
 						ResponseConverter: converter.CredentialDataModelToVersioned,

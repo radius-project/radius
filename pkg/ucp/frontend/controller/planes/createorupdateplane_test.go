@@ -24,7 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_CreateUCPNativePlane(t *testing.T) {
@@ -36,7 +35,7 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -110,7 +109,7 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 	actualOutput := v20220901privatepreview.PlaneResource{}
 	err = json.Unmarshal(w.Body.Bytes(), &actualOutput)
 	require.NoError(t, err)
-	assert.DeepEqual(t, versionedPlane, actualOutput)
+	require.Equal(t, versionedPlane, actualOutput)
 }
 
 func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
@@ -119,7 +118,7 @@ func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -139,7 +138,7 @@ func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
 		PropertyName: "$.properties.resourceProviders",
 		ValidValue:   "at least one provided",
 	}
-	assert.DeepEqual(t, expectedError, err)
+	require.Equal(t, expectedError, err)
 }
 
 func Test_CreateAzurePlane_NoURL(t *testing.T) {
@@ -148,7 +147,7 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	})
@@ -169,5 +168,5 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 		ValidValue:   "non-empty string",
 	}
 
-	assert.DeepEqual(t, expectedError, err)
+	require.Equal(t, expectedError, err)
 }

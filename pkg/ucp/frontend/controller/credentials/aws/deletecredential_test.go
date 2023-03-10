@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_Credential_Delete(t *testing.T) {
@@ -32,7 +31,7 @@ func Test_Credential_Delete(t *testing.T) {
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
 	credentialCtrl, err := NewDeleteCredential(ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 		SecretClient: mockSecretClient,
@@ -116,7 +115,7 @@ func Test_Credential_Delete(t *testing.T) {
 				require.Equal(t, err, tt.err)
 			} else {
 				require.NoError(t, err)
-				assert.DeepEqual(t, tt.expected, response)
+				require.Equal(t, tt.expected, response)
 			}
 		})
 	}

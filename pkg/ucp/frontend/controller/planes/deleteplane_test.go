@@ -74,7 +74,7 @@ func Test_DeletePlaneByID(t *testing.T) {
 		Delete(gomock.Any(), gomock.Any(), gomock.Any())
 
 	opts := ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	}
@@ -113,7 +113,7 @@ func Test_DeletePlane_PlaneDoesNotExist(t *testing.T) {
 		})
 
 	opts := ctrl.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
 	}

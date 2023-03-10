@@ -129,7 +129,7 @@ func Start(t *testing.T) *TestServer {
 	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 
 	err = api.Register(ctx, router, controller.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			DataProvider:  dataprovider.NewStorageProvider(storageOptions),
 			StorageClient: storageClient,
 		},

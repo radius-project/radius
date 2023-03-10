@@ -152,7 +152,7 @@ func Test_ProxyToRP(t *testing.T) {
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
 		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			DataProvider:  provider,
 			StorageClient: db,
 		},
@@ -203,7 +203,7 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
 		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			DataProvider:  provider,
 			StorageClient: db,
 		},
@@ -296,7 +296,7 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			DataProvider:  provider,
 			StorageClient: db,
 		},
@@ -360,9 +360,9 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	err = json.Unmarshal(registerPlaneResponseBody, &responsePlane)
 	require.NoError(t, err)
 	if ucpNative {
-		assert.DeepEqual(t, testUCPNativePlaneVersioned, responsePlane)
+		require.Equal(t, testUCPNativePlaneVersioned, responsePlane)
 	} else {
-		assert.DeepEqual(t, testAzurePlane, responsePlane)
+		require.Equal(t, testAzurePlane, responsePlane)
 	}
 }
 
@@ -390,7 +390,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	var responseResourceGroup v20220901privatepreview.ResourceGroupResource
 	err = json.Unmarshal(createResourceGroupResponseBody, &responseResourceGroup)
 	require.NoError(t, err)
-	assert.DeepEqual(t, testResourceGroup, responseResourceGroup)
+	require.Equal(t, testResourceGroup, responseResourceGroup)
 }
 
 func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
@@ -418,7 +418,7 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 	responseAppList := []map[string]any{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
 	require.NoError(t, err)
-	assert.DeepEqual(t, applicationList, responseAppList)
+	require.Equal(t, applicationList, responseAppList)
 }
 
 func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
@@ -442,7 +442,7 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient C
 	responseAppList := []map[string]any{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
 	require.NoError(t, err)
-	assert.DeepEqual(t, applicationList, responseAppList)
+	require.Equal(t, applicationList, responseAppList)
 }
 
 func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
@@ -479,7 +479,7 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	router := mux.NewRouter()
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
-		CommonControllerOptions: armrpc_controller.Options{
+		Options: armrpc_controller.Options{
 			DataProvider:  provider,
 			StorageClient: db,
 		},
@@ -522,6 +522,6 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	var errorResponse armrpc_v1.ErrorResponse
 	err = json.Unmarshal(responseBody, &errorResponse)
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, errorResponse)
+	require.Equal(t, expectedResponse, errorResponse)
 
 }
