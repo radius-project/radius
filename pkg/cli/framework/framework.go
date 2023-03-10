@@ -7,7 +7,6 @@ package framework
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -22,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const workSpaceCmdUsage = "workspace"
@@ -141,8 +139,7 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 
 		err = runner.Run(cmd.Context())
 		if err != nil {
-			sc := trace.SpanContextFromContext(cmd.Context())
-			return fmt.Errorf("%w \n traceId is %s", err, sc.TraceID())
+			return err
 		}
 
 		return nil
