@@ -25,6 +25,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const workSpaceCmdUsage = "workspace"
+
 // Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
 	GetBicep() bicep.Interface
@@ -127,12 +129,14 @@ type Runner interface {
 func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
-		if err != nil {
+		if cmd.Use == workSpaceCmdUsage
+		// disable trace id for friendly errors from cli validation and workspace command
+		if err != nil || cmd.Use == workSpaceCmdUsage{
 			friendlyErr, ok := (err).(*cli.FriendlyError)
 			if !ok {
 				friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors
 			}
-			friendlyErr.DisableTraceId = true // disable trace id for friendly errors from cli validation
+			friendlyErr.DisableTraceId = true 
 			return friendlyErr
 		}
 
