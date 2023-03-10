@@ -20,14 +20,14 @@ var _ armrpc_controller.Controller = (*CreateOrUpdateResourceGroup)(nil)
 
 // CreateOrUpdateResourceGroup is the controller implementation to create/update a UCP resource group.
 type CreateOrUpdateResourceGroup struct {
-	ctrl.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
+	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
 }
 
 // NewCreateOrUpdateResourceGroup creates a new CreateOrUpdateResourceGroup.
 func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateResourceGroup{
-		ctrl.NewOperation(opts,
-			ctrl.ResourceOptions[datamodel.ResourceGroup]{
+		armrpc_controller.NewOperation(opts.CommonControllerOptions,
+			armrpc_controller.ResourceOptions[datamodel.ResourceGroup]{
 				RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
 			},

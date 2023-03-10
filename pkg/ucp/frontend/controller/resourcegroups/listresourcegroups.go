@@ -25,23 +25,25 @@ var _ armrpc_controller.Controller = (*ListResourceGroups)(nil)
 
 // ListResourceGroups is the controller implementation to get the list of UCP resource groups.
 type ListResourceGroups struct {
-	ctrl.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
+	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
+	basePath string
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
 func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{
-		ctrl.NewOperation(opts,
-			ctrl.ResourceOptions[datamodel.ResourceGroup]{
+		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+			armrpc_controller.ResourceOptions[datamodel.ResourceGroup]{
 				RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
 			},
 		),
+		basePath: opts.BasePath,
 	}, nil
 }
 
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(r.BasePath(), req.URL.Path)
+	path := middleware.GetRelativePath(r.basePath, req.URL.Path)
 	logger := logr.FromContextOrDiscard(ctx)
 	var query store.Query
 	planeType, planeName, _, err := resources.ExtractPlanesPrefixFromURLPath(path)

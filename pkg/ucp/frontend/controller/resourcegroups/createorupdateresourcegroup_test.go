@@ -56,7 +56,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 			TrackedResource: v1.TrackedResource{
 				ID:       testResourceGroupID,
 				Name:     testResourceGroupName,
-				Type:     "ResourceGroupType",
+				Type:     ResourceGroupType,
 				Location: "West US",
 				Tags:     map[string]string{},
 			},
@@ -83,13 +83,14 @@ func Test_CreateResourceGroup(t *testing.T) {
 	versionedResourceGroup := v20220901privatepreview.ResourceGroupResource{
 		ID:       &testResourceGroupID,
 		Name:     &testResourceGroupName,
-		Type:     to.Ptr(""),
+		Type:     to.Ptr("System.Resources/resourceGroups"),
 		Location: to.Ptr("West US"),
 		Tags:     *to.Ptr(map[string]*string{}),
 	}
 
 	ctx := testutil.ARMTestContextFromRequest(request)
 	response, err := rgCtrl.Run(ctx, w, request)
+	require.NoError(t, err)
 	_ = response.Apply(ctx, w, request)
 
 	actualOutput := v20220901privatepreview.ResourceGroupResource{}

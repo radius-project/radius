@@ -170,7 +170,9 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	})
 
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
