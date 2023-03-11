@@ -8,6 +8,7 @@ package framework
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -124,7 +125,7 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
 		if err != nil {
-			return err
+			return &cli.FriendlyError{Message: "Error validating command: " + err.Error()}
 		}
 
 		err = runner.Run(cmd.Context())
