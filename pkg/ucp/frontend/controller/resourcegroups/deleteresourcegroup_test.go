@@ -11,13 +11,13 @@ import (
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_DeleteResourceGroupByID(t *testing.T) {
@@ -31,7 +31,9 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	url := "/planes/radius/local/resourceGroups/default?api-version=2022-09-01-privatepreview"
 
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -62,7 +64,7 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	expectedResponse := armrpc_rest.NewOKResponse(nil)
 
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, response)
+	require.Equal(t, expectedResponse, response)
 
 }
 
@@ -76,7 +78,9 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 
 	url := "/planes/radius/local/resourceGroups/default?api-version=2022-09-01-privatepreview"
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -121,7 +125,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	response, err := rgCtrl.Run(ctx, nil, request)
 	conflictResponse := armrpc_rest.NewConflictResponse("Resource group is not empty and cannot be deleted")
 
-	assert.DeepEqual(t, conflictResponse, response)
+	require.Equal(t, conflictResponse, response)
 	require.NoError(t, err)
 
 }

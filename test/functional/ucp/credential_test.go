@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_Azure_Credential_Operations(t *testing.T) {
@@ -49,12 +48,12 @@ func runCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, 
 	// List credential operation
 	credentialList := listCredential(t, roundTripper, collectionUrl)
 	require.Equal(t, len(credentialList), 1)
-	assert.DeepEqual(t, credentialList[0], credential)
+	require.Equal(t, credentialList[0], credential)
 
 	// Check for correctness of credential
 	createdCredential, statusCode := getCredential(t, roundTripper, resourceUrl)
 	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, createdCredential, credential)
+	require.Equal(t, createdCredential, credential)
 
 	// Delete credential operation
 	statusCode, err := deleteCredential(t, roundTripper, resourceUrl)

@@ -17,6 +17,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -53,9 +54,13 @@ func Test_DeleteAWSResource(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -91,9 +96,13 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 		})
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 

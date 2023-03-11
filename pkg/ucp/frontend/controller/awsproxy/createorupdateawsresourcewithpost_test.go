@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -62,9 +63,13 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -157,9 +162,13 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -248,9 +257,13 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -329,9 +342,13 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -412,9 +429,13 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -506,9 +527,13 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 

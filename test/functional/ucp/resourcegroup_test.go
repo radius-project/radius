@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_ResourceGroup_Operations(t *testing.T) {
@@ -50,7 +49,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 			Location: to.Ptr(v1.LocationGlobal),
 		}
 		require.Equal(t, http.StatusOK, statusCode)
-		assert.DeepEqual(t, expectedResourceGroup, rg)
+		require.Equal(t, expectedResourceGroup, rg)
 
 		// Delete Resource Group
 		statusCode = deleteResourceGroup(t, roundTripper, rgURL)

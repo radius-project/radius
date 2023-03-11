@@ -24,5 +24,5 @@ func Test_AllPlanes_LIST(t *testing.T) {
 	response.EqualsFixture(200, radiusPlaneResponseFixture)
 
 	response = server.MakeRequest("GET", globalPlaneCollectionURL, nil)
-	response.EqualsFixture(200, radiusPlaneResponseFixture)
+	response.EqualsFixture(200, radiusPlaneListResponseFixture)
 }

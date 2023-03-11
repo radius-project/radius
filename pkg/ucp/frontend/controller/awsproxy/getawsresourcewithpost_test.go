@@ -22,9 +22,9 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	"gotest.tools/assert"
 
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -63,9 +63,13 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -94,7 +98,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, actualResponse)
+	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
@@ -117,9 +121,13 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 		})
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -158,9 +166,13 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -206,9 +218,13 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -280,9 +296,13 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 

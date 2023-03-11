@@ -63,6 +63,7 @@ func createUCPResourceGroup(ctx context.Context, connection sdk.Connection, reso
 		return "", &ErrUCPResourceGroupCreationFailed{nil, err}
 	}
 	createRgRequest = createRgRequest.WithContext(ctx)
+	createRgRequest.Header.Add("Content-Type", "application/json")
 
 	resp, err := connection.Client().Do(createRgRequest)
 	if err != nil || (resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK) {

@@ -21,10 +21,10 @@ import (
 )
 
 func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
-	if opts.AWSCloudControlClient == nil {
+	if opts.AWSOptions.AWSCloudControlClient == nil {
 		return nil, nil, "", resources.ID{}, errors.New("AWSCloudControlClient is not set.")
 	}
-	if opts.AWSCloudFormationClient == nil {
+	if opts.AWSOptions.AWSCloudFormationClient == nil {
 		return nil, nil, "", resources.ID{}, errors.New("AWSCloudFormationClient is not set.")
 	}
 
@@ -35,7 +35,7 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	}
 
 	resourceType := resources.ToAWSResourceType(id)
-	return opts.AWSCloudControlClient, opts.AWSCloudFormationClient, resourceType, id, nil
+	return opts.AWSOptions.AWSCloudControlClient, opts.AWSOptions.AWSCloudFormationClient, resourceType, id, nil
 }
 
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the

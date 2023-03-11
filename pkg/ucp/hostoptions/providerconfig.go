@@ -25,6 +25,7 @@ type UCPConfig struct {
 	Logging         ucplog.LoggingOptions                  `yaml:"logging"`
 	Identity        Identity                               `yaml:"identity,omitempty"`
 	UCP             config.UCPOptions                      `yaml:"ucp"`
+	Location        string                                 `yaml:"location"`
 }
 
 const (

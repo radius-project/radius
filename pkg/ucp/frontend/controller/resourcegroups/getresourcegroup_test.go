@@ -11,9 +11,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
@@ -32,7 +32,9 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	rgCtrl, err := NewGetResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -71,5 +73,5 @@ func Test_GetResourceGroupByID(t *testing.T) {
 		Tags:     *to.Ptr(map[string]*string{}),
 	}
 	expectedResponse := armrpc_rest.NewOKResponse(&expectedResourceGroup)
-	assert.DeepEqual(t, expectedResponse, actualResponse)
+	require.Equal(t, expectedResponse, actualResponse)
 }

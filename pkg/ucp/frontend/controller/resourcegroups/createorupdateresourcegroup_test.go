@@ -13,9 +13,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
@@ -33,7 +33,9 @@ func Test_CreateResourceGroup(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	rgCtrl, err := NewCreateOrUpdateResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -85,7 +87,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroup)
 	response, err := rgCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, response)
+	require.Equal(t, expectedResponse, response)
 }
 
 func Test_CreateResourceGroup_BadAPIVersion(t *testing.T) {
@@ -96,7 +98,9 @@ func Test_CreateResourceGroup_BadAPIVersion(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	rgCtrl, err := NewCreateOrUpdateResourceGroup(ctrl.Options{
-		DB: mockStorageClient,
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -117,5 +121,5 @@ func Test_CreateResourceGroup_BadAPIVersion(t *testing.T) {
 			},
 		},
 	}
-	assert.DeepEqual(t, expectedResponse, response)
+	require.Equal(t, expectedResponse, response)
 }
