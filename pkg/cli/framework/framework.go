@@ -134,7 +134,8 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 				friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors
 			}
 			friendlyErr.DisableTraceId = true
-			return friendlyErr
+			err = friendlyErr
+			return err
 		}
 
 		err = runner.Run(cmd.Context())
