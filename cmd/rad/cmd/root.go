@@ -133,6 +133,7 @@ func Execute() {
 			fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
 		}
 
+		fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
 		os.Exit(1)
 	}
 
