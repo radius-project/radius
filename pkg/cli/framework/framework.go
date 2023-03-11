@@ -7,8 +7,10 @@ package framework
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
@@ -130,10 +132,22 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
 		// disable trace id for friendly errors from cli validation
 		if err != nil {
+			var cliErr *CLIError
+			ok := errors.As(err, &cliErr)
+			if ok {
+				fmt.Print("ok")
+			}
+
 			friendlyErr, ok := (err).(*cli.FriendlyError)
 			if !ok {
 				fmt.Print("not ok")
 			}
+
+			ok = errors.As(friendlyErr, &cliErr)
+			if ok {
+				fmt.Print("ok")
+			}
+
 			/*
 				if !ok {
 					friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors
@@ -150,4 +164,12 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 
 		return nil
 	}
+}
+
+type CLIError struct {
+	v1.ErrorResponse
+}
+
+func (err *CLIError) Error() string {
+	return fmt.Sprintf("code %v: err %v", err.ErrorResponse.Error.Code, err.ErrorResponse.Error.Message)
 }
