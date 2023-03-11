@@ -53,6 +53,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/trace"
+	"go.opentelemetry.io/otel"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -111,12 +112,22 @@ func Execute() {
 		_ = shutdown(ctx)
 	}()
 
+	tr := otel.Tracer("cli")
+	ctx, span := tr.Start(ctx, "cli")
+	defer span.End()
+
 	err = RootCmd.ExecuteContext(ctx)
+
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
+
+		if new := clientv2.TryUnfoldResponseError(err); new != nil {
+			fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
+		}
+
 		os.Exit(1)
 	}
 
