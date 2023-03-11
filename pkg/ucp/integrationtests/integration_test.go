@@ -36,7 +36,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 type Client struct {
@@ -235,7 +234,7 @@ func Test_MethodNotAllowed(t *testing.T) {
 	require.NoError(t, err)
 	response, err := ucpClient.httpClient.Do(request)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
+	require.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
 }
 
 func Test_NotFound(t *testing.T) {
@@ -245,7 +244,7 @@ func Test_NotFound(t *testing.T) {
 	require.NoError(t, err)
 	response, err := ucpClient.httpClient.Do(request)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, response.StatusCode)
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
 }
 
 func Test_APIValidationIsApplied(t *testing.T) {
@@ -351,7 +350,7 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	response, err := ucpClient.httpClient.Do(createPlaneRequest)
 	require.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, http.StatusOK, response.StatusCode)
 
 	registerPlaneResponseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -382,7 +381,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
+	require.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
 
 	createResourceGroupResponseBody, err := io.ReadAll(createResourceGroupResponse.Body)
 	require.NoError(t, err)
@@ -414,9 +413,9 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
-	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
-	assert.Equal(t, "http://"+proxyRequest.Host+basePath+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
+	require.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
+	require.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
+	require.Equal(t, "http://"+proxyRequest.Host+basePath+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
@@ -439,8 +438,8 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient C
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
-	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
+	require.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
+	require.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
 
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
@@ -469,7 +468,7 @@ func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Serv
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, proxyRequestResponse.StatusCode)
+	require.Equal(t, http.StatusNotFound, proxyRequestResponse.StatusCode)
 }
 
 func Test_RequestWithBadAPIVersion(t *testing.T) {
