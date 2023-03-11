@@ -94,7 +94,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 	actualOutput := v20220901privatepreview.ResourceGroupResource{}
 	err = json.Unmarshal(w.Body.Bytes(), &actualOutput)
 	require.NoError(t, err)
-	require.Equal(t, expectedResponse, response)
+	require.Equal(t, versionedResourceGroup, actualOutput)
 }
 
 func Test_CreateResourceGroup_BadAPIVersion(t *testing.T) {

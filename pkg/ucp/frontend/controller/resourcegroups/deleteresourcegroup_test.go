@@ -80,7 +80,7 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	require.Equal(t, expectedResponse, response)
+	require.Empty(t, payload, "response body should be empty")
 
 }
 

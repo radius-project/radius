@@ -25,7 +25,7 @@ type GetPlane struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewDeletePlane creates a new DeletePlane.
+// NewGetPlane creates a new GetPlane.
 func NewGetPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetPlane{
 		armrpc_controller.NewOperation(opts.Options,
