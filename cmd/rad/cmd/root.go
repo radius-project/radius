@@ -120,6 +120,11 @@ func Execute() {
 
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
+
+		fe, _ := err.(*cli.FriendlyError)
+		if fe.DisableTraceId == false {
+			fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
+		}
 		os.Exit(1)
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
