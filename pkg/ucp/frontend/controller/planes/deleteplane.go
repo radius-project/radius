@@ -9,14 +9,13 @@ import (
 	"errors"
 	http "net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -42,13 +41,9 @@ func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(p.basePath, req.URL.Path)
-	resourceId, err := resources.ParseScope(path)
-	if err != nil {
-		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-	}
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	old, etag, err := p.GetResource(ctx, resourceId)
+	old, etag, err := p.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +56,7 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return r, err
 	}
 
-	if err := p.StorageClient().Delete(ctx, resourceId.String()); err != nil {
+	if err := p.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
 		}

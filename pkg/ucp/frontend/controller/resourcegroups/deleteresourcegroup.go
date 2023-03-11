@@ -10,14 +10,13 @@ import (
 	"fmt"
 	http "net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -44,15 +43,10 @@ func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, er
 }
 
 func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(r.basePath, req.URL.Path)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	resourceID, err := resources.ParseScope(path)
-	if err != nil {
-		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-	}
-
-	old, etag, err := r.GetResource(ctx, resourceID)
+	old, etag, err := r.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +56,7 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 	}
 
 	// Get all resources under the path with resource group prefix
-	listOfResources, err := r.listResources(ctx, r.Options().StorageClient, path)
+	listOfResources, err := r.listResources(ctx, r.Options().StorageClient, serviceCtx.ResourceID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +66,7 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 		for _, r := range listOfResources.Value {
 			resources += r.ID + "\n"
 		}
-		logger.Info(fmt.Sprintf("Found %d resources in resource group %s:\n%s", len(listOfResources.Value), resourceID, resources))
+		logger.Info(fmt.Sprintf("Found %d resources in resource group %s:\n%s", len(listOfResources.Value), serviceCtx.ResourceID, resources))
 		return armrpc_rest.NewConflictResponse("Resource group is not empty and cannot be deleted"), nil
 	}
 
@@ -80,13 +74,13 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 		return r, err
 	}
 
-	if err := r.StorageClient().Delete(ctx, resourceID.String()); err != nil {
+	if err := r.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err
 	}
-	logger.Info(fmt.Sprintf("Delete resource group %s successfully", resourceID))
+	logger.Info(fmt.Sprintf("Delete resource group %s successfully", serviceCtx.ResourceID))
 	return rest.NewOKResponse(nil), nil
 }
 
