@@ -77,15 +77,15 @@ var workspaceCmd = NewWorkspaceCommand()
 var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
-func prettyPrintRPError(err error) string {
+func prettyPrintRPError(err error) (string, bool) {
 	if new := clientv2.TryUnfoldResponseError(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
-			return m
+			return m, true
 		}
 	}
 
-	return err.Error()
+	return err.Error(), false
 }
 
 func prettyPrintJSON(o any) (string, error) {
@@ -121,7 +121,11 @@ func Execute() {
 		span.End()
 		os.Exit(1)
 	} else if err != nil {
-		fmt.Println("Error:", prettyPrintRPError(err))
+		errMessage, ok := prettyPrintRPError(err)
+		fmt.Println("Error:", errMessage)
+		if ok { // there was a RP esponse error, so we can log traceId
+			fmt.Println("TraceId:", span.SpanContext().TraceID().String())
+		}
 		span.End()
 		os.Exit(1)
 	}
