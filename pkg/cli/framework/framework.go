@@ -7,6 +7,7 @@ package framework
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -131,11 +132,15 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			friendlyErr, ok := (err).(*cli.FriendlyError)
 			if !ok {
-				friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors
+				fmt.Print("not ok")
 			}
-			friendlyErr.DisableTraceId = true
-			err = friendlyErr
-			return err
+			/*
+				if !ok {
+					friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors
+				}*/
+			//friendlyErr.DisableTraceId = true
+
+			return friendlyErr
 		}
 
 		err = runner.Run(cmd.Context())
