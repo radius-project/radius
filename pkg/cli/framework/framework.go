@@ -125,7 +125,8 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
 		if err != nil {
-			return &cli.FriendlyError{Message: "Error validating command: " + err.Error()}
+			return &cli.FriendlyError{Message: "Error validating command: " + err.Error(),
+				DisableTraceId: true}
 		}
 
 		err = runner.Run(cmd.Context())
