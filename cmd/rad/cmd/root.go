@@ -26,7 +26,6 @@ import (
 	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
-	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
@@ -58,12 +57,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-)
-
-const (
-	ServiceName      string = "cli"
-	TracerName       string = "cli"
-	workspaceCommand string = "rad workspace"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -110,7 +103,7 @@ func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
 	shutdown, err := trace.InitTracer(trace.Options{
-		ServiceName: ServiceName,
+		ServiceName: "cli",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -119,26 +112,26 @@ func Execute() {
 		_ = shutdown(ctx)
 	}()
 
-	tr := otel.Tracer(TracerName)
-	command := "rad "
-	for i := 1; i < len(os.Args); i++ {
-		command = command + " " + os.Args[i]
-	}
-
-	ctx, span := tr.Start(ctx, command)
+	tr := otel.Tracer("cli")
+	ctx, span := tr.Start(ctx, "cli")
 	defer span.End()
+
 	err = RootCmd.ExecuteContext(ctx)
 
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
-		friendlyErr := err.(*cli.FriendlyError)
-		if !(*friendlyErr).DisableTraceId && !strings.Contains(command, workspaceCommand) {
+
+		fe, _ := err.(*cli.FriendlyError)
+		if fe.DisableTraceId == false {
 			fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
 		}
 		os.Exit(1)
 	} else if err != nil {
+
 		fmt.Println("Error:", prettyPrintRPError(err))
-		fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
+
+		fmt.Printf(" \ntraceId is %s", span.SpanContext().TraceID().String())
+
 		os.Exit(1)
 	}
 
@@ -220,9 +213,6 @@ func initSubCommands() {
 
 	envShowCmd, _ := env_show.NewCommand(framework)
 	envCmd.AddCommand(envShowCmd)
-
-	envUpdateCmd, _ := env_update.NewCommand(framework)
-	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)

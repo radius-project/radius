@@ -7,10 +7,7 @@ package framework
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
@@ -25,8 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/spf13/cobra"
 )
-
-const workSpaceCmdUsage = "workspace"
 
 // Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
@@ -121,7 +116,6 @@ func (i *Impl) GetSetupInterface() setup.Interface {
 	return i.SetupInterface
 }
 
-//go:generate mockgen -destination=./mock_framework.go -package=framework -self_package github.com/project-radius/radius/pkg/cli/framework github.com/project-radius/radius/pkg/cli/framework Runner
 type Runner interface {
 	Validate(cmd *cobra.Command, args []string) error
 	Run(ctx context.Context) error
@@ -130,31 +124,9 @@ type Runner interface {
 func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
-		// disable trace id for friendly errors from cli validation
 		if err != nil {
-			var cliErr *CLIError
-			ok := errors.As(err, &cliErr)
-			if ok {
-				fmt.Print("ok")
-			}
-
-			friendlyErr, ok := (err).(*cli.FriendlyError)
-			if !ok {
-				fmt.Print("not ok")
-			}
-
-			ok = errors.As(friendlyErr, &cliErr)
-			if ok {
-				fmt.Print("ok")
-			}
-
-			/*
-				if !ok {
-					friendlyErr = &cli.FriendlyError{Message: err.Error()} //all validation errors can be wrapped in friendly error since they are expected errors
-				}*/
-			//friendlyErr.DisableTraceId = true
-
-			return friendlyErr
+			return &cli.FriendlyError{Message: "Error validating command: " + err.Error(),
+				DisableTraceId: true}
 		}
 
 		err = runner.Run(cmd.Context())
@@ -164,12 +136,4 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 
 		return nil
 	}
-}
-
-type CLIError struct {
-	v1.ErrorResponse
-}
-
-func (err *CLIError) Error() string {
-	return fmt.Sprintf("code %v: err %v", err.ErrorResponse.Error.Code, err.ErrorResponse.Error.Message)
 }
