@@ -127,13 +127,10 @@ func Execute() {
 		}
 		os.Exit(1)
 	} else if err != nil {
-		fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
 
 		fmt.Println("Error:", prettyPrintRPError(err))
 
-		if new := clientv2.TryUnfoldResponseError(err); new != nil {
-			fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
-		}
+		fmt.Printf(" \ntraceId is %s", span.SpanContext().TraceID().String())
 
 		os.Exit(1)
 	}
