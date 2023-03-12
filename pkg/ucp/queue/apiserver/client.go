@@ -317,8 +317,11 @@ func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
 
 	result := &v1alpha1.QueueMessage{}
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		fmt.Printf("Finishing Message - OperationID - %s\n", msg.ID)
 		getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: msg.ID}, result)
 		if getErr != nil {
+			fmt.Printf("Finishing Message - Get OperationID - %s\n", msg.ID)
+			fmt.Printf("Finishing Message - Get Error - %s\n", getErr.Error())
 			return getErr
 		}
 
@@ -328,8 +331,13 @@ func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
 				ResourceVersion: &result.ResourceVersion,
 			},
 		}
+		fmt.Printf("Finishing Message - Delete OperationID - %s\n", msg.ID)
 		return c.client.Delete(ctx, result, options)
 	})
+
+	if retryErr != nil {
+		fmt.Printf("Finishing Message - OperationID - %s - Err: %s\n", msg.ID, retryErr.Error())
+	}
 
 	return retryErr
 }

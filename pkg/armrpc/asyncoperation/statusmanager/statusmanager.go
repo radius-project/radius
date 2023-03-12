@@ -113,13 +113,16 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 }
 
 func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error) {
+	fmt.Printf("Get OperationStatus with operationID: %s\n", operationID.String())
 	obj, err := aom.storeClient.Get(ctx, aom.operationStatusResourceID(id, operationID))
 	if err != nil {
+		fmt.Printf("Get OperationStatus with operationID - %s - Error: %s\n", operationID.String(), err.Error())
 		return nil, err
 	}
 
 	aos := &Status{}
 	if err := obj.As(&aos); err != nil {
+		fmt.Printf("Get OperationStatus with operationID - %s - Unmarshal Error: %s\n", operationID.String(), err.Error())
 		return nil, err
 	}
 

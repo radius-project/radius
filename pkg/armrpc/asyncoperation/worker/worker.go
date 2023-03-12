@@ -325,6 +325,8 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 		return
 	}
 
+	fmt.Printf("WORKER - %s - Operation Completing - Status - %s\n", req.OperationID, result.ProvisioningState())
+
 	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
 	if err != nil {
 		logger.Error(err, "WORKER - failed to update resource and/or operation status")
@@ -346,6 +348,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 }
 
 func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
+	fmt.Printf("WORKER - %s - Update resource and operation status - END\n", req.OperationID)
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
@@ -373,12 +376,13 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 		return err
 	}
 
-	fmt.Printf("WORKER - %s - Update resource and operation status\n", req.OperationID)
+	fmt.Printf("WORKER - %s - Update resource and operation status - END\n", req.OperationID)
 
 	return nil
 }
 
 func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
+	fmt.Printf("WORKER - %s - Checking if the message is duplicated\n", operationID)
 	rID, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return false, err
@@ -386,14 +390,14 @@ func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.S
 
 	status, err := w.sm.Get(ctx, rID, operationID)
 	if err != nil {
+		fmt.Printf("WORKER - %s - Get Error - %s\n", operationID, err.Error())
 		return false, err
 	}
 
-	if (status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
-		status.LastUpdatedTime.Add(w.options.DeduplicationDuration).After(time.Now().UTC())) ||
+	if status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
+		status.LastUpdatedTime.Add(w.options.DeduplicationDuration).After(time.Now().UTC()) {
 		// This means that this message has already been processed
 		// TODO: Should we try if the status is Failed or Cancelled?
-		status.Status.IsTerminal() {
 		return true, nil
 	}
 
