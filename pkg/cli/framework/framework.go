@@ -125,12 +125,8 @@ func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := runner.Validate(cmd, args)
 		if err != nil {
-			friendlyErr, typeErr := err.(*cli.FriendlyError) 
-			if typeErr != nil{ // did not receive a friendly error. But all validation errors are expected and can be friendly
-				friendlyErr = &cli.FriendlyError{Message: "Error validating command: " + err.Error(),
-			}
-			friendlyErr.DisableTraceId = true
-			return friendlyErr
+			return &cli.FriendlyError{Message: "Error validating command: " + err.Error(),
+				DisableTraceId: true}
 		}
 
 		err = runner.Run(cmd.Context())
