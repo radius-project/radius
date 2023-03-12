@@ -68,6 +68,11 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
+const (
+	CliServiceName string = "cli"
+	TracerName     string = "cli"
+)
+
 var applicationCmd = NewAppCommand()
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
@@ -103,7 +108,7 @@ func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
 	shutdown, err := trace.InitTracer(trace.Options{
-		ServiceName: "cli",
+		ServiceName: CliServiceName,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -112,26 +117,25 @@ func Execute() {
 		_ = shutdown(ctx)
 	}()
 
-	tr := otel.Tracer("cli")
-	ctx, span := tr.Start(ctx, "cli")
+	tr := otel.Tracer(TracerName)
+	spanName := "rad "
+	if len(os.Args) > 1 {
+		spanName += strings.Join(os.Args[1:], " ")
+	}
+
+	ctx, span := tr.Start(ctx, spanName)
 	defer span.End()
-
 	err = RootCmd.ExecuteContext(ctx)
-
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
-
-		fe, _ := err.(*cli.FriendlyError)
-		if fe.DisableTraceId == false {
+		friendlyErr, _ := err.(*cli.FriendlyError)
+		if !friendlyErr.DisableTraceId {
 			fmt.Printf("traceId is %s", span.SpanContext().TraceID().String())
 		}
 		os.Exit(1)
 	} else if err != nil {
-
 		fmt.Println("Error:", prettyPrintRPError(err))
-
 		fmt.Printf(" \ntraceId is %s", span.SpanContext().TraceID().String())
-
 		os.Exit(1)
 	}
 
