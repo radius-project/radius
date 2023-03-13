@@ -15,6 +15,8 @@ import (
 	"os"
 	"strings"
 
+	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
+
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -218,6 +220,9 @@ func initSubCommands() {
 
 	envShowCmd, _ := env_show.NewCommand(framework)
 	envCmd.AddCommand(envShowCmd)
+
+	envUpdateCmd, _ := env_update.NewCommand(framework)
+	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
