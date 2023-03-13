@@ -20,7 +20,7 @@ const (
 	appNamespace  = "app-default"
 	envResourceId = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0"
 	appResourceId = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/app0"
-	azureScope    = "/subscriptions/testSubs/resourceGroups/testRG"
+	azureScope    = "/subscriptions/test-sub/resourceGroups/testRG"
 	awsScope      = "/planes/aws/aws/accounts/000/regions/cool-region"
 )
 
@@ -113,7 +113,7 @@ func Test_InvalidApplicationError(t *testing.T) {
 			},
 		},
 	}
-	// Invalid app model
+	// Invalid app model (should have KubernetesCompute field)
 	appResource := model.ApplicationResource{
 		Properties: &model.ApplicationProperties{
 			Status: &model.ResourceStatus{
