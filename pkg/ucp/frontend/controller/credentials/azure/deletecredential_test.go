@@ -7,7 +7,6 @@ package azure
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -101,16 +100,6 @@ func Test_Credential_Delete(t *testing.T) {
 			fn:         setupFailedCredentialDeleteFromStorageMocks,
 			expected:   nil,
 			err:        errors.New("Failed Storage Deletion"),
-		},
-		{
-			name:       "test_invalid_url_credential_delete",
-			url:        "/planes/azure/azurecloud/providers/System.Azure//default?api-version=2022-09-01-privatepreview",
-			headerfile: testHeaderFileWithInvalidCredential,
-			fn:         setupEmptyMocks,
-			expected: armrpc_rest.NewBadRequestResponse(
-				fmt.Errorf("'%s' is not a valid resource id",
-					"azure/azurecloud/providers/System.Azure//default").Error()),
-			err: nil,
 		},
 	}
 

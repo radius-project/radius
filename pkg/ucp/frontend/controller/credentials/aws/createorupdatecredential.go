@@ -29,7 +29,7 @@ type CreateOrUpdateCredential struct {
 // NewCreateOrUpdateCredential creates a new CreateOrUpdateCredential.
 func NewCreateOrUpdateCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateCredential{
-		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+		Operation: armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.Credential]{
 				RequestConverter:  converter.CredentialDataModelFromVersioned,
 				ResponseConverter: converter.CredentialDataModelToVersioned,

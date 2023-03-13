@@ -7,13 +7,12 @@ package aws
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -101,16 +100,6 @@ func Test_Credential_Delete(t *testing.T) {
 			fn:         setupFailedCredentialDeleteFromStorageMocks,
 			expected:   nil,
 			err:        errors.New("Failed Storage Deletion"),
-		},
-		{
-			name:       "test_invalid_url_credential_delete",
-			url:        "/planes/aws/awscloud/providers/System.AWS//default?api-version=2022-09-01-privatepreview",
-			headerfile: testHeaderFileWithInvalidCredential,
-			fn:         setupEmptyMocks,
-			expected: armrpc_rest.NewBadRequestResponse(
-				fmt.Errorf("'%s' is not a valid resource id",
-					"aws/awscloud/providers/System.AWS//default").Error()),
-			err: nil,
 		},
 	}
 

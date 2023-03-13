@@ -10,15 +10,14 @@ import (
 	"fmt"
 	"net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -36,7 +35,7 @@ type DeleteCredential struct {
 // NewDeleteCredential creates a new DeleteCredential.
 func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeleteCredential{
-		Operation: armrpc_controller.NewOperation(opts.CommonControllerOptions,
+		Operation: armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.Credential]{
 				RequestConverter:  converter.CredentialDataModelFromVersioned,
 				ResponseConverter: converter.CredentialDataModelToVersioned,
@@ -48,15 +47,10 @@ func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error
 }
 
 func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(c.basePath, req.URL.Path)
 	logger := ucplog.FromContextOrDiscard(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	resourceID, err := resources.ParseResource(path)
-	if err != nil {
-		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-	}
-
-	old, etag, err := c.GetResource(ctx, resourceID)
+	old, etag, err := c.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +59,7 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 		return rest.NewNoContentResponse(), nil
 	}
 
-	secretName := credentials.GetSecretName(resourceID)
+	secretName := credentials.GetSecretName(serviceCtx.ResourceID)
 
 	// Delete the credential secret.
 	err = c.secretClient.Delete(ctx, secretName)
@@ -79,13 +73,13 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 		return r, err
 	}
 
-	if err := c.StorageClient().Delete(ctx, resourceID.String()); err != nil {
+	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("Deleted Credential %s successfully", resourceID))
+	logger.Info(fmt.Sprintf("Deleted Credential %s successfully", serviceCtx.ResourceID))
 	return rest.NewOKResponse(nil), nil
 }
