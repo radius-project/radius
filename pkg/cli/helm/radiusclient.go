@@ -15,6 +15,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/project-radius/radius/pkg/cli/aws"
@@ -73,6 +74,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
+	// TODO: refactor this to use the addChartValues function
 	err = addRadiusValues(helmChart, &options)
 	if err != nil {
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
@@ -81,7 +83,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	if len(options.Values) > 0 {
 		err = addChartValues(helmChart, options.Values)
 		if err != nil {
-			return false, fmt.Errorf("failed to set chart args, err: %w, helm output: %s", err, helmOutput.String())
+			return false, fmt.Errorf("failed to set radius chart values, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	}
 
@@ -222,17 +224,15 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 }
 
 func addChartValues(helmChart *chart.Chart, values []string) error {
-	for _, value := range values {
-		chartKeyVal := strings.Split(value, "=")
-		err := addRadiusChartValues(helmChart, chartKeyVal[0], chartKeyVal[1])
-		if err != nil {
-			return err
-		}
+	val := strings.Join(values, ",")
+	err := strvals.ParseInto(val, helmChart.Values)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func addRadiusChartValues(helmChart *chart.Chart, key string, val string) error {
+/*func addRadiusChartValues(helmChart *chart.Chart, key string, val string) error {
 	// ex: global.engine.image = "de:latest" - here, image is the string key in de map whose value is the image name (also string).
 	// we need to construct a map or traverse one that is already existing, until we reach the last (leaf) which is just a key of type string,
 	// pointing to the actual value of type string.
@@ -261,7 +261,7 @@ func addRadiusChartValues(helmChart *chart.Chart, key string, val string) error 
 	}
 	values[leaf] = val
 	return nil
-}
+}*/
 
 func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values

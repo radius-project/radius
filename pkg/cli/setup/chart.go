@@ -24,7 +24,9 @@ type ChartArgs struct {
 	// for display purposes. This is useful when the the actual public IP address of a cluster's ingress
 	// is not a routable IP. This comes up all of the time for a local cluster.
 	PublicEndpointOverride string
-	Values                 []string
+
+	// Values is a list of values to pass to the Helm chart which would be used to override values in the chart.
+	Values []string
 }
 
 var (
