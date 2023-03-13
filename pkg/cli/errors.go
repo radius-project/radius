@@ -13,8 +13,7 @@ import (
 // directly for the user. Use this for error conditions that are "expected" like file
 // conflicts or missing data.
 type FriendlyError struct {
-	Message        string
-	DisableTraceId bool
+	Message string
 }
 
 func (fe *FriendlyError) Error() string {
