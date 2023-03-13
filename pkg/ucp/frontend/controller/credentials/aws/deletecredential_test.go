@@ -120,7 +120,7 @@ func Test_Credential_Delete(t *testing.T) {
 	}
 }
 
-func setupCredentialDeleteSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupCredentialMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
 	datamodelCredential := datamodel.Credential{
 		BaseResource: v1.BaseResource{},
 		Properties: &datamodel.CredentialResourceProperties{
@@ -137,6 +137,10 @@ func setupCredentialDeleteSuccessMocks(mockStorageClient store.MockStorageClient
 				Data: &datamodelCredential,
 			}, nil
 		}).Times(1)
+}
+
+func setupCredentialDeleteSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+	setupCredentialMocks(mockStorageClient, mockSecretClient)
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 }
@@ -150,83 +154,25 @@ func setupCredentialExistenceCheckFailureMocks(mockStorageClient store.MockStora
 }
 
 func setupNonExistentSecretDeleteMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	datamodelCredential := datamodel.Credential{
-		BaseResource: v1.BaseResource{},
-		Properties: &datamodel.CredentialResourceProperties{
-			Kind: datamodel.AWSCredentialKind,
-		},
-	}
-
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return &store.Object{
-				Metadata: store.Metadata{
-					ID: datamodelCredential.TrackedResource.ID,
-				},
-				Data: &datamodelCredential,
-			}, nil
-		}).Times(1)
+	setupCredentialMocks(mockStorageClient, mockSecretClient)
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(&secret.ErrNotFound{}).Times(1)
 }
 
 func setupSecretDeleteFailureMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	datamodelCredential := datamodel.Credential{
-		BaseResource: v1.BaseResource{},
-		Properties: &datamodel.CredentialResourceProperties{
-			Kind: datamodel.AWSCredentialKind,
-		},
-	}
+	setupCredentialMocks(mockStorageClient, mockSecretClient)
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return &store.Object{
-				Metadata: store.Metadata{
-					ID: datamodelCredential.TrackedResource.ID,
-				},
-				Data: &datamodelCredential,
-			}, nil
-		}).Times(1)
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Failed secret deletion")).Times(1)
 }
 
 func setupNonExistingCredentialDeleteFromStorageMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	datamodelCredential := datamodel.Credential{
-		BaseResource: v1.BaseResource{},
-		Properties: &datamodel.CredentialResourceProperties{
-			Kind: datamodel.AWSCredentialKind,
-		},
-	}
+	setupCredentialMocks(mockStorageClient, mockSecretClient)
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return &store.Object{
-				Metadata: store.Metadata{
-					ID: datamodelCredential.TrackedResource.ID,
-				},
-				Data: &datamodelCredential,
-			}, nil
-		}).Times(1)
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.ErrNotFound{}).Times(1)
 }
 
 func setupFailedCredentialDeleteFromStorageMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	datamodelCredential := datamodel.Credential{
-		BaseResource: v1.BaseResource{},
-		Properties: &datamodel.CredentialResourceProperties{
-			Kind: datamodel.AWSCredentialKind,
-		},
-	}
-
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return &store.Object{
-				Metadata: store.Metadata{
-					ID: datamodelCredential.TrackedResource.ID,
-				},
-				Data: &datamodelCredential,
-			}, nil
-		}).Times(1)
+	setupCredentialMocks(mockStorageClient, mockSecretClient)
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Failed Storage Deletion")).Times(1)
 }
