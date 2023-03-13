@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var (
@@ -45,9 +48,33 @@ type Request struct {
 }
 
 // Timeout gets the async operation timeout duration.
-func (r Request) Timeout() time.Duration {
+func (r *Request) Timeout() time.Duration {
 	if r.OperationTimeout == nil {
 		return DefaultAsyncOperationTimeout
 	}
 	return *r.OperationTimeout
+}
+
+// ARMRequestContext creates the ARM request context from async operation request.
+func (r *Request) ARMRequestContext() (*v1.ARMRequestContext, error) {
+	rID, err := resources.Parse(r.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcCtx := &v1.ARMRequestContext{
+		ResourceID:    rID,
+		CorrelationID: r.CorrelationID,
+		OperationID:   r.OperationID,
+		OperationType: r.OperationType,
+		Traceparent:   r.TraceparentID,
+
+		HomeTenantID:   r.HomeTenantID,
+		ClientObjectID: r.ClientObjectID,
+
+		APIVersion:     r.APIVersion,
+		AcceptLanguage: r.AcceptLanguage,
+	}
+
+	return rpcCtx, nil
 }
