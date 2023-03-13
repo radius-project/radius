@@ -29,7 +29,6 @@ var _ armrpc_controller.Controller = (*DeleteCredential)(nil)
 type DeleteCredential struct {
 	armrpc_controller.Operation[*datamodel.Credential, datamodel.Credential]
 	secretClient secret.Client
-	basePath     string
 }
 
 // NewDeleteCredential creates a new DeleteCredential.
@@ -42,7 +41,6 @@ func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error
 			},
 		),
 		secretClient: opts.SecretClient,
-		basePath:     opts.BasePath,
 	}, nil
 }
 

@@ -166,14 +166,6 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 	}, map[string]string{"ETag": ""})
 }
 
-func getInvalidRequestResponse() armrpc_rest.Response {
-	err := v1.ErrModelConversion{
-		PropertyName: "$.properties",
-		ValidValue:   "not nil",
-	}
-	return armrpc_rest.NewBadRequestResponse(err.Error())
-}
-
 func setupCredentialSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 		return nil, &store.ErrNotFound{}

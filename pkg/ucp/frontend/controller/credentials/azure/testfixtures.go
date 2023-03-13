@@ -6,7 +6,6 @@
 package azure
 
 var (
-	testHeaderFile                      = "requestheaders20220901privatepreview.json"
-	testHeaderFileWithBadAPIVersion     = "requestheaders20220901privatepreview_badapiversion.json"
-	testHeaderFileWithInvalidCredential = "requestheaders20220901privatepreview_invalidcredential.json"
+	testHeaderFile                  = "requestheaders20220901privatepreview.json"
+	testHeaderFileWithBadAPIVersion = "requestheaders20220901privatepreview_badapiversion.json"
 )
