@@ -90,11 +90,11 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 		idx := strings.Index(out, "Error: {")
 		idxTraceId := strings.Index(out, "traceId")
 		var actualErr string
-		if idxTraceId == -1 {
-			actualErr = "{\"error\": " + out[idx+7:] + "}"
-		} else {
-			actualErr = "{\"error\": " + out[idx+7:idxTraceId-1] + "}"
+
+		if idxTraceId < 0 {
+			idxTraceId = len(out)
 		}
+		actualErr = "{\"error\": " + out[idx+7:idxTraceId-1] + "}"
 
 		if err := json.Unmarshal([]byte(string(actualErr)), &errResponse); err != nil {
 			return err
