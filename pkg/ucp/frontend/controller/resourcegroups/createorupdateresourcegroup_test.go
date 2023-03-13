@@ -81,7 +81,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 	versionedResourceGroup := v20220901privatepreview.ResourceGroupResource{
 		ID:       &testResourceGroupID,
 		Name:     &testResourceGroupName,
-		Type:     to.Ptr("System.Resources/resourceGroups"),
+		Type:     to.Ptr(ResourceGroupType),
 		Location: to.Ptr("West US"),
 		Tags:     *to.Ptr(map[string]*string{}),
 	}

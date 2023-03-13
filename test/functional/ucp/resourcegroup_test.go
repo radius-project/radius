@@ -17,6 +17,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/to"
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +46,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 			ID:       to.Ptr(rgID),
 			Name:     to.Ptr("test-RG"),
 			Tags:     map[string]*string{},
-			Type:     to.Ptr("System.Resources/resourceGroups"),
+			Type:     to.Ptr(resourcegroups.ResourceGroupType),
 			Location: to.Ptr(v1.LocationGlobal),
 		}
 		require.Equal(t, http.StatusOK, statusCode)

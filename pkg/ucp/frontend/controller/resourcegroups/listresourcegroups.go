@@ -25,7 +25,6 @@ var _ armrpc_controller.Controller = (*ListResourceGroups)(nil)
 // ListResourceGroups is the controller implementation to get the list of UCP resource groups.
 type ListResourceGroups struct {
 	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
-	basePath string
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
@@ -37,7 +36,6 @@ func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, err
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
 			},
 		),
-		basePath: opts.BasePath,
 	}, nil
 }
 

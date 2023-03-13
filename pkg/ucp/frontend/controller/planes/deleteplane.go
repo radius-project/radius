@@ -24,7 +24,6 @@ var _ armrpc_controller.Controller = (*DeletePlane)(nil)
 // DeletePlane is the controller implementation to delete a UCP Plane.
 type DeletePlane struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
-	basePath string
 }
 
 // NewDeletePlane creates a new DeletePlane.
@@ -36,7 +35,6 @@ func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 				ResponseConverter: converter.PlaneDataModelToVersioned,
 			},
 		),
-		basePath: opts.BasePath,
 	}, nil
 }
 

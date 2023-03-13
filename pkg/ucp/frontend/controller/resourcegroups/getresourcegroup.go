@@ -23,7 +23,6 @@ var _ armrpc_controller.Controller = (*GetResourceGroup)(nil)
 // GetResourceGroup is the controller implementation to get the details of a UCP resource group
 type GetResourceGroup struct {
 	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
-	basePath string
 }
 
 // NewGetResourceGroup creates a new GetResourceGroup.
@@ -35,7 +34,6 @@ func NewGetResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
 			},
 		),
-		basePath: opts.BasePath,
 	}, nil
 }
 

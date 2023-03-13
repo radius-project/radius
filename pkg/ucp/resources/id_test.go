@@ -1021,7 +1021,7 @@ func Test_Type(t *testing.T) {
 		{
 			desc:     "Resourcegroup resource",
 			id:       "/planes/radius/local/resourceGroups/rg1",
-			expected: "System.Resources/resourceGroups",
+			expected: ResourceGroupType,
 		},
 		{
 			desc:     "LinkRP resource",

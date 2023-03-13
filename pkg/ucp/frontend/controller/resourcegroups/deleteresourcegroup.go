@@ -26,7 +26,6 @@ var _ armrpc_controller.Controller = (*DeleteResourceGroup)(nil)
 // DeleteResourceGroup is the controller implementation to delete a UCP resource group.
 type DeleteResourceGroup struct {
 	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
-	basePath string
 }
 
 // NewDeleteResourceGroup creates a new DeleteResourceGroup.
@@ -38,7 +37,6 @@ func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, er
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
 			},
 		),
-		basePath: opts.BasePath,
 	}, nil
 }
 

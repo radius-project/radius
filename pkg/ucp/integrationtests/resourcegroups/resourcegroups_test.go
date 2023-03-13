@@ -17,7 +17,7 @@ const (
 	radiusPlaneRequestFixture  = "../planes/testdata/radiusplane_v20220901privatepreview_requestbody.json"
 	radiusPlaneResponseFixture = "../planes/testdata/radiusplane_v20220901privatepreview_responsebody.json"
 
-	resourceGroupCollectionURL          = "/planes/radius/local/resourcegroups?api-version=2022-09-01-privatepreview"
+	resourceGroupCollectionURL          = "/planes/radius/local/resourceGroups?api-version=2022-09-01-privatepreview"
 	resourceGroupResourceURL            = "/planes/radius/local/resourcegroups/test-rg?api-version=2022-09-01-privatepreview"
 	resourceGroupRequestFixture         = "testdata/resourcegroup_v20220901privatepreview_requestbody.json"
 	resourceGroupResponseFixture        = "testdata/resourcegroup_v20220901privatepreview_responsebody.json"
