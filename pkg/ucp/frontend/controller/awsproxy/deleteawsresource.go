@@ -43,21 +43,14 @@ func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, erro
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
-	_, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &serviceCtx.ResourceType,
-		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-	})
-	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNoContentResponse(), nil
-	} else if err != nil {
-		return awsclient.HandleAWSError(err)
-	}
-
 	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if err != nil {
+		if awsclient.IsAWSResourceNotFound(err) {
+			return armrpc_rest.NewNoContentResponse(), nil
+		}
 		return awsclient.HandleAWSError(err)
 	}
 

@@ -79,22 +79,15 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	_, err = p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &serviceCtx.ResourceType,
-		Identifier: aws.String(awsResourceIdentifier),
-	})
-	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNoContentResponse(), nil
-	} else if err != nil {
-		return awsclient.HandleAWSError(err)
-	}
-
 	logger.Info("Deleting resource", "resourceType", serviceCtx.ResourceType, "resourceID", awsResourceIdentifier)
 	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   &serviceCtx.ResourceType,
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if err != nil {
+		if awsclient.IsAWSResourceNotFound(err) {
+			return armrpc_rest.NewNoContentResponse(), nil
+		}
 		return awsclient.HandleAWSError(err)
 	}
 

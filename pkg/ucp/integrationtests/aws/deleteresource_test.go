@@ -9,7 +9,6 @@ package aws
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -25,23 +24,6 @@ import (
 
 func Test_DeleteAWSResource(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
-
-	getResponseBody := map[string]any{
-		"RetentionPeriodHours": 178,
-		"ShardCount":           3,
-	}
-	getResponseBodyBytes, err := json.Marshal(getResponseBody)
-	require.NoError(t, err)
-
-	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		output := cloudcontrol.GetResourceOutput{
-			ResourceDescription: &types.ResourceDescription{
-				Identifier: to.Ptr(testAWSResourceName),
-				Properties: to.Ptr(string(getResponseBodyBytes)),
-			},
-		}
-		return &output, nil
-	})
 
 	cloudcontrolClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
 		output := cloudcontrol.DeleteResourceOutput{

@@ -36,22 +36,6 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]any{
-		"Name":                 testResource.ResourceName,
-		"RetentionPeriodHours": 178,
-		"ShardCount":           3,
-	}
-	getResponseBodyBytes, err := json.Marshal(getResponseBody)
-	require.NoError(t, err)
-
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudcontrol.GetResourceOutput{
-			ResourceDescription: &types.ResourceDescription{
-				Identifier: aws.String(testResource.ResourceName),
-				Properties: aws.String(string(getResponseBodyBytes)),
-			},
-		}, nil)
-
 	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
@@ -110,7 +94,7 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
@@ -180,20 +164,6 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
-
-	getResponseBody := map[string]any{
-		"ClusterIdentifier": clusterIdentifierValue,
-		"Account":           accountValue,
-	}
-	getResponseBodyBytes, err := json.Marshal(getResponseBody)
-	require.NoError(t, err)
-
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudcontrol.GetResourceOutput{
-			ResourceDescription: &types.ResourceDescription{
-				Properties: aws.String(string(getResponseBodyBytes)),
-			},
-		}, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   aws.String(testResource.AWSResourceType),

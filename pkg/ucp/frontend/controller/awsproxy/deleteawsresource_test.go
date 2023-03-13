@@ -5,7 +5,6 @@
 package awsproxy
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,23 +24,7 @@ import (
 
 func Test_DeleteAWSResource(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
-
-	getResponseBody := map[string]any{
-		"RetentionPeriodHours": 178,
-		"ShardCount":           3,
-	}
-	getResponseBodyBytes, err := json.Marshal(getResponseBody)
-	require.NoError(t, err)
-
 	testOptions := setupTest(t)
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudcontrol.GetResourceOutput{
-			ResourceDescription: &types.ResourceDescription{
-				Identifier: aws.String(testResource.ResourceName),
-				Properties: aws.String(string(getResponseBodyBytes)),
-			},
-		}, nil)
-
 	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
@@ -85,7 +68,13 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.DeleteResourceOutput{
+			ProgressEvent: &types.ProgressEvent{
+				OperationStatus: types.OperationStatusSuccess,
+				RequestToken:    aws.String(testAWSRequestToken),
+			},
+		}, nil).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
