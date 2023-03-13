@@ -25,13 +25,9 @@ type ChartArgs struct {
 	// is not a routable IP. This comes up all of the time for a local cluster.
 	PublicEndpointOverride string
 
-	// Values is a list of values to pass to the Helm chart which would be used to override values in the chart.
-	Values []string
+	// Values is a string consisting of list of values to pass to the Helm chart which would be used to override values in the chart.
+	Values string
 }
-
-var (
-	values []string
-)
 
 // RegisterPersistentChartArgs registers the CLI arguments used for our Helm chart.
 func RegisterPersistentChartArgs(cmd *cobra.Command) {
@@ -44,7 +40,7 @@ func RegisterPersistentChartArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("ucp-image", "", "Specify the UCP image to use")
 	cmd.PersistentFlags().String("ucp-tag", "", "Specify the UCP tag to use")
 	cmd.PersistentFlags().String("public-endpoint-override", "", "Specify the public IP address or hostname of the Kubernetes cluster. It must be in the format: <hostname>[:<port>]. Ex: 'localhost:9000'")
-	cmd.PersistentFlags().StringArrayVar(&values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.PersistentFlags().String("set", "", "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 }
 
 // ParseChartArgs the arguments we provide for installation of the Helm chart.
@@ -73,7 +69,7 @@ func ParseChartArgs(cmd *cobra.Command) (*ChartArgs, error) {
 	if err != nil {
 		return nil, err
 	}
-	values, err := cmd.Flags().GetStringArray("set")
+	values, err := cmd.Flags().GetString("set")
 	if err != nil {
 		return nil, err
 	}

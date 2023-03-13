@@ -45,7 +45,7 @@ type RadiusOptions struct {
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
 	AWSProvider            *aws.Provider
-	Values                 []string
+	Values                 string
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
@@ -80,8 +80,8 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	if len(options.Values) > 0 {
-		err = addChartValues(helmChart, options.Values)
+	if options.Values != "" {
+		err := strvals.ParseInto(options.Values, helmChart.Values)
 		if err != nil {
 			return false, fmt.Errorf("failed to set radius chart values, err: %w, helm output: %s", err, helmOutput.String())
 		}
@@ -221,15 +221,6 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	installClient.Timeout = installTimeout
 	installClient.Recreate = true //force recreating radius pods on adding or modfying azprovider
 	return runUpgrade(installClient, releaseName, helmChart)
-}
-
-func addChartValues(helmChart *chart.Chart, values []string) error {
-	val := strings.Join(values, ",")
-	err := strvals.ParseInto(val, helmChart.Values)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
