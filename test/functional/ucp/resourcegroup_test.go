@@ -17,6 +17,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/to"
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +46,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 			ID:       to.Ptr(rgID),
 			Name:     to.Ptr("test-RG"),
 			Tags:     map[string]*string{},
-			Type:     to.Ptr("System.Resources/resourceGroups"),
+			Type:     to.Ptr(resourcegroups.ResourceGroupType),
 			Location: to.Ptr(v1.LocationGlobal),
 		}
 		require.Equal(t, http.StatusOK, statusCode)
@@ -72,7 +73,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 		require.NoError(t, err, "failed to marshal resource group")
 	}
 
-	createRequest, err := http.NewRequest(
+	createRequest, err := NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(b))
@@ -86,7 +87,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 }
 
 func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.ResourceGroupResourceList {
-	listRgsRequest, err := http.NewRequest(
+	listRgsRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -110,7 +111,7 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 }
 
 func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (v20220901privatepreview.ResourceGroupResource, int) {
-	getRgRequest, err := http.NewRequest(
+	getRgRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -133,7 +134,7 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 }
 
 func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) int {
-	deleteRgRequest, err := http.NewRequest(
+	deleteRgRequest, err := NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,

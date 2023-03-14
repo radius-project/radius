@@ -78,15 +78,13 @@ func Test_ResourceGroup_GET_Found(t *testing.T) {
 }
 
 func Test_ResourceGroup_LIST(t *testing.T) {
-	t.Skip("This functionality is currently broken. See https://github.com/project-radius/radius/issues/4878")
-
 	server := testserver.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
 
 	response := server.MakeFixtureRequest("PUT", resourceGroupResourceURL, resourceGroupRequestFixture)
-	response.EqualsFixture(200, radiusPlaneResponseFixture)
+	response.EqualsFixture(200, resourceGroupResponseFixture)
 
 	response = server.MakeRequest("GET", resourceGroupCollectionURL, nil)
 	response.EqualsFixture(200, resourceGroupListResponseFixture)

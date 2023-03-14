@@ -24,7 +24,6 @@ var _ armrpc_controller.Controller = (*ListPlanes)(nil)
 // ListPlanes is the controller implementation to get the list of UCP planes.
 type ListPlanes struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
-	basePath string
 }
 
 // NewListPlanes creates a new ListPlanes.
@@ -36,7 +35,6 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 				ResponseConverter: converter.PlaneDataModelToVersioned,
 			},
 		),
-		basePath: opts.BasePath,
 	}, nil
 }
 

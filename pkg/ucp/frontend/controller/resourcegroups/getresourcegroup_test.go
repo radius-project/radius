@@ -20,13 +20,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_GetResourceGroupByID(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
@@ -62,16 +59,16 @@ func Test_GetResourceGroupByID(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodGet, path, nil)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 
 	require.NoError(t, err)
-	expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
+	expectedResponse := armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.ResourceGroupResource{
 		ID:       &testResourceGroupID,
 		Name:     &testResourceGroupName,
 		Type:     to.Ptr(ResourceGroupType),
 		Location: to.Ptr(v1.LocationGlobal),
 		Tags:     *to.Ptr(map[string]*string{}),
-	}
-	expectedResponse := armrpc_rest.NewOKResponse(&expectedResourceGroup)
+	}, map[string]string{"ETag": ""})
 	require.Equal(t, expectedResponse, actualResponse)
 }

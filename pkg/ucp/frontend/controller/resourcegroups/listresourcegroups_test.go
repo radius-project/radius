@@ -20,13 +20,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_ListResourceGroups(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
@@ -72,6 +69,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	})
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 

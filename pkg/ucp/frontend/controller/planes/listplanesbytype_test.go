@@ -14,14 +14,11 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ListPlanesByType(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
@@ -50,6 +47,7 @@ func Test_ListPlanesByType(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)

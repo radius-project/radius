@@ -23,6 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
@@ -122,12 +123,15 @@ func Start(t *testing.T) *TestServer {
 	require.NoError(t, err)
 
 	router := mux.NewRouter()
-	server := httptest.NewUnstartedServer(router)
+
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
+
+	app := http.Handler(router)
+	app = middleware.NormalizePath(app)
+	server := httptest.NewUnstartedServer(app)
 	server.Config.BaseContext = func(l net.Listener) context.Context {
 		return ctx
 	}
-	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
-
 	err = api.Register(ctx, router, controller.Options{
 		Options: armrpc_controller.Options{
 			DataProvider:  dataprovider.NewStorageProvider(storageOptions),
