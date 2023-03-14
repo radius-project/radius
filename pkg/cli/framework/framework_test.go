@@ -15,32 +15,31 @@ import (
 )
 
 func Test_RunCommand(t *testing.T) {
-
 	validationErr := errors.New("validation error")
 	runErr := errors.New("run error")
 
 	testCases := []struct {
-		testname         string
-		validationResult error
-		runResult        error
-		expectedResult   error
+		testname      string
+		validationErr error
+		runErr        error
+		expectedErr   error
 	}{
 		{
-			testname:         "test-run-command-pass",
-			validationResult: nil,
-			runResult:        nil,
-			expectedResult:   nil,
+			testname:      "test-run-command-pass",
+			validationErr: nil,
+			runErr:        nil,
+			expectedErr:   nil,
 		},
 		{
-			testname:         "test-run-command-validation-fail",
-			validationResult: validationErr,
-			expectedResult:   validationErr,
+			testname:      "test-run-command-validation-fail",
+			validationErr: validationErr,
+			expectedErr:   validationErr,
 		},
 		{
-			testname:         "test-run-command-run-fail",
-			validationResult: nil,
-			runResult:        runErr,
-			expectedResult:   runErr,
+			testname:      "test-run-command-run-fail",
+			validationErr: nil,
+			runErr:        runErr,
+			expectedErr:   runErr,
 		},
 	}
 
@@ -57,15 +56,15 @@ func Test_RunCommand(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testname, func(t *testing.T) {
-			runner.EXPECT().Validate(gomock.Any(), gomock.Any()).Times(1).Return(tt.validationResult)
-			if tt.validationResult == nil {
-				runner.EXPECT().Run(gomock.Any()).Times(1).Return(tt.runResult)
+			runner.EXPECT().Validate(gomock.Any(), gomock.Any()).Times(1).Return(tt.validationErr)
+			if tt.validationErr == nil {
+				runner.EXPECT().Run(gomock.Any()).Times(1).Return(tt.runErr)
 			}
 
 			fn := RunCommand(runner)
 			err := fn(testCmd, testArgs)
 
-			require.Equal(t, tt.expectedResult, err)
+			require.Equal(t, tt.expectedErr, err)
 		})
 	}
 }

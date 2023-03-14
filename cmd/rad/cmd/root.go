@@ -14,8 +14,6 @@ import (
 	"os"
 	"strings"
 
-	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
-
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -28,6 +26,7 @@ import (
 	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
+	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
