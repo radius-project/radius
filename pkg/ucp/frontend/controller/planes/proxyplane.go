@@ -11,7 +11,6 @@ import (
 	http "net/http"
 	"net/url"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -176,7 +175,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	req.Header.Set("X-Forwarded-Proto", httpScheme)
 
 	req.Header.Set(v1.RefererHeader, refererURL.String())
-	logger = logr.FromContextOrDiscard(ctx)
+	logger = ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Referer Header: %s", req.Header.Get(v1.RefererHeader)))
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
