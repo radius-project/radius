@@ -6,6 +6,7 @@
 package framework
 
 import (
+	"errors"
 	"testing"
 
 	gomock "github.com/golang/mock/gomock"
@@ -14,6 +15,35 @@ import (
 )
 
 func Test_RunCommand(t *testing.T) {
+
+	validationErr := errors.New("validation error")
+	runErr := errors.New("run error")
+
+	testCases := []struct {
+		testname         string
+		validationResult error
+		runResult        error
+		expectedResult   error
+	}{
+		{
+			testname:         "test-run-command-pass",
+			validationResult: nil,
+			runResult:        nil,
+			expectedResult:   nil,
+		},
+		{
+			testname:         "test-run-command-validation-fail",
+			validationResult: validationErr,
+			expectedResult:   validationErr,
+		},
+		{
+			testname:         "test-run-command-run-fail",
+			validationResult: nil,
+			runResult:        runErr,
+			expectedResult:   runErr,
+		},
+	}
+
 	ctrl := gomock.NewController(t)
 	runner := NewMockRunner(ctrl)
 	testCmd := &cobra.Command{
@@ -25,11 +55,17 @@ func Test_RunCommand(t *testing.T) {
 	}
 	var testArgs []string
 
-	runner.EXPECT().Validate(gomock.Any(), gomock.Any()).Times(1)
-	runner.EXPECT().Run(gomock.Any()).Times(1)
+	for _, tt := range testCases {
+		t.Run(tt.testname, func(t *testing.T) {
+			runner.EXPECT().Validate(gomock.Any(), gomock.Any()).Times(1).Return(tt.validationResult)
+			if tt.validationResult == nil {
+				runner.EXPECT().Run(gomock.Any()).Times(1).Return(tt.runResult)
+			}
 
-	fn := RunCommand(runner)
-	err := fn(testCmd, testArgs)
+			fn := RunCommand(runner)
+			err := fn(testCmd, testArgs)
 
-	require.NoError(t, err)
+			require.Equal(t, tt.expectedResult, err)
+		})
+	}
 }

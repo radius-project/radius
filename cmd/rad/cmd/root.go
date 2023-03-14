@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -121,27 +120,19 @@ func Execute() {
 	}()
 
 	tr := otel.Tracer(tracerName)
-	var spanName string
-
-	flag.Parse()
-	args := flag.Args()
-	if len(os.Args) > 1 {
-		spanName += args[0] + " " + args[1]
-	}
-
+	spanName := getRootSpanName()
 	ctx, span := tr.Start(ctx, spanName)
 	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
-		fmt.Printf("\ntraceId is %s", span.SpanContext().TraceID().String())
+		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
 		os.Exit(1)
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
-		fmt.Printf(" \ntraceId is %s", span.SpanContext().TraceID().String())
+		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
 		os.Exit(1)
 	}
-
 }
 
 func init() {
@@ -294,4 +285,13 @@ func DirectoryConfigFromContext(ctx context.Context) *config.DirectoryConfig {
 	}
 
 	return holder.DirectoryConfig
+}
+
+func getRootSpanName() string {
+	args := os.Args
+	if len(args) > 1 {
+		return args[0] + " " + args[1]
+	} else {
+		return args[0]
+	}
 }
