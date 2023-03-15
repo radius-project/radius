@@ -41,7 +41,6 @@ func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]st
 
 	// Cumulative Env+App Labels (mergeMap) is now merged with new input map. Existing metaLabels and specLabels are subsequently merged with the result map.
 	mergeMap = labels.Merge(mergeMap, km.Input)
-
 	updMetaMap := labels.Merge(km.CurrObjectMeta, mergeMap)
 	updSpecMap := labels.Merge(km.CurrSpec, mergeMap)
 

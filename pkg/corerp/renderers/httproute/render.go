@@ -111,9 +111,9 @@ func getLabels(ctx context.Context, options renderers.RenderOptions, appIdName s
 	lblMap := &kube.Metadata{
 		CurrObjectMeta: kubernetes.MakeDescriptiveLabels(appIdName, route.Name, route.ResourceTypeName()),
 	}
+
 	envOpts := &options.Environment
 	appOpts := &options.Application
-
 	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
 	appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
 
@@ -138,7 +138,6 @@ func getAnnotations(ctx context.Context, options renderers.RenderOptions, appIdN
 	annMap := &kube.Metadata{}
 	envOpts := &options.Environment
 	appOpts := &options.Application
-
 	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
 	appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
 
