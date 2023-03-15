@@ -111,7 +111,6 @@ func getLabels(ctx context.Context, options renderers.RenderOptions, appIdName s
 	lblMap := &kube.Metadata{
 		ObjectMetadata: kubernetes.MakeDescriptiveLabels(appIdName, route.Name, route.ResourceTypeName()),
 	}
-
 	envOpts := &options.Environment
 	appOpts := &options.Application
 	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
