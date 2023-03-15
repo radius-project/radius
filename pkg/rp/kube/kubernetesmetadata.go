@@ -24,31 +24,29 @@ type Metadata struct {
 	SpecData       map[string]string // Contains labels/annotations that are in the outputresource at the Spec level.
 }
 
+// Merge merges environment, application maps with current values and returns updated metaMap and specMap
 // More info:
 // ObjectMeta: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 // Spec: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
-
-// Merge merges environment, application maps with current values and returns updated metaMap and specMap
 func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]string) {
-	mergeMap := map[string]string{}
+	mergedDataMap := map[string]string{}
 
 	if km.EnvData != nil {
-		mergeMap = km.EnvData
+		mergedDataMap = km.EnvData
 	}
 	if km.AppData != nil {
 		// mergeMap is now updated with merged map of env+app data.
-		mergeMap = labels.Merge(mergeMap, km.AppData)
+		mergedDataMap = labels.Merge(mergedDataMap, km.AppData)
 	}
 
 	// Reject custom user entries that may affect Radius reserved keys.
-	mergeMap = rejectReservedEntries(ctx, mergeMap)
+	mergedDataMap = rejectReservedEntries(ctx, mergedDataMap)
 	km.Input = rejectReservedEntries(ctx, km.Input)
 
 	// Cumulative Env+App Labels (mergeMap) is now merged with new input map. Existing metaLabels and specLabels are subsequently merged with the result map.
-	// In case of collisions, rightmost entity wins
-	mergeMap = labels.Merge(mergeMap, km.Input)
-	metaMap := labels.Merge(km.ObjectMetadata, mergeMap)
-	specMap := labels.Merge(km.SpecData, mergeMap)
+	mergedDataMap = labels.Merge(mergedDataMap, km.Input)
+	metaMap := labels.Merge(km.ObjectMetadata, mergedDataMap)
+	specMap := labels.Merge(km.SpecData, mergedDataMap)
 
 	return metaMap, specMap
 }
