@@ -24,6 +24,7 @@ type Metadata struct {
 	SpecData       map[string]string // SpecData contains labels/annotations that are in the outputresource at the Spec level.
 }
 
+// Merge merges environment, application maps with current values and returns updated metaMap and specMap
 // More info:
 // ObjectMeta: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 // Spec: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
