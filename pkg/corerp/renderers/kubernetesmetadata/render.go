@@ -76,8 +76,8 @@ func processAnnotations(ctx context.Context, options renderers.RenderOptions, de
 
 	//Create KubernetesMetadata struct to merge annotations
 	ann := &kube.Metadata{
-		CurrObjectMeta: existingMetaAnnotations,
-		CurrSpec:       existingSpecAnnotations,
+		ObjectMetadata: existingMetaAnnotations,
+		SpecData:       existingSpecAnnotations,
 	}
 
 	if kubeMetadataExt != nil && kubeMetadataExt.Annotations != nil {
@@ -94,8 +94,8 @@ func processAnnotations(ctx context.Context, options renderers.RenderOptions, de
 	}
 
 	// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-	updMetaAnnotations, updSpecAnnotations := ann.Merge(ctx)
-	setAnnotations(dep, updMetaAnnotations, updSpecAnnotations)
+	metaAnnotations, specAnnotations := ann.Merge(ctx)
+	setAnnotations(dep, metaAnnotations, specAnnotations)
 }
 
 func processLabels(ctx context.Context, options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
@@ -103,8 +103,8 @@ func processLabels(ctx context.Context, options renderers.RenderOptions, dep *ap
 
 	//Create KubernetesMetadata struct to merge labels
 	lbl := &kube.Metadata{
-		CurrObjectMeta: existingMetaLabels,
-		CurrSpec:       existingSpecLabels,
+		ObjectMetadata: existingMetaLabels,
+		SpecData:       existingSpecLabels,
 	}
 
 	if kubeMetadataExt != nil && kubeMetadataExt.Labels != nil {
@@ -121,8 +121,8 @@ func processLabels(ctx context.Context, options renderers.RenderOptions, dep *ap
 	}
 
 	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-	updObjectMetaLabels, updSpecLabels := lbl.Merge(ctx)
-	setLabels(dep, updObjectMetaLabels, updSpecLabels)
+	metaLabels, specLabels := lbl.Merge(ctx)
+	setLabels(dep, metaLabels, specLabels)
 }
 
 func getAnnotations(dep *appsv1.Deployment) (map[string]string, map[string]string) {
