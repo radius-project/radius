@@ -77,7 +77,6 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 
 	typeParts := strings.Split(ResourceType, "/")
 	resourceTypeSuffix := typeParts[len(typeParts)-1]
-	lbl, ann := getLabelsAnnotations(ctx, options, appId.Name(), route)
 
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -87,8 +86,8 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        kubernetes.NormalizeResourceName(route.Name),
 			Namespace:   options.Environment.Namespace,
-			Labels:      lbl,
-			Annotations: ann,
+			Labels:      getLabels(ctx, options, appId.Name(), route),
+			Annotations: getAnnotations(ctx, options, appId.Name(), route),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),
@@ -107,13 +106,11 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
 }
 
-func getLabelsAnnotations(ctx context.Context, options renderers.RenderOptions, appIdName string, route *datamodel.HTTPRoute) (map[string]string, map[string]string) {
-	//Create KubernetesMetadata structs to merge labels and annotations
-	annMap := &kube.Metadata{}
+func getLabels(ctx context.Context, options renderers.RenderOptions, appIdName string, route *datamodel.HTTPRoute) map[string]string {
+	//Create KubernetesMetadata structs to merge labels
 	lblMap := &kube.Metadata{
 		CurrObjectMeta: kubernetes.MakeDescriptiveLabels(appIdName, route.Name, route.ResourceTypeName()),
 	}
-
 	envOpts := &options.Environment
 	appOpts := &options.Application
 
@@ -126,6 +123,25 @@ func getLabelsAnnotations(ctx context.Context, options renderers.RenderOptions, 
 	if appKmeExists && appOpts.KubernetesMetadata.Labels != nil {
 		lblMap.AppData = appOpts.KubernetesMetadata.Labels
 	}
+
+	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, Env->App->Container->InputExt
+	// values are merged in that order. Spec labels are not updated.
+	if updObjectMetaLabels, _ := lblMap.Merge(ctx); updObjectMetaLabels != nil && len(updObjectMetaLabels) > 0 {
+		return updObjectMetaLabels
+	}
+
+	return nil
+}
+
+func getAnnotations(ctx context.Context, options renderers.RenderOptions, appIdName string, route *datamodel.HTTPRoute) map[string]string {
+	//Create KubernetesMetadata structs to merge annotations
+	annMap := &kube.Metadata{}
+	envOpts := &options.Environment
+	appOpts := &options.Application
+
+	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
+	appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
+
 	if envKmeExists && envOpts.KubernetesMetadata.Annotations != nil {
 		annMap.EnvData = envOpts.KubernetesMetadata.Annotations
 	}
@@ -133,10 +149,11 @@ func getLabelsAnnotations(ctx context.Context, options renderers.RenderOptions, 
 		annMap.AppData = appOpts.KubernetesMetadata.Annotations
 	}
 
-	// Merge cumulative label, annotations values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-	// Spec labels and annotations are not updated.
-	updObjectMetaLabels, _ := lblMap.Merge(ctx)
-	updObjectMetaAnnotations, _ := annMap.Merge(ctx)
+	// Merge cumulative annotations values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
+	// Spec annotations are not updated.
+	if updObjectMetaAnnotations, _ := annMap.Merge(ctx); updObjectMetaAnnotations != nil && len(updObjectMetaAnnotations) > 0 {
+		return updObjectMetaAnnotations
+	}
 
-	return updObjectMetaLabels, updObjectMetaAnnotations
+	return nil
 }

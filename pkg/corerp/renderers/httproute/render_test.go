@@ -134,6 +134,7 @@ func TestHTTPRouteRenderer(t *testing.T) {
 				require.Equal(t, tt.expectedMaps.metaLbl, service.Labels)
 			} else {
 				require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resource.ResourceTypeName()), service.Labels)
+				require.Nil(t, service.Annotations)
 			}
 		})
 	}
@@ -166,14 +167,13 @@ func makeResource(t *testing.T, properties *datamodel.HTTPRouteProperties) *data
 
 func getRenderOptions(opt int) renderers.RenderOptions {
 	/*
-		opt: 0 - no KubeMetadata
-		opt: 1 - env KubeMetadata
-		opt: 2 - env and app KubeMetadata
+		opt: 1 - Env KubeMetadata
+		opt: 2 - Env and App KubeMetadata
 	*/
 
 	dependencies := map[string]renderers.RendererDependency{}
 	option := renderers.RenderOptions{Dependencies: dependencies}
-	if opt == 0 {
+	if !(opt == 1 || opt == 2) {
 		return option
 	}
 
@@ -257,7 +257,6 @@ func getExpectedMaps(envOnly bool) *expectedMaps {
 		metaLbl["app.lbl1"] = "app.lblval1"
 		metaLbl["app.lbl2"] = "app.lblval2"
 		metaLbl["test.lbl1"] = "override.app.lblval1"
-
 	}
 
 	return &expectedMaps{

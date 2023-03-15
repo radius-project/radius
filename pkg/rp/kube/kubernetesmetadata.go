@@ -23,7 +23,7 @@ type Metadata struct {
 	CurrSpec       map[string]string
 }
 
-// MergeMaps merges environment, application maps with current values and returns updated metaMap and specMap
+// Merge merges environment, application maps with current values and returns updated metaMap and specMap
 func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]string) {
 	mergeMap := map[string]string{}
 
@@ -48,7 +48,7 @@ func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]st
 	return updMetaMap, updSpecMap
 }
 
-// Reject custom user entries that would affect Radius reserved keys
+// rejectReservedEntries rejects custom user entries that would affect Radius reserved keys
 func rejectReservedEntries(ctx context.Context, inputMap map[string]string) map[string]string {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
