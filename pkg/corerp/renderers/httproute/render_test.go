@@ -28,6 +28,45 @@ const (
 	applicationName = "test-application"
 	resourceName    = "test-route"
 	applicationPath = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
+
+	// User Inputs for testing
+	envAnnotationKey1 = "env.ann1"
+	envAnnotationKey2 = "env.ann2"
+	envAnnotationVal1 = "env.annval1"
+	envAnnotationVal2 = "env.annval2"
+
+	envLabelKey1 = "env.lbl1"
+	envLabelKey2 = "env.lbl2"
+	envLabelVal1 = "env.lblval1"
+	envLabelVal2 = "env.lblval2"
+
+	appAnnotationKey1 = "app.ann1"
+	appAnnotationKey2 = "app.ann2"
+	appAnnotationVal1 = "app.annval1"
+	appAnnotationVal2 = "app.annval2"
+
+	appLabelKey1 = "app.lbl1"
+	appLabelKey2 = "app.lbl2"
+	appLabelVal1 = "env.lblval1"
+	appLabelVal2 = "env.lblval2"
+
+	overrideKey1 = "test.ann1"
+	overrideKey2 = "test.lbl1"
+	overrideVal1 = "override.app.annval1"
+	overrideVal2 = "override.app.lblval1"
+
+	managedbyKey    = "app.kubernetes.io/managed-by"
+	managedbyVal    = "radius-rp"
+	nameKey         = "app.kubernetes.io/name"
+	nameVal         = "test-route"
+	partofKey       = "app.kubernetes.io/part-of"
+	partofVal       = "test-application"
+	appKey          = "radius.dev/application"
+	appVal          = "test-application"
+	resourceKey     = "radius.dev/resource"
+	resourceVal     = "test-route"
+	resourcetypeKey = "radius.dev/resource-type"
+	resourcetypeVal = "applications.core-httproutes"
 )
 
 type setupMaps struct {
@@ -199,26 +238,26 @@ func getSetUpMaps(envOnly bool) *setupMaps {
 
 	envKubeMetadataExt := &datamodel.KubeMetadataExtension{
 		Annotations: map[string]string{
-			"env.ann1":  "env.annval1",
-			"env.ann2":  "env.annval2",
-			"test.ann1": "env.annval1",
+			envAnnotationKey1: envAnnotationVal1,
+			envAnnotationKey2: envAnnotationVal2,
+			overrideKey1:      envAnnotationVal1,
 		},
 		Labels: map[string]string{
-			"env.lbl1":  "env.lblval1",
-			"env.lbl2":  "env.lblval2",
-			"test.lbl1": "env.lblval1",
+			envLabelKey1: envLabelVal1,
+			envLabelKey2: envLabelVal2,
+			overrideKey2: envLabelVal1,
 		},
 	}
 	appKubeMetadataExt := &datamodel.KubeMetadataExtension{
 		Annotations: map[string]string{
-			"app.ann1":  "app.annval1",
-			"app.ann2":  "app.annval2",
-			"test.ann1": "override.app.annval1",
+			appAnnotationKey1: appAnnotationVal1,
+			appAnnotationKey2: appAnnotationVal2,
+			overrideKey1:      overrideVal1,
 		},
 		Labels: map[string]string{
-			"app.lbl1":  "app.lblval1",
-			"app.lbl2":  "app.lblval2",
-			"test.lbl1": "override.app.lblval1",
+			appLabelKey1: appLabelVal1,
+			appLabelKey2: appLabelVal2,
+			overrideKey2: overrideVal2,
 		},
 	}
 
@@ -233,30 +272,30 @@ func getSetUpMaps(envOnly bool) *setupMaps {
 
 func getExpectedMaps(envOnly bool) *expectedMaps {
 	metaAnn := map[string]string{
-		"env.ann1":  "env.annval1",
-		"env.ann2":  "env.annval2",
-		"test.ann1": "env.annval1",
+		envAnnotationKey1: envAnnotationVal1,
+		envAnnotationKey2: envAnnotationVal2,
+		overrideKey1:      envAnnotationVal1,
 	}
 	metaLbl := map[string]string{
-		"env.lbl1":                     "env.lblval1",
-		"env.lbl2":                     "env.lblval2",
-		"test.lbl1":                    "env.lblval1",
-		"app.kubernetes.io/managed-by": "radius-rp",
-		"app.kubernetes.io/name":       "test-route",
-		"app.kubernetes.io/part-of":    "test-application",
-		"radius.dev/application":       "test-application",
-		"radius.dev/resource":          "test-route",
-		"radius.dev/resource-type":     "applications.core-httproutes",
+		envLabelKey1:    envLabelVal1,
+		envLabelKey2:    envLabelVal2,
+		overrideKey2:    envLabelVal1,
+		managedbyKey:    managedbyVal,
+		nameKey:         nameVal,
+		partofKey:       partofVal,
+		appKey:          appVal,
+		resourceKey:     resourceVal,
+		resourcetypeKey: resourcetypeVal,
 	}
 
 	if !envOnly {
-		metaAnn["app.ann1"] = "app.annval1"
-		metaAnn["app.ann2"] = "app.annval2"
-		metaAnn["test.ann1"] = "override.app.annval1"
+		metaAnn[appAnnotationKey1] = appAnnotationVal1
+		metaAnn[appAnnotationKey2] = appAnnotationVal2
+		metaAnn[overrideKey1] = overrideVal1
 
-		metaLbl["app.lbl1"] = "app.lblval1"
-		metaLbl["app.lbl2"] = "app.lblval2"
-		metaLbl["test.lbl1"] = "override.app.lblval1"
+		metaLbl[appLabelKey1] = appLabelVal1
+		metaLbl[appLabelKey2] = appLabelVal2
+		metaLbl[overrideKey2] = overrideVal2
 	}
 
 	return &expectedMaps{
