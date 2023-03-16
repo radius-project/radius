@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	model "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -28,9 +28,9 @@ func Test_GetConfiguration(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		Providers: map[string]map[string]any{
-			resourcemodel.ProviderAzure: {
-				"scope": scope,
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: scope,
 			},
 		},
 	}
@@ -52,5 +52,4 @@ func Test_GetConfiguration(t *testing.T) {
 	result, err := getConfiguration(&envResource, nil)
 	require.NoError(t, err)
 	require.Equal(t, envConfig, result)
-
 }

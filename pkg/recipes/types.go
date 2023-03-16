@@ -9,12 +9,17 @@ import (
 	"fmt"
 )
 
-type Recipe struct {
-	Name          string
+type RecipeContext struct {
+	//Recipe name
+	Name string
+	//Application ID
 	ApplicationID string
+	//Environment ID
 	EnvironmentID string
-	ResourceID    string
-	Parameters    map[string]any
+	//TrackedResource ID
+	ResourceID string
+	//Recipe parameters
+	Parameters map[string]any
 }
 
 type ErrRecipeNotFound struct {

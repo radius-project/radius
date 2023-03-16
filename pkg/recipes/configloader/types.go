@@ -8,16 +8,17 @@ package configloader
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 )
 
 type ConfigurationLoader interface {
-	Load(ctx context.Context, recipe recipes.Recipe) (*Configuration, error)
+	Load(ctx context.Context, recipe recipes.RecipeContext) (*Configuration, error)
 }
 
 type Configuration struct {
 	Runtime   RuntimeConfiguration
-	Providers map[string]map[string]any
+	Providers datamodel.Providers
 }
 
 type RuntimeConfiguration struct {

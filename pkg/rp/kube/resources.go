@@ -57,20 +57,27 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 	return
 }
 
-// FetchNameSpaceFromEnvironmentResource finds the environment-scope Kubernetes namespace from EnvironmentResource.
-func FetchNameSpaceFromEnvironmentResource(environment *v20220315privatepreview.EnvironmentResource) (string, error) {
-	kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
-	if !ok {
-		return "", v1.ErrInvalidModelConversion
+// FetchNamespaceFromEnvironmentResource finds the environment-scope Kubernetes namespace from EnvironmentResource.
+func FetchNamespaceFromEnvironmentResource(environment *v20220315privatepreview.EnvironmentResource) (string, error) {
+	if environment.Properties.Compute != nil {
+		kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
+		if !ok {
+			return "", v1.ErrInvalidModelConversion
+		}
+		return *kubernetes.Namespace, nil
 	}
-	return *kubernetes.Namespace, nil
+	return "", errors.New("unable to fetch namespace information")
+
 }
 
-// FetchNameSpaceFromApplicationResource finds the application-scope Kubernetes namespace from ApplicationResource.
-func FetchNameSpaceFromApplicationResource(application *v20220315privatepreview.ApplicationResource) (string, error) {
-	kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
-	if !ok {
-		return "", v1.ErrInvalidModelConversion
+// FetchNamespaceFromApplicationResource finds the application-scope Kubernetes namespace from ApplicationResource.
+func FetchNamespaceFromApplicationResource(application *v20220315privatepreview.ApplicationResource) (string, error) {
+	if application.Properties.Status != nil && application.Properties.Status.Compute != nil {
+		kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
+		if !ok {
+			return "", v1.ErrInvalidModelConversion
+		}
+		return *kubernetes.Namespace, nil
 	}
-	return *kubernetes.Namespace, nil
+	return "", errors.New("unable to fetch namespace information")
 }

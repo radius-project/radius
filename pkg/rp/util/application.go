@@ -14,7 +14,7 @@ import (
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// FetchApplication gets the environment resource using application id
+// FetchApplication gets the application resource using application id
 func FetchApplication(ctx context.Context, application string, ucpOptions *arm.ClientOptions) (*v20220315privatepreview.ApplicationResource, error) {
 	applicationID, err := resources.ParseResource(application)
 	if err != nil {
