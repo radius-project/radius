@@ -46,7 +46,7 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.RecipeConte
 
 func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*Configuration, error) {
 	configuration := Configuration{Runtime: RuntimeConfiguration{}, Providers: datamodel.Providers{}}
-	if *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
+	if environment.Properties.Compute != nil && *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
 		// This is a Kubernetes environment
 		configuration.Runtime.Kubernetes = &KubernetesRuntime{}
 		var err error
