@@ -75,7 +75,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	}
 
 	// TODO: refactor this to use the addChartValues function
-	err = addRadiusValues(helmChart, &options)
+	err = AddRadiusValues(helmChart, &options)
 	if err != nil {
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -216,7 +216,7 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	return runUpgrade(installClient, releaseName, helmChart)
 }
 
-func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
+func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
 	_, ok := values["global"]
