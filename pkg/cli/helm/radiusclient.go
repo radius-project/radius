@@ -80,13 +80,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	if options.Values != "" {
-		err := strvals.ParseInto(options.Values, helmChart.Values)
-		if err != nil {
-			return false, fmt.Errorf("failed to set radius chart values, err: %w, helm output: %s", err, helmOutput.String())
-		}
-	}
-
 	if options.AzureProvider != nil {
 		err = addAzureProviderValues(helmChart, options.AzureProvider)
 		if err != nil {
@@ -292,6 +285,13 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 	if options.DETag != "" {
 		de["tag"] = options.DETag
+	}
+
+	if options.Values != "" {
+		err := strvals.ParseInto(options.Values, values)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
