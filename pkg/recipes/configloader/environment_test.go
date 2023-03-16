@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	model "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -126,16 +126,36 @@ func Test_InvalidApplicationError(t *testing.T) {
 	require.Equal(t, err.Error(), "invalid model conversion")
 }
 
-func createAzureProvider() map[string]map[string]any {
-	return map[string]map[string]any{
-		resourcemodel.ProviderAzure: {
-			"scope": azureScope,
+func Test_InvalidEnvError(t *testing.T) {
+	// Invalid env model (should have KubernetesCompute field)
+	envResource := model.EnvironmentResource{
+		Properties: &model.EnvironmentProperties{
+			Compute: &model.EnvironmentCompute{
+				Kind:       to.Ptr(kind),
+				ResourceID: to.Ptr(envResourceId),
+			},
+			Providers: &model.Providers{
+				Azure: &model.ProvidersAzure{
+					Scope: to.Ptr(azureScope),
+				},
+			},
+		},
+	}
+	_, err := getConfiguration(&envResource, nil)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "invalid model conversion")
+}
+
+func createAzureProvider() datamodel.Providers {
+	return datamodel.Providers{
+		Azure: datamodel.ProvidersAzure{
+			Scope: azureScope,
 		}}
 }
 
-func createAWSProvider() map[string]map[string]any {
-	return map[string]map[string]any{
-		resourcemodel.ProviderAWS: {
-			"scope": awsScope,
+func createAWSProvider() datamodel.Providers {
+	return datamodel.Providers{
+		AWS: datamodel.ProvidersAWS{
+			Scope: awsScope,
 		}}
 }

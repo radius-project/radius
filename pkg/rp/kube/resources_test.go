@@ -97,14 +97,19 @@ func TestFetchNameSpaceFromEnvironmentResource(t *testing.T) {
 		},
 	}
 
-	ns, err := FetchNameSpaceFromEnvironmentResource(&envResource)
+	ns, err := FetchNamespaceFromEnvironmentResource(&envResource)
 	require.NoError(t, err)
 	require.Equal(t, namespace, ns)
 	// Invalid env model
 	envResource.Properties.Compute = &model.EnvironmentCompute{}
-	_, err = FetchNameSpaceFromEnvironmentResource(&envResource)
+	_, err = FetchNamespaceFromEnvironmentResource(&envResource)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "invalid model conversion")
+	// Invalid compute fields
+	envResource.Properties.Compute = nil
+	_, err = FetchNamespaceFromEnvironmentResource(&envResource)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "unable to fetch namespace information")
 }
 
 func TestFetchNameSpaceFromApplicationResource(t *testing.T) {
@@ -118,12 +123,18 @@ func TestFetchNameSpaceFromApplicationResource(t *testing.T) {
 		},
 	}
 
-	ns, err := FetchNameSpaceFromApplicationResource(&appResource)
+	ns, err := FetchNamespaceFromApplicationResource(&appResource)
 	require.NoError(t, err)
 	require.Equal(t, appNamespace, ns)
 	// Invalid app model
 	appResource.Properties.Status.Compute = &model.EnvironmentCompute{}
-	_, err = FetchNameSpaceFromApplicationResource(&appResource)
+	_, err = FetchNamespaceFromApplicationResource(&appResource)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "invalid model conversion")
+	// Invalid compute fields
+	appResource.Properties.Status.Compute = nil
+	_, err = FetchNamespaceFromApplicationResource(&appResource)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "unable to fetch namespace information")
+
 }
