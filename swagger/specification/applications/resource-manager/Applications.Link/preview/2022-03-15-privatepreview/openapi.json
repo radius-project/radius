@@ -306,7 +306,7 @@
             "in": "path",
             "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9.]*[A-Za-z0-9.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -345,7 +345,7 @@
             "in": "path",
             "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9.]*[A-Za-z0-9.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -406,7 +406,7 @@
             "in": "path",
             "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9.]*[A-Za-z0-9.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
