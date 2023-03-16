@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/to"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -42,7 +43,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 
 	// TODO pagination
 	response, err := p.awsOptions.AWSCloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
-		TypeName: &serviceCtx.ResourceType,
+		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	})
 	if err != nil {
 		return awsclient.HandleAWSError(err)

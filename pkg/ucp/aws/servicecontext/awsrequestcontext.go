@@ -15,22 +15,15 @@ import (
 // AWSRequestContext is the context for AWS request.
 type AWSRequestContext struct {
 	// AWSRequestContext has all the fields from ARMRequestContext.
-	v1.ARMRequestContext
-
-	// ResourceType is the AWS resource type.
-	ResourceType string
-}
-
-// AWSResourceType returns the AWS resource type.
-func (c *AWSRequestContext) AWSResourceType() string {
-	return c.ResourceType
+	*v1.ARMRequestContext
 }
 
 // ARMRequestContextFromContext extracts AWS Request Context from http context.
 func AWSRequestContextFromContext(ctx context.Context) *AWSRequestContext {
-	c := AWSRequestContext{
-		ARMRequestContext: *v1.ARMRequestContextFromContext(ctx),
-	}
-	c.ResourceType = resources.ToAWSResourceType(c.ResourceID)
-	return &c
+	return &AWSRequestContext{v1.ARMRequestContextFromContext(ctx)}
+}
+
+// ResourceTypeInAWSFormat returns the AWS resource type.
+func (c *AWSRequestContext) ResourceTypeInAWSFormat() string {
+	return resources.ToAWSResourceType(c.ResourceID)
 }
