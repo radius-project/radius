@@ -17,14 +17,6 @@ const (
 	UCPProviderName = "ucp"
 )
 
-var (
-	// ResourceTypeNames is the array that holds resource types that needs async processing.
-	// We use this array to generate generic backend controller for each resource.
-	ResourceTypeNames = []string{
-		//TODO: Add resource type names here.
-	}
-)
-
 // Service is a service to run AsyncReqeustProcessWorker.
 type Service struct {
 	worker.Service
@@ -49,11 +41,6 @@ func (w *Service) Name() string {
 func (w *Service) Run(ctx context.Context) error {
 	if err := w.Init(ctx); err != nil {
 		return err
-	}
-
-	// Register controllers
-	for range ResourceTypeNames {
-		// TODO Add backend controller for each resource type.
 	}
 
 	workerOpts := worker.Options{}
