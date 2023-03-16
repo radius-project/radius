@@ -77,7 +77,8 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 		// Construct namespace using the namespace specified by environment resource.
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
 		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Environment could not be constructed: %s", err.Error())), nil
+			return rest.NewBadRequestResponse(fmt.Sprintf("Environment %s could not be constructed: %s",
+				newResource.Properties.Environment, err.Error())), nil
 		}
 		kubeNamespace = kubernetes.NormalizeResourceName(fmt.Sprintf("%s-%s", envNamespace, serviceCtx.ResourceID.Name()))
 	}
