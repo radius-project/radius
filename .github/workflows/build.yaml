@@ -108,10 +108,8 @@ jobs:
           echo "main_coverage=$MAIN_COVERAGE" >> $GITHUB_ENV
 
           if (( $(echo "$UT_COVERAGE < $MAIN_COVERAGE" | bc -l) )) ; then
-            echo "lower_coverage=true" >> $GITHUB_OUTPUT
             COLOR=red
           else
-            echo "lower_coverage=false" >> $GITHUB_OUTPUT
             COLOR=green
           fi
 
@@ -157,7 +155,7 @@ jobs:
 
             > The coverage result does not include the functional test coverage. 
       - name: Stop build if PR branch coverage is lower than main branch.
-        if: ${{ steps.gen-coverage.outputs.lower_coverage }} == 'true' &&  matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        if: (${{ env.main_coverage }} > ${{ env.ut_coverage }}) &&  matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
         run: |
           echo "coverage is down from ${{ env.main_coverage }} % to ${{ env.ut_coverage }} %"
           echo "failed to merge"
