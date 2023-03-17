@@ -15,16 +15,18 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucpaws "github.com/project-radius/radius/pkg/ucp/aws"
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
@@ -222,11 +224,15 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 			return err
 		}
 
-		planesCtrl, err := planes_ctrl.NewCreateOrUpdatePlane(controller.Options{
-			Options: armrpc_controller.Options{
-				StorageClient: dbClient,
+		opts := frontend_ctrl.Options{
+			StorageClient: dbClient,
+		}
+		planesCtrl, err := defaultoperation.NewDefaultSyncPut(opts,
+			frontend_ctrl.ResourceOptions[datamodel.Plane]{
+				RequestConverter:  converter.PlaneDataModelFromVersioned,
+				ResponseConverter: converter.PlaneDataModelToVersioned,
 			},
-		})
+		)
 		if err != nil {
 			return err
 		}

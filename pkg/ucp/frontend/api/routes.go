@@ -111,50 +111,95 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
 		{
+			// This is scope query unlike the default list handler.
 			ParentRouter:   planeCollectionSubRouter,
 			Method:         v1.OperationList,
 			HandlerFactory: planes_ctrl.NewListPlanes,
 		},
 		{
+			// This is scope query unlike the default list handler.
 			ParentRouter:   planeCollectionByTypeSubRouter,
 			Method:         v1.OperationList,
 			HandlerFactory: planes_ctrl.NewListPlanesByType,
 		},
 		{
-			ParentRouter:   planeSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: planes_ctrl.NewGetPlane,
+			ParentRouter: planeSubRouter,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt.Options,
+					frontend_ctrl.ResourceOptions[datamodel.Plane]{
+						RequestConverter:  converter.PlaneDataModelFromVersioned,
+						ResponseConverter: converter.PlaneDataModelToVersioned,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   planeSubRouter,
-			Method:         v1.OperationPut,
-			HandlerFactory: planes_ctrl.NewCreateOrUpdatePlane,
+			ParentRouter: planeSubRouter,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt.Options,
+					frontend_ctrl.ResourceOptions[datamodel.Plane]{
+						RequestConverter:  converter.PlaneDataModelFromVersioned,
+						ResponseConverter: converter.PlaneDataModelToVersioned,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   planeSubRouter,
-			Method:         v1.OperationDelete,
-			HandlerFactory: planes_ctrl.NewDeletePlane,
+			ParentRouter: planeSubRouter,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opt.Options,
+					frontend_ctrl.ResourceOptions[datamodel.Plane]{
+						RequestConverter:  converter.PlaneDataModelFromVersioned,
+						ResponseConverter: converter.PlaneDataModelToVersioned,
+					},
+				)
+			},
 		},
 		// Resource group handler registration
 		{
+			// This is scope query unlike the default list handler.
 			ParentRouter:   resourceGroupCollectionSubRouter,
 			Method:         v1.OperationList,
 			HandlerFactory: resourcegroups_ctrl.NewListResourceGroups,
 		},
 		{
-			ParentRouter:   resourceGroupSubRouter,
-			Method:         v1.OperationGet,
-			HandlerFactory: resourcegroups_ctrl.NewGetResourceGroup,
+			ParentRouter: resourceGroupSubRouter,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt.Options,
+					frontend_ctrl.ResourceOptions[datamodel.ResourceGroup]{
+						RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
+						ResponseConverter: converter.ResourceGroupDataModelToVersioned,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   resourceGroupSubRouter,
-			Method:         v1.OperationPut,
-			HandlerFactory: resourcegroups_ctrl.NewCreateOrUpdateResourceGroup,
+			ParentRouter: resourceGroupSubRouter,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt.Options,
+					frontend_ctrl.ResourceOptions[datamodel.ResourceGroup]{
+						RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
+						ResponseConverter: converter.ResourceGroupDataModelToVersioned,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   resourceGroupSubRouter,
-			Method:         v1.OperationDelete,
-			HandlerFactory: resourcegroups_ctrl.NewDeleteResourceGroup,
+			ParentRouter: resourceGroupSubRouter,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opt.Options,
+					frontend_ctrl.ResourceOptions[datamodel.ResourceGroup]{
+						RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
+						ResponseConverter: converter.ResourceGroupDataModelToVersioned,
+					},
+				)
+			},
 		},
 
 		// AWS Plane handlers
