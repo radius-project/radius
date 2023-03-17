@@ -99,7 +99,7 @@ if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
     # Also add the path to the current session
     $env:PATH += ";$RadiusRoot"
 }
-Write-Output "✅ rad CLI has been successfully installed"
+Write-Output "rad CLI has been successfully installed"
 
 Write-Output "`r`nInstalling Bicep..."
 $cmd = (Start-Process -NoNewWindow -FilePath $RadiusCliFilePath -ArgumentList "bicep download" -PassThru -Wait)
@@ -107,7 +107,7 @@ if ($cmd.ExitCode -ne 0) {
     Write-Warning "`r`nFailed to install rad-bicep"
 }
 else {
-    Write-Output "✅ Bicep has been successfully installed"
+    Write-Output "Bicep has been successfully installed"
 }
 
 Write-Output "`r`nTo get started with Project Radius, please visit https://docs.radapp.dev/getting-started/"
