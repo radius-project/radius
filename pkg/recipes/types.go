@@ -10,15 +10,15 @@ import (
 )
 
 type RecipeMetadata struct {
-	//Recipe name
+	//The name of the recipe within the environment
 	Name string
-	//Application ID
+	//Fully qualified resource ID for the application that the link is linked to
 	ApplicationID string
-	//Environment ID
+	//Fully qualified resource ID for the application that the link is consumed by
 	EnvironmentID string
-	//TrackedResource ID
+	//Fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
-	//Recipe parameters
+	//Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any
 }
 

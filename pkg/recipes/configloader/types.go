@@ -16,11 +16,11 @@ type ConfigurationLoader interface {
 	Load(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error)
 }
 
-// Environment configuration details
+// Configuration represent kubernetes runtime and cloud provider configuration, which is used by the drive while deploying recipes.
 type Configuration struct {
-	// Kubernetes Runtime information
+	// Kubernetes Runtime configuration for the environment.
 	Runtime RuntimeConfiguration
-	//Provider information
+	//Cloud providers configuration for the environment
 	Providers datamodel.Providers
 }
 
