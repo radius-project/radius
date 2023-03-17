@@ -116,7 +116,7 @@ jobs:
           fi
 
           DIFF_RATE=$(echo "$UT_COVERAGE-$MAIN_COVERAGE" | bc -l)
-          echo "diff_coverage=DIFF_RATE" >> $GITHUB_ENV
+          echo "diff_coverage=$DIFF_RATE" >> $GITHUB_ENV
 
           echo "coverage_img=https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" >> $GITHUB_ENV
           # copy coverage to cache
