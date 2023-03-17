@@ -115,7 +115,7 @@ jobs:
             COLOR=green
           fi
 
-          DIFF_RATE=$(($UT_COVERAGE - $MAIN_COVERAGE))
+          DIFF_RATE=$(echo "$UT_COVERAGE-$MAIN_COVERAGE" | bc -l)
           echo "diff_coverage=DIFF_RATE" >> $GITHUB_ENV
 
           echo "coverage_img=https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" >> $GITHUB_ENV
@@ -159,7 +159,10 @@ jobs:
       - name: Stop build if PR branch coverage is lower than main branch.
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
         run: |
-          [ "${{ steps.gen-coverage.outputs.lower_coverage }}" = "true" ] && exit 1
+          if [ "${{ steps.gen-coverage.outputs.lower_coverage }}" = "true" ]; then
+            exit 1
+          fi
+          exit 0
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
