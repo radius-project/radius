@@ -16,8 +16,11 @@ type ConfigurationLoader interface {
 	Load(ctx context.Context, recipe recipes.RecipeContext) (*Configuration, error)
 }
 
+// Environment configuration details
 type Configuration struct {
-	Runtime   RuntimeConfiguration
+	// Kubernetes Runtime information
+	Runtime RuntimeConfiguration
+	//Provider information
 	Providers datamodel.Providers
 }
 
