@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-type RecipeContext struct {
+type RecipeMetadata struct {
 	//Recipe name
 	Name string
 	//Application ID

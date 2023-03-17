@@ -13,7 +13,7 @@ import (
 )
 
 type ConfigurationLoader interface {
-	Load(ctx context.Context, recipe recipes.RecipeContext) (*Configuration, error)
+	Load(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error)
 }
 
 // Environment configuration details

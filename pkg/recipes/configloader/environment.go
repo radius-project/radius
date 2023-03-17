@@ -27,7 +27,7 @@ type EnvironmentLoader struct {
 }
 
 // Load implements recipes.ConfigurationLoader. It fetches environment/application information and return runtime and provider configuration.
-func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.RecipeContext) (*Configuration, error) {
+func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.UCPClientOptions)
 	if err != nil {
 		return nil, err
