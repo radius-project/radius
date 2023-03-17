@@ -86,6 +86,7 @@ jobs:
         run: |
           make test
       - name: Generate unit-test coverage files
+        id: gen-coverage
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
           # Remove mock, generated files, and datamodels from original coverage output.
@@ -107,8 +108,10 @@ jobs:
           echo "main_coverage=$MAIN_COVERAGE" >> $GITHUB_ENV
 
           if (( $(echo "$UT_COVERAGE < $MAIN_COVERAGE" | bc -l) )) ; then
+            echo "lower_coverage=true" >> $GITHUB_OUTPUT
             COLOR=red
           else
+            echo "lower_coverage=false" >> $GITHUB_OUTPUT
             COLOR=green
           fi
 
@@ -149,6 +152,10 @@ jobs:
             * main branch coverage: ${{ env.main_coverage }} %
 
             > The coverage result does not include the functional test coverage. 
+      - name: Stop build if coverage is lower than main
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
+        run: |
+          [ ${{ steps.gen-coverage.outputs.lower_coverage }} == "true" ] && exit 1
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
