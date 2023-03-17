@@ -86,7 +86,6 @@ jobs:
         run: |
           make test
       - name: Generate unit-test coverage files
-        id: gen-coverage
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
           # Remove mock, generated files, and datamodels from original coverage output.
