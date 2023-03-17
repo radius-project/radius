@@ -22,13 +22,11 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ListAWSResources(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
 
 	firstTestResource := CreateKinesisStreamTestResource(uuid.NewString())
 	secondTestResource := CreateKinesisStreamTestResource(uuid.NewString())
@@ -76,6 +74,7 @@ func Test_ListAWSResources(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, firstTestResource.CollectionPath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -106,9 +105,6 @@ func Test_ListAWSResources(t *testing.T) {
 }
 
 func Test_ListAWSResourcesEmpty(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -128,6 +124,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -139,9 +136,6 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 }
 
 func Test_ListAWSResource_UnknownError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -161,6 +155,7 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -169,9 +164,6 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 }
 
 func Test_ListAWSResource_SmithyError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -198,6 +190,7 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

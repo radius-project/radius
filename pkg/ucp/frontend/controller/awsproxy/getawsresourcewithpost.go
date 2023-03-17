@@ -18,8 +18,12 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/to"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -28,20 +32,25 @@ var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
 
 // GetAWSResourceWithPost is the controller implementation to get an AWS resource.
 type GetAWSResourceWithPost struct {
-	ctrl.BaseController
+	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost.
 func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &GetAWSResourceWithPost{ctrl.NewBaseController(opts)}, nil
+	return &GetAWSResourceWithPost{
+		Operation: armrpc_controller.NewOperation(opts.Options,
+			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
+		),
+		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
+	}, nil
 }
 
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -55,9 +64,9 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
-		TypeName: aws.String(resourceType),
+		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	})
 	if err != nil {
 		return awserror.HandleAWSError(err)
@@ -75,13 +84,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	logger.Info("Fetching resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
-	response, err := cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
+	logger.Info("Fetching resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", awsResourceIdentifier)
+	response, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(p.GetRelativePath(req.URL.Path), awsResourceIdentifier)), nil
+		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.basePath, req.URL.Path), awsResourceIdentifier)), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
@@ -94,11 +103,11 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		}
 	}
 
-	computedResourceID := computeResourceID(id, awsResourceIdentifier)
+	computedResourceID := computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 	body := map[string]any{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,
-		"type":       id.Type(),
+		"type":       serviceCtx.ResourceID.Type(),
 		"properties": resourceProperties,
 	}
 	return armrpc_rest.NewOKResponse(body), nil

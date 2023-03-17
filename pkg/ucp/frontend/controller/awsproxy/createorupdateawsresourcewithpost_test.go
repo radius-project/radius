@@ -21,14 +21,11 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_CreateAWSResourceWithPost(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testOptions := setupTest(t)
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
@@ -76,6 +73,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -109,9 +107,6 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_UpdateAWSResourceWithPost(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -175,6 +170,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -213,9 +209,6 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -270,6 +263,7 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.MemoryDB/Cluster", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -308,9 +302,6 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 }
 
 func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
@@ -355,6 +346,7 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:put", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -389,9 +381,6 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 }
 
 func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
@@ -442,6 +431,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:put", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -477,9 +467,6 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 }
 
 func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
@@ -540,6 +527,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

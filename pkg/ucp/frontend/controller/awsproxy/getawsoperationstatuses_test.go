@@ -19,14 +19,11 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_GetAWSOperationStatuses(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	eventTime := time.Now()
@@ -54,6 +51,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -66,9 +64,6 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 }
 
 func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	eventTime := time.Now()
@@ -101,6 +96,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

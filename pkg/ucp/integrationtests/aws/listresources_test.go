@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -46,8 +47,12 @@ func Test_ListAWSResources(t *testing.T) {
 		return &output, nil
 	})
 
-	listRequest, err := http.NewRequest(http.MethodGet, ucp.URL+basePath+testProxyRequestAWSListPath, nil)
-	require.NoError(t, err)
+	listRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+basePath+testProxyRequestAWSListPath, nil)
+	require.NoError(t, err, "creating request failed")
+
+	ctx := testutil.ARMTestContextFromRequest(listRequest)
+	listRequest = listRequest.WithContext(ctx)
+
 	listResponse, err := ucpClient.httpClient.Do(listRequest)
 	require.NoError(t, err)
 

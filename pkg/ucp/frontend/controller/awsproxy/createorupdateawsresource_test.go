@@ -23,13 +23,10 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/to"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_CreateAWSResource(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -73,6 +70,7 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -111,9 +109,6 @@ func Test_CreateAWSResource(t *testing.T) {
 }
 
 func Test_UpdateAWSResource(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -175,6 +170,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -212,9 +208,6 @@ func Test_UpdateAWSResource(t *testing.T) {
 }
 
 func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -263,6 +256,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

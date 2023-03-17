@@ -18,14 +18,11 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -49,8 +46,9 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
-
 	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewNoContentResponse()
@@ -60,9 +58,6 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 }
 
 func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -86,8 +81,9 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
-
 	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
