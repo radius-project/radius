@@ -197,7 +197,7 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 	}
 
 	respCode := http.StatusAccepted
-	if method == http.MethodPut {
+	if method == http.MethodPut || method == http.MethodPost {
 		respCode = http.StatusCreated
 	}
 

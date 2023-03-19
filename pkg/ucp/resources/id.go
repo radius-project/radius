@@ -23,6 +23,9 @@ const (
 
 	CoreRPNamespace = "Applications.Core"
 	LinkRPNamespace = "Applications.Link"
+
+	PlaneTypePrefix   = "System.Planes"
+	ResourceGroupType = "System.Resources/resourceGroups"
 )
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
@@ -250,11 +253,23 @@ func (ri ID) RoutingScope() string {
 
 // Type returns the fully-qualified resource type of a ResourceID.
 func (ri ID) Type() string {
-	types := make([]string, len(ri.typeSegments))
-	for i, t := range ri.typeSegments {
-		types[i] = t.Type
+	if len(ri.typeSegments) > 0 {
+		types := make([]string, len(ri.typeSegments))
+		for i, t := range ri.typeSegments {
+			types[i] = t.Type
+		}
+		return strings.Join(types, SegmentSeparator)
 	}
-	return strings.Join(types, SegmentSeparator)
+
+	// Add a special case for the planes/resourcegroups resource
+	if len(ri.scopeSegments) == 1 {
+		// This is a plane resource
+		return PlaneTypePrefix + SegmentSeparator + ri.scopeSegments[0].Type
+	} else if len(ri.scopeSegments) == 2 && strings.EqualFold(ri.scopeSegments[1].Type, "resourcegroups") && !ri.IsScopeCollection() {
+		// This is a resource group resource
+		return ResourceGroupType
+	}
+	return ""
 }
 
 // QualifiedName gets the fully-qualified resource name (eg. `radiusv3/myapp/mycontainer`).

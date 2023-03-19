@@ -14,7 +14,10 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/to"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
@@ -22,35 +25,33 @@ var _ armrpc_controller.Controller = (*DeleteAWSResource)(nil)
 
 // DeleteAWSResource is the controller implementation to delete AWS resource.
 type DeleteAWSResource struct {
-	ctrl.BaseController
+	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
 func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &DeleteAWSResource{ctrl.NewBaseController(opts)}, nil
+	return &DeleteAWSResource{
+		Operation: armrpc_controller.NewOperation(opts.Options,
+			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
+		),
+		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
+	}, nil
 }
 
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
-	if err != nil {
-		return nil, err
-	}
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
-	_, err = cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
-		Identifier: aws.String(id.Name()),
-	})
-	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNoContentResponse(), nil
-	} else if err != nil {
-		return awsclient.HandleAWSError(err)
-	}
-
-	response, err := cloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		TypeName:   &resourceType,
-		Identifier: aws.String(id.Name()),
+	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if err != nil {
+		if awsclient.IsAWSResourceNotFound(err) {
+			return armrpc_rest.NewNoContentResponse(), nil
+		}
 		return awsclient.HandleAWSError(err)
 	}
 
@@ -59,6 +60,6 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.basePath)
 	return resp, nil
 }

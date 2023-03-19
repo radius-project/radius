@@ -140,14 +140,20 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				logging.LogFieldDequeueCount, msgreq.DequeueCount,
 			)
 
-			opType, ok := v1.ParseOperationType(op.OperationType)
+			armReqCtx, err := op.ARMRequestContext()
+			if err != nil {
+				opLogger.Error(err, "failed to get ARM request context.")
+				return
+			}
+			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
+
+			opType, ok := v1.ParseOperationType(armReqCtx.OperationType)
 			if !ok {
 				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
 				return
 			}
 
 			asyncCtrl := w.registry.Get(opType)
-
 			if asyncCtrl == nil {
 				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
@@ -155,6 +161,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				}
 				return
 			}
+
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
 				opLogger.V(ucplog.Error).Info(errMsg)

@@ -19,7 +19,7 @@ jobs:
     name: Validate Installers
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run installer test script
         shell: powershell
         run: "deploy/test-pwsh-install.ps1"

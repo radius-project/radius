@@ -19,7 +19,7 @@ const (
 	radiusPlaneResponseFixture        = "testdata/radiusplane_v20220901privatepreview_responsebody.json"
 	radiusPlaneListResponseFixture    = "testdata/radiusplane_v20220901privatepreview_list_responsebody.json"
 	radiusPlaneUpdatedRequestFixture  = "testdata/radiusplane_updated_v20220901privatepreview_requestbody.json"
-	radiusPlaneUpdatedResponseFixture = "testdata/radiusplane_updated_v20220901privatepreview_requestbody.json"
+	radiusPlaneUpdatedResponseFixture = "testdata/radiusplane_updated_v20220901privatepreview_responsebody.json"
 )
 
 func Test_RadiusPlane_PUT_Create(t *testing.T) {

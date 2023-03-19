@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/spf13/cobra"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -158,7 +159,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &corerp.Providers{}, !r.SkipDevRecipes)
+	envProperties := &corerp.EnvironmentProperties{
+		UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
+		Compute: &corerp.KubernetesCompute{
+			Namespace: to.Ptr(r.Namespace),
+		},
+	}
+
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, envProperties)
 	if err != nil || !isEnvCreated {
 		return err
 	}

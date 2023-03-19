@@ -16,6 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
@@ -56,13 +57,16 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 		AnyTimes()
 
 	router := mux.NewRouter()
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
-		BasePath:                basePath,
-		AWSCloudControlClient:   cloudControlClient,
-		AWSCloudFormationClient: cloudFormationClient,
-		CommonControllerOptions: armrpc_controller.Options{
+		BasePath: basePath,
+		AWSOptions: controller.AWSOptions{
+			AWSCloudControlClient:   cloudControlClient,
+			AWSCloudFormationClient: cloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
 			DataProvider: provider,
 		},
 	})

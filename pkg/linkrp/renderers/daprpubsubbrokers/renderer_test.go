@@ -21,7 +21,6 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
-	"gotest.tools/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -220,7 +219,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 	actualYaml, err := yaml.Marshal(item)
 	require.NoError(t, err, "Unable to convert resource spec to yaml")
 	expectedYaml, _ := yaml.Marshal(expected)
-	assert.Equal(t, string(expectedYaml), string(actualYaml), "Resource spec does not match expected value")
+	require.Equal(t, string(expectedYaml), string(actualYaml), "Resource spec does not match expected value")
 }
 
 func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {

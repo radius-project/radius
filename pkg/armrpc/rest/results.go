@@ -248,8 +248,14 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := r.getAsyncLocationPath(req, "operationResults")
-	azureAsyncOpHeader := r.getAsyncLocationPath(req, "operationStatuses")
+	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
+	if err != nil {
+		return err
+	}
+	azureAsyncOpHeader, err := r.getAsyncLocationPath(req, "operationStatuses")
+	if err != nil {
+		return err
+	}
 
 	// Write Headers
 	w.Header().Add("Content-Type", "application/json")
@@ -268,15 +274,32 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 }
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
-func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) string {
+func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) (string, error) {
 	rootScope := r.RootScope
 	if rootScope == "" {
 		rootScope = r.ResourceID.PlaneScope()
 	}
+
+	refererUrl := req.Header.Get(v1.RefererHeader)
+	if refererUrl == "" {
+		refererUrl = req.URL.String()
+	}
+
+	referer, err := url.Parse(refererUrl)
+	if err != nil {
+		return "", err
+	}
+	if referer.Host == "" {
+		// Certain AWS requests don't forward the scheme/host
+		// This case is to backfill the host for those AWS integration test requests
+		referer.Host = req.Host
+	}
+
+	base := v1.ParsePathBase(referer.Path)
 	dest := url.URL{
-		Host:   req.Host,
-		Scheme: req.URL.Scheme,
-		Path:   fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", r.PathBase, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
+		Host:   referer.Host,
+		Scheme: referer.Scheme,
+		Path:   fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", base, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
 	}
 
 	query := url.Values{}
@@ -298,7 +321,7 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		dest.Scheme = "http"
 	}
 
-	return dest.String()
+	return dest.String(), nil
 }
 
 // NoContentResponse represents an HTTP 204.

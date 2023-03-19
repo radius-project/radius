@@ -6,72 +6,132 @@ package planes
 
 import (
 	"context"
+	"io"
 	http "net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_DeletePlaneByID(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	planesCtrl, err := NewDeletePlane(ctrl.Options{
-		DB: mockStorageClient,
-	})
+	w := httptest.NewRecorder()
+	request, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderFile, nil)
+	ctx := testutil.ARMTestContextFromRequest(request)
+
+	dataModelPlane := datamodel.Plane{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       "/planes/radius/local",
+				Type:     "",
+				Name:     "local",
+				Location: "West US",
+			},
+			InternalMetadata: v1.InternalMetadata{
+				CreatedAPIVersion:      "2022-09-01-privatepreview",
+				UpdatedAPIVersion:      "2022-09-01-privatepreview",
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
+			},
+		},
+		Properties: datamodel.PlaneProperties{
+			ResourceProviders: map[string]*string{
+				"Applications.Connection": to.Ptr("http://localhost:9081/"),
+				"Applications.Core":       to.Ptr("http://localhost:9080/"),
+			},
+			Kind: rest.PlaneKindUCPNative,
+		},
+	}
+
+	o := &store.Object{
+		Metadata: store.Metadata{
+			ID: dataModelPlane.TrackedResource.ID,
+		},
+		Data: &dataModelPlane,
+	}
+
+	mockStorageClient.
+		EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return o, nil
+		})
+
+	mockStorageClient.
+		EXPECT().
+		Delete(gomock.Any(), gomock.Any(), gomock.Any())
+
+	opts := ctrl.Options{
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
+	}
+	ctl, err := NewDeletePlane(opts)
+
+	require.NoError(t, err)
+	resp, err := ctl.Run(ctx, w, request)
+	require.NoError(t, err)
+	err = resp.Apply(ctx, w, request)
 	require.NoError(t, err)
 
-	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
+	result := w.Result()
+	require.Equal(t, http.StatusOK, result.StatusCode)
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
-	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any())
-
-	request, err := http.NewRequest(http.MethodDelete, url, nil)
+	body := result.Body
+	defer body.Close()
+	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	response, err := planesCtrl.Run(ctx, nil, request)
-
-	expectedResponse := armrpc_rest.NewOKResponse(nil)
-
-	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, response)
-
+	require.Empty(t, payload, "response body should be empty")
 }
 
 func Test_DeletePlane_PlaneDoesNotExist(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	planesCtrl, err := NewDeletePlane(ctrl.Options{
-		DB: mockStorageClient,
-	})
+	w := httptest.NewRecorder()
+	request, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderFileNonExistentPlane, nil)
+	ctx := testutil.ARMTestContextFromRequest(request)
+
+	mockStorageClient.
+		EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return nil, &store.ErrNotFound{}
+		})
+
+	opts := ctrl.Options{
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
+	}
+
+	ctl, err := NewDeletePlane(opts)
+
+	require.NoError(t, err)
+	resp, err := ctl.Run(ctx, w, request)
+	require.NoError(t, err)
+	err = resp.Apply(ctx, w, request)
 	require.NoError(t, err)
 
-	url := "/planes/abc/xyz?api-version=2022-09-01-privatepreview"
+	result := w.Result()
+	require.Equal(t, http.StatusNoContent, result.StatusCode)
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-		return nil, &store.ErrNotFound{}
-	})
-
-	request, err := http.NewRequest(http.MethodDelete, url, nil)
+	body := result.Body
+	defer body.Close()
+	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	response, err := planesCtrl.Run(ctx, nil, request)
-
-	expectedResponse := armrpc_rest.NewNoContentResponse()
-
-	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, response)
+	require.Empty(t, payload, "response body should be empty")
 }

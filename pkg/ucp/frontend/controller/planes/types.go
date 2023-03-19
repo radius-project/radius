@@ -5,5 +5,5 @@
 package planes
 
 const (
-	ResourceTypeName = "UCP/Planes"
+	ResourceTypeName = "System.Resources/planes"
 )

@@ -20,15 +20,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/to"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_CreateAWSResource(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -55,16 +53,24 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	request.Host = testHost
+	request.URL.Host = testHost
+	request.URL.Scheme = testScheme
+
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -103,9 +109,6 @@ func Test_CreateAWSResource(t *testing.T) {
 }
 
 func Test_UpdateAWSResource(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -154,15 +157,20 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -200,9 +208,6 @@ func Test_UpdateAWSResource(t *testing.T) {
 }
 
 func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
@@ -238,15 +243,20 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

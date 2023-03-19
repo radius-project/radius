@@ -22,11 +22,11 @@ import (
 )
 
 const (
-	KinesisResourceType      = "AWS.Kinesis/Stream"
-	MemoryDBResourceType     = "AWS.MemoryDB/Cluster"
-	DBInstanceResourceType   = "AWS.RDS/DBInstance"
-	MetricFilterResourceType = "AWS.Logs/MetricFilter"
-	LogGroupResourceType     = "AWS.Logs/LogGroup"
+	AWSS3BucketResourceType         = "AWS.S3/Bucket"
+	AWSMemoryDBClusterResourceType  = "AWS.MemoryDB/Cluster"
+	AWSRDSDBInstanceResourceType    = "AWS.RDS/DBInstance"
+	AWSLogsMetricFilterResourceType = "AWS.Logs/MetricFilter"
+	AWSLogsLogGroupResourceType     = "AWS.Logs/LogGroup"
 )
 
 type AWSResource struct {

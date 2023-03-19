@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -108,16 +109,13 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
 		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
-		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
-			// This is an Async Response with a Azure-AsyncOperation Header
-			err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
-			if err != nil {
+		if header, ok := resp.Header[AzureAsyncOperationHeader]; ok {
+			if err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, header, resp); err != nil {
 				return err
 			}
-		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
-			// This is an Async Response with a Location Header
-			err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
-			if err != nil {
+		}
+		if header, ok := resp.Header[LocationHeader]; ok {
+			if err := convertHeaderToUCPIDs(ctx, LocationHeader, header, resp); err != nil {
 				return err
 			}
 		}
@@ -136,6 +134,14 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
 	}
 	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
+	ucpHost, err := hasUCPHost(requestInfo, headerName, header)
+	if err != nil {
+		return err
+	}
+	if ucpHost {
+		return nil
+	}
+
 	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
 	if requestInfo.PlaneURL == "" {
 		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
@@ -182,4 +188,15 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Converting %s header from %s to %s", headerName, header[0], val))
 	return nil
+}
+
+func hasUCPHost(requestInfo UCPRequestInfo, headerName string, header []string) (bool, error) {
+	uri, err := url.Parse(header[0])
+	if err != nil {
+		return false, err
+	}
+	pathBase := v1.ParsePathBase(uri.Path)
+	uriHost := uri.Host + pathBase
+
+	return strings.EqualFold(uriHost, requestInfo.UCPHost), nil
 }
