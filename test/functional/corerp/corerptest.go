@@ -11,6 +11,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -33,6 +34,7 @@ const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 	APIVersion             = "2022-03-15-privatepreview"
 	TestNamespace          = "kind-radius"
+	AWSDeletionRetryLimit  = 5
 
 	// Used to check required features
 	daprComponentCRD         = "components.dapr.io"
@@ -277,12 +279,23 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		if step.AWSResources != nil && len(step.AWSResources.Resources) > 0 {
 			for _, resource := range step.AWSResources.Resources {
 				t.Logf("deleting %s", resource.Name)
-				err := validation.DeleteAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient)
 				require.NoErrorf(t, err, "failed to delete %s", resource.Name)
 				t.Logf("finished deleting %s", ct.Description)
 
-				t.Logf("validating deletion of AWS resource for %s", ct.Description)
-				validation.ValidateNoAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				// Retry
+				notFound := false
+				for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
+					t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
+					notFound, _ = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+					if notFound {
+						break
+					} else {
+						// Wait for 10 seconds
+						time.Sleep(10 * time.Second)
+					}
+				}
+				require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
 				t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 			}
 		}

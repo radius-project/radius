@@ -15,7 +15,7 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 )
 
-func IsAWSResourceNotFound(err error) bool {
+func IsAWSResourceNotFoundError(err error) bool {
 	target := &types.ResourceNotFoundException{}
 	return errors.As(err, &target)
 }
