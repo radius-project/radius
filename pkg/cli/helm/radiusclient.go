@@ -287,11 +287,9 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 		de["tag"] = options.DETag
 	}
 
-	if options.Values != "" {
-		err := strvals.ParseInto(options.Values, values)
-		if err != nil {
-			return err
-		}
+	err := strvals.ParseInto(options.Values, values)
+	if err != nil {
+		return err
 	}
 
 	return nil

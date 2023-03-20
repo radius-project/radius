@@ -14,7 +14,7 @@ import (
 
 func Test_AddRadiusValues(t *testing.T) {
 	var helmChart chart.Chart
-	helmChart.Values = map[string]interface{}{}
+	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
 		Image:  "image",
 		Values: "global.de.tag=de-tag,global.ucp.tag=ucp-tag,",
