@@ -52,6 +52,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 			AppCoreImage:           chartArgs.AppCoreImage,
 			AppCoreTag:             chartArgs.AppCoreTag,
 			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
+			Values:                 chartArgs.Values,
 		},
 	}
 
