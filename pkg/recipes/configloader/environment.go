@@ -16,24 +16,18 @@ import (
 	"github.com/project-radius/radius/pkg/rp/util"
 )
 
-var _ ConfigurationLoader = (*environmentLoader)(nil)
-
-const (
-	Bicep = "bicep"
-)
-
-func NewEnvironmentLoader(ucpOptions *arm.ClientOptions) ConfigurationLoader {
+func NewEnvironmentLoader(ucpOptions *arm.ClientOptions) *environmentLoader {
 	return &environmentLoader{ArmClientOptions: ucpOptions}
 }
 
-//Environment loader implements ConfigurationLoader and is used to get environment related information.
+// Environment loader implements ConfigurationLoader and is used to get environment related information.
 type environmentLoader struct {
 	// ArmClientOptions represents the client options for ARM clients.
 	ArmClientOptions *arm.ClientOptions
 }
 
 // Load implements recipes.ConfigurationLoader. It fetches environment/application information and return runtime and provider configuration.
-func (r *environmentLoader) Load(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
+func (r *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.ArmClientOptions)
 	if err != nil {
 		return nil, err
