@@ -10,8 +10,8 @@ import (
 	http "net/http"
 
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
@@ -19,12 +19,12 @@ var _ armrpc_controller.Controller = (*OpenAPIv2Doc)(nil)
 
 // OpenAPIv2Doc is the controller implementation to handle the OpenAPIv2Doc endpoint.
 type OpenAPIv2Doc struct {
-	ctrl.BaseController
+	armrpc_controller.BaseController
 }
 
 // NewOpenAPIv2Doc creates a new OpenAPIv2Doc.
 func NewOpenAPIv2Doc(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &OpenAPIv2Doc{ctrl.NewBaseController(opts)}, nil
+	return &OpenAPIv2Doc{armrpc_controller.NewBaseController(opts.Options)}, nil
 }
 
 func (e *OpenAPIv2Doc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
@@ -45,7 +45,7 @@ func (e *OpenAPIv2Doc) Run(ctx context.Context, w http.ResponseWriter, req *http
 		"paths": map[string]any{},
 	})
 	if err != nil {
-		controller.HandleError(ctx, w, req, err)
+		server.HandleError(ctx, w, req, err)
 		return nil, nil
 	}
 
@@ -54,7 +54,7 @@ func (e *OpenAPIv2Doc) Run(ctx context.Context, w http.ResponseWriter, req *http
 
 	_, err = w.Write(b)
 	if err != nil {
-		controller.HandleError(ctx, w, req, err)
+		server.HandleError(ctx, w, req, err)
 		return nil, nil
 	}
 
