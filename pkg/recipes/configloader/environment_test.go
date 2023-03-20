@@ -10,6 +10,7 @@ import (
 
 	model "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -22,9 +23,9 @@ const (
 )
 
 func Test_GetConfiguration(t *testing.T) {
-	envConfig := &Configuration{
-		Runtime: RuntimeConfiguration{
-			Kubernetes: &KubernetesRuntime{
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				Namespace: "default",
 			},
 		},

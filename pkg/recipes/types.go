@@ -6,7 +6,10 @@
 package recipes
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 type RecipeMetadata struct {
@@ -22,6 +25,46 @@ type RecipeMetadata struct {
 	Parameters map[string]any
 }
 
+type RecipeResult struct {
+	Resources []string
+	Secrets   map[string]interface{}
+	Values    map[string]interface{}
+}
+
+type ConfigurationLoader interface {
+	Load(ctx context.Context, recipe RecipeMetadata) (*Configuration, error)
+	Lookup(ctx context.Context, recipe RecipeMetadata) (*RecipeDefinition, error)
+}
+
+type Configuration struct {
+	// Kubernetes Runtime configuration for the environment.
+	Runtime RuntimeConfiguration
+	//Cloud providers configuration for the environment
+	Providers datamodel.Providers
+}
+
+type RuntimeConfiguration struct {
+	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
+}
+
+type KubernetesRuntime struct {
+	Namespace string `json:"namespace,omitempty"`
+}
+
+type Engine interface {
+	Execute(ctx context.Context, recipe RecipeMetadata) (*RecipeResult, error)
+}
+
+type Driver interface {
+	Execute(ctx context.Context, configuration Configuration, recipe RecipeMetadata, definition RecipeDefinition) (*RecipeResult, error)
+}
+
+type RecipeDefinition struct {
+	Driver       string
+	ResourceType string
+	Parameters   map[string]interface{}
+	TemplatePath string
+}
 type ErrRecipeNotFound struct {
 	Name        string
 	Environment string

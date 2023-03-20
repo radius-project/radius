@@ -3,6 +3,4 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package configloader
-
-// Configuration represent kubernetes runtime and cloud provider configuration, which is used by the drive while deploying recipes.
+package driver

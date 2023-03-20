@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/util"
 )
 
-var _ ConfigurationLoader = (*EnvironmentLoader)(nil)
+var _ recipes.ConfigurationLoader = (*EnvironmentLoader)(nil)
 
 const (
 	Bicep = "bicep"
@@ -27,7 +27,7 @@ type EnvironmentLoader struct {
 }
 
 // Load implements recipes.ConfigurationLoader. It fetches environment/application information and return runtime and provider configuration.
-func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
+func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.Configuration, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.UCPClientOptions)
 	if err != nil {
 		return nil, err
@@ -44,11 +44,11 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.RecipeMetad
 	return getConfiguration(environment, application)
 }
 
-func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*Configuration, error) {
-	configuration := Configuration{Runtime: RuntimeConfiguration{}, Providers: datamodel.Providers{}}
+func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*recipes.Configuration, error) {
+	configuration := recipes.Configuration{Runtime: recipes.RuntimeConfiguration{}, Providers: datamodel.Providers{}}
 	if environment.Properties.Compute != nil && *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
 		// This is a Kubernetes environment
-		configuration.Runtime.Kubernetes = &KubernetesRuntime{}
+		configuration.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 		var err error
 		// Prefer application namespace if set
 		if application != nil {
@@ -74,4 +74,23 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 	}
 
 	return &configuration, nil
+}
+
+func (r *EnvironmentLoader) Lookup(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.RecipeDefinition, error) {
+	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.UCPClientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	found, ok := environment.Properties.Recipes[recipe.Name]
+	if !ok {
+		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
+	}
+
+	return &recipes.RecipeDefinition{
+		Driver:       Bicep,
+		ResourceType: *found.LinkType,
+		Parameters:   found.Parameters,
+		TemplatePath: *found.TemplatePath,
+	}, nil
 }
