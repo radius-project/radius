@@ -207,7 +207,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// one of those first.
 	//
 	// "reinstall" repreresents the the user-intent to reconfigure cloud providers,
-	// we also need to force re-creation of the envionment to do that, so we don't want
+	// we also need to force re-creation of the environment to do that, so we don't want
 	// to reuse an existing one.
 	if len(environments) > 0 && !r.Reinstall {
 
