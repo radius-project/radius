@@ -20,13 +20,13 @@ func NewEnvironmentLoader(ucpOptions *arm.ClientOptions) *environmentLoader {
 	return &environmentLoader{ArmClientOptions: ucpOptions}
 }
 
-// Environment loader implements ConfigurationLoader and is used to get environment related information.
+// EnvironmentLoader struct is initialized with arm clients and provides functionality to get environment configuration and recipe information.
 type environmentLoader struct {
 	// ArmClientOptions represents the client options for ARM clients.
 	ArmClientOptions *arm.ClientOptions
 }
 
-// Load implements recipes.ConfigurationLoader. It fetches environment/application information and return runtime and provider configuration.
+// LoadConfiguration fetches environment/application information and return runtime and provider configuration.
 func (r *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.ArmClientOptions)
 	if err != nil {
