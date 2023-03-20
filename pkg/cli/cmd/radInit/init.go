@@ -69,6 +69,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().Bool("dev", false, "Setup Radius for development")
 	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
+	cmd.Flags().String("public-endpoint-override", "", "Specify the public IP address or hostname of the Kubernetes cluster. It must be in the format: <hostname>[:<port>]. Ex: 'localhost:9000'")
 	return cmd, runner
 }
 
@@ -98,6 +99,7 @@ type Runner struct {
 	SkipDevRecipes          bool
 	Workspace               *workspaces.Workspace
 	Dev                     bool
+	PublicEndpointOverride  string
 }
 
 // NewRunner creates a new instance of the `rad init` runner.
@@ -128,6 +130,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	publicEndpointOverride, err := cmd.Flags().GetString("public-endpoint-override")
+	if err != nil {
+		return err
+	} else if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
+		return fmt.Errorf("a URL is not accepted here. Please specify the public endpoint override in the form <hostname>[:<port>]. Ex: 'localhost:9000'")
+	}
+	r.PublicEndpointOverride = publicEndpointOverride
 
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
@@ -419,7 +429,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr(r.Namespace),
 			},
-			Providers: &providers,
+			Providers:     &providers,
 			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		}
 
@@ -521,9 +531,10 @@ func (r *Runner) getAWSCredential() ucp.CredentialResource {
 func installRadius(ctx context.Context, r *Runner) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
-			Reinstall:     r.Reinstall,
-			AzureProvider: r.AzureCloudProvider,
-			AWSProvider:   r.AwsCloudProvider,
+			Reinstall:              r.Reinstall,
+			AzureProvider:          r.AzureCloudProvider,
+			AWSProvider:            r.AwsCloudProvider,
+			PublicEndpointOverride: r.PublicEndpointOverride,
 		},
 	}
 

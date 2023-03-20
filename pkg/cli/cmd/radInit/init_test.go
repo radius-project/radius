@@ -70,6 +70,7 @@ func Test_Validate(t *testing.T) {
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
 			},
 		},
 		{
@@ -438,6 +439,65 @@ func Test_Validate(t *testing.T) {
 				initKubeContextWithInterruptSignal(mocks.Prompter)
 			},
 		},
+		{
+			Name:          "public-endpoint-override flag works with interactive init (Radius not installed)",
+			Input:         []string{"--public-endpoint-override", "localhost:8081"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusNotInstalled(mocks.Helm)
+
+				// We do not prompt for reinstall if Radius is not yet installed
+
+				// We do not check for existing environments if Radius is not installed
+
+				// Use default env name and namespace
+				initEnvNamePrompt(mocks.Prompter)
+				initNamespacePrompt(mocks.Prompter)
+
+				// No cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "public-endpoint-override flag works with --dev flag",
+			Input:         []string{"--dev", "--public-endpoint-override", "localhost:8081"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusNotInstalled(mocks.Helm)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name: "public-endpoint-override flag throws error if URL is provided",
+			// This is an invalid input to --public-endpoint-override
+			Input:         []string{"--public-endpoint-override", "http://localhost:8081"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// We expect this to fail before anything happens on init
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -739,14 +799,14 @@ func initParseCloudProvider(setup *setup.MockInterface, prompter *prompt.MockInt
 	}, nil)
 }
 
-func initGetKubeContextSuccess(kubernestesMock *kubernetes.MockInterface) {
-	kubernestesMock.EXPECT().
+func initGetKubeContextSuccess(kubernetesMock *kubernetes.MockInterface) {
+	kubernetesMock.EXPECT().
 		GetKubeContext().
 		Return(getTestKubeConfig(), nil).Times(1)
 }
 
-func initGetKubeContextError(kubernestesMock *kubernetes.MockInterface) {
-	kubernestesMock.EXPECT().
+func initGetKubeContextError(kubernetesMock *kubernetes.MockInterface) {
+	kubernetesMock.EXPECT().
 		GetKubeContext().
 		Return(nil, errors.New("unable to fetch kube context")).Times(1)
 }
