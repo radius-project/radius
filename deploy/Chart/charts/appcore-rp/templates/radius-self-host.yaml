@@ -1,4 +1,5 @@
 # This is an example of configuration file.
+{{define "core-rp-config"}}
 environment:
   name: self-hosted
   roleLocation: "global"
@@ -19,16 +20,16 @@ queueProvider:
     incluster: true
     context: ""
     namespace: "radius-system"
-secretProvider:
-  provider: kubernetes
 metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
     port: 9090
+secretProvider:
+  provider: kubernetes
 server:
   host: "0.0.0.0"
-  port: 5444
+  port: 5443
 workerServer:
   maxOperationConcurrency: 3
   maxOperationRetryCount: 2
@@ -39,8 +40,9 @@ logging:
   level: "info"
   json: true
 tracerProvider:
-  serviceName: "applications.link"
+  serviceName: "applications.core"
 
 # TODO: Enable trace provider in 0.19
 #  zipkin:
 #    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+{{end}}
