@@ -80,7 +80,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		TypeName:   &resourceType,
 		Identifier: aws.String(awsResourceIdentifier),
 	})
-	if awsclient.IsAWSResourceNotFound(err) {
+	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(p.GetRelativePath(req.URL.Path), awsResourceIdentifier)), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)

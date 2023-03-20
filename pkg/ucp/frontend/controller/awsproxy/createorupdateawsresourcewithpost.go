@@ -89,7 +89,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			TypeName:   &resourceType,
 			Identifier: aws.String(awsResourceIdentifier),
 		})
-		if awserror.IsAWSResourceNotFound(err) {
+		if awserror.IsAWSResourceNotFoundError(err) {
 			existing = false
 		} else if err != nil {
 			return awserror.HandleAWSError(err)
