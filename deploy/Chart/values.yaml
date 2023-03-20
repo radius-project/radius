@@ -21,3 +21,6 @@ global:
     enabled: true
     path: "/metrics"
     port: 9090
+  tracerProvider:
+    zipkin:
+      url: "http://localhost:9411/api/v2/spans"
