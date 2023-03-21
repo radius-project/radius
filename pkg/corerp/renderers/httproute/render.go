@@ -107,7 +107,7 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 }
 
 func getLabels(ctx context.Context, options renderers.RenderOptions, appIdName string, route *datamodel.HTTPRoute) map[string]string {
-	//Create KubernetesMetadata structs to merge labels
+	// Create KubernetesMetadata struct to merge labels
 	lblMap := &kube.Metadata{
 		ObjectMetadata: kubernetes.MakeDescriptiveLabels(appIdName, route.Name, route.ResourceTypeName()),
 	}
@@ -134,7 +134,7 @@ func getLabels(ctx context.Context, options renderers.RenderOptions, appIdName s
 }
 
 func getAnnotations(ctx context.Context, options renderers.RenderOptions) map[string]string {
-	//Create KubernetesMetadata structs to merge annotations
+	// Create KubernetesMetadata struct to merge annotations
 	annMap := &kube.Metadata{}
 	envOpts := &options.Environment
 	appOpts := &options.Application
