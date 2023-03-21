@@ -39,12 +39,12 @@ ucp:
 logging:
   level: "info"
   json: true
-{{- if .Values.global.tracerProvider.zipkin.url }}
+{{ if and .Values.global.tracerProvider .Values.global.tracerProvider.zipkin .Values.global.tracerProvider.zipkin.url }}
 tracerProvider:
   serviceName: "applications.core"
   zipkin: 
     url: {{ .Values.global.tracerProvider.zipkin.url }}
-{{- end }}
+{{ end }}
 # TODO: Enable trace provider in 0.19
 #  zipkin:
 #    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"

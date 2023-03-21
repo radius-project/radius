@@ -21,6 +21,3 @@ global:
     enabled: true
     path: "/metrics"
     port: 9090
-  tracerProvider:
-    zipkin:
-      url: ""
