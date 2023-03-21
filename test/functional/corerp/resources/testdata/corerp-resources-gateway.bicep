@@ -17,6 +17,23 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   location: location
   properties: {
     environment: environment
+    extensions: [
+      {
+          kind: 'kubernetesNamespace'
+          namespace: 'default-corerp-resources-gateway'
+      }
+      {
+        kind: 'kubernetesMetadata'
+        annotations: {
+          'user.ann.1': 'user.ann.val.1'
+          'user.ann.2': 'user.ann.val.2'
+        }
+        labels: {
+          'user.lbl.1': 'user.lbl.val.1'
+          'user.lbl.2': 'user.lbl.val.2'
+        }
+      }
+    ]
   }
 }
 

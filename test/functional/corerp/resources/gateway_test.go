@@ -33,6 +33,20 @@ func Test_Gateway(t *testing.T) {
 	template := "testdata/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
 	appNamespace := "default-corerp-resources-gateway"
+	expectedAnnotations := map[string]string{
+		"user.ann.1": "user.ann.val.1",
+		"user.ann.2": "user.ann.val.2",
+	}
+	expectedLabels := map[string]string{
+		"app.kubernetes.io/managed-by": "radius-rp",
+		"app.kubernetes.io/name":       "ctnr-rte-kme",
+		"app.kubernetes.io/part-of":    "corerp-app-rte-kme",
+		"radius.dev/application":       "corerp-app-rte-kme",
+		"radius.dev/resource":          "ctnr-rte-kme",
+		"radius.dev/resource-type":     "applications.core-httproutes",
+		"user.lbl.1":                   "user.lbl.val.1",
+		"user.lbl.2":                   "user.lbl.val.2",
+	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -88,6 +102,15 @@ func Test_Gateway(t *testing.T) {
 				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
+
+				// Check labels and annotations
+				t.Logf("Checking label, annotation values in HTTPProxy resources")
+				httpproxies, err := functional.GetHTTPProxyList(ctx, ct.Options.Client, appNamespace, name)
+				require.NoError(t, err)
+				for _, httpproxy := range *&httpproxies.Items {
+					require.True(t, isMapSubSet(expectedLabels, httpproxy.Labels))
+					require.True(t, isMapSubSet(expectedAnnotations, httpproxy.Annotations))
+				}
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")

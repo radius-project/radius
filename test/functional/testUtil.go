@@ -56,19 +56,9 @@ func setDefault() (string, string) {
 
 // GetHostnameForHTTPProxy finds the fqdn set on the root HTTPProxy of the specified application
 func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, namespace, application string) (string, error) {
-	var httpproxies contourv1.HTTPProxyList
-
-	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	httpproxies, err := GetHTTPProxyList(ctx, client, namespace, application)
 	if err != nil {
-		return "", err
-	}
-
-	err = client.List(ctx, &httpproxies, &runtime_client.ListOptions{
-		Namespace:     namespace,
-		LabelSelector: label,
-	})
-	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not retrieve list of cluster HTTPProxies")
 	}
 
 	for _, httpProxy := range httpproxies.Items {
@@ -79,6 +69,26 @@ func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, 
 	}
 
 	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
+}
+
+// GetHTTPProxyList returns a list of HTTPProxies for the specified application
+func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespace, application string) (*contourv1.HTTPProxyList, error) {
+	var httpproxies contourv1.HTTPProxyList
+
+	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.List(ctx, &httpproxies, &runtime_client.ListOptions{
+		Namespace:     namespace,
+		LabelSelector: label,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpproxies, nil
 }
 
 // ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan

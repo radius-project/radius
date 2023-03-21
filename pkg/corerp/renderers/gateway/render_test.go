@@ -1016,7 +1016,7 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 	return output
 }
 
-func Test_Render_WithEnvKME(t *testing.T) {
+func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
 	r := &Renderer{}
 
 	var routes []datamodel.GatewayRoute
@@ -1061,7 +1061,7 @@ func Test_Render_WithEnvKME(t *testing.T) {
 	validateHttpRoute(t, output.Resources, routeName, 80, nil, 1)
 }
 
-func Test_Render_WithEnvAppKME(t *testing.T) {
+func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
 	r := &Renderer{}
 
 	var routes []datamodel.GatewayRoute
