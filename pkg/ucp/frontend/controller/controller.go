@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/pkg/validator"
 )
 
 // Options represents controller options.
@@ -51,18 +52,6 @@ type HandlerOptions struct {
 	Path           string
 	Method         v1.OperationMethod
 	HandlerFactory ControllerFunc
-}
-
-// BaseController is the base operation controller.
-type BaseController struct {
-	Options Options
-}
-
-// NewBaseController creates BaseController instance.
-func NewBaseController(options Options) BaseController {
-	return BaseController{
-		options,
-	}
 }
 
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options) error {
@@ -103,4 +92,9 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options)
 		opts.ParentRouter.PathPrefix(opts.Path).HandlerFunc(fn).Name(ot.String())
 	}
 	return nil
+}
+
+func ConfigureDefaultHandlers(router *mux.Router, opts armrpc_controller.Options) {
+	router.NotFoundHandler = validator.APINotFoundHandler()
+	router.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
 }

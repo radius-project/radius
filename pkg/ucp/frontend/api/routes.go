@@ -69,8 +69,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 				HandlerFactory: kubernetes_ctrl.NewDiscoveryDoc,
 			},
 		}...)
-
 	}
+
+	ctrl.ConfigureDefaultHandlers(router, ctrlOpts.Options)
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))
