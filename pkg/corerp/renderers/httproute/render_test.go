@@ -29,7 +29,7 @@ const (
 	resourceName    = "test-route"
 	applicationPath = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
 
-	// User Inputs for testing
+	// User Inputs for testing labels and annotations
 	envAnnotationKey1 = "env.ann1"
 	envAnnotationKey2 = "env.ann2"
 	envAnnotationVal1 = "env.annval1"
