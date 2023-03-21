@@ -45,7 +45,4 @@ tracerProvider:
   zipkin: 
     url: {{ .Values.global.tracerProvider.zipkin.url }}
 {{ end }}
-# TODO: Enable trace provider in 0.19
-#  zipkin:
-#    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
-{{end}}
+{{ end }} 

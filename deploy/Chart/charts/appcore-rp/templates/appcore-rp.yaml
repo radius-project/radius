@@ -106,8 +106,3 @@ metadata:
 data:
   radius-self-host.yaml: {{ (include "core-rp-config" .) | trim | quote }}
   link-self-host.yaml: {{ (include "link-rp-config" .) | trim | quote }}
-
-#  radius-self-host.yaml: |-  
-#{{ .Files.Get "radius-self-host.yaml" | indent 4}}
-#  link-self-host.yaml: |-
-#{{ .Files.Get "link-self-host.yaml" | indent 4}}
