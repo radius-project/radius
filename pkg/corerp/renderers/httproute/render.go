@@ -87,7 +87,7 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 			Name:        kubernetes.NormalizeResourceName(route.Name),
 			Namespace:   options.Environment.Namespace,
 			Labels:      getLabels(ctx, options, appId.Name(), route),
-			Annotations: getAnnotations(ctx, options, appId.Name(), route),
+			Annotations: getAnnotations(ctx, options),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),
@@ -133,7 +133,7 @@ func getLabels(ctx context.Context, options renderers.RenderOptions, appIdName s
 	return nil
 }
 
-func getAnnotations(ctx context.Context, options renderers.RenderOptions, appIdName string, route *datamodel.HTTPRoute) map[string]string {
+func getAnnotations(ctx context.Context, options renderers.RenderOptions) map[string]string {
 	//Create KubernetesMetadata structs to merge annotations
 	annMap := &kube.Metadata{}
 	envOpts := &options.Environment

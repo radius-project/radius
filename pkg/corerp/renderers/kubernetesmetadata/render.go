@@ -101,7 +101,7 @@ func processAnnotations(ctx context.Context, options renderers.RenderOptions, de
 func processLabels(ctx context.Context, options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
 	existingMetaLabels, existingSpecLabels := getLabels(dep)
 
-	//Create KubernetesMetadata struct to merge labels
+	// Create KubernetesMetadata struct to merge labels
 	lbl := &kube.Metadata{
 		ObjectMetadata: existingMetaLabels,
 		SpecData:       existingSpecLabels,

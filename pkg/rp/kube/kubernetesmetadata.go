@@ -17,11 +17,11 @@ import (
 // Metadata represents KubernetesMetadata data. It includes labels/annotations defined as KubernetesMetadataExtension at the
 // Environment/Application/Current Resource(Container eg.) level and pre-existing labels/annotations that may be present in the outputresource.
 type Metadata struct {
-	EnvData        map[string]string // Contains labels/annotations defined as a KubernetesMetadataExtension at the Environment level.
-	AppData        map[string]string // Contains labels/annotations defined as a KubernetesMetadataExtension at the Application level.
-	Input          map[string]string // Contains labels/annotations defined as a KubernetesMetadataExtension at the Current Resource level.
-	ObjectMetadata map[string]string // Contains labels/annotations that are in the outputresource at the ObjectMeta level.
-	SpecData       map[string]string // Contains labels/annotations that are in the outputresource at the Spec level.
+	EnvData        map[string]string // EnvData contains labels/annotations defined as a KubernetesMetadataExtension at the Environment level.
+	AppData        map[string]string // AppData contains labels/annotations defined as a KubernetesMetadataExtension at the Application level.
+	Input          map[string]string // Input contains labels/annotations defined as a KubernetesMetadataExtension at the Current Resource level.
+	ObjectMetadata map[string]string // ObjectMetadata contains labels/annotations that are in the outputresource at the ObjectMeta level.
+	SpecData       map[string]string // SpecData contains labels/annotations that are in the outputresource at the Spec level.
 }
 
 // Merge merges environment, application maps with current values and returns updated metaMap and specMap

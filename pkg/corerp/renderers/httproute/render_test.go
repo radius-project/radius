@@ -98,28 +98,28 @@ func TestHTTPRouteRenderer(t *testing.T) {
 		expectedMaps *expectedMaps
 	}{
 		{
-			name:         "WithPort",
+			name:         "Test_Port",
 			port:         6379,
 			options:      getRenderOptions(0),
 			setupMaps:    nil,
 			expectedMaps: nil,
 		},
 		{
-			name:         "WithDefaultPort",
+			name:         "Test_DefaultPort",
 			port:         renderers.DefaultPort,
 			options:      getRenderOptions(0),
 			setupMaps:    nil,
 			expectedMaps: nil,
 		},
 		{
-			name:         "WithEnvKME",
+			name:         "Test_With_Environment_Kubernetes_Metadata",
 			port:         renderers.DefaultPort,
 			options:      getRenderOptions(1),
 			setupMaps:    getSetUpMaps(true),
 			expectedMaps: getExpectedMaps(true),
 		},
 		{
-			name:         "WithEnvAppKME",
+			name:         "Test_With_Environment_Application_Kubernetes_Metadata",
 			port:         renderers.DefaultPort,
 			options:      getRenderOptions(2),
 			setupMaps:    getSetUpMaps(false),
