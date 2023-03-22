@@ -28,7 +28,7 @@ func Test_GetConfigurationAzure(t *testing.T) {
 	envConfig := &Configuration{
 		Runtime: RuntimeConfiguration{
 			Kubernetes: &KubernetesRuntime{
-				Namespace: "default",
+				EnvironmentNamespace: "default",
 			},
 		},
 		Providers: createAzureProvider(),
@@ -56,7 +56,7 @@ func Test_GetConfigurationAWS(t *testing.T) {
 	envConfig := &Configuration{
 		Runtime: RuntimeConfiguration{
 			Kubernetes: &KubernetesRuntime{
-				Namespace: "default",
+				EnvironmentNamespace: "default",
 			},
 		},
 		Providers: createAWSProvider(),

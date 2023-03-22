@@ -57,7 +57,7 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 				return nil, err
 			}
 		} else {
-			configuration.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromEnvironmentResource(environment)
+			configuration.Runtime.Kubernetes.EnvironmentNamespace, err = kube.FetchNamespaceFromEnvironmentResource(environment)
 			if err != nil {
 				return nil, err
 			}
@@ -65,12 +65,14 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 
 	}
 
-	if environment.Properties.Providers != nil && environment.Properties.Providers.Aws != nil {
-		configuration.Providers.AWS.Scope = *environment.Properties.Providers.Aws.Scope
-	}
+	if environment.Properties.Providers != nil {
+		if environment.Properties.Providers.Aws != nil {
+			configuration.Providers.AWS.Scope = *environment.Properties.Providers.Aws.Scope
+		}
 
-	if environment.Properties.Providers != nil && environment.Properties.Providers.Azure != nil {
-		configuration.Providers.Azure.Scope = *environment.Properties.Providers.Azure.Scope
+		if environment.Properties.Providers.Azure != nil {
+			configuration.Providers.Azure.Scope = *environment.Properties.Providers.Azure.Scope
+		}
 	}
 
 	return &configuration, nil
