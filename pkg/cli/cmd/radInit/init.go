@@ -69,7 +69,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().Bool("dev", false, "Setup Radius for development")
 	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
-	cmd.Flags().String("public-endpoint-override", "", "Specify the public IP address or hostname of the Kubernetes cluster. It must be in the format: <hostname>[:<port>]. Ex: 'localhost:9000'")
+	cmd.Flags().String("public-endpoint-override", "", "Specify the public IP address or hostname of the Kubernetes cluster to override the default value. It must be in the format: <hostname>[:<port>]. Ex: 'localhost:9000'")
 	return cmd, runner
 }
 
