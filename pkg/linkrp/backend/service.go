@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/driver"
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	"github.com/project-radius/radius/pkg/sdk"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
@@ -63,12 +64,9 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
-	ucpClientOptions, err := GetUCPClientOptions(s.Options)
-	if err != nil {
-		return fmt.Errorf("failed to initialize UCP connection options: %w", err)
-	}
+	ucpClientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
 
-	client, err := GetUCPDeploymentClient(s.Options)
+	client, err := GetUCPDeploymentClient(s.Options.UCPConnection)
 	if err != nil {
 		return fmt.Errorf("failed to initialize UCP deployment client: %w", err)
 	}
