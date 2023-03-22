@@ -14,7 +14,8 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/to"
-	
+	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
@@ -34,8 +35,12 @@ func Test_GetOperationResults(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := http.NewRequest(http.MethodGet, ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
-	require.NoError(t, err)
+	operationResultsRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
+	require.NoError(t, err, "creating request failed")
+
+	ctx := testutil.ARMTestContextFromRequest(operationResultsRequest)
+	operationResultsRequest = operationResultsRequest.WithContext(ctx)
+
 	operationResultsResponse, err := ucpClient.httpClient.Do(operationResultsRequest)
 	require.NoError(t, err)
 

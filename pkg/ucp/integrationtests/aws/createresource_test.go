@@ -8,13 +8,13 @@ package aws
 // Tests that test with Mock RP functionality and UCP Server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -51,7 +51,13 @@ func Test_CreateAWSResource(t *testing.T) {
 	}
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
+
+	createRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, body)
+	require.NoError(t, err, "creating request failed")
+
+	ctx := testutil.ARMTestContextFromRequest(createRequest)
+	createRequest = createRequest.WithContext(ctx)
+
 	require.NoError(t, err)
 	createResponse, err := ucpClient.httpClient.Do(createRequest)
 	require.NoError(t, err)

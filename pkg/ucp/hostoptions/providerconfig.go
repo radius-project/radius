@@ -10,6 +10,7 @@ import (
 	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -21,10 +22,12 @@ type UCPConfig struct {
 	Planes          []rest.Plane                           `yaml:"planes"`
 	SecretProvider  provider.SecretProviderOptions         `yaml:"secretProvider"`
 	MetricsProvider metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
+	QueueProvider   qprovider.QueueProviderOptions         `yaml:"queueProvider"`
 	TracerProvider  trace.Options                          `yaml:"tracerProvider"`
 	Logging         ucplog.LoggingOptions                  `yaml:"logging"`
 	Identity        Identity                               `yaml:"identity,omitempty"`
 	UCP             config.UCPOptions                      `yaml:"ucp"`
+	Location        string                                 `yaml:"location"`
 }
 
 const (

@@ -193,6 +193,37 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 	}
 }
 
+type OutputEnvObject struct {
+	EnvName     string
+	ComputeKind string
+	Recipes     int
+	Providers   int
+}
+
+// GetUpdateEnvironmentTableFormat returns the fields to output from env object after upation.
+func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .EnvName }",
+			},
+			{
+				Heading:  "COMPUTE",
+				JSONPath: "{ .ComputeKind }",
+			},
+			{
+				Heading:  "RECIPES",
+				JSONPath: "{ .Recipes }",
+			},
+			{
+				Heading:  "PROVIDERS",
+				JSONPath: "{ .Providers }",
+			},
+		},
+	}
+}
+
 func GetRecipeParamsTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{

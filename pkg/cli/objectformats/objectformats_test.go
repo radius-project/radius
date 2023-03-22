@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_EnvTableFormat(t *testing.T) {
+func Test_GenericEnvTableFormat(t *testing.T) {
 	obj := v20220315privatepreview.EnvironmentResource{
 		Name: to.Ptr("test_env_resource"),
 	}
@@ -25,5 +25,21 @@ func Test_EnvTableFormat(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := "NAME\ntest_env_resource\n"
+	require.Equal(t, expected, buffer.String())
+}
+
+func Test_EnvTableFormat(t *testing.T) {
+	obj := OutputEnvObject{
+		EnvName:     "test_env_resource",
+		ComputeKind: "kubernetes",
+		Recipes:     3,
+		Providers:   2,
+	}
+
+	buffer := &bytes.Buffer{}
+	err := output.Write(output.FormatTable, obj, buffer, GetUpdateEnvironmentTableFormat())
+	require.NoError(t, err)
+
+	expected := "NAME               COMPUTE     RECIPES   PROVIDERS\ntest_env_resource  kubernetes  3         2\n"
 	require.Equal(t, expected, buffer.String())
 }

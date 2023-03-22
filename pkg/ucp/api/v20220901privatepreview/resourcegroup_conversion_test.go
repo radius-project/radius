@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -25,13 +26,15 @@ func TestResourceGroupConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "resourcegroup.json",
 			expected: &datamodel.ResourceGroup{
-				TrackedResource: v1.TrackedResource{
-					ID:       "/planes/radius/local/resourceGroups/test-rg",
-					Name:     "test-rg",
-					Type:     "System.Resources/resourceGroups",
-					Location: v1.LocationGlobal,
-					Tags: map[string]string{
-						"env": "dev",
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/planes/radius/local/resourceGroups/test-rg",
+						Name:     "test-rg",
+						Type:     resources.ResourceGroupType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
 					},
 				},
 			},

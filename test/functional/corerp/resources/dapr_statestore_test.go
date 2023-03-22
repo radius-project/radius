@@ -63,10 +63,10 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
 
-	if os.Getenv("TABLESTORAGE_RESOURCE_ID") == "" {
-		t.Error("TABLESTORAGE_RESOURCE_ID environment variable must be set to run this test.")
+	if os.Getenv("AZURE_TABLESTORAGE_RESOURCE_ID") == "" {
+		t.Error("AZURE_TABLESTORAGE_RESOURCE_ID environment variable must be set to run this test.")
 	}
-	tablestorageresourceid := "tablestorageresourceid=" + os.Getenv("TABLESTORAGE_RESOURCE_ID")
+	tablestorageresourceid := "tablestorageresourceid=" + os.Getenv("AZURE_TABLESTORAGE_RESOURCE_ID")
 	appNamespace := "default-corerp-resources-dapr-statestore-tablestorage"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{

@@ -19,17 +19,15 @@ import (
 	"github.com/google/uuid"
 
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_GetAWSResource(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	getResponseBody := map[string]any{
@@ -49,15 +47,20 @@ func Test_GetAWSResource(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
-
 	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
@@ -75,9 +78,6 @@ func Test_GetAWSResource(t *testing.T) {
 }
 
 func Test_GetAWSResource_NotFound(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -87,15 +87,20 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 		})
 
 	awsController, err := NewGetAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
-
 	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -107,24 +112,26 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 }
 
 func Test_GetAWSResource_UnknownError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewGetAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -133,9 +140,6 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 }
 
 func Test_GetAWSResource_SmithyError(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
@@ -149,15 +153,20 @@ func Test_GetAWSResource_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewGetAWSResource(ctrl.Options{
-		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		DB:                      testOptions.StorageClient,
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
 	})
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

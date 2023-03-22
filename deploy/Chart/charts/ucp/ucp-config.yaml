@@ -27,6 +27,9 @@ storageProvider:
 secretProvider:
   provider: kubernetes
 
+queueProvider:
+  provider: inmemory
+
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
 planes:

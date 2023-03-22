@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
@@ -176,7 +175,7 @@ func TestParseAndFormatRecipeParams(t *testing.T) {
 			},
 		}
 
-		assert.DeepEqual(t, expectedOutput, output)
+		require.Equal(t, expectedOutput, output)
 	})
 
 	t.Run("parse and format recipe with no parameters", func(t *testing.T) {

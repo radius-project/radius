@@ -6,6 +6,7 @@
 package ucp
 
 import (
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -77,4 +78,14 @@ func (ucptest UCPTest) Test(t *testing.T) {
 
 	ucptest.RunMethod(t, connection.Endpoint(), transport)
 
+}
+
+func NewUCPRequest(method string, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	return req, nil
 }

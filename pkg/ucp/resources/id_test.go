@@ -996,3 +996,54 @@ func Test_RadiusRPResource(t *testing.T) {
 		})
 	}
 }
+
+func Test_Type(t *testing.T) {
+	values := []struct {
+		desc     string
+		id       string
+		expected string
+	}{
+		{
+			desc:     "Plane scope",
+			id:       "/planes",
+			expected: "",
+		},
+		{
+			desc:     "Plane resource",
+			id:       "/planes/radius/local",
+			expected: "System.Planes/radius",
+		},
+		{
+			desc:     "Resourcegroup scope",
+			id:       "/planes/radius/local/resourceGroups",
+			expected: "",
+		},
+		{
+			desc:     "Resourcegroup resource",
+			id:       "/planes/radius/local/resourceGroups/rg1",
+			expected: ResourceGroupType,
+		},
+		{
+			desc:     "LinkRP resource",
+			id:       "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			expected: "Applications.Link/mongoDatabases",
+		},
+		{
+			desc:     "AWS resource",
+			id:       "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1",
+			expected: "AWS.Kinesis/Stream",
+		},
+		{
+			desc:     "Azure resource",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			expected: "Applications.Link/mongoDatabases",
+		},
+	}
+	for _, tt := range values {
+		t.Run(tt.desc, func(t *testing.T) {
+			rID, err := Parse(tt.id)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, rID.Type())
+		})
+	}
+}

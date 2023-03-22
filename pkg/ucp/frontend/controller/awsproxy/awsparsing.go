@@ -8,35 +8,14 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
-	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
-
-func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
-	if opts.AWSCloudControlClient == nil {
-		return nil, nil, "", resources.ID{}, errors.New("AWSCloudControlClient is not set.")
-	}
-	if opts.AWSCloudFormationClient == nil {
-		return nil, nil, "", resources.ID{}, errors.New("AWSCloudFormationClient is not set.")
-	}
-
-	path := middleware.GetRelativePath(opts.BasePath, r.URL.Path)
-	id, err := resources.ParseByMethod(path, r.Method)
-	if err != nil {
-		return nil, nil, "", resources.ID{}, err
-	}
-
-	resourceType := resources.ToAWSResourceType(id)
-	return opts.AWSCloudControlClient, opts.AWSCloudFormationClient, resourceType, id, nil
-}
 
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the
 // provided AWS CloudFormation type schema

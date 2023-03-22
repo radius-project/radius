@@ -138,7 +138,7 @@ type ApplicationsManagementClient interface {
 	CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerp.ApplicationResource) error
 
 	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
-	CreateEnvironment(ctx context.Context, envName, location, namespace, envKind, resourceId string, recipeProperties map[string]*corerp.EnvironmentRecipeProperties, providers *corerp.Providers, useDevRecipes bool) (bool, error)
+	CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerp.EnvironmentProperties) (bool, error)
 
 	// ListEnvironmentsInResourceGroup lists all environments in the configured scope (assumes configured scope is a resource group)
 	ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerp.EnvironmentResource, error)

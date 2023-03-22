@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_Azure_Credential_Operations(t *testing.T) {
@@ -49,12 +48,12 @@ func runCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, 
 	// List credential operation
 	credentialList := listCredential(t, roundTripper, collectionUrl)
 	require.Equal(t, len(credentialList), 1)
-	assert.DeepEqual(t, credentialList[0], credential)
+	require.Equal(t, credentialList[0], credential)
 
 	// Check for correctness of credential
 	createdCredential, statusCode := getCredential(t, roundTripper, resourceUrl)
 	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, createdCredential, credential)
+	require.Equal(t, createdCredential, credential)
 
 	// Delete credential operation
 	statusCode, err := deleteCredential(t, roundTripper, resourceUrl)
@@ -70,7 +69,7 @@ func runCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, 
 func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.CredentialResource) {
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	createRequest, err := NewUCPRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(createRequest)
@@ -81,7 +80,7 @@ func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, 
 }
 
 func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.CredentialResource, int) {
-	getCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
+	getCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	result, err := roundTripper.RoundTrip(getCredentialRequest)
@@ -100,7 +99,7 @@ func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (uc
 }
 
 func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
-	deleteCredentialRequest, err := http.NewRequest(http.MethodDelete, url, nil)
+	deleteCredentialRequest, err := NewUCPRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(deleteCredentialRequest)
@@ -108,7 +107,7 @@ func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) 
 }
 
 func listCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.CredentialResource {
-	listCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
+	listCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(listCredentialRequest)
@@ -139,7 +138,7 @@ func getCredentialList(t *testing.T, res *http.Response) []ucp.CredentialResourc
 
 func getAzureCredentialObject() ucp.CredentialResource {
 	return ucp.CredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
@@ -160,7 +159,7 @@ func getAzureCredentialObject() ucp.CredentialResource {
 
 func getAWSCredentialObject() ucp.CredentialResource {
 	return ucp.CredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),

@@ -55,16 +55,17 @@ func (s *Service) Init(ctx context.Context) error {
 	s.OperationStatusManager = manager.New(opSC, s.RequestQueue, s.ProviderName, s.Options.Config.Env.RoleLocation)
 	s.Controllers = NewControllerRegistry(s.StorageProvider)
 
-	s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
+	if s.Options.K8sConfig != nil {
+		s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
+		if err != nil {
+			return err
+		}
 
-	s.KubeClientSet, err = kubernetes.NewForConfig(s.Options.K8sConfig)
-	if err != nil {
-		return err
+		s.KubeClientSet, err = kubernetes.NewForConfig(s.Options.K8sConfig)
+		if err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 

@@ -7,7 +7,8 @@ package provider
 
 // MetricsProviderOptions represents the options of the providers for publishing metrics.
 type MetricsProviderOptions struct {
-	Prometheus PrometheusOptions `yaml:"prometheus,omitempty"`
+	ServiceName string            `yaml:"serviceName,omitempty"`
+	Prometheus  PrometheusOptions `yaml:"prometheus,omitempty"`
 }
 
 // PrometheusOptions represents prometheus metrics provider options.

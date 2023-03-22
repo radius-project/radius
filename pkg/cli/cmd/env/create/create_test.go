@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -110,8 +111,14 @@ func Test_Run_Success(t *testing.T) {
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 		namespaceClient := namespace.NewMockInterface(ctrl)
+		testEnvProperties := &corerp.EnvironmentProperties{
+			UseDevRecipes: to.Ptr(true),
+			Compute: &corerp.KubernetesCompute{
+				Namespace: to.Ptr("default"),
+			},
+		}
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), &corerp.Providers{}, gomock.Any()).
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
 			Return(true, nil).Times(1)
 
 		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
@@ -148,8 +155,14 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 			namespaceClient := namespace.NewMockInterface(ctrl)
+			testEnvProperties := &corerp.EnvironmentProperties{
+				UseDevRecipes: to.Ptr(false),
+				Compute: &corerp.KubernetesCompute{
+					Namespace: to.Ptr("default"),
+				},
+			}
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), false).
+				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
 				Return(true, nil).Times(1)
 
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
@@ -184,8 +197,14 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 			namespaceClient := namespace.NewMockInterface(ctrl)
+			testEnvProperties := &corerp.EnvironmentProperties{
+				UseDevRecipes: to.Ptr(true),
+				Compute: &corerp.KubernetesCompute{
+					Namespace: to.Ptr("default"),
+				},
+			}
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), true).
+				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
 				Return(true, nil).Times(1)
 
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)

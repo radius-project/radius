@@ -26,6 +26,7 @@ import (
 	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
+	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
@@ -53,6 +54,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/trace"
+	"go.opentelemetry.io/otel"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -66,6 +68,11 @@ var RootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }
+
+const (
+	serviceName string = "cli"
+	tracerName  string = "cli"
+)
 
 var applicationCmd = NewAppCommand()
 var resourceCmd = NewResourceCommand()
@@ -102,7 +109,7 @@ func Execute() {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
 	shutdown, err := trace.InitTracer(trace.Options{
-		ServiceName: "cli",
+		ServiceName: serviceName,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -111,15 +118,20 @@ func Execute() {
 		_ = shutdown(ctx)
 	}()
 
+	tr := otel.Tracer(tracerName)
+	spanName := getRootSpanName()
+	ctx, span := tr.Start(ctx, spanName)
+	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
+		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
 		os.Exit(1)
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
+		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
 		os.Exit(1)
 	}
-
 }
 
 func init() {
@@ -199,6 +211,9 @@ func initSubCommands() {
 	envShowCmd, _ := env_show.NewCommand(framework)
 	envCmd.AddCommand(envShowCmd)
 
+	envUpdateCmd, _ := env_update.NewCommand(framework)
+	envCmd.AddCommand(envUpdateCmd)
+
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
 
@@ -269,4 +284,13 @@ func DirectoryConfigFromContext(ctx context.Context) *config.DirectoryConfig {
 	}
 
 	return holder.DirectoryConfig
+}
+
+func getRootSpanName() string {
+	args := os.Args
+	if len(args) > 1 {
+		return args[0] + " " + args[1]
+	} else {
+		return args[0]
+	}
 }

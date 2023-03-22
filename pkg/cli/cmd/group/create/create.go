@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/to"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad group create` command.
@@ -99,7 +99,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
-	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{
+	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
 	if err != nil {
@@ -108,7 +108,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{
+	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
 	if err != nil {

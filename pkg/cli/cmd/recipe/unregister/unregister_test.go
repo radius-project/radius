@@ -76,23 +76,25 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			envResource := v20220315privatepreview.EnvironmentResource{
-				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:     to.Ptr("kind-kind"),
-				Type:     to.Ptr("applications.core/environments"),
-				Location: to.Ptr(v1.LocationGlobal),
-				Properties: &v20220315privatepreview.EnvironmentProperties{
-					UseDevRecipes: to.Ptr(true),
-					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-						"cosmosDB": {
-							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
-						},
-					},
-					Compute: &v20220315privatepreview.KubernetesCompute{
-						Namespace: to.Ptr("default"),
+			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+				UseDevRecipes: to.Ptr(true),
+				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					"cosmosDB": {
+						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
+						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 					},
 				},
+				Compute: &v20220315privatepreview.KubernetesCompute{
+					Namespace: to.Ptr("default"),
+				},
+			}
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       to.Ptr("kind-kind"),
+				Type:       to.Ptr("applications.core/environments"),
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: testEnvProperties,
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -100,7 +102,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, "default", "Kubernetes", gomock.Any(), map[string]*v20220315privatepreview.EnvironmentRecipeProperties{}, gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -118,20 +120,22 @@ func Test_Run(t *testing.T) {
 		t.Run("No Namespace", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			envResource := v20220315privatepreview.EnvironmentResource{
-				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:     to.Ptr("kind-kind"),
-				Type:     to.Ptr("applications.core/environments"),
-				Location: to.Ptr(v1.LocationGlobal),
-				Properties: &v20220315privatepreview.EnvironmentProperties{
-					UseDevRecipes: to.Ptr(true),
-					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-						"cosmosDB": {
-							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
-						},
+			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+				UseDevRecipes: to.Ptr(true),
+				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					"cosmosDB": {
+						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
+						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 					},
 				},
+			}
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       to.Ptr("kind-kind"),
+				Type:       to.Ptr("applications.core/environments"),
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: testEnvProperties,
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -139,7 +143,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, "", "Kubernetes", gomock.Any(), map[string]*v20220315privatepreview.EnvironmentRecipeProperties{}, gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}

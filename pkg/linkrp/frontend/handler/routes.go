@@ -7,7 +7,6 @@ package handler
 
 import (
 	"context"
-	"time"
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -25,7 +24,6 @@ import (
 	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprinvokehttproutes"
 	daprPubSub_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprpubsubbrokers"
 	daprSecretStore_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprsecretstores"
-	daprStateStore_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprstatestores"
 	extender_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
@@ -124,7 +122,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
 							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
 						},
-						AsyncOperationTimeout: time.Duration(10) * time.Minute,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
 					},
 				)
 			},
@@ -141,7 +139,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
 							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
 						},
-						AsyncOperationTimeout: time.Duration(8) * time.Minute,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
 					},
 				)
 			},
@@ -155,7 +153,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
 						RequestConverter:      converter.MongoDatabaseDataModelFromVersioned,
 						ResponseConverter:     converter.MongoDatabaseDataModelToVersioned,
-						AsyncOperationTimeout: time.Duration(15) * time.Minute,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteMongoDatabaseTimeout,
 					},
 				)
 			},
@@ -339,7 +337,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprStateStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -347,7 +354,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprStateStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -355,7 +371,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprStateStore_ctrl.NewDeleteDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:      converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter:     converter.DaprStateStoreDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprStateStoreTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -394,7 +416,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
 						},
-						AsyncOperationTimeout: time.Duration(60) * time.Minute, // azure/aws redis resource creation is takes between 20-50 mins.
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
 					},
 				)
 			},
@@ -411,7 +433,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
 						},
-						AsyncOperationTimeout: time.Duration(60) * time.Minute, // azure/aws redis resource creation is takes between 20-50 mins.
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
 					},
 				)
 			},
@@ -425,7 +447,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:      converter.RedisCacheDataModelFromVersioned,
 						ResponseConverter:     converter.RedisCacheDataModelToVersioned,
-						AsyncOperationTimeout: time.Duration(30) * time.Minute,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRedisCacheTimeout,
 					},
 				)
 			},
