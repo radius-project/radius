@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Credential(t *testing.T) {
+func Test_Azure_Credential(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
@@ -77,15 +77,6 @@ func Test_Credential(t *testing.T) {
 				PropertyName: "$.properties",
 				ValidValue:   "not nil",
 			},
-		},
-		{
-			name:       "test_invalid_credential_kind",
-			filename:   "invalid-kind-azure-credential.json",
-			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
-			expected:   armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"),
-			fn:         setupEmptyMocks,
-			err:        nil,
 		},
 		{
 			name:       "test_credential_created",

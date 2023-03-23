@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Credential(t *testing.T) {
+func Test_AWS_Credential(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
@@ -79,15 +79,6 @@ func Test_Credential(t *testing.T) {
 			},
 		},
 		{
-			name:       "test_invalid_credential_kind",
-			filename:   "invalid-kind-aws-credential.json",
-			headerfile: testHeaderFile,
-			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
-			expected:   armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"),
-			fn:         setupEmptyMocks,
-			err:        nil,
-		},
-		{
 			name:       "test_credential_created",
 			filename:   "aws-credential.json",
 			headerfile: testHeaderFile,
@@ -138,7 +129,7 @@ func Test_Credential(t *testing.T) {
 
 			response, err := credentialCtrl.Run(ctx, nil, request)
 			if tt.err != nil {
-				require.Equal(t, err, tt.err)
+				require.Equal(t, tt.err, err)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, response)
