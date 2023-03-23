@@ -22,6 +22,7 @@ const (
 	Bicep = "bicep"
 )
 
+//go:generate mockgen -destination=./mock_config_loader.go -package=configloader -self_package github.com/project-radius/radius/pkg/recipes/configloader github.com/project-radius/radius/pkg/recipes ConfigurationLoader
 type EnvironmentLoader struct {
 	UCPClientOptions *arm.ClientOptions
 }

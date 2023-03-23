@@ -7,10 +7,8 @@ package driver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -18,14 +16,13 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/rp/util"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
+//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes Driver
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
@@ -43,30 +40,14 @@ func (d *Driver) Execute(ctx context.Context, configuration recipes.Configuratio
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
 
-	registryRepo, tag := strings.Split(definition.TemplatePath, ":")[0], strings.Split(definition.TemplatePath, ":")[1]
-	// get the recipe from ACR
-	// client to the ACR repository in the templatePath
-	repo, err := remote.NewRepository(registryRepo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
+	acr := util.AzureContainerRegistery{
+		Path: definition.TemplatePath,
 	}
-
-	digest, err := getDigestFromManifest(ctx, repo, tag)
-	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", definition.TemplatePath, recipe.Name, err.Error()))
-	}
-
-	recipeBytes, err := getRecipeBytes(ctx, repo, digest)
-	if err != nil {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", definition.TemplatePath, recipe.Name, err.Error()))
-	}
-
-	recipeData := make(map[string]interface{})
-	err = json.Unmarshal(recipeBytes, &recipeData)
+	recipeData := make(map[string]any)
+	err := acr.ReadFromRegistry(ctx, &recipeData)
 	if err != nil {
 		return nil, err
 	}
-
 	subjectID, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
 		return nil, err
@@ -199,61 +180,6 @@ func (d *Driver) Execute(ctx context.Context, configuration recipes.Configuratio
 	}
 
 	return &result, nil
-}
-
-// getDigestFromManifest gets the layers digest from the manifest
-func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag string) (string, error) {
-	// resolves a manifest descriptor with a Tag reference
-	descriptor, err := repo.Resolve(ctx, tag)
-	if err != nil {
-		return "", err
-	}
-	// get the manifest data
-	rc, err := repo.Fetch(ctx, descriptor)
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-	manifestBlob, err := content.ReadAll(rc, descriptor)
-	if err != nil {
-		return "", err
-	}
-	// create the manifest map to get the digest of the layer
-	var manifest map[string]interface{}
-	err = json.Unmarshal(manifestBlob, &manifest)
-	if err != nil {
-		return "", err
-	}
-	// get the layers digest to fetch the blob
-	layer, ok := manifest["layers"].([]interface{})[0].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("failed to decode the layers from manifest")
-	}
-	layerDigest, ok := layer["digest"].(string)
-	if !ok {
-		return "", fmt.Errorf("failed to decode the layers digest from manifest")
-	}
-	return layerDigest, nil
-}
-
-// getRecipeBytes fetches the recipe ARM JSON using the layers digest
-func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest string) ([]byte, error) {
-	// resolves a layer blob descriptor with a digest reference
-	descriptor, err := repo.Blobs().Resolve(ctx, layerDigest)
-	if err != nil {
-		return nil, err
-	}
-	// get the layer data
-	rc, err := repo.Fetch(ctx, descriptor)
-	if err != nil {
-		return nil, err
-	}
-	defer rc.Close()
-	pulledBlob, err := content.ReadAll(rc, descriptor)
-	if err != nil {
-		return nil, err
-	}
-	return pulledBlob, nil
 }
 
 func (d *Driver) formatProviderConfigs(configuration recipes.Configuration, subjectID resources.ID) clients.ProviderConfig {

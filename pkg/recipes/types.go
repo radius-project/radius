@@ -27,8 +27,8 @@ type RecipeMetadata struct {
 
 type RecipeResult struct {
 	Resources []string
-	Secrets   map[string]interface{}
-	Values    map[string]interface{}
+	Secrets   map[string]any
+	Values    map[string]any
 }
 
 type ConfigurationLoader interface {

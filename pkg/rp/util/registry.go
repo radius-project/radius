@@ -16,9 +16,17 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
+//go:generate mockgen -destination=./mock_registery.go -package=util -self_package github.com/project-radius/radius/pkg/rp/util github.com/project-radius/radius/pkg/rp/util Registry
+type Registry interface {
+	ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error
+}
+type AzureContainerRegistery struct {
+	Path string
+}
+
 // ReadFromRegistry reads content from an OCI compliant registry.
-func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error {
-	registryRepo, tag, err := parsePath(path)
+func (registery *AzureContainerRegistery) ReadFromRegistry(ctx context.Context, data *map[string]any) error {
+	registryRepo, tag, err := parsePath(registery.Path)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
@@ -32,12 +40,12 @@ func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) er
 
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", registery.Path, err.Error()))
 	}
 
 	bytes, err := getBytes(ctx, repo, digest)
 	if err != nil {
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", registery.Path, err.Error()))
 	}
 
 	err = json.Unmarshal(bytes, data)
