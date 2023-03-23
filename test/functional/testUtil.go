@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -146,6 +147,34 @@ func NewTestLogger(t *testing.T) *log.Logger {
 	logger.SetOutput(tw)
 
 	return &logger
+}
+
+// IsMapSubSet returns true if the expectedMap is a subset of the actualMap
+func IsMapSubSet(expectedMap map[string]string, actualMap map[string]string) bool {
+	if len(expectedMap) > len(actualMap) {
+		return false
+	}
+
+	for k1, v1 := range expectedMap {
+		v2, ok := actualMap[k1]
+		if !(ok && strings.EqualFold(v1, v2)) {
+			return false
+		}
+
+	}
+
+	return true
+}
+
+// IsMapNonIntersecting returns true if the notExpectedMap and actualMap do not have any keys in common
+func IsMapNonIntersecting(notExpectedMap map[string]string, actualMap map[string]string) bool {
+	for k1 := range notExpectedMap {
+		if _, ok := actualMap[k1]; ok {
+			return false
+		}
+	}
+
+	return true
 }
 
 type TestWriter struct {
