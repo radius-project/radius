@@ -132,7 +132,7 @@ func getAWSTestCredentialList(t *testing.T, res *http.Response) []ucp.AWSCredent
 
 func getAWSTestCredentialObject() ucp.AWSCredentialResource {
 	return ucp.AWSCredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
@@ -153,7 +153,7 @@ func getAWSTestCredentialObject() ucp.AWSCredentialResource {
 
 func getExpectedAWSTestCredentialObject() ucp.AWSCredentialResource {
 	return ucp.AWSCredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
