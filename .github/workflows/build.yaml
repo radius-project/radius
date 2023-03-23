@@ -159,8 +159,7 @@ jobs:
           exit 1
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
-        # if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           path: ./dist/cache
           key: radius-coverage-${{ github.sha }}-${{ github.run_number }}
