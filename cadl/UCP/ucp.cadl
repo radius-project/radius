@@ -28,7 +28,7 @@ using OpenAPI;
 @service({
     title: "UCP Management APIs",
     version: "2022-09-01-privatepreview",
-  })
+})
 @doc("REST APIs for UCP")
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Ucp;
@@ -57,7 +57,7 @@ model PlaneResource is TrackedResource<PlaneResourceProperties> {
     @key("planeType")
     @doc("The plane type.")
     @segment("planes")
-    @path()
+    @path
     name: string;
 }
 
@@ -65,7 +65,7 @@ model PlaneResource is TrackedResource<PlaneResourceProperties> {
 enum PlaneKind {
     UCPNative,
     Azure,
-    AWS
+    AWS,
 }
 
 @doc("Credential store kinds supported.")
@@ -91,26 +91,30 @@ model PlaneResourceProperties extends BasicResourceProperties {
     @doc("URL to forward requests to for non UCP Native Plane")
     url?: string;
     // TODO try record here
+
     @doc("Resource Providers for UCP Native Plane")
-    resourceProviders?: Record<string>
+    resourceProviders?: Record<string>;
 }
 
 @discriminator("kind")
 @doc("Azure Credential properties")
-model AzureCredentialProperties extends BasicResourceProperties {
-}
+model AzureCredentialProperties extends BasicResourceProperties {}
 
 @doc("Service Principal credential storage properties")
 model AzureServicePrincipalProperties extends AzureCredentialProperties {
     @doc("Service principal kind")
     kind: "ServicePrincipal";
+
     @doc("clientId for ServicePrincipal")
     clientId: string;
+
     @doc("secret for ServicePrincipal")
     @extension("x-ms-secret", true)
     clientSecret: string;
+
     @doc("tenantId for ServicePrincipal")
     tenantId: string;
+
     @doc("The storage properties")
     storage: CredentialStorageProperties;
 }
@@ -118,20 +122,22 @@ model AzureServicePrincipalProperties extends AzureCredentialProperties {
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @discriminator("kind")
 @doc("AWS Credential properties")
-model AWSCredentialProperties extends BasicResourceProperties {
-}
+model AWSCredentialProperties extends BasicResourceProperties {}
 
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @doc("AWS credential storage properties")
 model AWSAccessKeyCredentialProperties extends AWSCredentialProperties {
     @doc("Access Key kind")
     kind: "AccessKey";
+
     @doc("Access key ID for AWS identity")
     @extension("x-ms-secret", true)
     accessKeyId: string;
+
     @doc("Secret Access Key for AWS identity")
     @extension("x-ms-secret", true)
     secretAccessKey: string;
+
     @doc("The storage properties")
     storage: CredentialStorageProperties;
 }
@@ -161,107 +167,107 @@ model AzureCredentialResource is TrackedResource<AzureCredentialProperties> {
 
 @doc("Credential storage properties")
 @discriminator("kind")
-model CredentialStorageProperties {
-}
+model CredentialStorageProperties {}
 
 @doc("Internal credential storage properties")
 model InternalCredentialStorageProperties extends CredentialStorageProperties {
     @doc("Internal kind")
     kind: "Internal";
+
     @doc("The name of secret stored.")
     @visibility("read")
-    secretName: string
+    secretName: string;
 }
 
 @doc("Custom root scope")
 model PlaneNameParameter {
-  @doc("The name of the plane")
-  @maxLength(63)
-  @path
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
-  @extension("x-ms-skip-url-encoding", true)
-  @extension("x-ms-parameter-location", "method")
-  planeName: string;
+    @doc("The name of the plane")
+    @maxLength(63)
+    @path
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @extension("x-ms-skip-url-encoding", true)
+    @extension("x-ms-parameter-location", "method")
+    planeName: string;
 }
 
 @doc("Provisioning state of the link at the time the operation was called")
 enum ProvisioningState {
-  Succeeded,
-  Failed,
-  Canceled,
-  Provisioning,
-  Updating,
-  Deleting,
-  Accepted,
+    Succeeded,
+    Failed,
+    Canceled,
+    Provisioning,
+    Updating,
+    Deleting,
+    Accepted,
 }
 
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @doc("Custom root scope")
 model AWSPlaneNameParameter {
-  @doc("The name of the plane")
-  @maxLength(63)
-  @path
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
-  @segment("planes/aws")
-  @extension("x-ms-skip-url-encoding", true)
-  @extension("x-ms-parameter-location", "method")
-  planeName: string;
+    @doc("The name of the plane")
+    @maxLength(63)
+    @path
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @segment("planes/aws")
+    @extension("x-ms-skip-url-encoding", true)
+    @extension("x-ms-parameter-location", "method")
+    planeName: string;
 }
 
 @doc("Custom root scope")
 model AzurePlaneNameParameter {
-  @doc("The name of the plane")
-  @maxLength(63)
-  @path
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
-  @segment("planes/azure")
-  @extension("x-ms-skip-url-encoding", true)
-  @extension("x-ms-parameter-location", "method")
-  planeName: string;
+    @doc("The name of the plane")
+    @maxLength(63)
+    @path
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @segment("planes/azure")
+    @extension("x-ms-skip-url-encoding", true)
+    @extension("x-ms-parameter-location", "method")
+    planeName: string;
 }
 
 @armResourceOperations
 interface Planes
-  extends Radius.PlaneResourceOperations<
-      PlaneResource,
-      PlaneResourceProperties,
-      PlaneNameParameter
-    > {}
+    extends Radius.PlaneResourceOperations<
+            PlaneResource,
+            PlaneResourceProperties,
+            PlaneNameParameter
+        > {}
 
 @armResourceOperations
 interface PlaneTypes
-extends Radius.PlaneTypeOperations<
-  PlaneResource,
-  PlaneResourceProperties,
-  {}
-> {}
+    extends Radius.PlaneTypeOperations<
+            PlaneResource,
+            PlaneResourceProperties,
+            {}
+        > {}
 
 model Root<PlaneResource> {
-    ...KeysOf<PlaneResource>,
-    ...PlaneNameParameter
+    ...KeysOf<PlaneResource>;
+    ...PlaneNameParameter;
 }
 
 @armResourceOperations
 interface ResourceGroups
-  extends ResourceGroupResourceOperations<
-      ResourceGroupResource,
-      BasicResourceProperties,
-      Root<PlaneResource>
-    > {}
+    extends ResourceGroupResourceOperations<
+            ResourceGroupResource,
+            BasicResourceProperties,
+            Root<PlaneResource>
+        > {}
 
 @armResourceOperations
 interface AzureCredential
-  extends CredentialResourceOperations<
-      AzureCredentialResource,
-      AzureCredentialProperties,
-      AzurePlaneNameParameter
-    > {}
+    extends CredentialResourceOperations<
+            AzureCredentialResource,
+            AzureCredentialProperties,
+            AzurePlaneNameParameter
+        > {}
 
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @armResourceOperations
 interface AWSCredential
     extends CredentialResourceOperations<
-        AWSCredentialResource,
-        AWSCredentialProperties,
-        AWSPlaneNameParameter
+            AWSCredentialResource,
+            AWSCredentialProperties,
+            AWSPlaneNameParameter
         > {}

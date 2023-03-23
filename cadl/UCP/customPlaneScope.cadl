@@ -25,23 +25,23 @@ using Azure.ResourceManager.Foundations;
 // Skip generation of ListBySubscription
 interface PlaneResourceListBySubscription<TResource> {}
 
-model ResourceGroupCommonParameters<TResource> {
+model CommonParameters<TResource> {
   ...ApiVersionParameter;
 }
 
 model PlaneParentScope<TResource> {
-  ...ResourceGroupCommonParameters<TResource>;
+  ...CommonParameters<TResource>;
   ...ParentKeysOf<TResource>;
 }
 
 model ResourceParentScope<TResource, TRootParams> {
-  ...ResourceGroupCommonParameters<TResource>;
+  ...CommonParameters<TResource>;
   ...ParentKeysOf<TResource>;
   ...TRootParams;
 }
 
-model ResourceGroupInstanceParameters<TResource, TRootParams> {
-  ...ResourceGroupCommonParameters<TResource>;
+model ResourceInstanceParameters<TResource, TRootParams> {
+  ...CommonParameters<TResource>;
   ...KeysOf<TResource>;
   ...TRootParams;
 }
@@ -53,15 +53,15 @@ interface BaseResourceOperations<
 >
   extends Azure.ResourceManager.Radius.ResourceRead<
       TResource,
-      ResourceGroupInstanceParameters<TResource, TRootParams>
+      ResourceInstanceParameters<TResource, TRootParams>
     >,
     Azure.ResourceManager.Radius.ResourceCreate<
       TResource,
-      ResourceGroupInstanceParameters<TResource, TRootParams>
+      ResourceInstanceParameters<TResource, TRootParams>
     >,
     Azure.ResourceManager.Radius.ResourceDelete<
       TResource,
-      ResourceGroupInstanceParameters<TResource, TRootParams>
+      ResourceInstanceParameters<TResource, TRootParams>
     > {}
 
 interface ResourceGroupResourceOperations<
@@ -87,7 +87,7 @@ interface PlaneTypeOperations<
 >
   extends Azure.ResourceManager.Radius.ResourceRead<
       TResource,
-      ResourceGroupInstanceParameters<TResource, TRootParams>
+      ResourceInstanceParameters<TResource, TRootParams>
     > {}
 
 interface CredentialResourceOperations<
@@ -116,7 +116,6 @@ interface ResourceGroupListByParent<
     ...ResourceParentScope<TResource, TRootParams>
   ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 }
-model Nil2 {}
 
 interface PlaneListByParent<TResource extends ArmResource, TRootParams> {
   @get
@@ -130,7 +129,6 @@ interface PlaneListByParent<TResource extends ArmResource, TRootParams> {
     ...PlaneParentScope<TResource>
   ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 }
-model Nil3 {}
 
 interface CredentialListByParent<TResource extends ArmResource, TRootParams> {
   @get
@@ -144,4 +142,3 @@ interface CredentialListByParent<TResource extends ArmResource, TRootParams> {
     ...ResourceParentScope<TResource, TRootParams>
   ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 }
-model Nil4 {}
