@@ -25,7 +25,7 @@ type AWSAccessKeyCredentialProperties struct {
 	// REQUIRED; The storage properties
 	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
@@ -51,7 +51,7 @@ type AWSCredentialProperties struct {
 	// REQUIRED; Discriminator property for AWSCredentialProperties.
 	Kind *string `json:"kind,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
@@ -149,7 +149,7 @@ type AzureCredentialProperties struct {
 	// REQUIRED; Discriminator property for AzureCredentialProperties.
 	Kind *string `json:"kind,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
@@ -207,7 +207,7 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; tenantId for ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
@@ -221,7 +221,7 @@ func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureC
 
 // BasicResourceProperties - Basic properties of a UCP resource.
 type BasicResourceProperties struct {
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
@@ -337,7 +337,7 @@ type PlaneResourceProperties struct {
 	// URL to forward requests to for non UCP Native Plane
 	URL *string `json:"url,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 

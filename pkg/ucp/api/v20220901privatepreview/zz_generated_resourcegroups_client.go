@@ -56,14 +56,14 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a ResourceGroupResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// resourceGroupName - Resource Group name
 // planeType - The plane type.
 // planeName - The name of the plane
+// resourceGroupName - UCP resourcegroup name
 // resource - Resource create parameters.
 // options - ResourceGroupsClientCreateOrUpdateOptions contains the optional parameters for the ResourceGroupsClient.CreateOrUpdate
 // method.
-func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, planeType string, planeName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (ResourceGroupsClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, planeType, planeName, resource, options)
+func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (ResourceGroupsClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, planeType, planeName, resourceGroupName, resource, options)
 	if err != nil {
 		return ResourceGroupsClientCreateOrUpdateResponse{}, err
 	}
@@ -78,17 +78,17 @@ func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, resource
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, planeType string, planeName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/resourcegroups/{resourceGroupName}/planes/{planeType}/{planeName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -120,12 +120,12 @@ func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Resp
 // Delete - Deletes an existing ResourceGroupResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// resourceGroupName - Resource Group name
 // planeType - The plane type.
 // planeName - The name of the plane
+// resourceGroupName - UCP resourcegroup name
 // options - ResourceGroupsClientDeleteOptions contains the optional parameters for the ResourceGroupsClient.Delete method.
-func (client *ResourceGroupsClient) Delete(ctx context.Context, resourceGroupName string, planeType string, planeName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, planeType, planeName, options)
+func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, planeType, planeName, resourceGroupName, options)
 	if err != nil {
 		return ResourceGroupsClientDeleteResponse{}, err
 	}
@@ -140,17 +140,17 @@ func (client *ResourceGroupsClient) Delete(ctx context.Context, resourceGroupNam
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, planeType string, planeName string, options *ResourceGroupsClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/resourcegroups/{resourceGroupName}/planes/{planeType}/{planeName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -179,12 +179,12 @@ func (client *ResourceGroupsClient) deleteHandleResponse(resp *http.Response) (R
 // Get - Retrieves information about a ResourceGroupResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// resourceGroupName - Resource Group name
 // planeType - The plane type.
 // planeName - The name of the plane
+// resourceGroupName - UCP resourcegroup name
 // options - ResourceGroupsClientGetOptions contains the optional parameters for the ResourceGroupsClient.Get method.
-func (client *ResourceGroupsClient) Get(ctx context.Context, resourceGroupName string, planeType string, planeName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, planeType, planeName, options)
+func (client *ResourceGroupsClient) Get(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, planeType, planeName, resourceGroupName, options)
 	if err != nil {
 		return ResourceGroupsClientGetResponse{}, err
 	}
@@ -199,17 +199,17 @@ func (client *ResourceGroupsClient) Get(ctx context.Context, resourceGroupName s
 }
 
 // getCreateRequest creates the Get request.
-func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, resourceGroupName string, planeType string, planeName string, options *ResourceGroupsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/resourcegroups/{resourceGroupName}/planes/{planeType}/{planeName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
