@@ -264,47 +264,6 @@
         }
       }
     },
-    "/planes/{planeType}/{planeName}/resourcegroups": {
-      "get": {
-        "tags": [
-          "ResourceGroups"
-        ],
-        "operationId": "ResourceGroups_ListByRootScope",
-        "description": "Lists information about all ResourceGroupResources in the given resource group",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "name": "planeType",
-            "in": "path",
-            "required": true,
-            "description": "The plane type.",
-            "type": "string"
-          },
-          {
-            "$ref": "#/parameters/PlaneNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/ResourceGroupResourceListResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
     "/planes/aws/{planeName}/providers/System.AWS/credentials": {
       "get": {
         "tags": [
@@ -666,6 +625,37 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        }
+      }
+    },
+    "/resourcegroups": {
+      "get": {
+        "tags": [
+          "ResourceGroups"
+        ],
+        "operationId": "ResourceGroups_ListByRootScope",
+        "description": "Lists information about all ResourceGroupResources in the given resource group",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },

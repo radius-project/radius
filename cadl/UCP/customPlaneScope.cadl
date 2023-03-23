@@ -64,14 +64,6 @@ interface BaseResourceOperations<
       ResourceInstanceParameters<TResource, TRootParams>
     > {}
 
-interface ResourceGroupResourceOperations<
-  TResource extends ArmResource,
-  TProperties extends object,
-  TRootParams
->
-  extends BaseResourceOperations<TResource, TProperties, TRootParams>,
-    ResourceGroupListByParent<TResource, TRootParams> {}
-
 interface PlaneResourceOperations<
   TResource extends ArmResource,
   TProperties extends object,
@@ -90,6 +82,14 @@ interface PlaneTypeOperations<
       ResourceInstanceParameters<TResource, TRootParams>
     > {}
 
+interface ResourceGroupResourceOperations<
+  TResource extends ArmResource,
+  TProperties extends object,
+  TRootParams
+>
+  extends BaseResourceOperations<TResource, TProperties, TRootParams>,
+    ResourceGroupListByParent<TResource, TRootParams> {}
+
 interface CredentialResourceOperations<
   TResource extends ArmResource,
   TProperties extends object,
@@ -97,6 +97,19 @@ interface CredentialResourceOperations<
 >
   extends BaseResourceOperations<TResource, TProperties, TRootParams>,
     CredentialListByParent<TResource, TRootParams> {}
+
+interface PlaneListByParent<TResource extends ArmResource, TRootParams> {
+  @get
+  //@pageable
+  @doc("Lists information about all {name}s in the given plane", TResource)
+  @autoRoute
+  @list(TResource)
+  @segmentOf(TResource)
+  @armResourceList(TResource)
+  ListByRootScope(
+    ...PlaneParentScope<TResource>
+  ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
+}
 
 interface ResourceGroupListByParent<
   TResource extends ArmResource,
@@ -114,19 +127,6 @@ interface ResourceGroupListByParent<
   @armResourceList(TResource)
   ListByRootScope(
     ...ResourceParentScope<TResource, TRootParams>
-  ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
-}
-
-interface PlaneListByParent<TResource extends ArmResource, TRootParams> {
-  @get
-  //@pageable
-  @doc("Lists information about all {name}s in the given plane", TResource)
-  @autoRoute
-  @list(TResource)
-  @segmentOf(TResource)
-  @armResourceList(TResource)
-  ListByRootScope(
-    ...PlaneParentScope<TResource>
   ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 }
 
