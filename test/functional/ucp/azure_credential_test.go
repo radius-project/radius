@@ -130,7 +130,7 @@ func getAzureTestCredentialList(t *testing.T, res *http.Response) []ucp.AzureCre
 
 func getAzureTestCredentialObject() ucp.AzureCredentialResource {
 	return ucp.AzureCredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
@@ -152,7 +152,7 @@ func getAzureTestCredentialObject() ucp.AzureCredentialResource {
 
 func getExpectedAzureTestCredentialObject() ucp.AzureCredentialResource {
 	return ucp.AzureCredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
