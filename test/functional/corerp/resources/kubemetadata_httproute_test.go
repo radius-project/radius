@@ -74,9 +74,8 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, service)
 
-				require.True(t, isMapSubSet(expectedAnnotations, service.Annotations))
-				require.True(t, isMapSubSet(expectedLabels, service.Labels))
-
+				require.Truef(t, isMapSubSet(expectedAnnotations, service.Annotations), "Annotations do not match. expected: %v, actual: %v", expectedAnnotations, service.Annotations)
+				require.Truef(t, isMapSubSet(expectedLabels, service.Labels), "Labels do not match. expected: %v, actual: %v", expectedLabels, service.Labels)
 			},
 		},
 	})
