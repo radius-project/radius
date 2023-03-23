@@ -11,28 +11,27 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_ListResourceGroups(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
 	rgCtrl, err := NewListResourceGroups(ctrl.Options{
-		DB: mockStorageClient,
+		Options: armrpc_controller.Options{
+			StorageClient: mockStorageClient,
+		},
 	})
 	require.NoError(t, err)
 
@@ -48,11 +47,13 @@ func Test_ListResourceGroups(t *testing.T) {
 	testResourceGroupName := "test-rg"
 
 	rg := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:       testResourceGroupID,
-			Name:     testResourceGroupName,
-			Type:     ResourceGroupType,
-			Location: v1.LocationGlobal,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       testResourceGroupID,
+				Name:     testResourceGroupName,
+				Type:     ResourceGroupType,
+				Location: v1.LocationGlobal,
+			},
 		},
 	}
 
@@ -68,6 +69,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	})
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
+	ctx := testutil.ARMTestContextFromRequest(request)
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -85,5 +87,5 @@ func Test_ListResourceGroups(t *testing.T) {
 	}
 	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroupList)
 
-	assert.DeepEqual(t, expectedResponse, actualResponse)
+	require.Equal(t, expectedResponse, actualResponse)
 }

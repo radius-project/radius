@@ -1,12 +1,16 @@
 import aws as aws
 
-param streamName string
+param bucketName string
 
-resource stream 'AWS.Kinesis/Stream@default' = {
-  alias: streamName
+resource bucket 'AWS.S3/Bucket@default' = {
+  alias: bucketName
   properties: {
-    Name: streamName
-    RetentionPeriodHours: 48
-    ShardCount: 3
+    BucketName: bucketName
+    Tags: [
+      {
+        Key: 'testKey'
+        Value: 'testValue2'
+      }
+    ]
   }
 }

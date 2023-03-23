@@ -12,19 +12,21 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/logging"
+	"github.com/project-radius/radius/pkg/metrics"
+	"github.com/project-radius/radius/pkg/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
+	"github.com/google/uuid"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -106,7 +108,7 @@ func New(
 
 // Start starts worker's message loop.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
 	if err != nil {
@@ -129,30 +131,37 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			opLogger := logger.WithValues(
-				"OperationID", op.OperationID.String(),
-				"OperationType", op.OperationType,
-				"ResourceID", op.ResourceID,
-				"CorrleationID", op.CorrelationID,
-				"W3CTraceID", op.TraceparentID,
-				"DequeueCount", strconv.Itoa(msgreq.DequeueCount),
+			reqCtx := trace.WithTraceparent(ctx, op.TraceparentID)
+			// Populate the default attributes in the current context so all logs will have these fields.
+			opLogger := ucplog.FromContextOrDiscard(reqCtx).WithValues(
+				logging.LogFieldResourceID, op.ResourceID,
+				logging.LogFieldOperationID, op.OperationID,
+				logging.LogFieldOperationType, op.OperationType,
+				logging.LogFieldDequeueCount, msgreq.DequeueCount,
 			)
 
-			opType, ok := v1.ParseOperationType(op.OperationType)
+			armReqCtx, err := op.ARMRequestContext()
+			if err != nil {
+				opLogger.Error(err, "failed to get ARM request context.")
+				return
+			}
+			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
+
+			opType, ok := v1.ParseOperationType(armReqCtx.OperationType)
 			if !ok {
 				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
 				return
 			}
 
 			asyncCtrl := w.registry.Get(opType)
-
 			if asyncCtrl == nil {
 				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
-				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
+				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}
 				return
 			}
+
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
 				opLogger.V(ucplog.Error).Info(errMsg)
@@ -178,12 +187,11 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			if err = w.updateResourceAndOperationStatus(ctx, asyncCtrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
+			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
 				return
 			}
 
-			opCtx := logr.NewContext(ctx, opLogger)
-			w.runOperation(opCtx, msgreq, asyncCtrl)
+			w.runOperation(reqCtx, msgreq, asyncCtrl)
 		}(msg)
 	}
 
@@ -192,7 +200,9 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 }
 
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
-	logger := logr.FromContextOrDiscard(ctx)
+	ctx, span := trace.StartConsumerSpan(ctx, "worker.runOperation receive", trace.BackendTracerName)
+
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	asyncReq := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, asyncReq); err != nil {
@@ -215,7 +225,6 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err := recover(); err != nil {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
 				logger.V(ucplog.Error).Info(msg)
-
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).
 				// After message lock is expired, message will be reprocessed 'w.options.MaxOperationRetryCount' times and
@@ -238,6 +247,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
+		trace.SetAsyncResultStatus(result, span)
 	}()
 
 	operationTimeoutAfter := time.After(asyncReq.Timeout())
@@ -249,7 +259,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err := w.requestQueue.ExtendMessage(ctx, message); err != nil {
 				logger.Error(err, "fails to extend message lock")
 			} else {
-				logger.Info("Extended message lock duration.", "NextVisibleTime", message.NextVisibleAt.UTC().String())
+				logger.Info("Extended message lock duration.", "nextVisibleTime", message.NextVisibleAt.UTC().String())
+				metrics.DefaultAsyncOperationMetrics.RecordExtendedAsyncOperation(ctx, asyncReq)
 			}
 			messageExtendAfter = w.getMessageExtendDuration(message.NextVisibleAt)
 
@@ -261,15 +272,21 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
+			span.End()
 			return
 
 		case <-ctx.Done():
 			logger.Info("Stopping processing async operation. This operation will be reprocessed.")
+			span.End()
 			return
 
 		case <-opDone:
+			// FIXME: Would this give me all the operations? No matter if it is successful or cancelled or failed?
+			metrics.DefaultAsyncOperationMetrics.RecordAsyncOperationDuration(ctx, asyncReq, opStartAt)
+
 			opEndAt := time.Now()
-			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
+			logger.Info("End processing operation.", "startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt))
+			span.End()
 			return
 		}
 	}
@@ -284,7 +301,7 @@ func extractError(err error) v1.ErrorDetails {
 }
 
 func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc store.StorageClient) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
 		logger.Error(err, "failed to unmarshal queue message.")
@@ -303,10 +320,12 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 			logger.Error(err, "failed to finish the message")
 		}
 	}
+
+	metrics.DefaultAsyncOperationMetrics.RecordAsyncOperation(ctx, req, &result)
 }
 
 func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {
@@ -326,7 +345,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	now := time.Now().UTC()
 	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
 	if err != nil {
-		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
+		logger.Error(err, "failed to update operationstatus", "operationID", req.OperationID.String())
 		return err
 	}
 

@@ -12,12 +12,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -54,13 +54,13 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 		response, err := ctrl.Run(hctx, w, req)
 		if err != nil {
-			handleError(hctx, w, req, err)
+			HandleError(hctx, w, req, err)
 			return
 		}
 
 		err = response.Apply(hctx, w, req)
 		if err != nil {
-			handleError(hctx, w, req, err)
+			HandleError(hctx, w, req, err)
 			return
 		}
 	}
@@ -75,8 +75,6 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 	if !ok {
 		return
 	}
-
-	labeler.Add(attribute.String("path", req.URL.Path))
 
 	armContext := v1.ARMRequestContextFromContext(ctx)
 	resourceID := armContext.ResourceID
@@ -147,9 +145,9 @@ func ConfigureDefaultHandlers(
 	return nil
 }
 
-// Responds with an HTTP 500
-func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := logr.FromContextOrDiscard(ctx)
+// HandleError creates the internal error respones with 500 code.
+func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
 
 	var response rest.Response

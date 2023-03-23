@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -132,7 +132,7 @@ func validationFailedResponse(qualifiedName string, valErrs []ValidationError) r
 }
 
 func handleError(ctx context.Context, w http.ResponseWriter, err error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	w.WriteHeader(http.StatusInternalServerError)
 	logger.Error(err, "error writing marshaled data to output")
 }

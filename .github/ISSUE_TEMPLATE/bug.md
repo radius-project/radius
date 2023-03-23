@@ -3,6 +3,7 @@ name: Bug Report
 about: Report broken functionality within Project Radius
 title: "<BUG TITLE>"
 assignees: ''
+labels: ["bug"]
 ---
 
 ## Bug information

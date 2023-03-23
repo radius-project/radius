@@ -34,3 +34,13 @@ workerServer:
   maxOperationRetryCount: 2
 ucp:
   kind: kubernetes
+# Logging configuration
+logging:
+  level: "info"
+  json: true
+tracerProvider:
+  serviceName: "applications.core"
+
+# TODO: Enable trace provider in 0.19
+#  zipkin:
+#    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"

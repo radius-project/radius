@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -170,11 +169,15 @@ type ARMRequestContext struct {
 
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
-	log := logr.FromContextOrDiscard(r.Context())
+	log := ucplog.FromContextOrDiscard(r.Context())
 	refererUri := r.Header.Get(RefererHeader)
 	refererURL, err := url.Parse(refererUri)
 	if refererUri == "" || err != nil {
 		refererURL = r.URL
+	}
+
+	if pathBase == "" {
+		pathBase = ParsePathBase(refererURL.Path)
 	}
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
 	rID, err := resources.ParseByMethod(path, r.Method)
@@ -271,4 +274,20 @@ func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 // WithARMRequestContext injects ARMRequestContext into the given http context.
 func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) context.Context {
 	return context.WithValue(ctx, armContextKey, armctx)
+}
+
+// ParsePathBase gets the URL info before the plane types (i.e. host, base path, etc)
+func ParsePathBase(path string) string {
+	if path != "" {
+		normalized := strings.ToLower(path)
+		baseIndex := strings.Index(normalized, "/planes/")
+		if baseIndex >= 0 {
+			return path[:baseIndex]
+		}
+		baseIndex = strings.Index(normalized, "/subscriptions/")
+		if baseIndex >= 0 {
+			return path[:baseIndex]
+		}
+	}
+	return ""
 }

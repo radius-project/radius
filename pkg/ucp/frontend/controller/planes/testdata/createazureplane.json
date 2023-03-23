@@ -1,0 +1,9 @@
+{
+    "location": "global",
+    "id": "/planes/azure/public",
+    "name": "local",
+    "type": "System.Planes/azure",
+    "properties": {
+        "kind": "Azure"
+    }
+}

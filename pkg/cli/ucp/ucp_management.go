@@ -302,15 +302,13 @@ func (amc *ARMApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 }
 
 // Creates a radius environment resource
-func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string, recipeProperties map[string]*corerpv20220315.EnvironmentRecipeProperties, providers *corerpv20220315.Providers, useDevRecipes bool) (bool, error) {
+func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerpv20220315.EnvironmentProperties) (bool, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
 
-	envCompute := corerpv20220315.KubernetesCompute{Kind: &envKind, Namespace: &namespace, ResourceID: &resourceId}
-	properties := corerpv20220315.EnvironmentProperties{Compute: &envCompute, Recipes: recipeProperties, Providers: providers, UseDevRecipes: &useDevRecipes}
-	_, err = client.CreateOrUpdate(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: &properties}, &corerpv20220315.EnvironmentsClientCreateOrUpdateOptions{})
+	_, err = client.CreateOrUpdate(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20220315.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return false, err
 	}

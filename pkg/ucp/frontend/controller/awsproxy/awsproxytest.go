@@ -26,6 +26,7 @@ const (
 
 	testAWSRequestToken = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
 	testHost            = "localhost:5000"
+	testScheme          = "http"
 )
 
 type TestOptions struct {

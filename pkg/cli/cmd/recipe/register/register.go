@@ -13,7 +13,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
-	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -149,11 +148,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	recipeProperties := envResource.Properties.Recipes
-	if recipeProperties[r.RecipeName] != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
-	}
 	if recipeProperties == nil {
 		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}
+	}
+
+	if recipeProperties[r.RecipeName] != nil {
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
 	}
 
 	recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
@@ -162,9 +162,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 	}
 
-	namespace := cmd.GetNamespace(envResource)
+	envResource.Properties.Recipes = recipeProperties
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to register the recipe %s to the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}

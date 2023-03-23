@@ -12,34 +12,42 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
-	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/to"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*DeleteAWSResourceWithPost)(nil)
 
 // DeleteAWSResourceWithPost is the controller implementation to delete an AWS resource.
 type DeleteAWSResourceWithPost struct {
-	ctrl.BaseController
+	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
+	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewDeleteAWSResourceWithPost creates a new DeleteAWSResourceWithPost.
 func NewDeleteAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &DeleteAWSResourceWithPost{ctrl.NewBaseController(opts)}, nil
+	return &DeleteAWSResourceWithPost{
+		Operation: armrpc_controller.NewOperation(opts.Options,
+			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
+		),
+		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
+	}, nil
 }
 
 func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
-	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
-	if err != nil {
-		return nil, err
-	}
+	logger := ucplog.FromContextOrDiscard(ctx)
+	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -52,9 +60,9 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
-		TypeName: aws.String(resourceType),
+		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	})
 	if err != nil {
 		return awserror.HandleAWSError(err)
@@ -72,22 +80,15 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	_, err = cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
-		Identifier: aws.String(awsResourceIdentifier),
-	})
-	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNoContentResponse(), nil
-	} else if err != nil {
-		return awsclient.HandleAWSError(err)
-	}
-
-	logger.Info("Deleting resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
-	response, err := cloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		TypeName:   &resourceType,
+	logger.Info("Deleting resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", awsResourceIdentifier)
+	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if err != nil {
+		if awsclient.IsAWSResourceNotFound(err) {
+			return armrpc_rest.NewNoContentResponse(), nil
+		}
 		return awsclient.HandleAWSError(err)
 	}
 
@@ -96,6 +97,6 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.basePath)
 	return resp, nil
 }

@@ -401,14 +401,30 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
+		providerList := []any{}
+		if r.AzureCloudProvider != nil {
+			providerList = append(providerList, r.AzureCloudProvider)
+		}
+		if r.AwsCloudProvider != nil {
+			providerList = append(providerList, r.AwsCloudProvider)
+		}
+
 		// create the providers scope to the environment and register credentials at provider plane
-		providers, err := cmd.CreateEnvProviders([]interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
+		providers, err := cmd.CreateEnvProviders(providerList)
 		if err != nil {
 			return err
 		}
 
+		envProperties := corerp.EnvironmentProperties{
+			Compute: &corerp.KubernetesCompute{
+				Namespace: to.Ptr(r.Namespace),
+			},
+			Providers: &providers,
+			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
+		}
+
 		r.Output.LogInfo("Configuring Cloud providers")
-		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.Namespace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
+		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, &envProperties)
 		if err != nil || !isEnvCreated {
 			return &cli.FriendlyError{Message: "Failed to create radius environment"}
 		}

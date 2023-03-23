@@ -457,8 +457,19 @@ func Test_Run_InstallAndCreateEnvironment_WithAzureProvider_WithRecipes(t *testi
 		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 		Return(true, nil).Times(1)
 	skipRecipes := false
+	testEnvProperties := &corerp.EnvironmentProperties{
+		Compute: &corerp.KubernetesCompute{
+			Namespace: to.Ptr("defaultNamespace"),
+		},
+		UseDevRecipes: to.Ptr(!skipRecipes),
+		Providers: &corerp.Providers{
+			Azure: &corerp.ProvidersAzure{
+				Scope: to.Ptr("/subscriptions/test-subscription/resourceGroups/test-rg"),
+			},
+		},
+	}
 	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), !skipRecipes).
+		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
 		Return(true, nil).Times(1)
 
 	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
@@ -522,8 +533,19 @@ func Test_Run_InstallAndCreateEnvironment_WithAWSProvider(t *testing.T) {
 	appManagementClient.EXPECT().
 		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 		Return(true, nil).Times(1)
+	testEnvProperties := &corerp.EnvironmentProperties{
+		Compute: &corerp.KubernetesCompute{
+			Namespace: to.Ptr("defaultNamespace"),
+		},
+		UseDevRecipes: to.Ptr(true),
+		Providers: &corerp.Providers{
+			Aws: &corerp.ProvidersAws{
+				Scope: to.Ptr("/planes/aws/aws/accounts/test-account-id/regions/us-west-2"),
+			},
+		},
+	}
 	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
 		Return(true, nil).Times(1)
 
 	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
@@ -584,8 +606,15 @@ func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider_WithSkipRecipes(t
 		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 		Return(true, nil).Times(1)
 	skipRecipes := true
+	testEnvProperties := &corerp.EnvironmentProperties{
+		Compute: &corerp.KubernetesCompute{
+			Namespace: to.Ptr("defaultNamespace"),
+		},
+		UseDevRecipes: to.Ptr(!skipRecipes),
+		Providers:     &corerp.Providers{},
+	}
 	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), !skipRecipes).
+		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
 		Return(true, nil).Times(1)
 
 	configFileInterface.EXPECT().

@@ -6,17 +6,20 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/trace"
+	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
+	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 var rootCmd = &cobra.Command{
@@ -29,17 +32,31 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		logger, flush, err := ucplog.NewLogger(ucplog.UCPLoggerName, &options.LoggingOptions)
+		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.LoggingOptions)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer flush()
 
+		if options.StorageProviderOptions.Provider == dataprovider.TypeETCD &&
+			options.StorageProviderOptions.ETCD.InMemory {
+			// For in-memory etcd we need to register another service to manage its lifecycle.
+			//
+			// The client will be initialized asynchronously.
+			clientconfigSource := hosting.NewAsyncValue[etcdclient.Client]()
+			options.StorageProviderOptions.ETCD.Client = clientconfigSource
+			options.SecretProviderOptions.ETCD.Client = clientconfigSource
+		}
+
+		host, err := server.NewServer(&options)
+		if err != nil {
+			return err
+		}
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
 
-		tracerOpts := options.TracerProviderOptions
-		shutdown, err := trace.InitTracer(tracerOpts)
+		options.TracerProviderOptions.ServiceName = server.ServiceName
+		shutdown, err := trace.InitTracer(options.TracerProviderOptions)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -48,11 +65,6 @@ var rootCmd = &cobra.Command{
 				log.Fatal("failed to shutdown TracerProvider: %w", err)
 			}
 		}()
-
-		host, err := server.NewServer(options)
-		if err != nil {
-			return err
-		}
 
 		stopped, serviceErrors := host.RunAsync(ctx)
 

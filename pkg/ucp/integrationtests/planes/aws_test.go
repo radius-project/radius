@@ -19,7 +19,7 @@ const (
 	awsPlaneResponseFixture        = "testdata/awsplane_v20220901privatepreview_responsebody.json"
 	awsPlaneListResponseFixture    = "testdata/awsplane_v20220901privatepreview_list_responsebody.json"
 	awsPlaneUpdatedRequestFixture  = "testdata/awsplane_updated_v20220901privatepreview_requestbody.json"
-	awsPlaneUpdatedResponseFixture = "testdata/awsplane_updated_v20220901privatepreview_requestbody.json"
+	awsPlaneUpdatedResponseFixture = "testdata/awsplane_updated_v20220901privatepreview_responsebody.json"
 )
 
 func Test_AWSPlane_PUT_Create(t *testing.T) {

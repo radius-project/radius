@@ -20,6 +20,7 @@ import (
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -30,11 +31,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 type Client struct {
@@ -71,10 +72,12 @@ var applicationList = []map[string]any{
 }
 
 var testUCPNativePlane = datamodel.Plane{
-	TrackedResource: armrpc_v1.TrackedResource{
-		ID:   "/planes/radius/local",
-		Type: "radius",
-		Name: "local",
+	BaseResource: v1.BaseResource{
+		TrackedResource: armrpc_v1.TrackedResource{
+			ID:   "/planes/radius/local",
+			Type: "radius",
+			Name: "local",
+		},
 	},
 	Properties: datamodel.PlaneProperties{
 		Kind: rest.PlaneKindUCPNative,
@@ -115,12 +118,17 @@ var testResourceGroup = v20220901privatepreview.ResourceGroupResource{
 }
 
 func Test_ProxyToRP(t *testing.T) {
+	router := mux.NewRouter()
+	ucp := httptest.NewServer(router)
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
+
 	body, err := json.Marshal(applicationList)
 	require.NoError(t, err)
+
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, testProxyRequestPath, r.URL.Path)
 		w.Header().Add("Content-Type", "application/json")
-		w.Header().Add("Location", "http://"+rpURL+testProxyRequestPath)
+		w.Header().Add("Location", ucp.URL+basePath+testProxyRequestPath)
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(body)
 	}))
@@ -140,14 +148,12 @@ func Test_ProxyToRP(t *testing.T) {
 		Return(db, nil).
 		AnyTimes()
 
-	router := mux.NewRouter()
-	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
 		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+		Options: armrpc_controller.Options{
+			DataProvider:  provider,
+			StorageClient: db,
 		},
 	})
 	require.NoError(t, err)
@@ -191,13 +197,14 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 		AnyTimes()
 
 	router := mux.NewRouter()
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
 		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+		Options: armrpc_controller.Options{
+			DataProvider:  provider,
+			StorageClient: db,
 		},
 	})
 	require.NoError(t, err)
@@ -227,7 +234,7 @@ func Test_MethodNotAllowed(t *testing.T) {
 	require.NoError(t, err)
 	response, err := ucpClient.httpClient.Do(request)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
+	require.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
 }
 
 func Test_NotFound(t *testing.T) {
@@ -237,7 +244,7 @@ func Test_NotFound(t *testing.T) {
 	require.NoError(t, err)
 	response, err := ucpClient.httpClient.Do(request)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, response.StatusCode)
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
 }
 
 func Test_APIValidationIsApplied(t *testing.T) {
@@ -284,14 +291,15 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 		AnyTimes()
 
 	router := mux.NewRouter()
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err = api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+		Options: armrpc_controller.Options{
+			DataProvider:  provider,
+			StorageClient: db,
 		},
+		BasePath: basePath,
 	})
 	require.NoError(t, err)
 
@@ -328,19 +336,21 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	require.NoError(t, err)
 	var createPlaneRequest *http.Request
 	if ucpNative {
-		createPlaneRequest, err = http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+		createPlaneRequest, err = testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+"/planes/radius/local?api-version=2022-09-01-privatepreview", body)
 	} else {
-		createPlaneRequest, err = http.NewRequest("PUT", ucp.URL+basePath+"/planes/azure/azurecloud?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+		createPlaneRequest, err = testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+"/planes/azure/azurecloud?api-version=2022-09-01-privatepreview", body)
 	}
 	require.NoError(t, err)
 
-	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
+	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+		return nil, &store.ErrNotFound{}
+	})
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
 
 	response, err := ucpClient.httpClient.Do(createPlaneRequest)
 	require.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, http.StatusOK, response.StatusCode)
 
 	registerPlaneResponseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -349,9 +359,9 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	err = json.Unmarshal(registerPlaneResponseBody, &responsePlane)
 	require.NoError(t, err)
 	if ucpNative {
-		assert.DeepEqual(t, testUCPNativePlaneVersioned, responsePlane)
+		require.Equal(t, testUCPNativePlaneVersioned, responsePlane)
 	} else {
-		assert.DeepEqual(t, testAzurePlane, responsePlane)
+		require.Equal(t, testAzurePlane, responsePlane)
 	}
 }
 
@@ -367,11 +377,11 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 		return nil, &store.ErrNotFound{}
 	})
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
-	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+	createResourceGroupRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", body)
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
+	require.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
 
 	createResourceGroupResponseBody, err := io.ReadAll(createResourceGroupResponse.Body)
 	require.NoError(t, err)
@@ -379,7 +389,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	var responseResourceGroup v20220901privatepreview.ResourceGroupResource
 	err = json.Unmarshal(createResourceGroupResponseBody, &responseResourceGroup)
 	require.NoError(t, err)
-	assert.DeepEqual(t, testResourceGroup, responseResourceGroup)
+	require.Equal(t, testResourceGroup, responseResourceGroup)
 }
 
 func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
@@ -392,22 +402,27 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 
 	rgID, err := resources.ParseScope("/planes/radius/local/resourceGroups/rg1")
 	require.NoError(t, err)
-	db.EXPECT().Get(gomock.Any(), rgID.String())
+	db.EXPECT().Get(gomock.Any(), rgID.String()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+		return &store.Object{
+			Metadata: store.Metadata{},
+			Data:     &testResourceGroup,
+		}, nil
+	})
 
-	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
+	proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
-	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
-	assert.Equal(t, "http://"+proxyRequest.Host+basePath+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
+	require.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
+	require.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
+	require.Equal(t, "http://"+proxyRequest.Host+basePath+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
 	responseAppList := []map[string]any{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
 	require.NoError(t, err)
-	assert.DeepEqual(t, applicationList, responseAppList)
+	require.Equal(t, applicationList, responseAppList)
 }
 
 func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
@@ -419,19 +434,19 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient C
 		return &data, nil
 	})
 
-	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+"/planes/azure/azurecloud"+testProxyRequestAzurePath+"?"+apiVersionQueyParam, nil)
+	proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+basePath+"/planes/azure/azurecloud"+testProxyRequestAzurePath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
-	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
+	require.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
+	require.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
 
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
 	responseAppList := []map[string]any{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
 	require.NoError(t, err)
-	assert.DeepEqual(t, applicationList, responseAppList)
+	require.Equal(t, applicationList, responseAppList)
 }
 
 func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
@@ -453,7 +468,7 @@ func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Serv
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusNotFound, proxyRequestResponse.StatusCode)
+	require.Equal(t, http.StatusNotFound, proxyRequestResponse.StatusCode)
 }
 
 func Test_RequestWithBadAPIVersion(t *testing.T) {
@@ -468,11 +483,11 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	router := mux.NewRouter()
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
-		DB:       db,
-		BasePath: basePath,
-		CommonControllerOptions: armrpc_controller.Options{
-			DataProvider: provider,
+		Options: armrpc_controller.Options{
+			DataProvider:  provider,
+			StorageClient: db,
 		},
+		BasePath: basePath,
 	})
 	require.NoError(t, err)
 
@@ -511,5 +526,6 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	var errorResponse armrpc_v1.ErrorResponse
 	err = json.Unmarshal(responseBody, &errorResponse)
 	require.NoError(t, err)
-	assert.DeepEqual(t, expectedResponse, errorResponse)
+	require.Equal(t, expectedResponse, errorResponse)
+
 }

@@ -209,7 +209,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' for application '%v' and environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress...", r.FilePath, r.ApplicationName, r.EnvironmentName, r.Workspace.Name)
+				"Deployment In Progress... ", r.FilePath, r.ApplicationName, r.EnvironmentName, r.Workspace.Name)
 	}
 
 	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{

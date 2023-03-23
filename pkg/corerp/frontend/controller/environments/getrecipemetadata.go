@@ -80,14 +80,23 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 	return rest.NewOKResponse(versioned), nil
 }
 
-func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, recipeName string) (recipePrameters map[string]any, err error) {
-	recipePrameters = make(map[string]any)
+func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, recipeName string) (recipeParameters map[string]any, err error) {
+	recipeParameters = make(map[string]any)
 	recipeData := make(map[string]any)
 	err = util.ReadFromRegistry(ctx, templatePath, &recipeData)
 	if err != nil {
-		return recipePrameters, err
+		return recipeParameters, err
 	}
 
+	err = parseAndFormatRecipeParams(recipeData, recipeParameters)
+	if err != nil {
+		return recipeParameters, err
+	}
+
+	return recipeParameters, nil
+}
+
+func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[string]any) error {
 	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
 	//	{
 	//		"parameters": {
@@ -107,11 +116,11 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 	//	}
 
 	if recipeData["parameters"] == nil {
-		return recipePrameters, nil
+		return nil
 	}
 	recipeParam, ok := recipeData["parameters"].(map[string]any)
 	if !ok {
-		return recipePrameters, fmt.Errorf("parameters are not in expected format")
+		return fmt.Errorf("parameters are not in expected format")
 	}
 
 	for paramName, paramValue := range recipeParam {
@@ -123,9 +132,8 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 		details := make(map[string]any)
 		paramDetails, ok := paramValue.(map[string]any)
 		if !ok {
-			return recipePrameters, fmt.Errorf("parameter details are not in expected format")
+			return fmt.Errorf("parameter details are not in expected format")
 		}
-
 		if len(paramDetails) > 0 {
 			keys := maps.Keys(paramDetails)
 
@@ -140,9 +148,9 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 				details[paramDetailName] = paramDetails[paramDetailName]
 			}
 
-			recipePrameters[paramName] = details
+			recipeParameters[paramName] = details
 		}
 	}
 
-	return recipePrameters, nil
+	return nil
 }

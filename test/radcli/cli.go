@@ -88,7 +88,13 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	if cliErr != nil && strings.Contains(out, "Error: {") {
 		var errResponse v1.ErrorResponse
 		idx := strings.Index(out, "Error: {")
-		actualErr := "{\"error\": " + out[idx+7:] + "}"
+		idxTraceId := strings.Index(out, "TraceId")
+		var actualErr string
+
+		if idxTraceId < 0 {
+			idxTraceId = len(out)
+		}
+		actualErr = "{\"error\": " + out[idx+7:idxTraceId-1] + "}"
 
 		if err := json.Unmarshal([]byte(string(actualErr)), &errResponse); err != nil {
 			return err
@@ -177,6 +183,23 @@ func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
 	args := []string{
 		"env",
 		"status",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
+	args := []string{
+		"env",
+		"show",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) EnvSwitch(ctx context.Context, environmentName string) (string, error) {
+	args := []string{
+		"env",
+		"switch",
+		environmentName,
 	}
 	return cli.RunCommand(ctx, args)
 }

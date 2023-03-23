@@ -18,7 +18,6 @@ import (
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_Plane_Operations(t *testing.T) {
@@ -66,7 +65,7 @@ func Test_Plane_Operations(t *testing.T) {
 		// Get Plane
 		plane, statusCode := getPlane(t, roundTripper, planeURL)
 		require.Equal(t, http.StatusOK, statusCode)
-		assert.DeepEqual(t, testPlaneRest, plane)
+		require.Equal(t, testPlaneRest, plane)
 
 		// Delete Plane
 		statusCode = deletePlane(t, roundTripper, planeURL)
@@ -83,7 +82,7 @@ func Test_Plane_Operations(t *testing.T) {
 func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20220901privatepreview.PlaneResource) {
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(
+	createRequest, err := NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(body))
@@ -97,7 +96,7 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 }
 
 func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Plane, int) {
-	getRequest, err := http.NewRequest(
+	getRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -140,7 +139,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 }
 
 func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
-	deleteRgRequest, err := http.NewRequest(
+	deleteRgRequest, err := NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,

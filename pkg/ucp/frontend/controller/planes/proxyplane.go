@@ -11,7 +11,7 @@ import (
 	http "net/http"
 	"net/url"
 
-	"github.com/go-logr/logr"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -21,9 +21,12 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-const PlanesPath = "/planes"
+const (
+	PlanesPath = "/planes"
+)
 
 var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
 
@@ -38,11 +41,17 @@ func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 }
 
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	logger.Info("starting proxy request")
 	for key, value := range req.Header {
 		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
+	}
+
+	refererURL := url.URL{
+		Host:     req.Host,
+		Path:     req.URL.Path,
+		RawQuery: req.URL.RawQuery,
 	}
 
 	req.URL.Path = p.GetRelativePath(req.URL.Path)
@@ -100,9 +109,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldResourceID, resourceID)
-	logger = logr.FromContextOrDiscard(ctx)
 
 	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
@@ -123,13 +129,10 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 			err = fmt.Errorf("provider %s not configured", resourceID.ProviderNamespace())
 			return nil, err
 		}
-		ctx = ucplog.WrapLogContext(ctx,
-			ucplog.LogFieldPlaneURL, proxyURL)
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
 		// all the requests will be forwarded
 		proxyURL = plane.Properties.URL
-		ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneURL, proxyURL)
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -138,7 +141,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	}
 
 	options := proxy.ReverseProxyOptions{
-		RoundTripper:     http.DefaultTransport,
+		RoundTripper:     otelhttp.NewTransport(http.DefaultTransport),
 		ProxyAddress:     p.Options.Address,
 		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
@@ -149,8 +152,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if req.TLS != nil {
 		httpScheme = "https"
 	}
-
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldHTTPScheme, httpScheme)
+	refererURL.Scheme = httpScheme
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
@@ -162,20 +164,23 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		UCPHost: req.Host + p.Options.BasePath,
 	}
 
-	url, err := url.Parse(newURL.Path)
+	uri, err := url.Parse(newURL.Path)
 	if err != nil {
 		return nil, err
 	}
 
 	// Preserving the query strings on the incoming url on the newly constructed url
-	url.RawQuery = newURL.Query().Encode()
-	req.URL = url
+	uri.RawQuery = newURL.Query().Encode()
+	req.URL = uri
 	req.Header.Set("X-Forwarded-Proto", httpScheme)
+
+	req.Header.Set(v1.RefererHeader, refererURL.String())
+	logger = ucplog.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("Referer Header: %s", req.Header.Get(v1.RefererHeader)))
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
-	logger = logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
 	// The upstream response has already been sent at this point. Therefore, return nil response here

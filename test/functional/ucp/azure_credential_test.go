@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func Test_Azure_Credential_Operations(t *testing.T) {
@@ -46,7 +45,7 @@ func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl str
 	// Check for correctness of credential
 	createdCredential, statusCode := getAzureTestCredential(t, roundTripper, resourceUrl)
 	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, createdCredential, expectedCredential)
+	require.Equal(t, createdCredential, createdCredential)
 
 	// Delete credential operation
 	statusCode, err = deleteAzureTestCredential(t, roundTripper, resourceUrl)
@@ -62,7 +61,7 @@ func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl str
 func createAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.AzureCredentialResource) {
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	createRequest, err := NewUCPRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(createRequest)
@@ -73,7 +72,7 @@ func createAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url
 }
 
 func getAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.AzureCredentialResource, int) {
-	getCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
+	getCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	result, err := roundTripper.RoundTrip(getCredentialRequest)
@@ -92,7 +91,7 @@ func getAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url st
 }
 
 func deleteAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
-	deleteCredentialRequest, err := http.NewRequest(http.MethodDelete, url, nil)
+	deleteCredentialRequest, err := NewUCPRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(deleteCredentialRequest)
@@ -100,7 +99,7 @@ func deleteAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url
 }
 
 func listAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.AzureCredentialResource {
-	listCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
+	listCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(listCredentialRequest)

@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -26,18 +25,28 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	BasePath     string
-	DB           store.StorageClient
+	// BasePath is the base path of the controller such as /apis/api.ucp.dev/v1alpha3.
+	BasePath string
+
+	// Address is the address where the controller is running.
+	Address string
+
+	// SecretClient is the client to fetch secrets.
 	SecretClient secret.Client
-	Address      string
 
-	AWSCloudControlClient   ucp_aws.AWSCloudControlClient
+	// AWSOptions is the set of options used by AWS controllers.
+	AWSOptions AWSOptions
+
+	// BaseControllerOptions is the set of options used by all controllers.
+	armrpc_controller.Options
+}
+
+type AWSOptions struct {
+	// AWSCloudControlClient is the AWS Cloud Control client.
+	AWSCloudControlClient ucp_aws.AWSCloudControlClient
+
+	// AWSCloudFormationClient is the AWS Cloud Formation client.
 	AWSCloudFormationClient ucp_aws.AWSCloudFormationClient
-
-	// CommonControllerOptions is the set of options used by most of our controllers.
-	//
-	// TODO: over time we should replace Options with CommonControllerOptions.
-	CommonControllerOptions armrpc_controller.Options
 }
 
 type ControllerFunc func(Options) (armrpc_controller.Controller, error)
@@ -63,12 +72,12 @@ func NewBaseController(options Options) BaseController {
 }
 
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options) error {
-	storageClient, err := ctrlOpts.CommonControllerOptions.DataProvider.GetStorageClient(ctx, opts.ResourceType)
+	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
 		return err
 	}
-	ctrlOpts.CommonControllerOptions.StorageClient = storageClient
-	ctrlOpts.CommonControllerOptions.ResourceType = opts.ResourceType
+	ctrlOpts.StorageClient = storageClient
+	ctrlOpts.ResourceType = opts.ResourceType
 
 	ctrl, err := opts.HandlerFactory(ctrlOpts)
 	if err != nil {
@@ -104,7 +113,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options)
 
 // StorageClient gets storage client for this controller.
 func (b *BaseController) StorageClient() store.StorageClient {
-	return b.Options.DB
+	return b.Options.StorageClient
 }
 
 // GetResource is the helper to get the resource via storage client.
@@ -146,7 +155,7 @@ func (c *BaseController) DeleteResource(ctx context.Context, id string, etag str
 
 // Responds with an HTTP 500
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	var response armrpc_rest.Response
 	// Try to use the ARM format to send back the error info

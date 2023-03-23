@@ -101,9 +101,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	namespace := cmd.GetNamespace(envResource)
 	delete(recipeProperties, r.RecipeName)
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
+	envResource.Properties.Recipes = recipeProperties
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to unregister the recipe %s from the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}

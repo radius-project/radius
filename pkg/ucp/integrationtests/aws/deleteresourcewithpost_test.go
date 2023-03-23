@@ -8,13 +8,13 @@ package aws
 // Tests that test with Mock RP functionality and UCP Server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -42,23 +42,6 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 
 	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]any{
-		"RetentionPeriodHours": 178,
-		"ShardCount":           3,
-	}
-	getResponseBodyBytes, err := json.Marshal(getResponseBody)
-	require.NoError(t, err)
-
-	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		output := cloudcontrol.GetResourceOutput{
-			ResourceDescription: &types.ResourceDescription{
-				Identifier: to.Ptr(testAWSResourceName),
-				Properties: to.Ptr(string(getResponseBodyBytes)),
-			},
-		}
-		return &output, nil
-	})
-
 	cloudcontrolClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
 		output := cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
@@ -79,8 +62,12 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	deleteRequest, err := http.NewRequest(http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:delete", bytes.NewBuffer(body))
-	require.NoError(t, err)
+	deleteRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:delete", body)
+	require.NoError(t, err, "creating request failed")
+
+	ctx := testutil.ARMTestContextFromRequest(deleteRequest)
+	deleteRequest = deleteRequest.WithContext(ctx)
+
 	deleteResponse, err := ucpClient.httpClient.Do(deleteRequest)
 	require.NoError(t, err)
 

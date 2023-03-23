@@ -1,0 +1,13 @@
+{
+    "location": "global",
+    "id": "/planes/radius/local",
+    "name": "local",
+    "type": "System.Planes/radius",
+    "properties": {
+        "resourceProviders": {
+            "Applications.Core": "http://localhost:9080/",
+            "Applications.Connection": "http://localhost:9081/"
+        },
+        "kind": "UCPNative"
+    }
+}

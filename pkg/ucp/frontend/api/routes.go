@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -24,6 +23,7 @@ import (
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 )
@@ -72,11 +72,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 
 	}
 
-	ctrl.ConfigureDefaultHandlers(router, ctrl.Options{
-		BasePath: baseURL,
-	})
+	ctrl.ConfigureDefaultHandlers(router, ctrlOpts)
 
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
@@ -212,7 +210,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt.CommonControllerOptions,
+				return defaultoperation.NewListResources(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.AzureCredential]{
 						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
 						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
@@ -225,7 +223,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
+				return defaultoperation.NewGetResource(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.AzureCredential]{
 						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
 						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
@@ -236,12 +234,12 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		{
 			ParentRouter:   azureCredentialResourceSubRouter,
 			Method:         v1.OperationPut,
-			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
+			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateAzureCredential,
 		},
 		{
 			ParentRouter:   azureCredentialResourceSubRouter,
 			Method:         v1.OperationDelete,
-			HandlerFactory: azure_credential_ctrl.NewDeleteCredential,
+			HandlerFactory: azure_credential_ctrl.NewDeleteAzureCredential,
 		},
 
 		// AWS Credential Handlers
@@ -250,7 +248,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt.CommonControllerOptions,
+				return defaultoperation.NewListResources(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.AWSCredential]{
 						RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
 						ResponseConverter: converter.AWSCredentialDataModelToVersioned,
@@ -263,7 +261,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
+				return defaultoperation.NewGetResource(opt.Options,
 					frontend_ctrl.ResourceOptions[datamodel.AWSCredential]{
 						RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
 						ResponseConverter: converter.AWSCredentialDataModelToVersioned,
@@ -274,12 +272,12 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		{
 			ParentRouter:   awsCredentialResourceSubRouter,
 			Method:         v1.OperationPut,
-			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
+			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateAWSCredential,
 		},
 		{
 			ParentRouter:   awsCredentialResourceSubRouter,
 			Method:         v1.OperationDelete,
-			HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
+			HandlerFactory: aws_credential_ctrl.NewDeleteAWSCredential,
 		},
 		// Proxy request should take the least priority in routing and should therefore be last
 		{

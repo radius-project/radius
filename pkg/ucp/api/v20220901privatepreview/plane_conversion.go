@@ -41,10 +41,12 @@ func (src *PlaneResource) ConvertTo() (v1.DataModelInterface, error) {
 	// No validation for AWS plane.
 
 	converted := &datamodel.Plane{
-		TrackedResource: v1.TrackedResource{
-			ID:   to.String(src.ID),
-			Name: to.String(src.Name),
-			Type: to.String(src.Type),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   to.String(src.ID),
+				Name: to.String(src.Name),
+				Type: to.String(src.Type),
+			},
 		},
 		Properties: datamodel.PlaneProperties{
 			Kind:              datamodel.PlaneKind(*src.Properties.Kind),

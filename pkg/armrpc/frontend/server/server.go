@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/version"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
 )
 
@@ -35,7 +36,6 @@ type Options struct {
 	Address           string
 	PathBase          string
 	EnableArmAuth     bool
-	EnableMetrics     bool
 	Configure         func(*mux.Router) error
 	ArmCertMgr        *authentication.ArmCertManager
 }
@@ -54,7 +54,8 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
 
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.AppendLogValues)
+	r.Use(middleware.AppendLogValues(options.ProviderNamespace))
+
 	// add the arm cert validation if EnableAuth is true
 	if options.EnableArmAuth {
 		r.Use(authentication.ClientCertValidator(options.ArmCertMgr))
@@ -64,11 +65,11 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 
-	handlerFunc := middleware.LowercaseURLPath(r)
-	if options.EnableMetrics {
-		handlerFunc = otelhttp.NewHandler(middleware.LowercaseURLPath(r),
-			options.ProviderNamespace, otelhttp.WithMeterProvider(global.MeterProvider()))
-	}
+	handlerFunc := otelhttp.NewHandler(
+		middleware.LowercaseURLPath(r),
+		options.ProviderNamespace,
+		otelhttp.WithMeterProvider(global.MeterProvider()),
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	server := &http.Server{
 		Addr:    options.Address,

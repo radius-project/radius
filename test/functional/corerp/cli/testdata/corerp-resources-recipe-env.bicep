@@ -18,5 +18,6 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
           templatePath: 'testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1' 
       }
     }
+    useDevRecipes: true
   }
 }

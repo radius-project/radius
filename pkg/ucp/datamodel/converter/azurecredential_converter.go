@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
-// CredentialDataModelToVersioned converts version agnostic credential datamodel to versioned model.
+// AzureCredentialDataModelToVersioned converts version agnostic Azure credential datamodel to versioned model.
 func AzureCredentialDataModelToVersioned(model *datamodel.AzureCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
@@ -28,7 +28,7 @@ func AzureCredentialDataModelToVersioned(model *datamodel.AzureCredential, versi
 	}
 }
 
-// CredentialDataModelFromVersioned converts versioned credential model to datamodel.
+// AzureCredentialDataModelFromVersioned converts versioned Azure credential model to datamodel.
 func AzureCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AzureCredential, error) {
 	switch version {
 	case v20220901privatepreview.Version:

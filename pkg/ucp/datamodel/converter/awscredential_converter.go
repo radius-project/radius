@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
-// CredentialDataModelToVersioned converts version agnostic credential datamodel to versioned model.
+// AWSCredentialDataModelToVersioned converts version agnostic AWS credential datamodel to versioned model.
 func AWSCredentialDataModelToVersioned(model *datamodel.AWSCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
@@ -28,7 +28,7 @@ func AWSCredentialDataModelToVersioned(model *datamodel.AWSCredential, version s
 	}
 }
 
-// CredentialDataModelFromVersioned converts versioned credential model to datamodel.
+// AWSCredentialDataModelFromVersioned converts AWS versioned credential model to datamodel.
 func AWSCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AWSCredential, error) {
 	switch version {
 	case v20220901privatepreview.Version:

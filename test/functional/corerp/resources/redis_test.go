@@ -70,10 +70,10 @@ func Test_RedisAzure(t *testing.T) {
 	template := "testdata/corerp-resources-redis-azure.bicep"
 	name := "corerp-resources-redis-azure"
 
-	if os.Getenv("REDIS_RESOURCE_ID") == "" {
-		t.Error("REDIS_RESOURCE_ID environment variable must be set to run this test.")
+	if os.Getenv("AZURE_REDIS_RESOURCE_ID") == "" {
+		t.Error("AZURE_REDIS_RESOURCE_ID environment variable must be set to run this test.")
 	}
-	redisresourceid := "redisresourceid=" + os.Getenv("REDIS_RESOURCE_ID")
+	redisresourceid := "redisresourceid=" + os.Getenv("AZURE_REDIS_RESOURCE_ID")
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{

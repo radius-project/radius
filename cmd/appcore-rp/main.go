@@ -18,9 +18,8 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
-	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
-	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
-	"github.com/project-radius/radius/pkg/telemetry/trace"
+	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
+	"github.com/project-radius/radius/pkg/trace"
 
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
 	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
@@ -32,9 +31,7 @@ import (
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
-const (
-	serviceName string = "appcore-rp"
-)
+const serviceName = "applications.core"
 
 func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
 	hostings := []hosting.Service{}
@@ -77,7 +74,8 @@ func main() {
 	}
 	hostingSvc := []hosting.Service{frontend.NewService(options)}
 
-	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions := metricsservice.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions.Config.ServiceName = serviceName
 	if metricOptions.Config.Prometheus.Enabled {
 		hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
 	}

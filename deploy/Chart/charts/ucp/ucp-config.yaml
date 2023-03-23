@@ -27,6 +27,9 @@ storageProvider:
 secretProvider:
   provider: kubernetes
 
+queueProvider:
+  provider: inmemory
+
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
 planes:
@@ -62,3 +65,10 @@ metricsProvider:
 logging:
   level: "info"
   json: true
+
+tracerProvider:
+  serviceName: "ucp"
+
+# TODO: Enable trace provider in 0.19
+#  zipkin:
+#    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"

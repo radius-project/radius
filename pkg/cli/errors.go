@@ -21,8 +21,8 @@ func (fe *FriendlyError) Error() string {
 }
 
 func (fe *FriendlyError) Is(target error) bool {
-	_, ok := target.(*FriendlyError)
-	return ok
+	e, ok := target.(*FriendlyError)
+	return ok && fe.Message == e.Message
 }
 
 // ClusterUnreachableError is an error type to be thrown when the kubernetes cluster

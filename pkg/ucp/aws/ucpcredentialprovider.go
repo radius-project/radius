@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/go-logr/logr"
 
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ aws.CredentialsProvider = (*UCPCredentialProvider)(nil)
@@ -55,7 +55,7 @@ func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSC
 
 // Retrieve fetches the secret access key using UCP credential API.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
 	if err != nil {
 		return aws.Credentials{}, err
