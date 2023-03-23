@@ -13,15 +13,28 @@ param port int = 3000
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateway'
+  name: 'corerp-resources-gateway-kme'
   location: location
   properties: {
     environment: environment
+    extensions: [
+      {
+        kind: 'kubernetesMetadata'
+        annotations: {
+          'user.ann.1': 'user.ann.val.1'
+          'user.ann.2': 'user.ann.val.2'
+        }
+        labels: {
+          'user.lbl.1': 'user.lbl.val.1'
+          'user.lbl.2': 'user.lbl.val.2'
+        }
+      }
+    ]
   }
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-gtwy'
+  name: 'http-gtwy-kme'
   location: location
   properties: {
     application: app.id
@@ -46,7 +59,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
 }
 
 resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-front-rte'
+  name: 'http-gtwy-front-rte-kme'
   location: location
   properties: {
     application: app.id
@@ -55,7 +68,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-front-ctnr'
+  name: 'http-gtwy-front-ctnr-kme'
   location: location
   properties: {
     application: app.id
@@ -82,7 +95,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-back-rte'
+  name: 'http-gtwy-back-rte-kme'
   location: location
   properties: {
     application: app.id
@@ -90,7 +103,7 @@ resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' =
 }
 
 resource backendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-back-ctnr'
+  name: 'http-gtwy-back-ctnr-kme'
   location: location
   properties: {
     application: app.id
