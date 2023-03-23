@@ -13,7 +13,6 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -50,7 +49,7 @@ func Test_Credential_Delete(t *testing.T) {
 			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupCredentialDeleteSuccessMocks,
-			expected:   rest.NewOKResponse(nil),
+			expected:   armrpc_rest.NewOKResponse(nil),
 			err:        nil,
 		},
 		{

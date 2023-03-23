@@ -56,148 +56,6 @@
     }
   ],
   "paths": {
-    "/{planeName}/planes/{planeType}": {
-      "get": {
-        "tags": [
-          "Planes"
-        ],
-        "operationId": "Planes_Get",
-        "description": "Retrieves information about a PlaneResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/PlaneNameParameter"
-          },
-          {
-            "name": "planeType",
-            "in": "path",
-            "required": true,
-            "description": "The plane type.",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/PlaneResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Planes"
-        ],
-        "operationId": "Planes_CreateOrUpdate",
-        "description": "Creates or updates a PlaneResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/PlaneNameParameter"
-          },
-          {
-            "name": "planeType",
-            "in": "path",
-            "required": true,
-            "description": "The plane type.",
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/PlaneResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/PlaneResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/PlaneResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Planes"
-        ],
-        "operationId": "Planes_Delete",
-        "description": "Deletes an existing PlaneResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/PlaneNameParameter"
-          },
-          {
-            "name": "planeType",
-            "in": "path",
-            "required": true,
-            "description": "The plane type.",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
     "/planes": {
       "get": {
         "tags": [
@@ -264,6 +122,148 @@
         }
       }
     },
+    "/planes/{planeType}/{planeName}": {
+      "get": {
+        "tags": [
+          "Planes"
+        ],
+        "operationId": "Planes_Get",
+        "description": "Retrieves information about a PlaneResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/PlaneResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Planes"
+        ],
+        "operationId": "Planes_CreateOrUpdate",
+        "description": "Creates or updates a PlaneResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/PlaneResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/PlaneResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/PlaneResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Planes"
+        ],
+        "operationId": "Planes_Delete",
+        "description": "Deletes an existing PlaneResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/planes/{planeType}/{planeName}/resourcegroups": {
       "get": {
         "tags": [
@@ -305,178 +305,6 @@
         }
       }
     },
-    "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}": {
-      "get": {
-        "tags": [
-          "ResourceGroups"
-        ],
-        "operationId": "ResourceGroups_Get",
-        "description": "Retrieves information about a ResourceGroupResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "name": "planeType",
-            "in": "path",
-            "required": true,
-            "description": "The plane type.",
-            "type": "string"
-          },
-          {
-            "$ref": "#/parameters/PlaneNameParameter"
-          },
-          {
-            "name": "resourceGroupName",
-            "in": "path",
-            "required": true,
-            "description": "Resource Group name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/ResourceGroupResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "ResourceGroups"
-        ],
-        "operationId": "ResourceGroups_CreateOrUpdate",
-        "description": "Creates or updates a ResourceGroupResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "name": "planeType",
-            "in": "path",
-            "required": true,
-            "description": "The plane type.",
-            "type": "string"
-          },
-          {
-            "$ref": "#/parameters/PlaneNameParameter"
-          },
-          {
-            "name": "resourceGroupName",
-            "in": "path",
-            "required": true,
-            "description": "Resource Group name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/ResourceGroupResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/ResourceGroupResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/ResourceGroupResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "ResourceGroups"
-        ],
-        "operationId": "ResourceGroups_Delete",
-        "description": "Deletes an existing ResourceGroupResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "name": "planeType",
-            "in": "path",
-            "required": true,
-            "description": "The plane type.",
-            "type": "string"
-          },
-          {
-            "$ref": "#/parameters/PlaneNameParameter"
-          },
-          {
-            "name": "resourceGroupName",
-            "in": "path",
-            "required": true,
-            "description": "Resource Group name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
     "/planes/aws/{planeName}/providers/System.AWS/credentials": {
       "get": {
         "tags": [
@@ -511,7 +339,41 @@
         }
       }
     },
-    "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}": {
+    "/planes/azure/{planeName}/providers/System.Azure/credentials": {
+      "get": {
+        "tags": [
+          "AzureCredential"
+        ],
+        "operationId": "AzureCredential_ListByRootScope",
+        "description": "Lists information about all AzureCredentialResources in the given credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/providers/System.AWS/credentials/{credentialName}/planes/aws/{planeName}": {
       "get": {
         "tags": [
           "AWSCredential"
@@ -523,16 +385,16 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/AWSPlaneNameParameter"
-          },
-          {
             "name": "credentialName",
             "in": "path",
             "required": true,
-            "description": "The plane type.",
+            "description": "The AWS credential name.",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/AWSPlaneNameParameter"
           }
         ],
         "responses": {
@@ -561,16 +423,16 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/AWSPlaneNameParameter"
-          },
-          {
             "name": "credentialName",
             "in": "path",
             "required": true,
-            "description": "The plane type.",
+            "description": "The AWS credential name.",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/AWSPlaneNameParameter"
           },
           {
             "name": "resource",
@@ -621,16 +483,16 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/AWSPlaneNameParameter"
-          },
-          {
             "name": "credentialName",
             "in": "path",
             "required": true,
-            "description": "The plane type.",
+            "description": "The AWS credential name.",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/AWSPlaneNameParameter"
           }
         ],
         "responses": {
@@ -659,41 +521,7 @@
         }
       }
     },
-    "/planes/azure/{planeName}/providers/System.Azure/credentials": {
-      "get": {
-        "tags": [
-          "AzureCredential"
-        ],
-        "operationId": "AzureCredential_ListByRootScope",
-        "description": "Lists information about all AzureCredentialResources in the given credential",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/AzurePlaneNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/AzureCredentialResourceListResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}": {
+    "/providers/System.Azure/credentials/{credentialName}/planes/azure/{planeName}": {
       "get": {
         "tags": [
           "AzureCredential"
@@ -705,16 +533,16 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/AzurePlaneNameParameter"
-          },
-          {
             "name": "credentialName",
             "in": "path",
             "required": true,
-            "description": "The plane type.",
+            "description": "The Azure credential name.",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
           }
         ],
         "responses": {
@@ -743,16 +571,16 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/AzurePlaneNameParameter"
-          },
-          {
             "name": "credentialName",
             "in": "path",
             "required": true,
-            "description": "The plane type.",
+            "description": "The Azure credential name.",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
           },
           {
             "name": "resource",
@@ -803,16 +631,188 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/AzurePlaneNameParameter"
-          },
-          {
             "name": "credentialName",
             "in": "path",
             "required": true,
-            "description": "The plane type.",
+            "description": "The Azure credential name.",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/resourcegroups/{resourceGroupName}/planes/{planeType}/{planeName}": {
+      "get": {
+        "tags": [
+          "ResourceGroups"
+        ],
+        "operationId": "ResourceGroups_Get",
+        "description": "Retrieves information about a ResourceGroupResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "Resource Group name",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ResourceGroups"
+        ],
+        "operationId": "ResourceGroups_CreateOrUpdate",
+        "description": "Creates or updates a ResourceGroupResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "Resource Group name",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ResourceGroups"
+        ],
+        "operationId": "ResourceGroups_Delete",
+        "description": "Deletes an existing ResourceGroupResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "Resource Group name",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
           }
         ],
         "responses": {

@@ -140,7 +140,7 @@ model AWSAccessKeyCredentialProperties extends AWSCredentialProperties {
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 model AWSCredentialResource is TrackedResource<AWSCredentialProperties> {
     @key("credentialName")
-    @doc("The plane type.")
+    @doc("The AWS credential name.")
     @path
     @segment("providers/System.AWS/credentials")
     @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
@@ -151,7 +151,7 @@ model AWSCredentialResource is TrackedResource<AWSCredentialProperties> {
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 model AzureCredentialResource is TrackedResource<AzureCredentialProperties> {
     @key("credentialName")
-    @doc("The plane type.")
+    @doc("The Azure credential name.")
     @path
     @segment("providers/System.Azure/credentials")
     @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")

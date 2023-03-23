@@ -56,12 +56,12 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a PlaneResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// planeName - The name of the plane
 // planeType - The plane type.
+// planeName - The name of the plane
 // resource - Resource create parameters.
 // options - PlanesClientCreateOrUpdateOptions contains the optional parameters for the PlanesClient.CreateOrUpdate method.
-func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeName string, planeType string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (PlanesClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, planeName, planeType, resource, options)
+func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (PlanesClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, planeType, planeName, resource, options)
 	if err != nil {
 		return PlanesClientCreateOrUpdateResponse{}, err
 	}
@@ -76,13 +76,13 @@ func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeName string
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, planeType string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{planeName}/planes/{planeType}"
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -114,11 +114,11 @@ func (client *PlanesClient) createOrUpdateHandleResponse(resp *http.Response) (P
 // Delete - Deletes an existing PlaneResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// planeName - The name of the plane
 // planeType - The plane type.
+// planeName - The name of the plane
 // options - PlanesClientDeleteOptions contains the optional parameters for the PlanesClient.Delete method.
-func (client *PlanesClient) Delete(ctx context.Context, planeName string, planeType string, options *PlanesClientDeleteOptions) (PlanesClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, planeName, planeType, options)
+func (client *PlanesClient) Delete(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (PlanesClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, planeType, planeName, options)
 	if err != nil {
 		return PlanesClientDeleteResponse{}, err
 	}
@@ -133,13 +133,13 @@ func (client *PlanesClient) Delete(ctx context.Context, planeName string, planeT
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeName string, planeType string, options *PlanesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{planeName}/planes/{planeType}"
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -168,11 +168,11 @@ func (client *PlanesClient) deleteHandleResponse(resp *http.Response) (PlanesCli
 // Get - Retrieves information about a PlaneResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// planeName - The name of the plane
 // planeType - The plane type.
+// planeName - The name of the plane
 // options - PlanesClientGetOptions contains the optional parameters for the PlanesClient.Get method.
-func (client *PlanesClient) Get(ctx context.Context, planeName string, planeType string, options *PlanesClientGetOptions) (PlanesClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, planeName, planeType, options)
+func (client *PlanesClient) Get(ctx context.Context, planeType string, planeName string, options *PlanesClientGetOptions) (PlanesClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, planeType, planeName, options)
 	if err != nil {
 		return PlanesClientGetResponse{}, err
 	}
@@ -187,13 +187,13 @@ func (client *PlanesClient) Get(ctx context.Context, planeName string, planeType
 }
 
 // getCreateRequest creates the Get request.
-func (client *PlanesClient) getCreateRequest(ctx context.Context, planeName string, planeType string, options *PlanesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{planeName}/planes/{planeType}"
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+func (client *PlanesClient) getCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientGetOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err

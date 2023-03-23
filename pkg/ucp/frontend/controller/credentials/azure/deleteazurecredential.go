@@ -12,7 +12,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
@@ -54,7 +53,7 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 	}
 
 	if old == nil {
-		return rest.NewNoContentResponse(), nil
+		return armrpc_rest.NewNoContentResponse(), nil
 	}
 
 	secretName := credentials.GetSecretName(serviceCtx.ResourceID)
@@ -73,11 +72,11 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 
 	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
+			return armrpc_rest.NewNoContentResponse(), nil
 		}
 		return nil, err
 	}
 
 	logger.Info(fmt.Sprintf("Deleted Credential %s successfully", serviceCtx.ResourceID))
-	return rest.NewOKResponse(nil), nil
+	return armrpc_rest.NewOKResponse(nil), nil
 }

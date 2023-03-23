@@ -56,13 +56,13 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a AzureCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
+// credentialName - The Azure credential name.
 // planeName - The name of the plane
-// credentialName - The plane type.
 // resource - Resource create parameters.
 // options - AzureCredentialClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialClient.CreateOrUpdate
 // method.
-func (client *AzureCredentialClient) CreateOrUpdate(ctx context.Context, planeName string, credentialName string, resource AzureCredentialResource, options *AzureCredentialClientCreateOrUpdateOptions) (AzureCredentialClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, planeName, credentialName, resource, options)
+func (client *AzureCredentialClient) CreateOrUpdate(ctx context.Context, credentialName string, planeName string, resource AzureCredentialResource, options *AzureCredentialClientCreateOrUpdateOptions) (AzureCredentialClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, credentialName, planeName, resource, options)
 	if err != nil {
 		return AzureCredentialClientCreateOrUpdateResponse{}, err
 	}
@@ -77,13 +77,13 @@ func (client *AzureCredentialClient) CreateOrUpdate(ctx context.Context, planeNa
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *AzureCredentialClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, credentialName string, resource AzureCredentialResource, options *AzureCredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+func (client *AzureCredentialClient) createOrUpdateCreateRequest(ctx context.Context, credentialName string, planeName string, resource AzureCredentialResource, options *AzureCredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/providers/System.Azure/credentials/{credentialName}/planes/azure/{planeName}"
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{credentialName}", url.PathEscape(credentialName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -115,11 +115,11 @@ func (client *AzureCredentialClient) createOrUpdateHandleResponse(resp *http.Res
 // Delete - Deletes an existing AzureCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
+// credentialName - The Azure credential name.
 // planeName - The name of the plane
-// credentialName - The plane type.
 // options - AzureCredentialClientDeleteOptions contains the optional parameters for the AzureCredentialClient.Delete method.
-func (client *AzureCredentialClient) Delete(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientDeleteOptions) (AzureCredentialClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, planeName, credentialName, options)
+func (client *AzureCredentialClient) Delete(ctx context.Context, credentialName string, planeName string, options *AzureCredentialClientDeleteOptions) (AzureCredentialClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, credentialName, planeName, options)
 	if err != nil {
 		return AzureCredentialClientDeleteResponse{}, err
 	}
@@ -134,13 +134,13 @@ func (client *AzureCredentialClient) Delete(ctx context.Context, planeName strin
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *AzureCredentialClient) deleteCreateRequest(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+func (client *AzureCredentialClient) deleteCreateRequest(ctx context.Context, credentialName string, planeName string, options *AzureCredentialClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/providers/System.Azure/credentials/{credentialName}/planes/azure/{planeName}"
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{credentialName}", url.PathEscape(credentialName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -169,11 +169,11 @@ func (client *AzureCredentialClient) deleteHandleResponse(resp *http.Response) (
 // Get - Retrieves information about a AzureCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
+// credentialName - The Azure credential name.
 // planeName - The name of the plane
-// credentialName - The plane type.
 // options - AzureCredentialClientGetOptions contains the optional parameters for the AzureCredentialClient.Get method.
-func (client *AzureCredentialClient) Get(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientGetOptions) (AzureCredentialClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, planeName, credentialName, options)
+func (client *AzureCredentialClient) Get(ctx context.Context, credentialName string, planeName string, options *AzureCredentialClientGetOptions) (AzureCredentialClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, credentialName, planeName, options)
 	if err != nil {
 		return AzureCredentialClientGetResponse{}, err
 	}
@@ -188,13 +188,13 @@ func (client *AzureCredentialClient) Get(ctx context.Context, planeName string, 
 }
 
 // getCreateRequest creates the Get request.
-func (client *AzureCredentialClient) getCreateRequest(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+func (client *AzureCredentialClient) getCreateRequest(ctx context.Context, credentialName string, planeName string, options *AzureCredentialClientGetOptions) (*policy.Request, error) {
+	urlPath := "/providers/System.Azure/credentials/{credentialName}/planes/azure/{planeName}"
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{credentialName}", url.PathEscape(credentialName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err

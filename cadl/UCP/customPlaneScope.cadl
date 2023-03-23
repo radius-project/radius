@@ -25,23 +25,22 @@ using Azure.ResourceManager.Foundations;
 // Skip generation of ListBySubscription
 interface PlaneResourceListBySubscription<TResource> {}
 
+model ResourceGroupCommonParameters<TResource> {
+  ...ApiVersionParameter;
+}
+
+model PlaneParentScope<TResource> {
+  ...ResourceGroupCommonParameters<TResource>;
+  ...ParentKeysOf<TResource>;
+}
+
 model ResourceParentScope<TResource, TRootParams> {
   ...ResourceGroupCommonParameters<TResource>;
   ...ParentKeysOf<TResource>;
   ...TRootParams;
 }
 
-model ResourceGroupCommonParameters<TResource> {
-  ...ApiVersionParameter;
-}
-
 model ResourceGroupInstanceParameters<TResource, TRootParams> {
-  ...ResourceGroupCommonParameters<TResource>;
-  ...TRootParams;
-  ...KeysOf<TResource>;
-}
-
-model PlaneTypeParameters<TResource, TRootParams> {
   ...ResourceGroupCommonParameters<TResource>;
   ...KeysOf<TResource>;
   ...TRootParams;
@@ -88,7 +87,7 @@ interface PlaneTypeOperations<
 >
   extends Azure.ResourceManager.Radius.ResourceRead<
       TResource,
-      PlaneTypeParameters<TResource, TRootParams>
+      ResourceGroupInstanceParameters<TResource, TRootParams>
     > {}
 
 interface CredentialResourceOperations<
@@ -128,7 +127,7 @@ interface PlaneListByParent<TResource extends ArmResource, TRootParams> {
   @segmentOf(TResource)
   @armResourceList(TResource)
   ListByRootScope(
-    ...ResourceParentScope<TResource, {}>
+    ...PlaneParentScope<TResource>
   ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 }
 model Nil3 {}

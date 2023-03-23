@@ -147,7 +147,7 @@ func Test_Credential(t *testing.T) {
 
 func getAzureCredentialResponse() armrpc_rest.Response {
 	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.AzureCredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("West US"),
 		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),

@@ -150,7 +150,7 @@ func Test_Credential(t *testing.T) {
 
 func getAwsResponse() armrpc_rest.Response {
 	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.AWSCredentialResource{
-		Location: to.Ptr("west-us-2"),
+		Location: to.Ptr("West US"),
 		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
@@ -162,7 +162,7 @@ func getAwsResponse() armrpc_rest.Response {
 			Kind:        to.Ptr("AccessKey"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
-				SecretName: to.Ptr("aws-aws-default"),
+				SecretName: to.Ptr("aws-awscloud-default"),
 			},
 		},
 	}, map[string]string{"ETag": ""})
