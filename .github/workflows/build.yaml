@@ -70,11 +70,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Restore the previous coverage
-        id: radius-coverage-main
         uses: actions/cache/restore@v3
         with:
           path: ./dist/cache
-          key: radius-coverage-main
+          key: radius-coverage-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -163,7 +162,7 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           path: ./dist/cache
-          key: ${{ steps.radius-coverage-main.outputs.cache-primary-key }}
+          key: radius-coverage-${{ github.sha }}-${{ github.run_number }}
 
   # Logic here:
   # - always do a docker build for validation
