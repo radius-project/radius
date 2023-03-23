@@ -75,6 +75,7 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 				require.NotNil(t, service)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 				require.Truef(t, functional.IsMapSubSet(expectedAnnotations, service.Annotations), "Annotations do not match. expected: %v, actual: %v", expectedAnnotations, service.Annotations)
 				require.Truef(t, functional.IsMapSubSet(expectedLabels, service.Labels), "Labels do not match. expected: %v, actual: %v", expectedLabels, service.Labels)
 =======
@@ -82,6 +83,10 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 				require.True(t, isMapSubSet(expectedLabels, service.Labels))
 
 >>>>>>> 58990ec8d (added functional test)
+=======
+				require.Truef(t, functional.IsMapSubSet(expectedAnnotations, service.Annotations), "Annotations do not match. expected: %v, actual: %v", expectedAnnotations, service.Annotations)
+				require.Truef(t, functional.IsMapSubSet(expectedLabels, service.Labels), "Labels do not match. expected: %v, actual: %v", expectedLabels, service.Labels)
+>>>>>>> 29d7c9e7e (refactoring)
 			},
 		},
 	})

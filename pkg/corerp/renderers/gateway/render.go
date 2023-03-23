@@ -17,7 +17,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/corerp/renderers/kubernetesmetadata"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -191,8 +190,8 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        kubernetes.NormalizeResourceName(resourceName),
 			Namespace:   options.Environment.Namespace,
-			Labels:      kubernetesmetadata.GetLabels(ctx, options, applicationName, resourceName, gateway.ResourceTypeName()),
-			Annotations: kubernetesmetadata.GetAnnotations(ctx, options),
+			Labels:      renderers.GetLabels(ctx, options, applicationName, resourceName, gateway.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(ctx, options),
 		},
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: virtualHost,
@@ -270,8 +269,8 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        routeResourceName,
 				Namespace:   options.Environment.Namespace,
-				Labels:      kubernetesmetadata.GetLabels(ctx, options, applicationName, routeName, resource.ResourceTypeName()),
-				Annotations: kubernetesmetadata.GetAnnotations(ctx, options),
+				Labels:      renderers.GetLabels(ctx, options, applicationName, routeName, resource.ResourceTypeName()),
+				Annotations: renderers.GetAnnotations(ctx, options),
 			},
 			Spec: contourv1.HTTPProxySpec{
 				Routes: []contourv1.Route{

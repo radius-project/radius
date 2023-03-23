@@ -3,18 +3,17 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package kubernetesmetadata
+package renderers
 
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/rp/kube"
 )
 
 // GetLabels returns the labels to be applied to the resource
-func GetLabels(ctx context.Context, options renderers.RenderOptions, applicationName string, resourceName string, resourceTypeName string) map[string]string {
+func GetLabels(ctx context.Context, options RenderOptions, applicationName string, resourceName string, resourceTypeName string) map[string]string {
 	// Create KubernetesMetadata struct to merge labels
 	lblMap := &kube.Metadata{
 		ObjectMetadata: kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resourceTypeName),
@@ -42,7 +41,7 @@ func GetLabels(ctx context.Context, options renderers.RenderOptions, application
 }
 
 // GetAnnotations returns the annotations to be applied to the resource
-func GetAnnotations(ctx context.Context, options renderers.RenderOptions) map[string]string {
+func GetAnnotations(ctx context.Context, options RenderOptions) map[string]string {
 	// Create KubernetesMetadata struct to merge annotations
 	annMap := &kube.Metadata{}
 	envOpts := &options.Environment

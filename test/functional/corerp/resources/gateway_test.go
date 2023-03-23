@@ -290,8 +290,8 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 				require.NoError(t, err)
 				for _, httpproxy := range httpproxies.Items {
 					expectedLabels := getExpectedLabels(t, httpproxy.Name)
-					require.Truef(t, isMapSubSet(expectedLabels, httpproxy.Labels), "labels in httpproxy %v do not match expected values : ", httpproxy.Name)
-					require.True(t, isMapSubSet(expectedAnnotations, httpproxy.Annotations), "annotations in httpproxy %v do not match expected values", httpproxy.Name)
+					require.Truef(t, functional.IsMapSubSet(expectedLabels, httpproxy.Labels), "labels in httpproxy %v do not match expected values : ", httpproxy.Name)
+					require.True(t, functional.IsMapSubSet(expectedAnnotations, httpproxy.Annotations), "annotations in httpproxy %v do not match expected values", httpproxy.Name)
 				}
 				return
 			},

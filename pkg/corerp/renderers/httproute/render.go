@@ -17,7 +17,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/corerp/renderers/kubernetesmetadata"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp/kube"
@@ -87,8 +86,8 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        kubernetes.NormalizeResourceName(route.Name),
 			Namespace:   options.Environment.Namespace,
-			Labels:      kubernetesmetadata.GetLabels(ctx, options, appId.Name(), route.Name, route.ResourceTypeName()),
-			Annotations: kubernetesmetadata.GetAnnotations(ctx, options),
+			Labels:      renderers.GetLabels(ctx, options, appId.Name(), route.Name, route.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(ctx, options),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),
