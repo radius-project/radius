@@ -28,11 +28,6 @@ type Metadata struct {
 // More info:
 // ObjectMeta: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 // Spec: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
-
-// Merge merges environment, application maps with current values and returns updated metaMap and specMap
-// More info:
-// ObjectMeta: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
-// Spec: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]string) {
 	mergedDataMap := map[string]string{}
 
