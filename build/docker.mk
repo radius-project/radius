@@ -20,9 +20,8 @@ docker-build-$(1): build-$(1)-linux-amd64
 	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
 
 	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
-		--platform linux/amd64 \
+		--platform "linux/amd64" \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
-		--build-arg TARGETPLATFORM=linux/amd64 \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
 else
