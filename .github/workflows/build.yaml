@@ -194,42 +194,32 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: make docker-build
-        run: make docker-build
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: latest
-      - name: make docker-build (PR)
-        run: make docker-build
-        if: startsWith(github.ref, 'refs/pull/')
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make docker-build (release)
-        run: make docker-build
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - uses: azure/docker-login@v1
         with:
           login-server: ${{ env.DOCKER_REGISTRY }}
           username: '${{ secrets.DOCKER_USERNAME }}'
           password: '${{ secrets.DOCKER_PASSWORD }}'
       - name: make docker-push (latest)
-        run: make docker-push
+        run: |
+          make docker-multi-arch-push
         if: (github.ref == 'refs/heads/main') # push image to latest on merge to main
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
       - name: make docker-push (PR)
-        run: make docker-push
+        run: |
+          make docker-multi-arch-push
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker-push (release)
-        run: make docker-push
+        run: |
+          make docker-multi-arch-push
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
