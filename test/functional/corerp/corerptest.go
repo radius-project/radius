@@ -287,7 +287,10 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				notFound := false
 				for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
 					t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
-					notFound, _ = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+
+					notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+					t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
+
 					if notFound {
 						break
 					} else {
