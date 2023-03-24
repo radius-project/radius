@@ -84,7 +84,6 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 					require.Truef(t, functional.IsMapSubSet(expectedLabels, httpproxy.Labels), "labels in httpproxy %v do not match expected values : ", httpproxy.Name)
 					require.True(t, functional.IsMapSubSet(expectedAnnotations, httpproxy.Annotations), "annotations in httpproxy %v do not match expected values", httpproxy.Name)
 				}
-				return
 			},
 		},
 	})
