@@ -1,4 +1,5 @@
 # This is an example of configuration file.
+{{define "core-rp-config"}}
 environment:
   name: self-hosted
   roleLocation: "global"
@@ -38,9 +39,10 @@ ucp:
 logging:
   level: "info"
   json: true
+{{ if and .Values.global.tracerProvider .Values.global.tracerProvider.zipkin .Values.global.tracerProvider.zipkin.url }}
 tracerProvider:
   serviceName: "applications.core"
-
-# TODO: Enable trace provider in 0.19
-#  zipkin:
-#    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+  zipkin: 
+    url: {{ .Values.global.tracerProvider.zipkin.url }}
+{{ end }}
+{{ end }} 

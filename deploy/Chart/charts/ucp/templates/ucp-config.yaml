@@ -1,4 +1,5 @@
 # This is an example of configuration file.
+{{define "ucp-config"}}
 storageProvider:
   # provider: "cosmosdb"
   # cosmosdb:
@@ -61,14 +62,15 @@ metricsProvider:
     path: "/metrics"
     port: 9090
 
- # Logging configuration   
+  # Logging configuration
 logging:
   level: "info"
   json: true
 
+{{ if and .Values.global.tracerProvider .Values.global.tracerProvider.zipkin .Values.global.tracerProvider.zipkin.url }}
 tracerProvider:
   serviceName: "ucp"
-
-# TODO: Enable trace provider in 0.19
-#  zipkin:
-#    url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+  zipkin: 
+    url: {{ .Values.global.tracerProvider.zipkin.url }}
+{{ end }}
+{{ end }}
