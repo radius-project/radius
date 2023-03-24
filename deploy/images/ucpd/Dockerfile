@@ -4,6 +4,8 @@ FROM --platform=linux/amd64 gcr.io/distroless/static:nonroot
 ARG TARGETPLATFORM
 ARG TARGETARCH
 
+RUN echo ${TARGETPLATFORM}
+
 WORKDIR /
 
 COPY ./linux_$TARGETARCH/release/ucpd /
