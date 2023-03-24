@@ -79,18 +79,18 @@ DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE))
 DOCKER_PUSH_MULTI_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-multi-arch-push-$(IMAGE))
 
 # targets to build test images
-.PHONY: docker-test-tool-build
-docker-test-tool-build: docker-build-magpiego docker-build-testrp ## Builds all Docker images.
+.PHONY: docker-test-image-build
+docker-test-image-build: docker-build-magpiego docker-build-testrp ## Builds all Docker images.
 
-.PHONY: docker-test-tool-push
-docker-test-tool-push: docker-push-magpiego docker-push-testrp ## Builds all Docker images.
+.PHONY: docker-test-image-push
+docker-test-image-push: docker-push-magpiego docker-push-testrp ## Builds all Docker images.
 
 # targets to build development images
 .PHONY: docker-build
-docker-build: $(DOCKER_BUILD_TARGETS) docker-test-tool-build ## Builds all Docker images.
+docker-build: $(DOCKER_BUILD_TARGETS) docker-test-image-build ## Builds all Docker images.
 
 .PHONY: docker-push
-docker-push: $(DOCKER_PUSH_TARGETS) docker-test-tool-push ## Pushes all Docker images (without building).
+docker-push: $(DOCKER_PUSH_TARGETS) docker-test-image-push ## Pushes all Docker images (without building).
 
 # targets to build and push multi arch images
 .PHONY: docker-multi-arch-push
