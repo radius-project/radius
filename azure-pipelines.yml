@@ -254,8 +254,7 @@ stages:
           --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
           --name $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
           --yes \
-          --verbose \
-          --no-wait
+          --verbose
       displayName: Delete environment resource groups
       condition: always()
       continueOnError: 'true'
