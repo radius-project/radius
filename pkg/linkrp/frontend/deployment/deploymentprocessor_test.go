@@ -209,7 +209,7 @@ func buildRendererOutputRedis() renderers.RendererOutput {
 			},
 		},
 		ProviderResourceType: azresources.CacheRedis,
-		RadiusManaged:        to.Ptr(true),
+		RadiusManaged:        to.Ptr(false),
 	}
 
 	rendererOutput := renderers.RendererOutput{

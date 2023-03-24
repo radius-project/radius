@@ -96,7 +96,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 			Provider: resourcemodel.ProviderAzure,
 		},
 		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
-		RadiusManaged:        to.Ptr(true),
+		RadiusManaged:        to.Ptr(false),
 	}
 
 	expectedMongoDBResource := rpv1.OutputResource{
@@ -106,7 +106,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 			Provider: resourcemodel.ProviderAzure,
 		},
 		ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-		RadiusManaged:        to.Ptr(true),
+		RadiusManaged:        to.Ptr(false),
 		Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 	}
 

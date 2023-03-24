@@ -333,7 +333,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			Provider: resourcemodel.ProviderAzure,
 		},
 		ProviderResourceType: azresources.CacheRedis,
-		RadiusManaged:        to.Ptr(true),
+		RadiusManaged:        to.Ptr(false),
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{

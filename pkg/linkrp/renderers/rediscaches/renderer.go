@@ -43,7 +43,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 	}
 
 	switch resource.Properties.Mode {
-
 	case datamodel.LinkModeRecipe:
 		rendererOutput, err := renderAzureRecipe(resource, options, secretValues, computedValues)
 		if err != nil {
@@ -89,7 +88,7 @@ func renderAzureRecipe(resource *datamodel.RedisCache, options renderers.RenderO
 	redisCacheOutputResource := buildOutputResource()
 	redisCacheOutputResource.ProviderResourceType = azresources.CacheRedis
 	// Set the RadiusManaged to true for resources deployed by recipe
-	redisCacheOutputResource.RadiusManaged = to.Ptr(true)
+	redisCacheOutputResource.RadiusManaged = to.Ptr(false)
 
 	return renderers.RendererOutput{
 		Resources:            []rpv1.OutputResource{redisCacheOutputResource},

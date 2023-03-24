@@ -373,7 +373,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			RadiusManaged:        to.Ptr(true),
+			RadiusManaged:        to.Ptr(false),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 		},
 		{
@@ -382,7 +382,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			RadiusManaged:        to.Ptr(true),
+			RadiusManaged:        to.Ptr(false),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Dependencies:         []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},

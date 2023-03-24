@@ -385,7 +385,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				handlers.ApplicationName:         applicationName,
 				handlers.ResourceName:            "test-state-store",
 			},
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: to.Ptr(false),
 		},
 		{
 			LocalID: rpv1.LocalIDAzureStorageTableService,

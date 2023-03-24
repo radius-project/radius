@@ -50,7 +50,7 @@ func GetDaprStateStoreRecipe(resource *datamodel.DaprStateStore, applicationName
 				handlers.KubernetesKindKey:       kubernetesKindKey,
 				handlers.ResourceName:            resource.Name,
 			},
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: to.Ptr(false),
 		},
 		{
 			LocalID: rpv1.LocalIDAzureStorageTableService,

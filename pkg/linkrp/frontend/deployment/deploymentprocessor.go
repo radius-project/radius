@@ -355,7 +355,7 @@ func (dp *deploymentProcessor) processRecipeOutputResources(resourceID resources
 			LocalID:       fmt.Sprintf("Resource%d", i), // The dependency sorting code requires unique LocalIDs
 			Identity:      identity,
 			ResourceType:  *identity.ResourceType,
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: to.Ptr(false),
 		}
 		outputResources = append(outputResources, outputResource)
 	}
