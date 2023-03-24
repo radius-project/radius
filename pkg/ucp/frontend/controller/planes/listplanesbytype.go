@@ -70,7 +70,7 @@ func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *
 }
 
 func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]any, error) {
-	apiVersion := ctrl.GetAPIVersion(req)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	listOfPlanes := []any{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
@@ -80,7 +80,7 @@ func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request
 				return nil, err
 			}
 
-			versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+			versioned, err := converter.PlaneDataModelToVersioned(&plane, serviceCtx.APIVersion)
 			if err != nil {
 				return nil, err
 			}
