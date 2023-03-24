@@ -203,6 +203,8 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
       - name: make docker-push (latest)
         run: |
           make docker-multi-arch-push
