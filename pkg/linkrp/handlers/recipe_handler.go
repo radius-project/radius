@@ -64,10 +64,7 @@ func (handler *recipeHandler) DeployRecipe(ctx context.Context, recipe linkrp.Re
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 
 	recipeData := make(map[string]any)
-	acr := util.AzureContainerRegistery{
-		Path: recipe.TemplatePath,
-	}
-	err := acr.ReadFromRegistry(ctx, &recipeData)
+	err := util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, err
 	}

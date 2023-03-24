@@ -40,11 +40,8 @@ func (d *Driver) Execute(ctx context.Context, configuration recipes.Configuratio
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
 
-	acr := util.AzureContainerRegistery{
-		Path: definition.TemplatePath,
-	}
 	recipeData := make(map[string]any)
-	err := acr.ReadFromRegistry(ctx, &recipeData)
+	err := util.ReadFromRegistry(ctx, definition.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, err
 	}

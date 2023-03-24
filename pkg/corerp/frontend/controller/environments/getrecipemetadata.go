@@ -83,10 +83,7 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, recipeName string) (recipeParameters map[string]any, err error) {
 	recipeParameters = make(map[string]any)
 	recipeData := make(map[string]any)
-	acr := util.AzureContainerRegistery{
-		Path: templatePath,
-	}
-	err = acr.ReadFromRegistry(ctx, &recipeData)
+	err = util.ReadFromRegistry(ctx, templatePath, &recipeData)
 	if err != nil {
 		return recipeParameters, err
 	}
