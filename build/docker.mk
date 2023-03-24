@@ -100,6 +100,7 @@ docker-build: $(DOCKER_BUILD_TARGETS) docker-test-image-build ## Builds all Dock
 .PHONY: docker-push
 docker-push: $(DOCKER_PUSH_TARGETS) docker-test-image-push ## Pushes all Docker images (without building).
 
-# targets to build and push multi arch images
+# targets to build and push multi arch images. If you run this target in your machine,
+# ensure you have qemu and buildx installed by running make configure-buildx.
 .PHONY: docker-multi-arch-push
 docker-multi-arch-push: $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images after building.
