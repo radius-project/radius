@@ -17,12 +17,9 @@ ifeq ($(strip $(4)),go)
 .PHONY: docker-build-$(1)
 docker-build-$(1): build-$(1)-linux-amd64
 	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
-	$(eval DOCKER_OUT_DIR=$(OUT_DIR)/docker/linux_amd64)
-	@mkdir -p $(DOCKER_OUT_DIR)/$(1)
-	@cp -v $(3) $(DOCKER_OUT_DIR)/$(1)
-	@cp -v $(BINS_OUT_DIR_linux_amd64)/$(1) $(DOCKER_OUT_DIR)/$(1)
+	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
 
-	cd $(DOCKER_OUT_DIR)/$(1) && docker build $(2) \
+	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
 		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
@@ -41,10 +38,37 @@ docker-push-$(1):
 	docker push $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)
 endef
 
+define generateDockerMultiArches
+.PHONY: docker-multi-arch-push-$(1)
+docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build-$(1)-linux-arm
+	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
+	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
+
+	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
+		--platform linux/amd64,linux/arm64,linux/arm \
+		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
+		--label org.opencontainers.image.version="$(REL_VERSION)" \
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		--push $(2)
+endef
+
+# configure-buildx is to initialize qemu and buildx environment.
+.PHONY: configure-buildx
+configure-buildx:
+	docker pull multiarch/qemu-user-static
+	docker run --privileged multiarch/qemu-user-static --reset -p yes
+	if ! docker buildx ls | grep -w radius-builder > /dev/null; then \
+		docker buildx create --name radius-builder && \
+		docker buildx inspect --builder radius-builder --bootstrap; \
+	fi
+
 # defines a target for each image
 DOCKER_IMAGES := ucpd appcore-rp
 
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
+
+# multi arch container image targets for each binaries
+$(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerMultiArches,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile)))
 
 # magpie comes from our test directory.
 $(eval $(call generateDockerTargets,magpiego,./test/magpiego/,./test/magpiego/Dockerfile))
@@ -53,13 +77,29 @@ $(eval $(call generateDockerTargets,magpiego,./test/magpiego/,./test/magpiego/Do
 $(eval $(call generateDockerTargets,testrp,./test/testrp/,./test/testrp/Dockerfile))
 
 # list of 'outputs' to build all images
-DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpiego docker-build-testrp
+DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE))
 
 # list of 'outputs' to push all images
-DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-magpiego docker-push-testrp
+DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE))
 
+# list of 'outputs' to push all multi arch images
+DOCKER_PUSH_MULTI_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-multi-arch-push-$(IMAGE))
+
+# targets to build test images
+.PHONY: docker-test-image-build
+docker-test-image-build: docker-build-magpiego docker-build-testrp ## Builds all Docker images.
+
+.PHONY: docker-test-image-push
+docker-test-image-push: docker-push-magpiego docker-push-testrp ## Builds all Docker images.
+
+# targets to build development images
 .PHONY: docker-build
-docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.
+docker-build: $(DOCKER_BUILD_TARGETS) docker-test-image-build ## Builds all Docker images.
 
 .PHONY: docker-push
-docker-push: $(DOCKER_PUSH_TARGETS) ## Pushes all Docker images (without building).
+docker-push: $(DOCKER_PUSH_TARGETS) docker-test-image-push ## Pushes all Docker images (without building).
+
+# targets to build and push multi arch images. If you run this target in your machine,
+# ensure you have qemu and buildx installed by running make configure-buildx.
+.PHONY: docker-multi-arch-push
+docker-multi-arch-push: $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images after building.
