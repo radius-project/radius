@@ -101,7 +101,6 @@ func Test_Gateway(t *testing.T) {
 				}
 
 				require.Fail(t, "Gateway tests failed")
-
 			},
 		},
 	})
