@@ -22,6 +22,7 @@ docker-build-$(1): build-$(1)-linux-amd64
 	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
 		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
+		--build-arg TARGETPLATFORM=linux/amd64 \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
 else
@@ -51,6 +52,16 @@ docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
 		--push $(2)
 endef
+
+# configure-buildx is to initialize qemu and buildx environment.
+.PHONY: configure-buildx
+configure-buildx:
+	docker pull multiarch/qemu-user-static
+	docker run --privileged multiarch/qemu-user-static --reset -p yes
+	if ! docker buildx ls | grep -w radius-builder > /dev/null; then \
+		docker buildx create --name radius-builder && \
+		docker buildx inspect --builder radius-builder --bootstrap; \
+	fi
 
 # defines a target for each image
 DOCKER_IMAGES := ucpd appcore-rp
