@@ -17,26 +17,31 @@ import (
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/rp/util"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes Driver
+//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
 )
 
-var _ recipes.Driver = (*Driver)(nil)
+var _ Driver = (*bicepDriver)(nil)
 
-type Driver struct {
+func NewBicepDriver(ucpOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient) Driver {
+	return &bicepDriver{UCPClientOptions: ucpOptions, DeploymentClient: deploymentClient}
+}
+
+type bicepDriver struct {
 	UCPClientOptions *arm.ClientOptions
 	DeploymentClient *clients.ResourceDeploymentsClient
 }
 
 // Execute implements recipes.Driver
-func (d *Driver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.RecipeMetadata, definition recipes.RecipeDefinition) (*recipes.RecipeResult, error) {
+func (d *bicepDriver) Execute(ctx context.Context, configuration configloader.Configuration, recipe recipes.RecipeMetadata, definition configloader.RecipeDefinition) (*recipes.RecipeResult, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
 
@@ -179,7 +184,7 @@ func (d *Driver) Execute(ctx context.Context, configuration recipes.Configuratio
 	return &result, nil
 }
 
-func (d *Driver) formatProviderConfigs(configuration recipes.Configuration, subjectID resources.ID) clients.ProviderConfig {
+func (d *bicepDriver) formatProviderConfigs(configuration configloader.Configuration, subjectID resources.ID) clients.ProviderConfig {
 	providerConfig := clients.ProviderConfig{}
 
 	if &configuration.Providers != nil && &configuration.Providers.Azure != nil {

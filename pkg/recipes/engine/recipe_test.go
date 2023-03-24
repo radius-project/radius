@@ -29,20 +29,20 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func setup(t *testing.T) (Engine, configloader.MockConfigurationLoader, driver.MockDriver) {
+func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.MockDriver) {
 	ctrl := gomock.NewController(t)
 	configLoader := configloader.NewMockConfigurationLoader(ctrl)
-	driver := driver.NewMockDriver(ctrl)
+	mDriver := driver.NewMockDriver(ctrl)
 	options := Options{
 		ConfigurationLoader: configLoader,
-		Drivers: map[string]recipes.Driver{
-			"bicep": driver,
+		Drivers: map[string]driver.Driver{
+			"bicep": mDriver,
 		},
 	}
-	engine := Engine{
+	engine := engine{
 		options: options,
 	}
-	return engine, *configLoader, *driver
+	return engine, *configLoader, *mDriver
 }
 
 func Test_Engine_Success(t *testing.T) {
@@ -55,9 +55,9 @@ func Test_Engine_Success(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-	envConfig := &recipes.Configuration{
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
+	envConfig := &configloader.Configuration{
+		Runtime: configloader.RuntimeConfiguration{
+			Kubernetes: &configloader.KubernetesRuntime{
 				Namespace: "default",
 			},
 		},
@@ -77,7 +77,7 @@ func Test_Engine_Success(t *testing.T) {
 			"port": 10255,
 		},
 	}
-	recipeDefinition := &recipes.RecipeDefinition{
+	recipeDefinition := &configloader.RecipeDefinition{
 		Driver:       "bicep",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
@@ -85,7 +85,7 @@ func Test_Engine_Success(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, driver := setup(t)
 
-	configLoader.EXPECT().Load(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
+	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
 	configLoader.EXPECT().Lookup(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
 	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
 
@@ -98,7 +98,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, _ := setup(t)
 
-	recipeDefinition := &recipes.RecipeDefinition{
+	recipeDefinition := &configloader.RecipeDefinition{
 		Driver:       "invalid",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
@@ -149,13 +149,13 @@ func Test_Engine_Load_Error(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-	recipeDefinition := &recipes.RecipeDefinition{
+	recipeDefinition := &configloader.RecipeDefinition{
 		Driver:       "bicep",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}
 	configLoader.EXPECT().Lookup(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	configLoader.EXPECT().Load(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("unable to fetch namespace information"))
+	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("unable to fetch namespace information"))
 	_, err := engine.Execute(ctx, recipeMetadata)
 	require.Error(t, err)
 }

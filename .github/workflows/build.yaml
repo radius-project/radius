@@ -30,7 +30,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -70,11 +70,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Restore the previous coverage
-        id: radius-coverage-main
         uses: actions/cache/restore@v3
         with:
           path: ./dist/cache
-          key: radius-coverage-main
+          key: radius-coverage-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -163,7 +162,7 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           path: ./dist/cache
-          key: ${{ steps.radius-coverage-main.outputs.cache-primary-key }}
+          key: radius-coverage-${{ github.sha }}-${{ github.run_number }}
 
   # Logic here:
   # - always do a docker build for validation
@@ -172,7 +171,7 @@ jobs:
   # - push the image for pushes to master, or to a tag
   images:
     name: Container image build
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -238,7 +237,7 @@ jobs:
   helm:
     name: Helm chart build
     needs: ['images']
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -273,7 +272,7 @@ jobs:
     name: Run Kubernetes tests
     needs: [ 'build', 'images' ]
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 60m
@@ -327,7 +326,7 @@ jobs:
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
@@ -399,7 +398,7 @@ jobs:
     name: Delete artifacts
     if: ${{ success() }}
     needs: [ 'build', 'publish' ]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Delete release artifacts
         uses: geekyeggo/delete-artifact@v1

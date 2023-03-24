@@ -15,6 +15,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/project-radius/radius/pkg/cli/aws"
@@ -44,6 +45,7 @@ type RadiusOptions struct {
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
 	AWSProvider            *aws.Provider
+	Values                 string
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
@@ -72,7 +74,8 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	err = addRadiusValues(helmChart, &options)
+	// TODO: refactor this to use the addChartValues function
+	err = AddRadiusValues(helmChart, &options)
 	if err != nil {
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -213,7 +216,7 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	return runUpgrade(installClient, releaseName, helmChart)
 }
 
-func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
+func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
 	_, ok := values["global"]
@@ -282,6 +285,11 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 	if options.DETag != "" {
 		de["tag"] = options.DETag
+	}
+
+	err := strvals.ParseInto(options.Values, values)
+	if err != nil {
+		return err
 	}
 
 	return nil

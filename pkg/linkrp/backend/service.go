@@ -16,12 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
-	"github.com/project-radius/radius/pkg/recipes/driver"
-	"github.com/project-radius/radius/pkg/recipes/engine"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
-	"github.com/project-radius/radius/pkg/sdk"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
@@ -64,21 +59,6 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
-	ucpClientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
-
-	client, err := GetUCPDeploymentClient(s.Options.UCPConnection)
-	if err != nil {
-		return fmt.Errorf("failed to initialize UCP deployment client: %w", err)
-	}
-
-	loader := &configloader.EnvironmentLoader{UCPClientOptions: ucpClientOptions}
-	engine := engine.NewEngine(engine.Options{
-		ConfigurationLoader: loader,
-		Drivers: map[string]recipes.Driver{
-			"bicep": &driver.Driver{UCPClientOptions: ucpClientOptions, DeploymentClient: client},
-		},
-	})
-
 	opts := ctrl.Options{
 		DataProvider: s.StorageProvider,
 		KubeClient:   s.KubeClient,
@@ -97,12 +77,6 @@ func (s *Service) Run(ctx context.Context) error {
 		if err != nil {
 			panic(err)
 		}
-	}
-	err = s.Controllers.Register(ctx, "Applications.Link/redisCaches", v1.OperationPut, func(opts ctrl.Options) (ctrl.Controller, error) {
-		return backend_ctrl.NewCreateOrUpdateRefactor(opts, engine, s.Options.Arm)
-	}, opts)
-	if err != nil {
-		return err
 	}
 	workerOpts := worker.Options{}
 	if s.Options.Config.WorkerServer != nil {

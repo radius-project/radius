@@ -10,25 +10,27 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/configloader"
+	"github.com/project-radius/radius/pkg/recipes/driver"
 )
 
-func NewEngine(options Options) *Engine {
-	return &Engine{options: options}
+func NewEngine(options Options) *engine {
+	return &engine{options: options}
 }
 
-var _ recipes.Engine = (*Engine)(nil)
+var _ Engine = (*engine)(nil)
 
 type Options struct {
-	ConfigurationLoader recipes.ConfigurationLoader
-	Drivers             map[string]recipes.Driver
+	ConfigurationLoader configloader.ConfigurationLoader
+	Drivers             map[string]driver.Driver
 }
 
-type Engine struct {
+type engine struct {
 	options Options
 }
 
 // Execute implements recipes.Engine
-func (e *Engine) Execute(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.RecipeResult, error) {
+func (e *engine) Execute(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.RecipeResult, error) {
 	// Resolve definition from repository
 	definition, err := e.options.ConfigurationLoader.Lookup(ctx, recipe)
 	if err != nil {
@@ -40,7 +42,7 @@ func (e *Engine) Execute(ctx context.Context, recipe recipes.RecipeMetadata) (*r
 		return nil, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
-	configuration, err := e.options.ConfigurationLoader.Load(ctx, recipe)
+	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp/kube"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -56,7 +57,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		},
 	}
 
-	service, err := r.makeService(route, options)
+	service, err := r.makeService(ctx, route, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -68,7 +69,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (rpv1.OutputResource, error) {
+func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, options renderers.RenderOptions) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(route.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
@@ -83,9 +84,10 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(route.Name),
-			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(appId.Name(), route.Name, route.ResourceTypeName()),
+			Name:        kubernetes.NormalizeResourceName(route.Name),
+			Namespace:   options.Environment.Namespace,
+			Labels:      getLabels(ctx, options, appId.Name(), route),
+			Annotations: getAnnotations(ctx, options),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),
@@ -102,4 +104,55 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 	}
 
 	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
+}
+
+func getLabels(ctx context.Context, options renderers.RenderOptions, appIdName string, route *datamodel.HTTPRoute) map[string]string {
+	// Create KubernetesMetadata struct to merge labels
+	lblMap := &kube.Metadata{
+		ObjectMetadata: kubernetes.MakeDescriptiveLabels(appIdName, route.Name, route.ResourceTypeName()),
+	}
+
+	envOpts := &options.Environment
+	appOpts := &options.Application
+	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
+	appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
+
+	if envKmeExists && envOpts.KubernetesMetadata.Labels != nil {
+		lblMap.EnvData = envOpts.KubernetesMetadata.Labels
+	}
+	if appKmeExists && appOpts.KubernetesMetadata.Labels != nil {
+		lblMap.AppData = appOpts.KubernetesMetadata.Labels
+	}
+
+	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, Env->App->Container->InputExt
+	// values are merged in that order. Spec labels are not updated.
+	if metaLabels, _ := lblMap.Merge(ctx); len(metaLabels) > 0 {
+		return metaLabels
+	}
+
+	return nil
+}
+
+func getAnnotations(ctx context.Context, options renderers.RenderOptions) map[string]string {
+	// Create KubernetesMetadata struct to merge annotations
+	annMap := &kube.Metadata{}
+	envOpts := &options.Environment
+	appOpts := &options.Application
+	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
+	appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
+
+	if envKmeExists && envOpts.KubernetesMetadata.Annotations != nil {
+		annMap.EnvData = envOpts.KubernetesMetadata.Annotations
+	}
+	if appKmeExists && appOpts.KubernetesMetadata.Annotations != nil {
+		annMap.AppData = appOpts.KubernetesMetadata.Annotations
+	}
+
+	// Merge cumulative annotations values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
+	// Spec annotations are not updated.
+	if metaAnnotations, _ := annMap.Merge(ctx); len(metaAnnotations) > 0 {
+		return metaAnnotations
+	}
+
+	return nil
 }

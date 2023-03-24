@@ -3,15 +3,14 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package driver
+package engine
 
 import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
 )
 
-type Driver interface {
-	Execute(ctx context.Context, configuration configloader.Configuration, recipe recipes.RecipeMetadata, definition configloader.RecipeDefinition) (*recipes.RecipeResult, error)
+type Engine interface {
+	Execute(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.RecipeResult, error)
 }
