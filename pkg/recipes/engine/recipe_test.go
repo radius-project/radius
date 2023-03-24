@@ -67,7 +67,7 @@ func Test_Engine_Success(t *testing.T) {
 			},
 		},
 	}
-	recipeResult := &recipes.RecipeResult{
+	recipeResult := &recipes.RecipeResponse{
 		Resources: []string{"mongoStorageAccount", "mongoDatabase"},
 		Secrets: map[string]any{
 			"connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",

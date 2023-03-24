@@ -37,10 +37,10 @@ func (m *MockDriver) EXPECT() *MockDriverMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockDriver) Execute(arg0 context.Context, arg1 configloader.Configuration, arg2 recipes.RecipeMetadata, arg3 configloader.RecipeDefinition) (*recipes.RecipeResult, error) {
+func (m *MockDriver) Execute(arg0 context.Context, arg1 configloader.Configuration, arg2 recipes.RecipeMetadata, arg3 configloader.RecipeDefinition) (*recipes.RecipeResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*recipes.RecipeResult)
+	ret0, _ := ret[0].(*recipes.RecipeResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
