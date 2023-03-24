@@ -27,15 +27,15 @@ type environmentLoader struct {
 }
 
 // LoadConfiguration fetches environment/application information and return runtime and provider configuration.
-func (r *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
-	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, r.ArmClientOptions)
+func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
+	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
 	var application *v20220315privatepreview.ApplicationResource
 	if recipe.ApplicationID != "" {
-		application, err = util.FetchApplication(ctx, recipe.ApplicationID, r.ArmClientOptions)
+		application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
 		if err != nil {
 			return nil, err
 		}

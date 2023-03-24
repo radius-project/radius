@@ -14,19 +14,19 @@ import (
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// FetchEnvironment gets the environment resource using environment id
-func FetchEnvironment(ctx context.Context, environment string, ucpOptions *arm.ClientOptions) (*v20220315privatepreview.EnvironmentResource, error) {
-	environmentID, err := resources.ParseResource(environment)
+// FetchEnvironment gets the environment resource using environment ID
+func FetchEnvironment(ctx context.Context, environmentID string, ucpOptions *arm.ClientOptions) (*v20220315privatepreview.EnvironmentResource, error) {
+	envID, err := resources.ParseResource(environmentID)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := v20220315privatepreview.NewEnvironmentsClient(environmentID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20220315privatepreview.NewEnvironmentsClient(envID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Get(ctx, environmentID.Name(), nil)
+	response, err := client.Get(ctx, envID.Name(), nil)
 	if err != nil {
 		return nil, err
 	}

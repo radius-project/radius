@@ -9,14 +9,15 @@ import (
 	"fmt"
 )
 
+// RecipeMetadata represents recipe details provided while creating a Link resource.
 type RecipeMetadata struct {
 	// Name represents the name of the recipe within the environment
 	Name string
-	// ApplicationID represents Fully qualified resource ID for the application that the link is linked to
+	// ApplicationID represents fully qualified resource ID for the application that the link is consumed by
 	ApplicationID string
-	// EnvironmentID represents Fully qualified resource ID for the application that the link is consumed by
+	// EnvironmentID represents fully qualified resource ID for the environment that the link is linked to
 	EnvironmentID string
-	// ResourceID represents Fully qualified resource ID for the resource the recipe is deploying
+	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
 	// Parameters represents Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any
