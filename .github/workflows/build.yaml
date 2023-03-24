@@ -205,7 +205,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-      - name: make docker-push (latest)
+      - name: Push container images (latest)
         run: |
           make docker-test-image-build && make docker-test-image-push
           make docker-multi-arch-push
@@ -213,7 +213,7 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-      - name: make docker-push (PR)
+      - name: Push container images (PR)
         run: |
           make docker-test-image-build && make docker-test-image-push
           make docker-multi-arch-push
@@ -221,7 +221,7 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make docker-push (release)
+      - name: Push container images (release)
         run: |
           make docker-test-image-build && make docker-test-image-push
           make docker-multi-arch-push
