@@ -50,17 +50,17 @@ func (mr *MockConfigurationLoaderMockRecorder) LoadConfiguration(arg0, arg1 inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadConfiguration", reflect.TypeOf((*MockConfigurationLoader)(nil).LoadConfiguration), arg0, arg1)
 }
 
-// Lookup mocks base method.
-func (m *MockConfigurationLoader) Lookup(arg0 context.Context, arg1 recipes.RecipeMetadata) (*RecipeDefinition, error) {
+// LoadRecipe mocks base method.
+func (m *MockConfigurationLoader) LoadRecipe(arg0 context.Context, arg1 recipes.RecipeMetadata) (*RecipeDefinition, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Lookup", arg0, arg1)
+	ret := m.ctrl.Call(m, "LoadRecipe", arg0, arg1)
 	ret0, _ := ret[0].(*RecipeDefinition)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Lookup indicates an expected call of Lookup.
-func (mr *MockConfigurationLoaderMockRecorder) Lookup(arg0, arg1 interface{}) *gomock.Call {
+// LoadRecipe indicates an expected call of LoadRecipe.
+func (mr *MockConfigurationLoaderMockRecorder) LoadRecipe(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lookup", reflect.TypeOf((*MockConfigurationLoader)(nil).Lookup), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadRecipe", reflect.TypeOf((*MockConfigurationLoader)(nil).LoadRecipe), arg0, arg1)
 }

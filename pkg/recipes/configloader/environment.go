@@ -86,7 +86,8 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 	return &configuration, nil
 }
 
-func (e *environmentLoader) Lookup(ctx context.Context, recipe recipes.RecipeMetadata) (*RecipeDefinition, error) {
+//	LoadRecipe fetches the recipe information from the environment.
+func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.RecipeMetadata) (*RecipeDefinition, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {
 		return nil, err

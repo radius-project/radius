@@ -29,10 +29,10 @@ type engine struct {
 	options Options
 }
 
-// Execute implements recipes.Engine
+// Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
 func (e *engine) Execute(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.RecipeResult, error) {
 	// Resolve definition from repository
-	definition, err := e.options.ConfigurationLoader.Lookup(ctx, recipe)
+	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, recipe)
 	if err != nil {
 		return nil, err
 	}

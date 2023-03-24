@@ -33,14 +33,21 @@ type KubernetesRuntime struct {
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }
 
+// RecipeDefinition represents the recipe configuration details.
 type RecipeDefinition struct {
-	Driver       string
+	// Driver represents the kind of infrastructure language used to define recipe.
+	Driver string
+	// ResourceType represents the type of the link this recipe can be consumed by.
 	ResourceType string
-	Parameters   map[string]interface{}
+	// Parameters represents key/value parameters to pass to the recipe template at deployment.
+	Parameters map[string]any
+	// TemplatePath represents path to the template provided by the recipe.
 	TemplatePath string
 }
 
 type ConfigurationLoader interface {
+	// LoadConfiguration fetches environment/application information and return runtime and provider configuration.
 	LoadConfiguration(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error)
-	Lookup(ctx context.Context, recipe recipes.RecipeMetadata) (*RecipeDefinition, error)
+	//	LoadRecipe fetches the recipe information from the environment.
+	LoadRecipe(ctx context.Context, recipe recipes.RecipeMetadata) (*RecipeDefinition, error)
 }

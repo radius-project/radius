@@ -86,7 +86,7 @@ func Test_Engine_Success(t *testing.T) {
 	engine, configLoader, driver := setup(t)
 
 	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
-	configLoader.EXPECT().Lookup(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
 	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
 
 	result, err := engine.Execute(ctx, recipeMetadata)
@@ -114,7 +114,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		},
 	}
 
-	configLoader.EXPECT().Lookup(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
 	_, err := engine.Execute(ctx, recipeMetadata)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "could not find driver invalid")
@@ -132,7 +132,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-	configLoader.EXPECT().Lookup(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
 	_, err := engine.Execute(ctx, recipeMetadata)
 	require.Error(t, err)
 }
@@ -154,7 +154,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}
-	configLoader.EXPECT().Lookup(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
 	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("unable to fetch namespace information"))
 	_, err := engine.Execute(ctx, recipeMetadata)
 	require.Error(t, err)

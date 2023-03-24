@@ -40,7 +40,7 @@ type bicepDriver struct {
 	DeploymentClient *clients.ResourceDeploymentsClient
 }
 
-// Execute implements recipes.Driver
+// Execute fetches the recipe contents from acr and deploys the recipe by making a call to ucp and returns the recipe result.
 func (d *bicepDriver) Execute(ctx context.Context, configuration configloader.Configuration, recipe recipes.RecipeMetadata, definition configloader.RecipeDefinition) (*recipes.RecipeResult, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
