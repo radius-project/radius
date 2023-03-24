@@ -1,9 +1,12 @@
 # Note: distroless already includes ca-certificates
-FROM gcr.io/distroless/static:nonroot
+FROM --platform=$BUILDPLATFORM gcr.io/distroless/static:nonroot
+
+ARG TARGETOS
+ARG TARGETARCH
+
 WORKDIR /
 
-COPY ./ucpd /
+COPY ./linux_$TARGETARCH/release/ucpd /
 
 USER 65532:65532
-
 ENTRYPOINT ["/ucpd"]

@@ -1,8 +1,11 @@
 # Note: distroless already includes ca-certificates
-FROM gcr.io/distroless/static:nonroot
+FROM --platform=$BUILDPLATFORM gcr.io/distroless/static:nonroot
+
+ARG TARGETARCH
+
 WORKDIR /
 
-COPY ./* /
+COPY ./linux_$TARGETARCH/release/appcore-rp /
 
 USER 65532:65532
 
