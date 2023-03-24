@@ -72,21 +72,19 @@ func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *
 func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]any, error) {
 	apiVersion := ctrl.GetAPIVersion(req)
 	listOfPlanes := []any{}
-	if len(result.Items) > 0 {
-		for _, item := range result.Items {
-			var plane datamodel.Plane
-			err := item.As(&plane)
-			if err != nil {
-				return nil, err
-			}
-
-			versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
-			if err != nil {
-				return nil, err
-			}
-
-			listOfPlanes = append(listOfPlanes, versioned)
+	for _, item := range result.Items {
+		var plane datamodel.Plane
+		err := item.As(&plane)
+		if err != nil {
+			return nil, err
 		}
+
+		versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		listOfPlanes = append(listOfPlanes, versioned)
 	}
 	return listOfPlanes, nil
 }

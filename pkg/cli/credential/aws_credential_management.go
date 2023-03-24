@@ -17,7 +17,7 @@ import (
 
 //go:generate mockgen -destination=./mock_aws_credential_management.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential AWSCredentialManagementClientInterface
 
-// CredentialManagementClient is used to interface with cloud provider configuration and credentials.
+// AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClient struct {
 	AWSCredentialClient ucp.AwsCredentialClient
 }
@@ -30,7 +30,7 @@ const (
 	infoRequiredTemplate = "required info %s"
 )
 
-// CredentialManagementClient is used to interface with cloud provider configuration and credentials.
+// AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClientInterface interface {
 	// Get gets the credential registered with the given ucp provider plane.
 	Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error)
@@ -52,7 +52,6 @@ func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential uc
 }
 
 // Get, gets the credential from the provided ucp provider plane
-// TODO: get information except secret data from backend and surface it in this response
 func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
 	var err error
 	providerCredentialConfiguration := ProviderCredentialConfiguration{

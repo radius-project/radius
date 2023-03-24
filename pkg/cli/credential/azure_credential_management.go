@@ -17,12 +17,12 @@ import (
 
 //go:generate mockgen -destination=./mock_azure_credential_management.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential AzureCredentialManagementClientInterface
 
-// CredentialManagementClient is used to interface with cloud provider configuration and credentials.
+// AzureCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AzureCredentialManagementClient struct {
 	AzureCredentialClient ucp.AzureCredentialClient
 }
 
-// CredentialManagementClient is used to interface with cloud provider configuration and credentials.
+// AzureCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AzureCredentialManagementClientInterface interface {
 	// Get gets the credential registered with the given ucp provider plane.
 	Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error)
@@ -85,7 +85,6 @@ func (cpm *AzureCredentialManagementClient) Put(ctx context.Context, credential 
 }
 
 // Get, gets the credential from the provided ucp provider plane
-// TODO: get information except secret data from backend and surface it in this response
 func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialName string) (ProviderCredentialConfiguration, error) {
 	var err error
 

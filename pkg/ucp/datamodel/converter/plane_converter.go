@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
-// PlaneDataModelToVersioned converts version agnostic environment datamodel to versioned model.
+// PlaneDataModelToVersioned converts version agnostic plane datamodel to versioned model.
 func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
@@ -28,7 +28,7 @@ func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.Versi
 	}
 }
 
-// PlaneDataModelFromVersioned converts versioned environment model to datamodel.
+// PlaneDataModelFromVersioned converts versioned plane model to datamodel.
 func PlaneDataModelFromVersioned(content []byte, version string) (*datamodel.Plane, error) {
 	switch version {
 	case v20220901privatepreview.Version:
