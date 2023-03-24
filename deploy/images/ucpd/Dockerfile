@@ -1,10 +1,8 @@
 # Note: distroless already includes ca-certificates
-FROM --platform=linux/amd64 gcr.io/distroless/static:nonroot
+FROM --platform=${TARGETPLATFORM} gcr.io/distroless/static:nonroot
 
 ARG TARGETPLATFORM
 ARG TARGETARCH
-
-RUN echo ${TARGETPLATFORM}
 
 WORKDIR /
 
