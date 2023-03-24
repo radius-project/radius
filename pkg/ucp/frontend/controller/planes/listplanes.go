@@ -60,8 +60,8 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 }
 
 func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	items := v1.PaginatedList{}
-	apiVersion := ctrl.GetAPIVersion(req)
 
 	for _, item := range result.Items {
 		var plane datamodel.Plane
@@ -70,7 +70,7 @@ func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, resu
 			return nil, err
 		}
 
-		versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+		versioned, err := converter.PlaneDataModelToVersioned(&plane, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}

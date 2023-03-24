@@ -63,15 +63,14 @@ func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *
 	if err != nil {
 		return nil, err
 	}
-	var ok = armrpc_rest.NewOKResponse(&v1.PaginatedList{
-		Value: listOfPlanes,
-	})
+	var ok = armrpc_rest.NewOKResponse(listOfPlanes)
 	return ok, nil
 }
 
-func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]any, error) {
-	apiVersion := ctrl.GetAPIVersion(req)
-	listOfPlanes := []any{}
+func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	items := v1.PaginatedList{}
+
 	for _, item := range result.Items {
 		var plane datamodel.Plane
 		err := item.As(&plane)
@@ -79,12 +78,13 @@ func (p *ListPlanesByType) createResponse(ctx context.Context, req *http.Request
 			return nil, err
 		}
 
-		versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+		versioned, err := converter.PlaneDataModelToVersioned(&plane, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}
 
-		listOfPlanes = append(listOfPlanes, versioned)
+		items.Value = append(items.Value, versioned)
 	}
-	return listOfPlanes, nil
+
+	return &items, nil
 }
