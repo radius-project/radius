@@ -62,15 +62,16 @@ metricsProvider:
     path: "/metrics"
     port: 9090
 
-  # Logging configuration
+# Logging configuration
 logging:
   level: "info"
   json: true
 
-{{ if and .Values.global.tracerProvider .Values.global.tracerProvider.zipkin .Values.global.tracerProvider.zipkin.url }}
+# tracing configuration
+{{ if and .Values.zipkin .Values.zipkin.url }}
 tracerProvider:
   serviceName: "ucp"
   zipkin: 
-    url: {{ .Values.global.tracerProvider.zipkin.url }}
+    url: {{ .Values.zipkin.url }}
 {{ end }}
 {{ end }}
