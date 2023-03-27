@@ -16,7 +16,7 @@ func Test_AddRadiusValues(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
-		Values: "de.tag=de-tag,ucp.tag=ucp-tag,rp.image=image",
+		Values: "de.tag=de-tag,ucp.tag=ucp-tag,rp.image=image,global.zipkin.url=url",
 	}
 	err := AddRadiusValues(&helmChart, options)
 	values := helmChart.Values
@@ -42,4 +42,15 @@ func Test_AddRadiusValues(t *testing.T) {
 	_, ok = de["tag"]
 	assert.True(t, ok)
 	assert.Equal(t, de["tag"], "de-tag")
+
+	_, ok = values["global"]
+	assert.True(t, ok)
+	global := values["global"].(map[string]any)
+	_, ok = global["zipkin"]
+	assert.True(t, ok)
+	zipkin := global["zipkin"].(map[string]any)
+	_, ok = zipkin["url"]
+	assert.True(t, ok)
+	assert.Equal(t, zipkin["url"], "url")
+
 }
