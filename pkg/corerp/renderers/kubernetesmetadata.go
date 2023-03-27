@@ -18,16 +18,13 @@ func GetLabels(ctx context.Context, options RenderOptions, applicationName strin
 	lblMap := &kube.Metadata{
 		ObjectMetadata: kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resourceTypeName),
 	}
-
 	envOpts := &options.Environment
 	appOpts := &options.Application
-	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
-	appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
 
-	if envKmeExists && envOpts.KubernetesMetadata.Labels != nil {
+	if envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Labels != nil {
 		lblMap.EnvData = envOpts.KubernetesMetadata.Labels
 	}
-	if appKmeExists && appOpts.KubernetesMetadata.Labels != nil {
+	if appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Labels != nil {
 		lblMap.AppData = appOpts.KubernetesMetadata.Labels
 	}
 
@@ -46,13 +43,11 @@ func GetAnnotations(ctx context.Context, options RenderOptions) map[string]strin
 	annMap := &kube.Metadata{}
 	envOpts := &options.Environment
 	appOpts := &options.Application
-	envKmeExists := envOpts != nil && envOpts.KubernetesMetadata != nil
-	appKmeExists := appOpts != nil && appOpts.KubernetesMetadata != nil
 
-	if envKmeExists && envOpts.KubernetesMetadata.Annotations != nil {
+	if envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Annotations != nil {
 		annMap.EnvData = envOpts.KubernetesMetadata.Annotations
 	}
-	if appKmeExists && appOpts.KubernetesMetadata.Annotations != nil {
+	if appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Annotations != nil {
 		annMap.AppData = appOpts.KubernetesMetadata.Annotations
 	}
 
