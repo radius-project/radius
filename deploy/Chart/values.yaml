@@ -1,19 +1,9 @@
-engine:
-  image: radius.azurecr.io/deployment-engine
-  tag: latest
-appcorerp:
-  image: radius.azurecr.io/appcore-rp
-  tag: latest 
-  provider:
-    azure: {}
-ucp:
-  image: radius.azurecr.io/ucpd
-  tag: latest 
-publicEndpointOverride: ""
-prometheus:
-  enabled: true
-  path: "/metrics"
-  port: 9090
-# configure trace endpoint to enable tracing  
-# zipkin:
-#   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+global:
+  publicEndpointOverride: ""
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 9090
+  # Configure zipkin endpoint to enable distributed trace.
+  # zipkin:
+  #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"

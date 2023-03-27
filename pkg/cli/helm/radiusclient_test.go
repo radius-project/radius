@@ -16,38 +16,30 @@ func Test_AddRadiusValues(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
-		Image:  "image",
-		Values: "global.de.tag=de-tag,global.ucp.tag=ucp-tag,",
+		Values: "de.tag=de-tag,ucp.tag=ucp-tag,rp.image=image",
 	}
 	err := AddRadiusValues(&helmChart, options)
 	values := helmChart.Values
 	require.Equal(t, err, nil)
 
-	_, ok := values["global"]
+	_, ok := values["rp"]
 	assert.True(t, ok)
-	global := values["global"].(map[string]any)
-	_, ok = global["rp"]
+	rp := values["rp"].(map[string]any)
+	_, ok = rp["image"]
 	assert.True(t, ok)
-	rp := global["rp"].(map[string]any)
-	_, ok = rp["container"]
-	assert.True(t, ok)
-	assert.Equal(t, rp["container"], "image")
+	assert.Equal(t, rp["image"], "image")
 
-	_, ok = values["global"]
+	_, ok = values["ucp"]
 	assert.True(t, ok)
-	global = values["global"].(map[string]any)
-	_, ok = global["de"]
-	assert.True(t, ok)
-	de := global["de"].(map[string]any)
-	_, ok = de["tag"]
-	assert.True(t, ok)
-	assert.Equal(t, de["tag"], "de-tag")
-
-	_, ok = global["ucp"]
-	assert.True(t, ok)
-	ucp := global["ucp"].(map[string]any)
+	ucp := values["ucp"].(map[string]any)
 	_, ok = ucp["tag"]
 	assert.True(t, ok)
 	assert.Equal(t, ucp["tag"], "ucp-tag")
 
+	_, ok = values["de"]
+	assert.True(t, ok)
+	de := values["de"].(map[string]any)
+	_, ok = de["tag"]
+	assert.True(t, ok)
+	assert.Equal(t, de["tag"], "de-tag")
 }

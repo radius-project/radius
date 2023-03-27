@@ -25,7 +25,7 @@ spec:
     spec:
       serviceAccountName: ucp
       containers:
-      - image: "{{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}"
+      - image: "{{ .Values.image }}:{{ .Values.tag }}"
         env:
         - name: UCP_CONFIG
           value: /etc/config/ucp-config.yaml
@@ -35,10 +35,10 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
-{{ if .Values.global.rp.provider.aws }}
+        {{ if .Values.provider.aws }}
         - name: AWS_REGION
-          value: {{ .Values.global.rp.provider.aws.region }}
-{{ end }}
+          value: {{ .Values.provider.aws.region }}
+        {{ end }}
         name: ucp
         ports:
         - containerPort: 9443

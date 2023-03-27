@@ -39,10 +39,10 @@ ucp:
 logging:
   level: "info"
   json: true
-{{ if and .Values.zipkin .Values.zipkin.url }}
+{{ if and .Values.global.zipkin .Values.global.zipkin.url }}
 tracerProvider:
   serviceName: "applications.link"
   zipkin: 
-    url: {{ .Values.zipkin.url }}
+    url: {{ .Values.global.zipkin.url }}
 {{ end }}
 {{ end }}
