@@ -41,9 +41,9 @@ spec:
           value: 'true'
         - name: SKIP_AUTH
           value: 'true'
-        {{ if .Values.global.publicEndpointOverride}}
+        {{ if .Values.rp.publicEndpointOverride}}
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
-          value: {{ .Values.global.publicEndpointOverride }}
+          value: {{ .Values.rp.publicEndpointOverride }}
         {{ end }}
         name: appcore-rp
         ports:
