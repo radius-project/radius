@@ -15,7 +15,7 @@ import (
 // GetLabels returns the labels to be applied to the resource
 func GetLabels(ctx context.Context, options RenderOptions, applicationName string, resourceName string, resourceTypeName string) map[string]string {
 	// Create KubernetesMetadata struct to merge labels
-	lblMap := &kube.Metadata{
+	lblMap := kube.Metadata{
 		ObjectMetadata: kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resourceTypeName),
 	}
 	envOpts := &options.Environment
@@ -40,7 +40,7 @@ func GetLabels(ctx context.Context, options RenderOptions, applicationName strin
 // GetAnnotations returns the annotations to be applied to the resource
 func GetAnnotations(ctx context.Context, options RenderOptions) map[string]string {
 	// Create KubernetesMetadata struct to merge annotations
-	annMap := &kube.Metadata{}
+	annMap := kube.Metadata{}
 	envOpts := &options.Environment
 	appOpts := &options.Application
 
