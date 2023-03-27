@@ -1,5 +1,6 @@
 # Project Radius
 
+
 Project Radius is a developer-centric cloud-native application platform.
 
 The core of Radius is using the declarative **application model** to describe complete applications that can be managed and deployed with an intelligent control plane. Radius uses the [Bicep](https://github.com/azure/bicep) language as a file-format and infrastructure-as-code tool.
