@@ -3,5 +3,4 @@ tag: latest # Tag for ucp image.
 provider:
   aws: 
    region: ""
-
-    
+   
