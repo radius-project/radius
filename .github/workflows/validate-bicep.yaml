@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     name: Validate Bicep Code
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Check out repo
         uses: actions/checkout@v3

@@ -7,7 +7,7 @@ on:
 jobs:
   customer:
     name: Add a label if Issue created by customer
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
