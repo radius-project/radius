@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	ContourChartDefaultVersion = "7.10.2"
+	ContourChartDefaultVersion = "11.1.1"
 )
 
 type CLIClusterOptions struct {
