@@ -35,9 +35,9 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
-{{ if .Values.global.rp.provider.aws }}
+{{ if .Values.provider.aws }}
         - name: AWS_REGION
-          value: {{ .Values.global.rp.provider.aws.region }}
+          value: {{ .Values.provider.aws.region }}
 {{ end }}
         name: ucp
         ports:

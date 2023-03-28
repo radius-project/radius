@@ -4,12 +4,15 @@ de:
 ucp:
   image: radius.azurecr.io/ucpd
   tag: latest # Tag for ucp image.
+  provider:
+    azure: {}
+appcore-rp:
+  image: radius.azurecr.io/appcore-rp
+  publicEndpointOverride: ""
 global:
   rp:
     image: radius.azurecr.io/appcore-rp
     tag: latest # Tag for appcore-rp image.
-    provider:
-      azure: {}
     publicEndpointOverride: ""
   prometheus:
     enabled: true
