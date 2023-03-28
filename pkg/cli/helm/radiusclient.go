@@ -245,8 +245,8 @@ func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 	}
 	aws := ucp["aws"].(map[string]any)
 
-	//aws["accessKeyId"] = awsProvider.AccessKeyId
-	//aws["secretAccessKey"] = awsProvider.SecretAccessKey
+	aws["accessKeyId"] = awsProvider.AccessKeyId
+	aws["secretAccessKey"] = awsProvider.SecretAccessKey
 	aws["region"] = awsProvider.TargetRegion
 
 	return nil
