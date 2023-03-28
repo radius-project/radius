@@ -1,0 +1,17 @@
+{
+    "id": "/planes/radius/local",
+    "name": "local",
+    "type": "radius",
+    "location": "West US",
+    "provisioningState": "Succeeded",
+    "properties": {
+      "kind": "UCPNative",
+      "resourceProviders": {
+        "Applications.Connection": "http://localhost:9081/",
+				"Applications.Core":       "http://localhost:9080/"
+      }
+    },
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "createdApiVersion": "2022-09-01-privatepreview",
+    "updatedApiVersion": "2022-09-01-privatepreview"
+}
