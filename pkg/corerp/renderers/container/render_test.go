@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
+	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -1156,6 +1157,10 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	require.Equal(t, deploymentSpec.Dependencies[3].LocalID, "KubernetesRole")
 	require.Equal(t, deploymentSpec.Dependencies[4].LocalID, "KubernetesRoleBinding")
 	require.Equal(t, deploymentSpec.Dependencies[5].LocalID, "Secret")
+
+	// Verify pod template
+	podTemplate := deploymentSpec.Resource.(*appsv1.Deployment).Spec.Template
+	require.Equal(t, "true", podTemplate.ObjectMeta.Labels[azrenderer.AzureWorkloadIdentityUseKey])
 
 	// Verify volume spec
 	volumes := deploymentSpec.Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
