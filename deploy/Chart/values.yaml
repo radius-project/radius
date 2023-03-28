@@ -3,9 +3,10 @@ de:
   tag: latest
 ucp:
   image: radius.azurecr.io/ucpd
-  tag: latest # Tag for ucp image.
-  provider:
-    azure: {}
+  tag: latest 
+  #provider:
+  #  aws: 
+  #    region:"us-east"
 rp:
   image: radius.azurecr.io/appcore-rp
   tag: latest

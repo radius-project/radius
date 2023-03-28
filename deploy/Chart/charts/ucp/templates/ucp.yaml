@@ -35,7 +35,7 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
-{{ if .Values.provider.aws }}
+{{ if and .Values.provider .Values.provider.aws }}
         - name: AWS_REGION
           value: {{ .Values.provider.aws.region }}
 {{ end }}
