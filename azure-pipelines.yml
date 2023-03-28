@@ -211,6 +211,9 @@ stages:
         dist/rad credential register aws \
           --access-key-id "$(AWS_ACCESS_KEY_ID)" \
           --secret-access-key "$(AWS_SECRET_ACCESS_KEY)"
+        echo "AWS REGION "
+        echo $AWS_REGION
+        echo "----------"
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
