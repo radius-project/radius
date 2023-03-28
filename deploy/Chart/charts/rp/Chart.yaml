@@ -1,5 +1,5 @@
 apiVersion: v2
-name: appcore-rp
+name: rp
 description: Applications.Core Radius service
 type: application
 # We automate versioning of the chart during publishing.
