@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -105,15 +104,19 @@ func prettyPrintJSON(o any) (string, error) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 // It also initializes the tracerprovider for cli.
-func Execute() {
+//
+// Execute returns true
+func Execute() error {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
 	shutdown, err := trace.InitTracer(trace.Options{
 		ServiceName: serviceName,
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error:", err)
+		return err
 	}
+
 	defer func() {
 		_ = shutdown(ctx)
 	}()
@@ -126,12 +129,14 @@ func Execute() {
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
-		os.Exit(1)
+		return err
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }
 
 func init() {
@@ -246,7 +251,7 @@ func initConfig() {
 	v, err := cli.LoadConfig(ConfigHolder.ConfigFilePath)
 	if err != nil {
 		fmt.Printf("Error: failed to load config: %v\n", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo // this is OK inside the CLI startup.
 	}
 
 	ConfigHolder.Config = v
@@ -254,13 +259,13 @@ func initConfig() {
 	wd, err := os.Getwd()
 	if err != nil {
 		fmt.Printf("Error: failed to find current working directory: %v\n", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo // this is OK inside the CLI startup.
 	}
 
 	dc, err := config.LoadDirectoryConfig(wd)
 	if err != nil {
 		fmt.Printf("Error: failed to load config: %v\n", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo // this is OK inside the CLI startup.
 	}
 
 	ConfigHolder.DirectoryConfig = dc
