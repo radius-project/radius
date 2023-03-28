@@ -9,10 +9,7 @@ global:
   # zipkin:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
-rp:
-  image: radius.azurecr.io/appcore-rp
-  tag: latest
-  publicEndpointOverride: ""
+#
 de:
   image: radius.azurecr.io/deployment-engine
   tag: latest
@@ -22,3 +19,6 @@ ucp:
   provider:
     aws:
       region: "us-east-1"
+appcorerp:
+  image: radius.azurecr.io/appcore-rp
+  tag: latest
