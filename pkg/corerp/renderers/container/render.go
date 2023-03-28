@@ -413,6 +413,9 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, serviceAccountName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
 
+		// This is required to enable workload identity.
+		podLabels[azrenderer.AzureWorkloadIdentityUseKey] = "true"
+
 		deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDServiceAccount})
 
 		// 4. Add RBAC resources to the dependencies.
