@@ -4,7 +4,8 @@ de:
 ucp:
   image: radius.azurecr.io/ucpd
   tag: latest 
-  #provider:
+  provider:
+    azure: {}
   #  aws: 
   #    region:"us-east"
 rp:
