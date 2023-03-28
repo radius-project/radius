@@ -4,6 +4,7 @@ de:
 ucp:
   image: radius.azurecr.io/ucpd
   tag: latest 
+  # provider can be also set using rad env init --provider-aws 
   # provider:
   #   aws: 
   #     region:"us-east"
