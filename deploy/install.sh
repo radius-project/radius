@@ -42,7 +42,7 @@ getSystemInfo() {
 }
 
 verifySupported() {
-    local supported=(macos-x64 linux-x64 linux-arm linux-arm64)
+    local supported=(macos-x64 macos-arm64 linux-x64 linux-arm linux-arm64)
     local current_osarch="${OS}-${ARCH}"
 
     for osarch in "${supported[@]}"; do
@@ -51,14 +51,6 @@ verifySupported() {
             return
         fi
     done
-
-    if [ "$current_osarch" == "macos-arm64" ]; then
-        echo "The macos-arm64 arch has no native binary, however you can use the x64 version so long as you have rosetta installed"
-        echo "Use 'softwareupdate --install-rosetta' to install rosetta if you don't already have it"
-        ARCH="x64"
-        return
-    fi
-
 
     echo "No prebuilt binary for ${current_osarch}"
     exit 1

@@ -49,6 +49,8 @@ jobs:
             target_arch: amd64
           - target_os: darwin
             target_arch: amd64
+          - target_os: darwin
+            target_arch: arm64
     steps:
       - name: Check out repo
         uses: actions/checkout@v3
@@ -360,6 +362,13 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           overwrite: 'true'
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: rad_cli_darwin_arm64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-arm64/ --pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_amd64
