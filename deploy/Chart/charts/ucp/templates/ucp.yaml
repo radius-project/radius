@@ -25,7 +25,7 @@ spec:
     spec:
       serviceAccountName: ucp
       containers:
-      - image: "{{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}"
+      - image: "{{ .Values.image }}:{{ .Values.tag }}"
         env:
         - name: UCP_CONFIG
           value: /etc/config/ucp-config.yaml

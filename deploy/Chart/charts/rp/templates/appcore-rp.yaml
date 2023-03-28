@@ -29,7 +29,7 @@ spec:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-link
         - --link-config=/etc/config/link-self-host.yaml
-        image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
+        image: {{ .Values.global.rp.image }}:{{ .Values.global.rp.tag }}
         env:
         - name: SKIP_ARM
           value: 'false'

@@ -1,19 +1,13 @@
+de:
+  image: radius.azurecr.io/deployment-engine
+  tag: latest
+ucp:
+  image: radius.azurecr.io/ucpd
+  tag: latest # Tag for ucp image.
 global:
-  engine:
-    image: radius.azurecr.io/deployment-engine
-    tag: latest
-  appcorerp:
+  rp:
     image: radius.azurecr.io/appcore-rp
     tag: latest # Tag for appcore-rp image.
-    provider:
-      azure: {}
-  ucp:
-    image: radius.azurecr.io/ucpd
-    tag: latest # Tag for ucp image.
-  radius:
-    container: radius.azurecr.io/radius-controller
-    tag: latest # Tag for radius-controller image.
-  rp:
     provider:
       azure: {}
     publicEndpointOverride: ""
