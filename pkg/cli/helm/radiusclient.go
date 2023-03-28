@@ -233,29 +233,21 @@ func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 	}
 	values := helmChart.Values
 
-	_, ok := values["global"]
+	_, ok := values["ucp"]
 	if !ok {
-		values["global"] = make(map[string]any)
+		values["ucp"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]any)
+	ucp := values["global"].(map[string]any)
 
-	_, ok = global["rp"]
+	_, ok = ucp["aws"]
 	if !ok {
-		global["rp"] = make(map[string]any)
+		ucp["aws"] = make(map[string]any)
 	}
-	rp := global["rp"].(map[string]any)
+	aws := ucp["aws"].(map[string]any)
 
-	_, ok = rp["provider"]
-	if !ok {
-		rp["provider"] = make(map[string]any)
-	}
-	provider := rp["provider"].(map[string]any)
-
-	provider["aws"] = map[string]any{
-		"accessKeyId":     awsProvider.AccessKeyId,
-		"secretAccessKey": awsProvider.SecretAccessKey,
-		"region":          awsProvider.TargetRegion,
-	}
+	aws["accessKeyId"] = awsProvider.AccessKeyId
+	aws["secretAccessKey"] = awsProvider.SecretAccessKey
+	aws["region"] = awsProvider.TargetRegion
 
 	return nil
 }
