@@ -58,7 +58,7 @@ func setDefault() (string, string) {
 func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, namespace, application string) (string, error) {
 	httpproxies, err := GetHTTPProxyList(ctx, client, namespace, application)
 	if err != nil {
-		return "", fmt.Errorf("could not retrieve list of cluster HTTPProxies")
+		return "", fmt.Errorf("could not retrieve list of cluster HTTPProxies: %w", err)
 	}
 
 	for _, httpProxy := range httpproxies.Items {
