@@ -1,4 +1,0 @@
-image: radius.azurecr.io/appcore-rp
-tag: latest
-rp:
-  publicEndpointOverride: ""
