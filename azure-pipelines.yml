@@ -189,6 +189,9 @@ stages:
         while [ $(az group exists --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)) = false ]; do sleep 2; done
       displayName: Create the resource group
     - script: |
+        echo "AWS REGION "
+        echo $AWS_REGION
+        echo "----------"
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
         dist/rad env init kubernetes \
@@ -211,9 +214,7 @@ stages:
         dist/rad credential register aws \
           --access-key-id "$(AWS_ACCESS_KEY_ID)" \
           --secret-access-key "$(AWS_SECRET_ACCESS_KEY)"
-        echo "AWS REGION "
-        echo $AWS_REGION
-        echo "----------"
+
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
