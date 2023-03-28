@@ -39,11 +39,12 @@ ucp:
 logging:
   level: "info"
   json: true
-{{ if and .Values.global.tracerProvider .Values.global.tracerProvider.zipkin .Values.global.tracerProvider.zipkin.url }}
+# Distributed Trace configuration
+{{ if and .Values.global.zipkin .Values.global.zipkin.url }}
 tracerProvider:
   serviceName: "applications.link"
   zipkin: 
-    url: {{ .Values.global.tracerProvider.zipkin.url }}
+    url: {{ .Values.global.zipkin.url }}
 {{ end }}
 
 {{ end }}

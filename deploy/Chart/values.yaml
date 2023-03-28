@@ -5,7 +5,6 @@ ucp:
   image: radius.azurecr.io/ucpd
   tag: latest 
   provider:
-    azure: {}
   #  aws: 
   #    region:"us-east"
 rp:
@@ -17,3 +16,8 @@ global:
     enabled: true
     path: "/metrics"
     port: 9090
+  #
+  # Configure global.zipkin.url to enable distributed trace
+  # zipkin:
+  #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+  #
