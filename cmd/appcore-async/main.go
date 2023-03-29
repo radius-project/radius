@@ -32,19 +32,19 @@ func main() {
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
 	if configFile == "" {
-		log.Fatal("config-file is empty.") //nolint:forbidigo // this is OK inside the main function.
+		log.Fatal("config-file is empty.")
 	}
 
 	flag.Parse()
 
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
-		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+		log.Fatal(err)
 	}
 
 	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)
 	if err != nil {
-		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+		log.Fatal(err)
 	}
 	defer flush()
 
@@ -95,7 +95,7 @@ func main() {
 	// gracefully, so just crash if that happens.
 	err = <-stopped
 	if err == nil {
-		os.Exit(0) //nolint:forbidigo // this is OK inside the main function.
+		os.Exit(0)
 	} else {
 		panic(err)
 	}
