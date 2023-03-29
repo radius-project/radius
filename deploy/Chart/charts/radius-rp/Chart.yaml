@@ -1,6 +1,6 @@
 apiVersion: v2
-name: rp
-description: Applications.Core Radius service
+name: radius-rp
+description:  Radius service
 type: application
 # We automate versioning of the chart during publishing.
 # The value here is only used for a dev build.
