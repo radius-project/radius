@@ -80,13 +80,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	if options.AzureProvider != nil {
-		err = addAzureProviderValues(helmChart, options.AzureProvider)
-		if err != nil {
-			return false, fmt.Errorf("failed to add azure provider values, err: %w, helm output: %s", err, helmOutput.String())
-		}
-	}
-
 	if options.AWSProvider != nil {
 		err = addAWSProviderValues(helmChart, options.AWSProvider)
 		if err != nil {
@@ -301,76 +294,25 @@ func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 	}
 	values := helmChart.Values
 
-	_, ok := values["global"]
+	_, ok := values["ucp"]
 	if !ok {
-		values["global"] = make(map[string]any)
+		values["ucp"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]any)
+	ucp := values["ucp"].(map[string]any)
 
-	_, ok = global["rp"]
+	_, ok = ucp["provider"]
 	if !ok {
-		global["rp"] = make(map[string]any)
+		ucp["provider"] = make(map[string]any)
 	}
-	rp := global["rp"].(map[string]any)
+	provider := ucp["provider"].(map[string]any)
 
-	_, ok = rp["provider"]
+	_, ok = provider["aws"]
 	if !ok {
-		rp["provider"] = make(map[string]any)
+		provider["aws"] = make(map[string]any)
 	}
-	provider := rp["provider"].(map[string]any)
+	aws := provider["aws"].(map[string]any)
 
-	provider["aws"] = map[string]any{
-		"accessKeyId":     awsProvider.AccessKeyId,
-		"secretAccessKey": awsProvider.SecretAccessKey,
-		"region":          awsProvider.TargetRegion,
-	}
-
-	return nil
-}
-
-func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provider) error {
-	if azureProvider == nil {
-		return nil
-	}
-	values := helmChart.Values
-
-	_, ok := values["global"]
-	if !ok {
-		values["global"] = make(map[string]any)
-	}
-	global := values["global"].(map[string]any)
-
-	_, ok = global["rp"]
-	if !ok {
-		global["rp"] = make(map[string]any)
-	}
-	rp := global["rp"].(map[string]any)
-
-	_, ok = rp["provider"]
-	if !ok {
-		rp["provider"] = make(map[string]any)
-	}
-	provider := rp["provider"].(map[string]any)
-
-	_, ok = provider["azure"]
-	if !ok {
-		provider["azure"] = make(map[string]any)
-	}
-
-	azure := provider["azure"].(map[string]any)
-
-	if azureProvider.ServicePrincipal != nil {
-		_, ok = azure["servicePrincipal"]
-		if !ok {
-			azure["servicePrincipal"] = make(map[string]any)
-		}
-		azure["servicePrincipal"] = map[string]any{
-			"clientId":     azureProvider.ServicePrincipal.ClientID,
-			"clientSecret": azureProvider.ServicePrincipal.ClientSecret,
-			"tenantId":     azureProvider.ServicePrincipal.TenantID,
-		}
-	}
-
+	aws["region"] = awsProvider.TargetRegion
 	return nil
 }
 

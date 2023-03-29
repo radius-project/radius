@@ -1,23 +1,25 @@
+de:
+  image: radius.azurecr.io/deployment-engine
+  tag: latest
+ucp:
+  image: radius.azurecr.io/ucpd
+  tag: latest 
+  # provider can be also set using rad env init --provider-aws 
+  # provider:
+  #   aws: 
+  #     region:"us-east"
+radius-rp:
+  image: radius.azurecr.io/appcore-rp
+  tag: latest
+  publicEndpointOverride: ""
 global:
-  engine:
-    image: radius.azurecr.io/deployment-engine
-    tag: latest
-  appcorerp:
-    image: radius.azurecr.io/appcore-rp
-    tag: latest # Tag for appcore-rp image.
-    provider:
-      azure: {}
-  ucp:
-    image: radius.azurecr.io/ucpd
-    tag: latest # Tag for ucp image.
-  radius:
-    container: radius.azurecr.io/radius-controller
-    tag: latest # Tag for radius-controller image.
-  rp:
-    provider:
-      azure: {}
-    publicEndpointOverride: ""
   prometheus:
     enabled: true
     path: "/metrics"
     port: 9090
+  #
+  # Configure global.zipkin.url to enable distributed trace. Replace the example url
+  # below with the environment specific url
+  # zipkin:
+  #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+  #

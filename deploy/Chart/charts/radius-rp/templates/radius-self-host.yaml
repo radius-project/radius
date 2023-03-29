@@ -1,5 +1,5 @@
 # This is an example of configuration file.
-{{define "link-rp-config"}}
+{{define "core-rp-config"}}
 environment:
   name: self-hosted
   roleLocation: "global"
@@ -20,16 +20,16 @@ queueProvider:
     incluster: true
     context: ""
     namespace: "radius-system"
-secretProvider:
-  provider: kubernetes
 metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
     port: 9090
+secretProvider:
+  provider: kubernetes
 server:
   host: "0.0.0.0"
-  port: 5444
+  port: 5443
 workerServer:
   maxOperationConcurrency: 3
   maxOperationRetryCount: 2
@@ -39,11 +39,11 @@ ucp:
 logging:
   level: "info"
   json: true
-{{ if and .Values.global.tracerProvider .Values.global.tracerProvider.zipkin .Values.global.tracerProvider.zipkin.url }}
+# Distributed Trace configuration
+{{ if and .Values.global.zipkin .Values.global.zipkin.url }}
 tracerProvider:
-  serviceName: "applications.link"
+  serviceName: "applications.core"
   zipkin: 
-    url: {{ .Values.global.tracerProvider.zipkin.url }}
+    url: {{ .Values.global.zipkin.url }}
 {{ end }}
-
-{{ end }}
+{{ end }} 
