@@ -219,18 +219,27 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 	radiusRP := values["radius-rp"].(map[string]any)
 
-	radiusRP["image"] = options.AppCoreImage
-	radiusRP["tag"] = options.AppCoreTag
-	radiusRP["publicEndpointOverride"] = options.PublicEndpointOverride
-
+	if options.AppCoreImage != "" {
+		radiusRP["image"] = options.AppCoreImage
+	}
+	if options.AppCoreTag != "" {
+		radiusRP["tag"] = options.AppCoreTag
+	}
+	if options.PublicEndpointOverride != "" {
+		radiusRP["publicEndpointOverride"] = options.PublicEndpointOverride
+	}
 	_, ok = values["ucp"]
 	if !ok {
 		values["ucp"] = make(map[string]any)
 	}
 	ucp := values["ucp"].(map[string]any)
 
-	ucp["image"] = options.UCPImage
-	ucp["tag"] = options.UCPTag
+	if options.UCPImage != "" {
+		ucp["image"] = options.UCPImage
+	}
+	if options.UCPTag != "" {
+		ucp["tag"] = options.UCPTag
+	}
 
 	_, ok = values["de"]
 	if !ok {
@@ -238,8 +247,13 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 	de := values["de"].(map[string]any)
 
-	de["image"] = options.DEImage
-	de["tag"] = options.DETag
+	if options.DEImage != "" {
+		de["image"] = options.DEImage
+	}
+
+	if options.DETag != "" {
+		de["tag"] = options.DETag
+	}
 
 	err := strvals.ParseInto(options.Values, values)
 	if err != nil {
