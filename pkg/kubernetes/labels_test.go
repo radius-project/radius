@@ -117,10 +117,10 @@ func TestNormalizeResoureNameDapr(t *testing.T) {
 		t.Run(tt.in, func(t *testing.T) {
 			if tt.panic {
 				require.Panics(t, func() {
-					NormalizeResourceNameDapr(tt.in)
+					NormalizeDaprResourceName(tt.in)
 				})
 			} else {
-				require.Equal(t, tt.out, NormalizeResourceNameDapr(tt.in))
+				require.Equal(t, tt.out, NormalizeDaprResourceName(tt.in))
 			}
 		})
 	}

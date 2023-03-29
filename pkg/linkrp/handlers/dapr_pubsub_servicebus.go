@@ -78,7 +78,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *r
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceNameDapr(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprPubSubBrokersResourceType)
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeDaprResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprPubSubBrokersResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -114,8 +114,8 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      kubernetes.NormalizeResourceNameDapr(properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabelsDapr(properties[ApplicationName], properties[ResourceName], linkrp.DaprPubSubBrokersResourceType),
+				"name":      kubernetes.NormalizeDaprResourceName(properties[ResourceName]),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(properties[ApplicationName], properties[ResourceName], linkrp.DaprPubSubBrokersResourceType),
 			},
 			"spec": map[string]any{
 				"type":    "pubsub.azure.servicebus",
@@ -145,7 +145,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      kubernetes.NormalizeResourceNameDapr(properties[ResourceName].(string)),
+				"name":      kubernetes.NormalizeDaprResourceName(properties[ResourceName].(string)),
 			},
 		},
 	}

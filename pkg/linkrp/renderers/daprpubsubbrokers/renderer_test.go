@@ -68,7 +68,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 	require.Equal(t, rpv1.LocalIDDaprComponent, output.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, output.ResourceType.Type)
-	require.Equal(t, kubernetes.NormalizeResourceNameDapr(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeDaprResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -76,8 +76,8 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"kind":       k8sKind,
 			"metadata": map[string]any{
 				"namespace": "radius-test",
-				"name":      kubernetes.NormalizeResourceNameDapr(resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabelsDapr(applicationName, resourceName, linkrp.DaprPubSubBrokersResourceType),
+				"name":      kubernetes.NormalizeDaprResourceName(resourceName),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationName, resourceName, linkrp.DaprPubSubBrokersResourceType),
 			},
 			"spec": map[string]any{
 				"type":    pubsubType,
@@ -201,8 +201,8 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 			"kind":       k8sKind,
 			"metadata": map[string]any{
 				"namespace": "radius-test",
-				"name":      kubernetes.NormalizeResourceNameDapr(resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabelsDapr(applicationName, resourceName, linkrp.DaprPubSubBrokersResourceType),
+				"name":      kubernetes.NormalizeDaprResourceName(resourceName),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationName, resourceName, linkrp.DaprPubSubBrokersResourceType),
 			},
 			"spec": map[string]any{
 				"type":    pubsubType,
@@ -251,7 +251,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 
 	require.Equal(t, rpv1.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
-	require.Equal(t, kubernetes.NormalizeResourceNameDapr(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeDaprResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := map[string]string{
 		handlers.ResourceName:               resourceName,
@@ -295,7 +295,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 
 	require.Equal(t, rpv1.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
-	require.Equal(t, kubernetes.NormalizeResourceNameDapr(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeDaprResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := map[string]string{
 		handlers.ResourceName:               resourceName,
