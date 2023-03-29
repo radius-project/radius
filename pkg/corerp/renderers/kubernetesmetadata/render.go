@@ -74,7 +74,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 func processAnnotations(ctx context.Context, options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
 	existingMetaAnnotations, existingSpecAnnotations := getAnnotations(dep)
 
-	//Create KubernetesMetadata struct to merge annotations
+	// Create KubernetesMetadata struct to merge annotations
 	ann := &kube.Metadata{
 		ObjectMetadata: existingMetaAnnotations,
 		SpecData:       existingSpecAnnotations,

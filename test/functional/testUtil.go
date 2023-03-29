@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -55,19 +56,9 @@ func setDefault() (string, string) {
 
 // GetHostnameForHTTPProxy finds the fqdn set on the root HTTPProxy of the specified application
 func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, namespace, application string) (string, error) {
-	var httpproxies contourv1.HTTPProxyList
-
-	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	httpproxies, err := GetHTTPProxyList(ctx, client, namespace, application)
 	if err != nil {
-		return "", err
-	}
-
-	err = client.List(ctx, &httpproxies, &runtime_client.ListOptions{
-		Namespace:     namespace,
-		LabelSelector: label,
-	})
-	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not retrieve list of cluster HTTPProxies: %w", err)
 	}
 
 	for _, httpProxy := range httpproxies.Items {
@@ -78,6 +69,26 @@ func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, 
 	}
 
 	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
+}
+
+// GetHTTPProxyList returns a list of HTTPProxies for the specified application
+func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespace, application string) (*contourv1.HTTPProxyList, error) {
+	var httpproxies contourv1.HTTPProxyList
+
+	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.List(ctx, &httpproxies, &runtime_client.ListOptions{
+		Namespace:     namespace,
+		LabelSelector: label,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpproxies, nil
 }
 
 // ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan
@@ -146,6 +157,34 @@ func NewTestLogger(t *testing.T) *log.Logger {
 	logger.SetOutput(tw)
 
 	return &logger
+}
+
+// IsMapSubSet returns true if the expectedMap is a subset of the actualMap
+func IsMapSubSet(expectedMap map[string]string, actualMap map[string]string) bool {
+	if len(expectedMap) > len(actualMap) {
+		return false
+	}
+
+	for k1, v1 := range expectedMap {
+		v2, ok := actualMap[k1]
+		if !(ok && strings.EqualFold(v1, v2)) {
+			return false
+		}
+
+	}
+
+	return true
+}
+
+// IsMapNonIntersecting returns true if the notExpectedMap and actualMap do not have any keys in common
+func IsMapNonIntersecting(notExpectedMap map[string]string, actualMap map[string]string) bool {
+	for k1 := range notExpectedMap {
+		if _, ok := actualMap[k1]; ok {
+			return false
+		}
+	}
+
+	return true
 }
 
 type TestWriter struct {
