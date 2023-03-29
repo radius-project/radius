@@ -20,7 +20,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		log.Fatal("usage: go run cmd/docgen/main.go <output directory>") //nolint:forbidigo // this is OK inside the main function.
+		log.Fatal("usage: go run cmd/docgen/main.go <output directory>")
 	}
 
 	output := os.Args[1]
@@ -28,15 +28,15 @@ func main() {
 	if os.IsNotExist(err) {
 		err = os.Mkdir(output, 0755)
 		if err != nil {
-			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+			log.Fatal(err)
 		}
 	} else if err != nil {
-		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+		log.Fatal(err)
 	}
 
 	err = doc.GenMarkdownTreeCustom(cmd.RootCmd, output, frontmatter, link)
 	if err != nil {
-		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+		log.Fatal(err)
 	}
 }
 

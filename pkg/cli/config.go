@@ -137,17 +137,15 @@ func GetWorkspace(v *viper.Viper, name string) (*workspaces.Workspace, error) {
 	return section.GetWorkspace(name)
 }
 
-func getConfig(configFilePath string) (*viper.Viper, error) {
+func getConfig(configFilePath string) *viper.Viper {
 	config := viper.New()
 
 	if configFilePath == "" {
 		// Set config file using the HOME directory.
-
-		// This is extremely unlikely to fail on us. This would only happen
-		// if the user has no HOME (or USERPROFILE on Windows) directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			return nil, fmt.Errorf("failed to find the user's home directory: %w", err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
 
 		rad := path.Join(home, ".rad")
@@ -156,7 +154,7 @@ func getConfig(configFilePath string) (*viper.Viper, error) {
 	} else {
 		config.SetConfigFile(configFilePath)
 	}
-	return config, nil
+	return config
 }
 
 // Create a config if its not present
@@ -175,18 +173,10 @@ func createConfigFile(configFilePath string) error {
 }
 
 func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
-	config, err := getConfig(configFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	configFile, err := GetConfigFilePath(config)
-	if err != nil {
-		return nil, err
-	}
-
+	config := getConfig(configFilePath)
+	configFile := GetConfigFilePath(config)
 	// On Ubuntu OS,  getConfig() function doesnt create a config file if its not present.
-	err = createConfigFile(configFile)
+	err := createConfigFile(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -205,18 +195,11 @@ func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
 }
 
 func LoadConfig(configFilePath string) (*viper.Viper, error) {
-	config, err := getConfig(configFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	configFile, err := GetConfigFilePath(config)
-	if err != nil {
-		return nil, err
-	}
+	config := getConfig(configFilePath)
+	configFile := GetConfigFilePath(config)
 
 	// On Ubuntu OS,  getConfig() function doesnt create a config file if its not present.
-	err = createConfigFile(configFile)
+	err := createConfigFile(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -252,21 +235,19 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	return config, nil
 }
 
-func GetConfigFilePath(v *viper.Viper) (string, error) {
+func GetConfigFilePath(v *viper.Viper) string {
 	configFilePath := v.ConfigFileUsed()
-
-	// Set config file using the HOME directory.
 	if configFilePath == "" {
-		// This is extremely unlikely to fail on us. This would only happen
-		// if the user has no HOME (or USERPROFILE on Windows) directory.
+		// Set config file using the HOME directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			return "", fmt.Errorf("failed to find the user's home directory: %w", err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
 
 		configFilePath = path.Join(home, ".rad", "config.yaml")
 	}
-	return configFilePath, nil
+	return configFilePath
 }
 
 func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
@@ -331,15 +312,11 @@ func EditWorkspaces(ctx context.Context, config *viper.Viper, editor func(sectio
 func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig func(*viper.Viper) error) error {
 	// Acquire exclusive lock on the config.yaml.lock file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
-	configFilePath, err := GetConfigFilePath(config)
-	if err != nil {
-		return err
-	}
-
+	configFilePath := GetConfigFilePath(config)
 	fileLock := flock.New(configFilePath + ".lock")
 	lockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err = fileLock.TryLockContext(lockCtx, 1*time.Second)
+	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
 	}
@@ -362,12 +339,9 @@ func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig fun
 }
 
 func SaveConfig(v *viper.Viper) error {
-	configFilePath, err := GetConfigFilePath(v)
-	if err != nil {
-		return err
-	}
+	configFilePath := GetConfigFilePath(v)
 
-	err = v.WriteConfigAs(configFilePath)
+	err := v.WriteConfigAs(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to write config to '%s': %w", configFilePath, err)
 	}

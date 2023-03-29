@@ -23,6 +23,6 @@ func main() {
 	}
 	if err != nil {
 		log.Println("Terminating Magpie. Encountered error - ", err.Error())
-		os.Exit(1) //nolint:forbidigo // this is OK inside the main function.
+		os.Exit(1)
 	}
 }
