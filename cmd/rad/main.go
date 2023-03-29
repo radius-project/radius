@@ -6,9 +6,14 @@
 package main
 
 import (
+	"os"
+
 	"github.com/project-radius/radius/cmd/rad/cmd"
 )
 
 func main() {
-	cmd.Execute()
+	err := cmd.Execute()
+	if err == nil {
+		os.Exit(1) //nolint:forbidigo // this is OK inside the main function.
+	}
 }

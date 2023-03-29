@@ -14,11 +14,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/trace"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/hosting"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -34,7 +34,7 @@ var rootCmd = &cobra.Command{
 
 		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.LoggingOptions)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 		}
 		defer flush()
 
@@ -58,11 +58,11 @@ var rootCmd = &cobra.Command{
 		options.TracerProviderOptions.ServiceName = server.ServiceName
 		shutdown, err := trace.InitTracer(options.TracerProviderOptions)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 		}
 		defer func() {
 			if err := shutdown(ctx); err != nil {
-				log.Fatal("failed to shutdown TracerProvider: %w", err)
+				log.Printf("failed to shutdown TracerProvider: %v\n", err)
 			}
 		}()
 
@@ -87,7 +87,7 @@ var rootCmd = &cobra.Command{
 		// gracefully, so just crash if that happens.
 		err = <-stopped
 		if err == nil {
-			os.Exit(0)
+			os.Exit(0) //nolint:forbidigo // this is OK inside the main function.
 		} else {
 			panic(err)
 		}

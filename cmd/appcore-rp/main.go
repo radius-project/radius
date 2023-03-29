@@ -33,18 +33,18 @@ import (
 
 const serviceName = "applications.core"
 
-func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
+func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions, error) {
 	hostings := []hosting.Service{}
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
 	hostings = append(hostings, link_frontend.NewService(options))
 	if enableAsyncWorker {
 		hostings = append(hostings, link_backend.NewService(options))
 	}
 
-	return hostings, &options
+	return hostings, &options, nil
 }
 
 func main() {
@@ -63,14 +63,14 @@ func main() {
 	flag.StringVar(&linkConfigFile, "link-config", defaultLinkConfig, "The service configuration file for Applications.Link.")
 
 	if configFile == "" {
-		log.Fatal("config-file is empty.")
+		log.Fatal("config-file is empty.") //nolint:forbidigo // this is OK inside the main function.
 	}
 
 	flag.Parse()
 
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 	}
 	hostingSvc := []hosting.Service{frontend.NewService(options)}
 
@@ -82,7 +82,7 @@ func main() {
 
 	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 	}
 	defer flush()
 
@@ -96,7 +96,11 @@ func main() {
 	if runLink && linkConfigFile != "" {
 		logger.Info("Run Applications.Link.")
 		var linkSvcs []hosting.Service
-		linkSvcs, linkOpts = newLinkHosts(linkConfigFile, enableAsyncWorker)
+		var err error
+		linkSvcs, linkOpts, err = newLinkHosts(linkConfigFile, enableAsyncWorker)
+		if err != nil {
+			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+		}
 		hostingSvc = append(hostingSvc, linkSvcs...)
 	}
 
@@ -130,11 +134,11 @@ func main() {
 	tracerOpts.ServiceName = serviceName
 	shutdown, err := trace.InitTracer(tracerOpts)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 	}
 	defer func() {
 		if err := shutdown(ctx); err != nil {
-			log.Fatal("failed to shutdown TracerProvider: %w", err)
+			log.Printf("failed to shutdown TracerProvider: %v\n", err)
 		}
 
 	}()
@@ -159,7 +163,7 @@ func main() {
 	// gracefully, so just crash if that happens.
 	err = <-stopped
 	if err == nil {
-		os.Exit(0)
+		os.Exit(0) //nolint:forbidigo // this is OK inside the main function.
 	} else {
 		panic(err)
 	}
