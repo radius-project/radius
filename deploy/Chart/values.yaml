@@ -18,7 +18,8 @@ global:
     path: "/metrics"
     port: 9090
   #
-  # Configure global.zipkin.url to enable distributed trace
+  # Configure global.zipkin.url to enable distributed trace. Replace below example url
+  # with the environment specific url
   # zipkin:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
