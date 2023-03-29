@@ -9,6 +9,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
@@ -22,6 +23,15 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+)
+
+const (
+	// pollFrequency is the polling frequency used for put/delete operations.
+	//
+	// This is set to a relatively low number because we're inside the cluster. This is a good
+	// balance to feel responsible for quick operations without generating a wasteful amount of traffic.
+	// The default would be 30 seconds.
+	pollFrequency = time.Second * 5
 )
 
 type ARMApplicationsManagementClient struct {
@@ -160,7 +170,7 @@ func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, 
 		return false, err
 	}
 
-	_, err = poller.PollUntilDone(ctx, nil)
+	_, err = poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: pollFrequency})
 	if err != nil {
 		return false, err
 	}
