@@ -272,7 +272,7 @@ jobs:
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       # Timeout used for Kubernetes functional tests
-      K8S_FUNCTIONALTEST_TIMEOUT: 90m
+      K8S_FUNCTIONALTEST_TIMEOUT: 60m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
       RADIUS_CHART_LOCATION: deploy/Chart/
     steps:
