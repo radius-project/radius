@@ -80,13 +80,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	if options.AzureProvider != nil {
-		err = addAzureProviderValues(helmChart, options.AzureProvider)
-		if err != nil {
-			return false, fmt.Errorf("failed to add azure provider values, err: %w, helm output: %s", err, helmOutput.String())
-		}
-	}
-
 	if options.AWSProvider != nil {
 		err = addAWSProviderValues(helmChart, options.AWSProvider)
 		if err != nil {
@@ -320,55 +313,6 @@ func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 	aws := provider["aws"].(map[string]any)
 
 	aws["region"] = awsProvider.TargetRegion
-	aws["accessKeyId"] = awsProvider.AccessKeyId
-	aws["secretAccessKey"] = awsProvider.SecretAccessKey
-
-	return nil
-}
-
-func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provider) error {
-	if azureProvider == nil {
-		return nil
-	}
-	values := helmChart.Values
-
-	_, ok := values["global"]
-	if !ok {
-		values["global"] = make(map[string]any)
-	}
-	global := values["global"].(map[string]any)
-
-	_, ok = global["rp"]
-	if !ok {
-		global["rp"] = make(map[string]any)
-	}
-	rp := global["rp"].(map[string]any)
-
-	_, ok = rp["provider"]
-	if !ok {
-		rp["provider"] = make(map[string]any)
-	}
-	provider := rp["provider"].(map[string]any)
-
-	_, ok = provider["azure"]
-	if !ok {
-		provider["azure"] = make(map[string]any)
-	}
-
-	azure := provider["azure"].(map[string]any)
-
-	if azureProvider.ServicePrincipal != nil {
-		_, ok = azure["servicePrincipal"]
-		if !ok {
-			azure["servicePrincipal"] = make(map[string]any)
-		}
-		azure["servicePrincipal"] = map[string]any{
-			"clientId":     azureProvider.ServicePrincipal.ClientID,
-			"clientSecret": azureProvider.ServicePrincipal.ClientSecret,
-			"tenantId":     azureProvider.ServicePrincipal.TenantID,
-		}
-	}
-
 	return nil
 }
 
