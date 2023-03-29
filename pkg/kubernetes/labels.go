@@ -64,6 +64,19 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 	}
 }
 
+// MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes Dapr resource associated with a Radius resource.
+// The descriptive labels are a superset of the selector labels.
+func MakeDescriptiveLabelsDapr(application string, resource string, resourceType string) map[string]string {
+	return map[string]string{
+		LabelRadiusApplication:  NormalizeResourceName(application),
+		LabelRadiusResource:     NormalizeResourceNameDapr(resource),
+		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),
+		LabelName:               NormalizeResourceNameDapr(resource),
+		LabelPartOf:             NormalizeResourceName(application),
+		LabelManagedBy:          LabelManagedByRadiusRP,
+	}
+}
+
 // MakeSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
@@ -107,6 +120,23 @@ func NormalizeResourceName(name string) string {
 	}
 
 	if !IsValidObjectName(normalized) {
+		// This should not happen.
+		panic(normalized + " is an invalid name.")
+	}
+	return normalized
+}
+
+// NormalizeResourceName normalizes resource name used for kubernetes resource name scoped in namespace.
+// All name will be validated by swagger validaiton so that it does not get non-RFC1035 compliant characters.
+// Therefore, this function will lowercase the name without allowed character validation.
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+func NormalizeResourceNameDapr(name string) string {
+	normalized := strings.ToLower(name)
+	if normalized == "" {
+		return normalized
+	}
+
+	if !IsValidObjectNameDapr(normalized) {
 		// This should not happen.
 		panic(normalized + " is an invalid name.")
 	}

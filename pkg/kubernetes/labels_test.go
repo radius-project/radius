@@ -100,3 +100,28 @@ func TestNormalizeResoureName(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeResoureNameDapr(t *testing.T) {
+	nameTests := []struct {
+		in    string
+		out   string
+		panic bool
+	}{
+		{
+			in:  "pub.sub",
+			out: "pub.sub",
+		},
+	}
+
+	for _, tt := range nameTests {
+		t.Run(tt.in, func(t *testing.T) {
+			if tt.panic {
+				require.Panics(t, func() {
+					NormalizeResourceNameDapr(tt.in)
+				})
+			} else {
+				require.Equal(t, tt.out, NormalizeResourceNameDapr(tt.in))
+			}
+		})
+	}
+}

@@ -116,8 +116,8 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"kind":       k8sKind,
 			"metadata": map[string]any{
 				"namespace": "radius-test",
-				"name":      kubernetes.NormalizeResourceName(resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, linkrp.DaprSecretStoresResourceType),
+				"name":      kubernetes.NormalizeResourceNameDapr(resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabelsDapr(applicationName, resourceName, linkrp.DaprSecretStoresResourceType),
 			},
 			"spec": map[string]any{
 				"type":    linkrp.DaprSecretStoresResourceType,
@@ -279,5 +279,5 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 
 	rendererOutput, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
-	require.Equal(t, kubernetes.NormalizeResourceName("test-secret-store"), rendererOutput.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeResourceNameDapr("test-secret-store"), rendererOutput.ComputedValues[renderers.ComponentNameKey].Value)
 }

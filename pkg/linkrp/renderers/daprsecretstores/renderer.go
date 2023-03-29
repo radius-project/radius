@@ -60,7 +60,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 		Resources: resources,
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			renderers.ComponentNameKey: {
-				Value: kubernetes.NormalizeResourceName(resource.Name),
+				Value: kubernetes.NormalizeResourceNameDapr(resource.Name),
 			},
 		},
 		SecretValues: map[string]rpv1.SecretValueReference{},

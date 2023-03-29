@@ -40,7 +40,7 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 			Value: namespace,
 		},
 		PubSubNameKey: {
-			Value:             kubernetes.NormalizeResourceName(resource.Name),
+			Value:             kubernetes.NormalizeResourceNameDapr(resource.Name),
 			LocalID:           rpv1.LocalIDDaprComponent,
 			PropertyReference: handlers.ResourceName,
 		},
@@ -48,7 +48,7 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 			Value: topicName,
 		},
 		renderers.ComponentNameKey: {
-			Value: kubernetes.NormalizeResourceName(resource.Name),
+			Value: kubernetes.NormalizeResourceNameDapr(resource.Name),
 		},
 	}
 
