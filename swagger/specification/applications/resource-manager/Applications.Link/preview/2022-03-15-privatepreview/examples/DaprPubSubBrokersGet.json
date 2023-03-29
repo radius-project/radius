@@ -2,13 +2,13 @@
     "parameters": {
       "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
       "api-version": "2022-03-15-privatepreview",
-      "daprPubSubBrokerName": "daprpubsub0"
+      "daprPubSubBrokerName": "daprpub.sub0"
     },
     "responses": {
       "200": {
         "body": {
-          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub0",
-          "name": "daprPubSub0",
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprpub.sub0",
+          "name": "daprpub.sub0",
           "type": "Applications.Link/daprPubSubBrokers",
           "location": "global",
           "properties": {

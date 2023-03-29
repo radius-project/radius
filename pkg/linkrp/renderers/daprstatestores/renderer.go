@@ -64,7 +64,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options 
 
 	values := map[string]renderers.ComputedValueReference{
 		renderers.ComponentNameKey: {
-			Value: kubernetes.NormalizeResourceName(resource.Name),
+			Value: kubernetes.NormalizeDaprResourceName(resource.Name),
 		},
 	}
 	secrets := map[string]rpv1.SecretValueReference{}
