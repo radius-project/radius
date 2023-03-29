@@ -7,7 +7,6 @@ package validation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -106,7 +105,6 @@ func GetResourceIdentifier(ctx context.Context, t *testing.T, resourceType strin
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	sessionToken := ""
-	fmt.Println("AWS_REGION" + os.Getenv("AWS_REGION"))
 	region := os.Getenv("AWS_REGION")
 
 	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken)
