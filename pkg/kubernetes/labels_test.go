@@ -111,6 +111,19 @@ func TestNormalizeResoureNameDapr(t *testing.T) {
 			in:  "pub.sub",
 			out: "pub.sub",
 		},
+		{
+			in:  "pub-sub",
+			out: "pub-sub",
+		},
+		{
+			in:  "Resource",
+			out: "resource",
+		},
+		{
+			in:    "pub_sub",
+			out:   "pub_sub",
+			panic: true,
+		},
 	}
 
 	for _, tt := range nameTests {
