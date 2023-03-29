@@ -333,6 +333,11 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v3
         with:
+          name: rad_cli_darwin_arm64
+          path: rad_cli_darwin_arm64
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
           name: rad_cli_darwin_amd64
           path: rad_cli_darwin_amd64
       - name: Download release artifacts
