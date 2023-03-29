@@ -16,7 +16,12 @@ func Test_AddRadiusValues(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
-		AppCoreImage: "image",
+		AppCoreImage: "appcoreimage",
+		AppCoreTag:   "appcoretag",
+		DEImage:      "deimage",
+		DETag:        "detag",
+		UCPImage:     "ucpimage",
+		UCPTag:       "ucptag",
 		Values:       "global.zipkin.url=url,global.prometheus.path=path,global.prometheus.enabled=false",
 	}
 	err := AddRadiusValues(&helmChart, options)
@@ -28,7 +33,30 @@ func Test_AddRadiusValues(t *testing.T) {
 	rp := values["radius-rp"].(map[string]any)
 	_, ok = rp["image"]
 	assert.True(t, ok)
-	assert.Equal(t, rp["image"], "image")
+	assert.Equal(t, rp["image"], "appcoreimage")
+	_, ok = rp["tag"]
+	assert.True(t, ok)
+	assert.Equal(t, rp["tag"], "appcoretag")
+
+	_, ok = values["ucp"]
+	assert.True(t, ok)
+	ucp := values["ucp"].(map[string]any)
+	_, ok = ucp["image"]
+	assert.True(t, ok)
+	assert.Equal(t, ucp["image"], "ucpimage")
+	_, ok = ucp["tag"]
+	assert.True(t, ok)
+	assert.Equal(t, ucp["tag"], "ucptag")
+
+	_, ok = values["de"]
+	assert.True(t, ok)
+	de := values["de"].(map[string]any)
+	_, ok = de["image"]
+	assert.True(t, ok)
+	assert.Equal(t, de["image"], "deimage")
+	_, ok = de["tag"]
+	assert.True(t, ok)
+	assert.Equal(t, de["tag"], "detag")
 
 	_, ok = values["global"]
 	assert.True(t, ok)
