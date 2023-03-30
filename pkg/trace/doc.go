@@ -8,7 +8,8 @@ Package trace includes the distributed trace utilities to help initialize the tr
 
 # Basic
 
-Radius uses opentelemetry SDK to enable distributed tracing. trace package introduces the below helpers:
+Radius uses opentelemetry SDK to enable distributed tracing. We wrap Radius handlers with otelhttp handlers for generating http traces.
+In addition, trace package introduces the below helpers:
 
 * InitTracer initializes a new and configured Tracer.
 * StartCustomSpan(ctx, spanName, tracerName, attr, spanKind) starts a new span with the given names and attributes.
