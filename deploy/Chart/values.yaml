@@ -8,7 +8,7 @@ ucp:
   # provider:
   #   aws: 
   #     region:"us-east"
-radius-rp:
+rp:
   image: radius.azurecr.io/appcore-rp
   tag: latest
   publicEndpointOverride: ""

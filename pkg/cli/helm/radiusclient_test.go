@@ -28,9 +28,9 @@ func Test_AddRadiusValues(t *testing.T) {
 	values := helmChart.Values
 	require.Equal(t, err, nil)
 
-	_, ok := values["radius-rp"]
+	_, ok := values["rp"]
 	assert.True(t, ok)
-	rp := values["radius-rp"].(map[string]any)
+	rp := values["rp"].(map[string]any)
 	_, ok = rp["image"]
 	assert.True(t, ok)
 	assert.Equal(t, rp["image"], "appcoreimage")
