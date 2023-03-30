@@ -213,11 +213,11 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
 	// TODO: clean up below code using options, for now retain it since CI/CD uses old rad env init with options.
-	_, ok := values["radius-rp"]
+	_, ok := values["rp"]
 	if !ok {
-		values["radius-rp"] = make(map[string]any)
+		values["rp"] = make(map[string]any)
 	}
-	radiusRP := values["radius-rp"].(map[string]any)
+	radiusRP := values["rp"].(map[string]any)
 
 	if options.AppCoreImage != "" {
 		radiusRP["image"] = options.AppCoreImage
