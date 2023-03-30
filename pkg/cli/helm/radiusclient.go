@@ -212,54 +212,28 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
-	_, ok := values["global"]
+	// TODO: clean up below code using options, for now retain it since CI/CD uses old rad env init with options.
+	_, ok := values["radius-rp"]
 	if !ok {
-		values["global"] = make(map[string]any)
+		values["radius-rp"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]any)
-
-	_, ok = global["radius"]
-	if !ok {
-		global["radius"] = make(map[string]any)
-	}
-	radius := global["radius"].(map[string]any)
-
-	_, ok = global["rp"]
-	if !ok {
-		global["rp"] = make(map[string]any)
-	}
-	rp := global["rp"].(map[string]any)
-
-	if options.Image != "" {
-		rp["container"] = options.Image
-	}
-
-	if options.Tag != "" {
-		rp["tag"] = options.Tag
-		radius["tag"] = options.Tag
-	}
-	if options.PublicEndpointOverride != "" {
-		rp["publicEndpointOverride"] = options.PublicEndpointOverride
-	}
-
-	_, ok = global["appcorerp"]
-	if !ok {
-		global["appcorerp"] = make(map[string]any)
-	}
-	appcorerp := global["appcorerp"].(map[string]any)
+	radiusRP := values["radius-rp"].(map[string]any)
 
 	if options.AppCoreImage != "" {
-		appcorerp["image"] = options.AppCoreImage
+		radiusRP["image"] = options.AppCoreImage
 	}
 	if options.AppCoreTag != "" {
-		appcorerp["tag"] = options.AppCoreTag
+		radiusRP["tag"] = options.AppCoreTag
 	}
-
-	_, ok = global["ucp"]
+	if options.PublicEndpointOverride != "" {
+		radiusRP["publicEndpointOverride"] = options.PublicEndpointOverride
+	}
+	_, ok = values["ucp"]
 	if !ok {
-		global["ucp"] = make(map[string]any)
+		values["ucp"] = make(map[string]any)
 	}
-	ucp := global["ucp"].(map[string]any)
+	ucp := values["ucp"].(map[string]any)
+
 	if options.UCPImage != "" {
 		ucp["image"] = options.UCPImage
 	}
@@ -267,15 +241,16 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 		ucp["tag"] = options.UCPTag
 	}
 
-	_, ok = global["engine"]
+	_, ok = values["de"]
 	if !ok {
-		global["engine"] = make(map[string]any)
+		values["de"] = make(map[string]any)
 	}
+	de := values["de"].(map[string]any)
 
-	de := global["engine"].(map[string]any)
 	if options.DEImage != "" {
 		de["image"] = options.DEImage
 	}
+
 	if options.DETag != "" {
 		de["tag"] = options.DETag
 	}
@@ -284,7 +259,6 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
