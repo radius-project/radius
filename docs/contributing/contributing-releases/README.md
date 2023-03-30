@@ -26,11 +26,11 @@ Follow the steps below to create an RC release.
    ```bash
    git checkout bicep-extensibility
    git pull origin bicep-extensibility
-   git checkout -b release/0.17 # ensure branch is created
-   git pull origin release/0.17 # ensure branch is up to date
-   git tag v0.17.0-rc1 # Update to the next RC version if doing a new release
+   git checkout -b release/0.19 # ensure branch is created
+   git pull origin release/0.19 # ensure branch is up to date
+   git tag v0.19.0-rc1 # Update to the next RC version if doing a new release
    git push origin --tags # push the tag
-   git push origin release/0.17 # push the branch up to origin
+   git push origin release/0.19 # push the branch up to origin
    ```
    
    Side note, in the bicep-extensibility branch, we have seen the build fail to trigger after pushing the tag once, but works after recreation. To delete and recreate:
@@ -53,32 +53,32 @@ Follow the steps below to create an RC release.
 
 2. In the project-radius/deployment-engine repo:
 
-   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
+   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.19`. This branch will be used for patching/servicing.
    
    ```bash
    git checkout main
    git pull origin main
-   git checkout -b release/0.17
-   git pull origin release/0.17
-   git tag v0.17.0-rc1
+   git checkout -b release/0.19
+   git pull origin release/0.19
+   git tag v0.19.0-rc1
    git push origin --tags
-   git push origin release/0.17
+   git push origin release/0.19
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
 
 3. In the project-radius/radius repo:
 
-   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
+   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.19`. This branch will be used for patching/servicing.
    
    ```bash
    git checkout main
    git pull origin main
-   git checkout -b release/0.17
-   git pull origin release/0.17
-   git tag v0.17.0-rc1
+   git checkout -b release/0.19
+   git pull origin release/0.19
+   git tag v0.19.0-rc1
    git push --tags
-   git push origin release/0.17
+   git push origin release/0.19
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
@@ -93,12 +93,12 @@ Before a release can be finished, all [tutorials](https://edge.radapp.dev/user-g
 1. Install the latest release candidate of the CLI
 For MacOS
 ```
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.17-rc1
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.19.0-rc1
 ```
 
 For Windows
 ```
-$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.17-rc1
+$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.19.0-rc1
 ```
 
 Because we have not forked for samples and docs yet, please use the `edge` channel for validation. Specifically using `edge.radapp.dev` for the docs and following along.
