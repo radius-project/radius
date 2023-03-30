@@ -118,11 +118,11 @@ func NewRunner(factory framework.Factory) *Runner {
 //
 // Validates the user prompts, values provided and builds the picture for the backend to execute
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	format, err := cli.RequireOutput(cmd)
+	format1, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Output format not specified"}
 	}
-	r.Format = format
+	r.Format = format1
 
 	r.Dev, err = cmd.Flags().GetBool("dev")
 	if err != nil {
@@ -419,7 +419,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr(r.Namespace),
 			},
-			Providers: &providers,
+			Providers:     &providers,
 			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		}
 

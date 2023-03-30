@@ -35,5 +35,5 @@ const (
 	LogFieldScopeName          = "scopeName"
 	LogFieldSubscriptionID     = "subscriptionId"
 	LogFieldResourceKind       = "resourceKind"
-	LogHTTPStatusCode          = "statusCode"
+	LogHTTPStatusCode          = "statusCodetest"
 )
