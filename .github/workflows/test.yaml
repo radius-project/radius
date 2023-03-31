@@ -31,7 +31,9 @@ jobs:
       - name: Download Windows x64
         run: curl -O https://get.radapp.dev/tools/rad/$RAD_VERSION/windows-x64/rad.exe -o rad-windows-x64.exe
       - name: Test Linux x64
-        run: ./rad-linux-x64 version
+        run: |
+          chmod +x ./rad-linux-x64
+          ./rad-linux-x64 version
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
         env:
