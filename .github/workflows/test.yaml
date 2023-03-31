@@ -5,6 +5,10 @@ on:
     # Run every day at 11:47 PM UTC
     - cron: '47 23 * * *'
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/test.yaml
 
 jobs:
   download:
