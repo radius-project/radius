@@ -4,7 +4,7 @@
 // ------------------------------------------------------------
 
 /*
-Package trace includes the distributed trace utilities to help initialize the trace provide, create traces and spans.
+Package trace includes the distributed trace utilities to help initialize the trace provider, create traces and spans.
 
 # Basic
 
