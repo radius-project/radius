@@ -16,8 +16,9 @@ jobs:
     steps:
       - name: Download and parse latest version
         run:
-          export RAD_VERSION=$(curl https://get.radapp.dev/version/stable.txt)
-          echo "RAD_VERSION=$RAD_VERSION" >> $GITHUB_ENV
+          echo "RAD_VERSION=$(curl https://get.radapp.dev/version/stable.txt)" >> $GITHUB_ENV
+      - name: Print version
+        run: echo ${{ env.RAD_VERSION }}
       - name: Download macOS x64
         run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/macos-x64/rad  --fail-with-body -o rad-macos-x64
       - name: Download macOS arm64
