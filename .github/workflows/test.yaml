@@ -15,22 +15,21 @@ jobs:
           curl https://get.radapp.dev/version/stable.txt
           echo "RAD_VERSION=$(cat stable.txt)" >> $GITHUB_ENV
       - name: Download macOS x64
-        run: |
-          curl https://get.radapp.dev/tools/rad/$RAD_VERSION/macos-x64/rad -o rad-macos-x64
+        run: curl https://get.radapp.dev/tools/rad/$RAD_VERSION/macos-x64/rad -o rad-macos-x64
       - name: Download macOS arm64
-        run: |
-          curl https://get.radapp.dev/tools/rad/$RAD_VERSION/macos-arm64/rad -o rad-macos-arm64
+        run: curl https://get.radapp.dev/tools/rad/$RAD_VERSION/macos-arm64/rad -o rad-macos-arm64
       - name: Download Linux arm64
-        run: |
-          curl https://get.radapp.dev/tools/rad/$RAD_VERSION/linux-arm64/rad -o rad-linux-arm64
+        run: curl https://get.radapp.dev/tools/rad/$RAD_VERSION/linux-arm64/rad -o rad-linux-arm64
       - name: Download Linux arm
-        run: |
-          curl https://get.radapp.dev/tools/rad/$RAD_VERSION/linux-arm/rad -o rad-linux-arm
+        run: curl https://get.radapp.dev/tools/rad/$RAD_VERSION/linux-arm/rad -o rad-linux-arm
       - name: Download Linux x64
-        run: |
-          curl https://get.radapp.dev/tools/rad/$RAD_VERSION/linux-x64/rad -o rad-linux-x64
+        run: curl https://get.radapp.dev/tools/rad/$RAD_VERSION/linux-x64/rad -o rad-linux-x64
       - name: Download Windows x64
-        run: |
-          curl -O https://get.radapp.dev/tools/rad/$RAD_VERSION/windows-x64/rad.exe -o rad-windows-x64.exe
+        run: curl -O https://get.radapp.dev/tools/rad/$RAD_VERSION/windows-x64/rad.exe -o rad-windows-x64.exe
       - name: Test Linux x64
         run: ./rad-linux-x64 version
+      - name: Create GitHub issue on failure
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue create --title "CLI nightly test failed" --body "Test failed on ${{ github.repository }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --repo ${{ github.repository }}
