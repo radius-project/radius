@@ -39,7 +39,7 @@ jobs:
         run:
           echo "RAD_VERSION=$(curl https://get.radapp.dev/version/stable.txt)" >> $GITHUB_ENV
       - name: Download file
-        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/${{ matrix.os }}-${{ matrix.arch }}/{{ matrix.file }} --fail-with-body -o ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.file }}
+        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.file }} --fail-with-body -o ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.file }}
       - name: Test Linux x64
         if: ${{ matrix.os == 'linux' && matrix.arch == 'x64' }}
         run: |
