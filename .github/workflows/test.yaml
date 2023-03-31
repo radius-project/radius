@@ -13,30 +13,40 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            file: rad
+          - os: linux
+            arch: arm64
+            file: rad
+          - os: linux
+            arch: arm
+            file: rad
+          - os: macos
+            arch: x64
+            file: rad
+          - os: macos
+            arch: arm64
+            file: rad
+          - os: windows
+            arch: x64
+            file: rad.exe
     steps:
       - name: Download and parse latest version
         run:
           echo "RAD_VERSION=$(curl https://get.radapp.dev/version/stable.txt)" >> $GITHUB_ENV
-      - name: Print version
-        run: echo ${{ env.RAD_VERSION }}
-      - name: Download macOS x64
-        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/macos-x64/rad  --fail-with-body -o rad-macos-x64
-      - name: Download macOS arm64
-        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/macos-arm64/rad  --fail-with-body -o rad-macos-arm64
-      - name: Download Linux arm64
-        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/linux-arm64/rad  --fail-with-body -o rad-linux-arm64
-      - name: Download Linux arm
-        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/linux-arm/rad  --fail-with-body -o rad-linux-arm
-      - name: Download Linux x64
-        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/linux-x64/rad  --fail-with-body -o rad-linux-x64
-      - name: Download Windows x64
-        run: curl -O https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/windows-x64/rad.exe --fail-with-body -o rad-windows-x64.exe
+      - name: Download file
+        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/{{ matrix.os }}-${{ matrix.arch }}/{{ matrix.file }} --fail-with-body -o {{ matrix.os }}-${{ matrix.arch }}-{{ matrix.file }}
       - name: Test Linux x64
+        if: ${{ matrix.os == 'linux' && matrix.arch == 'x64' }}
         run: |
-          chmod +x ./rad-linux-x64
-          ./rad-linux-x64 version
-      #- name: Create GitHub issue on failure
-        #if: ${{ failure() }}
-        #env:
-        #  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        #run: gh issue create --title "CLI nightly test failed" --body "Test failed on ${{ github.repository }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --repo ${{ github.repository }}
+          chmod +x ./{{ matrix.os }}-${{ matrix.arch }}-{{ matrix.file }}
+          ./{{ matrix.os }}-${{ matrix.arch }}-{{ matrix.file }} version
+      - name: Create GitHub issue on failure
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue create --title "CLI nightly test failed" --body "Test failed on ${{ github.repository }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --repo ${{ github.repository }}
