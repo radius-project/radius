@@ -49,4 +49,4 @@ jobs:
         if: ${{ failure() }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh issue create --title "CLI nightly test failed" --body "Test failed on ${{ github.repository }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --repo ${{ github.repository }}
+        run: gh issue create --title "CLI nightly test failed - ${{ matrix.os }}-${{ matrix.arch }}" --body "Test failed on ${{ github.repository }} for ${{ matrix.os }}-${{ matrix.arch }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --repo ${{ github.repository }}
