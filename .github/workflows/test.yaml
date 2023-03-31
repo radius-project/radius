@@ -15,9 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download and parse latest version
-        run: |
-          curl https://get.radapp.dev/version/stable.txt
-          echo "RAD_VERSION=$(cat stable.txt)" >> $GITHUB_ENV
+        run: export RAD_VERSION=$(curl https://get.radapp.dev/version/stable.txt)
       - name: Download macOS x64
         run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/macos-x64/rad -o rad-macos-x64
       - name: Download macOS arm64
@@ -39,4 +37,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh issue create --title "CLI nightly test failed" --body "Test failed on ${{ github.repository }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --repo ${{ github.repository }}
-        
