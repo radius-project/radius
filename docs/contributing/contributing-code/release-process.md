@@ -126,7 +126,8 @@ If sample validation passes, we can start the process of creating the final rele
 
    For example, if the RC version is `v0.17.0-rc1`, the final release version would be `v0.17.0`.
 1. Manually upload [Grafana dashboard json](https://github.com/project-radius/radius/tree/main/grafana) to radiuspublic storage account under `tools/grafana`.
-1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)  
+1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)
+1. Manually download the VS Code extension from the latest version (`tools/vscode-extensibility/0.17/`) and upload to `tools/vscode-extensibility/stable/` in the [storage account](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/assets/providers/Microsoft.Storage/storageAccounts/radiuspublic/storagebrowser). See https://github.com/project-radius/radius/issues/4101 for more details on the bug.
 1. Check the stable version marker
 
    The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.
