@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
+	radInit "github.com/project-radius/radius/pkg/cli/cmd/radInit/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -65,8 +66,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
-	commonflags.AddWorkspaceFlag(cmd)
-	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().Bool("dev", false, "Setup Radius for development")
 	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
 	return cmd, runner
@@ -206,7 +205,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		// The best way to accomplish that is to run SelectedExistingEnvironment in non-interactive mode
 		// first, and then try again interactively if we get no results.
 		if r.Dev {
-			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", false, r.Prompter, environments)
+			r.EnvName, err = radInit.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -216,7 +215,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 
 		if r.EnvName == "" {
-			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", true, r.Prompter, environments)
+			r.EnvName, err = radInit.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -270,7 +269,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.EnvName = "default"
 		} else {
-			r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
+			r.EnvName, err = radInit.SelectEnvironmentName(cmd, "default", r.Prompter)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -419,7 +418,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr(r.Namespace),
 			},
-			Providers: &providers,
+			Providers:     &providers,
 			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		}
 
