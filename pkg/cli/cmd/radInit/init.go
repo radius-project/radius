@@ -269,7 +269,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.EnvName = "default"
 		} else {
-			r.EnvName, err = radInit.SelectEnvironmentName(cmd, "default", r.Prompter)
+			r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}

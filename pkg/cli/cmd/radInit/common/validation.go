@@ -3,13 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radInit
+package common
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
@@ -59,26 +57,4 @@ func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, prompter p
 	}
 
 	return choice, nil
-}
-
-// Selects the environment flag name from user if interactive or sets it from flags or to the default value otherwise
-func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, inputPrompter prompt.Interface) (string, error) {
-	var envStr string
-	var err error
-
-	envStr, err = inputPrompter.GetTextInput(EnterEnvironmentNamePrompt, defaultVal)
-	if err != nil {
-		return "", err
-	}
-	if envStr == "" {
-		output.LogInfo("No environment name provided, using: %v", defaultVal)
-		return defaultVal, nil
-	}
-
-	matched, msg, _ := prompt.ResourceName(envStr)
-	if !matched {
-		return "", fmt.Errorf("%s %s. Use --environment option to specify the valid name", envStr, msg)
-	}
-
-	return envStr, nil
 }
