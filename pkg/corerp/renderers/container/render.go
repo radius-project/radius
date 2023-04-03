@@ -225,7 +225,6 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 				Protocol:      corev1.ProtocolTCP,
 			})
 		}
-
 	}
 
 	container := corev1.Container{
