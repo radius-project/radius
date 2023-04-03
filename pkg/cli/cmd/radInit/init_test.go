@@ -287,7 +287,7 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("default"),
 					},
 				})
-
+				initExistingEnvironmentSelection(mocks.Prompter, "default")
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
