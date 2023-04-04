@@ -14,12 +14,14 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/driver"
 )
 
+// NewEngine creates a new Engine to deploy recipe.
 func NewEngine(options Options) *engine {
 	return &engine{options: options}
 }
 
 var _ Engine = (*engine)(nil)
 
+// Options represents the configuration loader and type of driver used to deploy recipe.
 type Options struct {
 	ConfigurationLoader configloader.ConfigurationLoader
 	Drivers             map[string]driver.Driver
@@ -30,7 +32,7 @@ type engine struct {
 }
 
 // Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
-func (e *engine) Execute(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.RecipeResponse, error) {
+func (e *engine) Execute(ctx context.Context, recipe recipes.RecipeMetadata) (*recipes.RecipeOutput, error) {
 	// Resolve definition from repository
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, recipe)
 	if err != nil {

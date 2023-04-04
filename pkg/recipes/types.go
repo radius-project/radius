@@ -23,8 +23,8 @@ type RecipeMetadata struct {
 	Parameters map[string]any
 }
 
-// RecipeResponse represents recipe deployment output.
-type RecipeResponse struct {
+// RecipeOutput represents recipe deployment output.
+type RecipeOutput struct {
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
 	// Secrets represents the key/value pairs of secret values of the deployed resource.

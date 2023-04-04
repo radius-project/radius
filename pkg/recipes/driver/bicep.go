@@ -32,21 +32,23 @@ const (
 	deploymentPrefix   = "recipe"
 	pollFrequency      = time.Second * 5
 	ResultPropertyName = "result"
+	recipeParameters   = "parameters"
 )
 
 var _ Driver = (*bicepDriver)(nil)
 
-func NewBicepDriver(ucpOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient) Driver {
-	return &bicepDriver{UCPClientOptions: ucpOptions, DeploymentClient: deploymentClient}
+// NewBicepDriver creates the new Driver for Bicep.
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient) Driver {
+	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient}
 }
 
 type bicepDriver struct {
-	UCPClientOptions *arm.ClientOptions
+	ArmClientOptions *arm.ClientOptions
 	DeploymentClient *clients.ResourceDeploymentsClient
 }
 
 // Execute fetches the recipe contents from acr and deploys the recipe by making a call to ucp and returns the recipe result.
-func (d *bicepDriver) Execute(ctx context.Context, configuration configloader.Configuration, recipe recipes.RecipeMetadata, definition configloader.RecipeDefinition) (*recipes.RecipeResponse, error) {
+func (d *bicepDriver) Execute(ctx context.Context, configuration configloader.Configuration, recipe recipes.RecipeMetadata, definition configloader.RecipeDefinition) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
 
@@ -63,7 +65,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration configloader.Co
 
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
-	_, isContextParameterDefined := recipeData["parameters"].(map[string]any)[datamodel.RecipeContextParameter]
+	_, isContextParameterDefined := recipeData[recipeParameters].(map[string]any)[datamodel.RecipeContextParameter]
 	parameters := createRecipeParameters(recipe.Parameters, definition.Parameters, isContextParameterDefined, recipeContext)
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -115,26 +117,35 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration configloader.Co
 
 // createRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
 func createRecipeContextParameter(resourceID, environmentID, environmentNamespace, applicationID, applicationNamespace string) (*RecipeContext, error) {
-	recipeContext := RecipeContext{}
-
 	parsedLink, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resourceID: %q while building the recipe context parameter %w", resourceID, err)
 	}
-	recipeContext.Resource.ID = resourceID
-	recipeContext.Resource.Name = parsedLink.Name()
-	recipeContext.Resource.Type = parsedLink.Type()
-
-	recipeContext.Environment.ID = environmentID
 	parsedEnv, err := resources.ParseResource(environmentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse environmentID: %q while building the recipe context parameter %w", environmentID, err)
 	}
-	recipeContext.Environment.Name = parsedEnv.Name()
-	recipeContext.Runtime.Kubernetes = &configloader.KubernetesRuntime{
-		Namespace:            environmentNamespace,
-		EnvironmentNamespace: environmentNamespace,
+
+	recipeContext := RecipeContext{
+		Resource: Resource{
+			ResourceInfo: ResourceInfo{
+				Name: parsedLink.Name(),
+				ID:   resourceID,
+			},
+			Type: parsedLink.Type(),
+		},
+		Environment: ResourceInfo{
+			Name: parsedEnv.Name(),
+			ID:   environmentID,
+		},
+		Runtime: configloader.RuntimeConfiguration{
+			Kubernetes: &configloader.KubernetesRuntime{
+				Namespace:            environmentNamespace,
+				EnvironmentNamespace: environmentNamespace,
+			},
+		},
 	}
+
 	if applicationID != "" {
 		parsedApp, err := resources.ParseResource(applicationID)
 		if err != nil {
@@ -144,6 +155,7 @@ func createRecipeContextParameter(resourceID, environmentID, environmentNamespac
 		recipeContext.Application.Name = parsedApp.Name()
 		recipeContext.Runtime.Kubernetes.Namespace = applicationNamespace
 	}
+
 	return &recipeContext, nil
 }
 
@@ -206,7 +218,7 @@ func createProviderConfig(resourceGroup string, envProviders coreDatamodel.Provi
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeResponse, error) {
+func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -216,7 +228,7 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 	//
 	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
 	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
-	recipeResponse := recipes.RecipeResponse{}
+	recipeResponse := recipes.RecipeOutput{}
 
 	out, ok := outputs.(map[string]any)
 	if ok {
@@ -226,7 +238,7 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 			if ok {
 				b, err := json.Marshal(&output)
 				if err != nil {
-					return recipes.RecipeResponse{}, err
+					return recipes.RecipeOutput{}, err
 				}
 
 				// Using a decoder to block unknown fields.
@@ -234,7 +246,7 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 				decoder.DisallowUnknownFields()
 				err = decoder.Decode(&recipeResponse)
 				if err != nil {
-					return recipes.RecipeResponse{}, err
+					return recipes.RecipeOutput{}, err
 				}
 			}
 		}

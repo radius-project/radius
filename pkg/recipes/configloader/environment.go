@@ -24,8 +24,8 @@ const (
 	Bicep = "bicep"
 )
 
-func NewEnvironmentLoader(ucpOptions *arm.ClientOptions) ConfigurationLoader {
-	return &environmentLoader{ArmClientOptions: ucpOptions}
+func NewEnvironmentLoader(armOptions *arm.ClientOptions) ConfigurationLoader {
+	return &environmentLoader{ArmClientOptions: armOptions}
 }
 
 // EnvironmentLoader struct is initialized with arm clients and provides functionality to get environment configuration and recipe information.

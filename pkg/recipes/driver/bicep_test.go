@@ -190,7 +190,7 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
-	expectedResponse := recipes.RecipeResponse{
+	expectedResponse := recipes.RecipeOutput{
 		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets: map[string]any{
 			"username":         "testUser",
@@ -225,7 +225,7 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
-	expectedResponse := recipes.RecipeResponse{
+	expectedResponse := recipes.RecipeOutput{
 		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets:   map[string]any{},
 		Values: map[string]any{
@@ -246,7 +246,7 @@ func Test_RecipeResponseWithoutResult(t *testing.T) {
 		},
 	}
 	response := map[string]any{}
-	expectedResponse := recipes.RecipeResponse{
+	expectedResponse := recipes.RecipeOutput{
 		Resources: []string{"outputResourceId"},
 		Secrets:   map[string]any{},
 		Values:    map[string]any{},
