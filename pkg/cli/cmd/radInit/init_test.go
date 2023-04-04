@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	radinit_common "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
+	cmdcommon "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
 	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
@@ -123,7 +123,7 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("cool-existing-env"),
 					},
 				})
-				initExistingEnvironmentSelection(mocks.Prompter, radinit_common.SelectExistingEnvironmentCreateSentinel)
+				initExistingEnvironmentSelection(mocks.Prompter, cmdcommon.SelectExistingEnvironmentCreateSentinel)
 
 				// Use default env name and namespace
 				initEnvNamePrompt(mocks.Prompter)
@@ -808,13 +808,13 @@ func initEnvNamePromptError(prompter *prompt.MockInterface) {
 
 func initNamespacePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(radinit_common.EnterNamespacePrompt, gomock.Any()).
+		GetTextInput(cmdcommon.EnterNamespacePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
 func initNamespacePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(radinit_common.EnterNamespacePrompt, gomock.Any()).
+		GetTextInput(cmdcommon.EnterNamespacePrompt, gomock.Any()).
 		Return("", errors.New("Unable to read namespace")).Times(1)
 }
 
@@ -856,7 +856,7 @@ func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClien
 
 func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), radinit_common.SelectExistingEnvironmentPrompt).
+		GetListInput(gomock.Any(), cmdcommon.SelectExistingEnvironmentPrompt).
 		Return(choice, nil).Times(1)
 }
 
