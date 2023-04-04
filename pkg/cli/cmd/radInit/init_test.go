@@ -808,13 +808,13 @@ func initEnvNamePromptError(prompter *prompt.MockInterface) {
 
 func initNamespacePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(EnterNamespacePrompt, gomock.Any()).
+		GetTextInput(radinit_common.EnterNamespacePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
 func initNamespacePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(EnterNamespacePrompt, gomock.Any()).
+		GetTextInput(radinit_common.EnterNamespacePrompt, gomock.Any()).
 		Return("", errors.New("Unable to read namespace")).Times(1)
 }
 
