@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	cmdcommon "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
 	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
@@ -205,7 +204,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		// The best way to accomplish that is to run SelectedExistingEnvironment in non-interactive mode
 		// first, and then try again interactively if we get no results.
 		if r.Dev {
-			r.EnvName, err = cmdcommon.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
+			r.EnvName, err = SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -215,7 +214,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 
 		if r.EnvName == "" {
-			r.EnvName, err = cmdcommon.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
+			r.EnvName, err = SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -282,7 +281,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.Namespace = "default"
 		} else {
-			r.Namespace, err = cmdcommon.SelectNamespace(cmd, "default", true, r.Prompter)
+			r.Namespace, err = SelectNamespace(cmd, "default", true, r.Prompter)
 			if err != nil {
 				return &cli.FriendlyError{Message: "Namespace not specified"}
 			}

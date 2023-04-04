@@ -17,7 +17,7 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
-	common "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
 	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -72,7 +72,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	namespace, err := common.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
+	namespace, err := radinit.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}

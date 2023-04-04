@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package common
+package radinit
 
 import (
 	"strings"
