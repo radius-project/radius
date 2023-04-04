@@ -8,6 +8,7 @@ package common
 import (
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
@@ -16,7 +17,7 @@ import (
 const (
 	SelectExistingEnvironmentPrompt         = "Select an existing environment or create a new one"
 	SelectExistingEnvironmentCreateSentinel = "[create new]"
-	EnterEnvironmentNamePrompt              = "Enter an environment name"
+	EnterNamespacePrompt                    = "Enter a namespace name to deploy apps into"
 )
 
 // SelectExistingEnvironment prompts the user to select from existing environments (with the option to create a new one).
@@ -57,4 +58,26 @@ func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, prompter p
 	}
 
 	return choice, nil
+}
+
+// Gets the namespace value from the user if interactive, otherwise sets it to the namespace flag or default value
+func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface) (string, error) {
+	var val string
+	var err error
+	if interactive {
+		val, err = prompter.GetTextInput(EnterNamespacePrompt, defaultVal)
+		if err != nil {
+			return "", err
+		}
+		if val == "" {
+			return defaultVal, nil
+		}
+	} else {
+		val, _ = cmd.Flags().GetString("namespace")
+		if val == "" {
+			output.LogInfo("No namespace name provided, using: %v", defaultVal)
+			val = defaultVal
+		}
+	}
+	return val, nil
 }

@@ -20,7 +20,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
-	radinit "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
+	radinit_common "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -205,7 +206,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		// The best way to accomplish that is to run SelectedExistingEnvironment in non-interactive mode
 		// first, and then try again interactively if we get no results.
 		if r.Dev {
-			r.EnvName, err = radinit.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
+			r.EnvName, err = radinit_common.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -215,7 +216,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 
 		if r.EnvName == "" {
-			r.EnvName, err = radinit.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
+			r.EnvName, err = radinit_common.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -269,7 +270,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.EnvName = "default"
 		} else {
-			r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
+			r.EnvName, err = validation.SelectEnvironmentName(cmd, "default", true, r.Prompter)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -282,7 +283,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.Namespace = "default"
 		} else {
-			r.Namespace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
+			r.Namespace, err = radinit_common.SelectNamespace(cmd, "default", true, r.Prompter)
 			if err != nil {
 				return &cli.FriendlyError{Message: "Namespace not specified"}
 			}
