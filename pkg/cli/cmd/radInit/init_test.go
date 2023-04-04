@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radInit
+package radinit
 
 import (
 	"context"
