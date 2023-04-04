@@ -16,6 +16,8 @@ import (
 // Used in tests
 const (
 	EnterEnvironmentNamePrompt = "Enter an environment name"
+	AzureCloudProvider         = "Azure"
+	AWSCloudProvider           = "AWS"
 )
 
 // Selects the environment flag name from user if interactive or sets it from flags or to the default value otherwise

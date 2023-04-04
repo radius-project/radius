@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	radinit_common "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
 	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -305,7 +304,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 					return &cli.FriendlyError{Message: "Error reading cloud provider"}
 				}
 				switch cloudProvider {
-				case common.AzureCloudProvider:
+				case validation.AzureCloudProvider:
 					r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
 						if errors.Is(err, &prompt.ErrExitConsole{}) {
@@ -313,7 +312,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 						}
 						return err
 					}
-				case common.AWSCloudProvider:
+				case validation.AWSCloudProvider:
 					r.AwsCloudProvider, err = r.SetupInterface.ParseAWSProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
 						if errors.Is(err, &prompt.ErrExitConsole{}) {
@@ -560,7 +559,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 
 // Selects the cloud provider, returns -1 if back and -2 if not supported
 func selectCloudProvider(prompter prompt.Interface) (string, error) {
-	values := []string{common.AzureCloudProvider, common.AWSCloudProvider, backNavigator}
+	values := []string{validation.AzureCloudProvider, validation.AWSCloudProvider, backNavigator}
 	return prompter.GetListInput(values, selectCloudProviderPrompt)
 }
 
