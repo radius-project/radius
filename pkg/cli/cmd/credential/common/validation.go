@@ -10,18 +10,17 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 )
 
 // Used in tests
 const (
-	AzureCloudProvider = "Azure"
-	AWSCloudProvider   = "AWS"
-	AzureCredentialID  = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
-	AWSCredentialID    = "/planes/aws/aws/providers/System.AWS/credentials/%s"
+	AzureCredentialID = "/planes/azure/azurecloud/providers/System.Azure/credentials/%s"
+	AWSCredentialID   = "/planes/aws/aws/providers/System.AWS/credentials/%s"
 )
 
 var (
-	supportedProviders = []string{AzureCloudProvider, AWSCloudProvider}
+	supportedProviders = []string{validation.AzureCloudProvider, validation.AWSCloudProvider}
 )
 
 func ValidateCloudProviderName(name string) error {
