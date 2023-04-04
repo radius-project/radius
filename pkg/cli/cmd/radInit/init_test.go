@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radinit
+package radInit
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	cmdcommon "github.com/project-radius/radius/pkg/cli/cmd/radinit/common"
+	cmdcommon "github.com/project-radius/radius/pkg/cli/cmd/radInit/common"
 	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
