@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package provider
+package credential
 
 import (
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
