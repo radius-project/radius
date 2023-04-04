@@ -17,7 +17,7 @@ In addition, trace package introduces the below helpers:
 * StartConsumerSpan(ctx, spanName, tracerName) starts a new Consumer span with the given names.
 
 
-#Examples
+# Examples
 
 Initializing a new Tracer:
 shutdown,err := trace.InitTracer(trace.Options{ServiceName: serviceName})
@@ -51,6 +51,13 @@ func functionName(ctx context.Context) {
 	defer span.End()
 	...
 }
+
+# References
+
+https://opentelemetry.io/docs/reference/specification/trace
+https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/net/http/otelhttp
+https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md
+https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
 
 */
 
