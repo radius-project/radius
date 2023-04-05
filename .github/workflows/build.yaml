@@ -321,7 +321,7 @@ jobs:
         ./.github/scripts/namespace-is-empty.sh
 
   publish:
-    name: Publish rad CLI binaries and Grafana dashboard
+    name: Publish rad CLI binaries
     needs: [ 'build' ]
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
@@ -402,14 +402,6 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           overwrite: 'true'
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300'
-      - name: Upload Grafana dashboard
-        uses: bacongobbler/azure-blob-storage-upload@v3
-        with:
-          source_dir: grafana
-          container_name: 'tools'
-          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          overwrite: 'true'
-          extra_args: '--destination-path grafana/ --pattern *.json --timeout 300'
 
   delete_artifacts:
     name: Delete artifacts
