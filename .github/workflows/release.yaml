@@ -1,0 +1,46 @@
+name: Create a new Project Radius release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag to release. Must be a valid semver version (e.g. 1.2.3 or 1.2.3-rc.1)'
+        required: true
+
+jobs:
+  release:
+    name: Release
+    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: radius
+            branch: main
+          - repo: deployment-engine
+            branch: main
+          - repo: bicep-extensibility
+            branch: bicep-extensibility
+    steps:
+      - name: Validate semver input
+        run: |
+          if [[ ! ${{ github.event.inputs.tag }} =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "Invalid semver version: ${{ github.event.inputs.tag }}"
+            exit 1
+          fi
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          repository: project-radius/${{ matrix.repo }}
+          ref: ${{ matrix.branch }}
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      - name: Create and push tag
+        run: |
+          git config --global user.name "Radius CI Bot"
+          git config --global user.email "radiuscoreteam@service.microsoft.com"
+          git chechout -b release/${{ github.event.inputs.tag }}
+          git pull origin release/${{ github.event.inputs.tag }}
+          git tag v${{ github.event.inputs.tag }}
+          git push origin --tags
+          git push origin release/${{ github.event.inputs.tag }}
+
