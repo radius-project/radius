@@ -8,14 +8,22 @@ Our release process for Project Radius is based on git tags. Pushing a new tag w
 - Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
 - Determine the release channel This is in the form `<major>.<minor>`
 
-
-### Creating an RC release
+## Creating an RC release
 
 When starting the release process, we first kick it off by creating an RC release. This is a release candidate that we can test internally before releasing to the public which we can validate samples on.
 
 If we find issues in validation, we can create additional RC releases until we feel confident in the release.
 
 Follow the steps below to create an RC release.
+
+### Automated RC release
+
+1. Visit the [release workflow](https://github.com/project-radius/radius/actions/workflows/release.yaml)
+1. Drop down `Run workflow`, keep `main` selected, and enter the version you wish to release (`0.1.2-rc.2`)
+1. Select `Run workflow`
+1. Done
+
+### Manual RC release
 
 1. In the Bicep fork on the `bicep-extensibility`
 
@@ -118,9 +126,18 @@ Different cluster types to test on:
 *If we encounter an issue with an RC release, please refer to "Patching" below.*
 
 
-### Creating the final release
+## Creating the final release
 
 If sample validation passes, we can start the process of creating the final release.
+
+### Automated final release
+
+1. Visit the [release workflow](https://github.com/project-radius/radius/actions/workflows/release.yaml)
+1. Drop down `Run workflow`, keep `main` selected, and enter the version you wish to release (`0.1.2`)
+1. Select `Run workflow`
+1. Done
+
+### Manual final process
 
 1. Go through steps 1-3 of "Creating an RC release" above, substituting the final release version instead of the RC version.
 
@@ -133,6 +150,8 @@ If sample validation passes, we can start the process of creating the final rele
    The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.
    
    You can find this file in the storage account under `version/stable.txt`.
+
+### Docs and samples release
 
 1. Update the project-radius/docs repository
 

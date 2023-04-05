@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'The tag to release. Must be a valid semver version (e.g. 1.2.3 or 1.2.3-rc.1)'
+        description: "The tag to release. Must be a valid semver version (e.g. 1.2.3 or 1.2.3-rc.1)"
         required: true
 
 jobs:
   release:
     name: Release
-    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: [self-hosted, 1ES.Pool=1ES-Radius]
     strategy:
       fail-fast: false
       matrix:
@@ -28,6 +28,9 @@ jobs:
             echo "Invalid semver version: ${{ github.event.inputs.tag }}"
             exit 1
           fi
+          if [[ ! ${{ github.event.inputs.tag }} =~ -rc\.[0-9]+$ ]]; then
+            echo "FINAL_RELEASE=true" >> $GITHUB_ENV
+          fi
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
@@ -43,4 +46,16 @@ jobs:
           git tag v${{ github.event.inputs.tag }}
           git push origin --tags
           git push origin release/${{ github.event.inputs.tag }}
-
+      - name: az CLI login
+        if: ${{ env.FINAL_RELEASE == 'true' }}
+        run: |
+          az login --service-principal \
+            --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
+            --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
+            --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+      - name: Clear Azure CDN endpoint cache
+        uses: azure/cli@v1
+        if: ${{ env.FINAL_RELEASE == 'true' }}
+        with:
+          inlineScript: |
+            az cdn endpoint purge --subscription ${{ variables.ASSETS_SUBSCRIPTION }} --resource-group ${{ variables.ASSETS_RESOURCEGROUP }} --name ${{ variables.CDN_ENDPOINT_NAME }} --profile-name ${{ variables.CDN_PROFILE_NAME }} --content-paths "/*"
