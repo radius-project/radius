@@ -33,6 +33,8 @@ spec:
         env:
         - name: SKIP_ARM
           value: 'false'
+        - name: ENABLE_PROFILING
+          value: 'true'
         - name: ARM_AUTH_METHOD
           value: 'UCPCredential'
         - name: RADIUS_ENV

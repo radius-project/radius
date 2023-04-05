@@ -9,11 +9,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/ucp/util"
 )
 
 var (
@@ -83,7 +86,9 @@ func (acm *ArmCertManager) Start(ctx context.Context) error {
 		return ErrClientCertFetch
 	}
 	storeCertificates(certs)
+	acm.log.Info(fmt.Sprintf("@@@@@@ Before calling acm.periodicRefresh in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 	go acm.periodicCertRefresh(ctx)
+	acm.log.Info(fmt.Sprintf("@@@@@@ After calling acm.periodicRefresh in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 	return nil
 }
 

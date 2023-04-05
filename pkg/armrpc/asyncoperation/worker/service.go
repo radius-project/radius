@@ -7,6 +7,8 @@ package worker
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
@@ -15,6 +17,7 @@ import (
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/pkg/ucp/util"
 
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,9 +81,12 @@ func (s *Service) Start(ctx context.Context, opt Options) error {
 	worker := New(opt, s.OperationStatusManager, s.RequestQueue, s.Controllers)
 
 	logger.Info("Start Worker...")
+
+	logger.Info(fmt.Sprintf("@@@@@@ Before calling worker.Start in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 	if err := worker.Start(ctx); err != nil {
 		logger.Error(err, "failed to start worker...")
 	}
+	logger.Info(fmt.Sprintf("@@@@@@ After calling worker.Start in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 
 	logger.Info("Worker stopped...")
 	return nil

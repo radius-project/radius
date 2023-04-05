@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"runtime"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/pkg/ucp/util"
 
 	"github.com/google/uuid"
 	"golang.org/x/sync/semaphore"
@@ -110,7 +112,9 @@ func New(
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	logger.Info(fmt.Sprintf("@@@@@@ Before calling queue.StartDequeuer in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
+	logger.Info(fmt.Sprintf("@@@@@@ After calling queue.StartDequeuer in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 	if err != nil {
 		return err
 	}
@@ -191,7 +195,9 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
+			opLogger.Info(fmt.Sprintf("@@@@@@ Before calling worker.runOperation in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 			w.runOperation(reqCtx, msgreq, asyncCtrl)
+			opLogger.Info(fmt.Sprintf("@@@@@@ After calling worker.runOperation in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 		}(msg)
 	}
 

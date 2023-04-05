@@ -10,12 +10,15 @@ import (
 	"errors"
 	"fmt"
 
+	goruntime "runtime"
+
 	"github.com/project-radius/radius/pkg/kubeutil"
 	store "github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/store/apiserverstore"
 	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/project-radius/radius/pkg/ucp/store/cosmosdb"
 	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
+	"github.com/project-radius/radius/pkg/ucp/util"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -97,7 +100,9 @@ func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (
 	}
 
 	// Initialize the storage client once the storage service has started
+	fmt.Println(fmt.Sprintf("@@@@@@ Before calling ETCD.Client.Get in %s, goroutineCount: %v", util.GetCaller(), goruntime.NumGoroutine()))
 	client, err := opt.ETCD.Client.Get(ctx)
+	fmt.Println(fmt.Sprintf("@@@@@@ After calling ETCD.Client.Get in %s, goroutineCount: %v", util.GetCaller(), goruntime.NumGoroutine()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize etcd client: %w", err)
 	}

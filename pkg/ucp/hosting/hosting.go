@@ -9,11 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/ucp/util"
 )
 
 const ShutdownTimeout = time.Second * 10
@@ -50,7 +52,9 @@ func (host *Host) RunAsync(ctx context.Context) (<-chan error, <-chan LifecycleM
 	serviceErrors := make(chan LifecycleMessage, len(host.Services))
 
 	go func() {
+		fmt.Println(fmt.Sprintf("@@@@@@ Before calling host.Run in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 		err := host.Run(ctx, serviceErrors)
+		fmt.Println(fmt.Sprintf("@@@@@@ After calling host.Run in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 		stopped <- err
 		close(stopped)
 	}()
@@ -172,7 +176,9 @@ func (host *Host) runService(ctx context.Context, service Service, messages chan
 	logger = logger.WithName(service.Name())
 	ctx = logr.NewContext(ctx, logger)
 
+	logger.Info(fmt.Sprintf("@@@@@@ Before calling service.Run for %s in %s, goroutineCount: %v", service.Name(), util.GetCaller(), runtime.NumGoroutine()))
 	err := service.Run(ctx)
+	logger.Info(fmt.Sprintf("@@@@@@ After calling service.Run for %s in %s, goroutineCount: %v", service.Name(), util.GetCaller(), runtime.NumGoroutine()))
 
 	// Suppress a cancellation-related error. That's a graceful exit.
 	if err == ctx.Err() {

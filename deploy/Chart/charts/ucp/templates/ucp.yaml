@@ -35,6 +35,8 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
+        - name: ENABLE_PROFILING
+          value: 'true'
 {{ if and .Values.provider .Values.provider.aws }}
         - name: AWS_REGION
           value: {{ .Values.provider.aws.region }}

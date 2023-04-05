@@ -8,8 +8,11 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"runtime"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/pkg/ucp/util"
 )
 
 const (
@@ -38,10 +41,13 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 	}
 
 	armhandler := NewARMHandler(handler.arm)
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("@@@@@@ Before calling armhandler.Put in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 	properties, err = armhandler.Put(ctx, options)
 	if err != nil {
 		return nil, err
 	}
+	logger.Info(fmt.Sprintf("@@@@@@ After calling armhandler.Put in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 	return properties, nil
 }
 
