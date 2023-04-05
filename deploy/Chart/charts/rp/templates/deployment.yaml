@@ -29,7 +29,7 @@ spec:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-link
         - --link-config=/etc/config/link-self-host.yaml
-        image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
+        image: {{ .Values.image }}:{{ .Values.tag }}
         env:
         - name: SKIP_ARM
           value: 'false'
@@ -41,9 +41,9 @@ spec:
           value: 'true'
         - name: SKIP_AUTH
           value: 'true'
-        {{ if .Values.global.rp.publicEndpointOverride}}
+        {{ if .Values.publicEndpointOverride}}
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
-          value: {{ .Values.global.rp.publicEndpointOverride }}
+          value: {{ .Values.publicEndpointOverride }}
         {{ end }}
         name: appcore-rp
         ports:
@@ -104,7 +104,5 @@ metadata:
     heritage: "{{ .Release.Service }}"
     release: "{{ .Release.Name }}"
 data:
-  radius-self-host.yaml: |-
-{{ .Files.Get "radius-self-host.yaml" | indent 4}}
-  link-self-host.yaml: |-
-{{ .Files.Get "link-self-host.yaml" | indent 4}}
+  radius-self-host.yaml: {{ (include "core-rp-config" .) | trim | quote }}
+  link-self-host.yaml: {{ (include "link-rp-config" .) | trim | quote }}

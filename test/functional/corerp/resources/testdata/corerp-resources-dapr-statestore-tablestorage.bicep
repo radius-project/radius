@@ -2,7 +2,9 @@ import radius as radius
 
 param magpieimage string
 
+@description('Specifies the environment for resources.')
 param environment string
+
 param location string = resourceGroup().location
 
 param tablestorageresourceid string

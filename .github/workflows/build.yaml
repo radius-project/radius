@@ -30,7 +30,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -49,6 +49,8 @@ jobs:
             target_arch: amd64
           - target_os: darwin
             target_arch: amd64
+          - target_os: darwin
+            target_arch: arm64
     steps:
       - name: Check out repo
         uses: actions/checkout@v3
@@ -171,7 +173,7 @@ jobs:
   # - push the image for pushes to master, or to a tag
   images:
     name: Container image build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -194,42 +196,37 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: make docker-build
-        run: make docker-build
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: latest
-      - name: make docker-build (PR)
-        run: make docker-build
-        if: startsWith(github.ref, 'refs/pull/')
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make docker-build (release)
-        run: make docker-build
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - uses: azure/docker-login@v1
         with:
           login-server: ${{ env.DOCKER_REGISTRY }}
           username: '${{ secrets.DOCKER_USERNAME }}'
           password: '${{ secrets.DOCKER_PASSWORD }}'
-      - name: make docker-push (latest)
-        run: make docker-push
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+      - name: Push container images (latest)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
         if: (github.ref == 'refs/heads/main') # push image to latest on merge to main
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-      - name: make docker-push (PR)
-        run: make docker-push
+      - name: Push container images (PR)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make docker-push (release)
-        run: make docker-push
+      - name: Push container images (release)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
@@ -237,7 +234,7 @@ jobs:
   helm:
     name: Helm chart build
     needs: ['images']
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -272,7 +269,7 @@ jobs:
     name: Run Kubernetes tests
     needs: [ 'build', 'images' ]
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 60m
@@ -326,13 +323,18 @@ jobs:
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_darwin_arm64
+          path: rad_cli_darwin_arm64
       - name: Download release artifacts
         uses: actions/download-artifact@v3
         with:
@@ -367,6 +369,13 @@ jobs:
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
+          source_dir: rad_cli_darwin_arm64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-arm64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
           source_dir: rad_cli_linux_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
@@ -398,7 +407,7 @@ jobs:
     name: Delete artifacts
     if: ${{ success() }}
     needs: [ 'build', 'publish' ]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Delete release artifacts
         uses: geekyeggo/delete-artifact@v1
