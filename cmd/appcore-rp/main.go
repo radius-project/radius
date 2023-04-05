@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -139,6 +140,11 @@ func main() {
 
 	}()
 	stopped, serviceErrors := host.RunAsync(ctx)
+
+	// Enable pprof
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	exitCh := make(chan os.Signal, 2)
 	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM)

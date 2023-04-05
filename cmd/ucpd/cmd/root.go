@@ -8,17 +8,18 @@ package cmd
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/trace"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/hosting"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -67,6 +68,11 @@ var rootCmd = &cobra.Command{
 		}()
 
 		stopped, serviceErrors := host.RunAsync(ctx)
+
+		// Enable pprof
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
 
 		exitCh := make(chan os.Signal, 2)
 		signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM)
