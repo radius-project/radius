@@ -54,8 +54,5 @@ jobs:
             --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
             --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Clear Azure CDN endpoint cache
-        uses: azure/cli@v1
         if: ${{ env.FINAL_RELEASE == 'true' }} && ${{ matrix.repo == 'radius' }}
-        with:
-          inlineScript: |
-            az cdn endpoint purge --subscription ${{ variables.ASSETS_SUBSCRIPTION }} --resource-group ${{ variables.ASSETS_RESOURCEGROUP }} --name ${{ variables.CDN_ENDPOINT_NAME }} --profile-name ${{ variables.CDN_PROFILE_NAME }} --content-paths "/*"
+        run: az cdn endpoint purge --subscription ${{ variables.ASSETS_SUBSCRIPTION }} --resource-group ${{ variables.ASSETS_RESOURCEGROUP }} --name ${{ variables.CDN_ENDPOINT_NAME }} --profile-name ${{ variables.CDN_PROFILE_NAME }} --content-paths "/*"
