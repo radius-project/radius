@@ -41,7 +41,7 @@ jobs:
         run: |
           git config --global user.name "Radius CI Bot"
           git config --global user.email "radiuscoreteam@service.microsoft.com"
-          git chechout -b release/${{ github.event.inputs.tag }}
+          git checkout -b release/${{ github.event.inputs.tag }}
           git pull origin release/${{ github.event.inputs.tag }}
           git tag v${{ github.event.inputs.tag }}
           git push origin --tags
