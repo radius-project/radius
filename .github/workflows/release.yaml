@@ -47,7 +47,7 @@ jobs:
           git push origin --tags
           git push origin release/${{ github.event.inputs.tag }}
       - name: az CLI login
-        if: ${{ env.FINAL_RELEASE == 'true' }}
+        if: ${{ env.FINAL_RELEASE == 'true' }} && ${{ matrix.repo == 'radius' }}
         run: |
           az login --service-principal \
             --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
@@ -55,7 +55,7 @@ jobs:
             --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Clear Azure CDN endpoint cache
         uses: azure/cli@v1
-        if: ${{ env.FINAL_RELEASE == 'true' }}
+        if: ${{ env.FINAL_RELEASE == 'true' }} && ${{ matrix.repo == 'radius' }}
         with:
           inlineScript: |
             az cdn endpoint purge --subscription ${{ variables.ASSETS_SUBSCRIPTION }} --resource-group ${{ variables.ASSETS_RESOURCEGROUP }} --name ${{ variables.CDN_ENDPOINT_NAME }} --profile-name ${{ variables.CDN_PROFILE_NAME }} --content-paths "/*"
