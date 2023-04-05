@@ -24,11 +24,11 @@ jobs:
     steps:
       - name: Validate semver input
         run: |
-          if [[ ! ${{ github.event.inputs.tag }} =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+          if [[ ! ${{ github.event.inputs.tag }} =~ ^[0-9]+\.[0-9]+\.[0-9]+-(rc|alpha|beta|preview)\.[0-9]+$ ]]; then
             echo "Invalid semver version: ${{ github.event.inputs.tag }}"
             exit 1
           fi
-          if [[ ! ${{ github.event.inputs.tag }} =~ -rc\.[0-9]+$ ]]; then
+          if [[ ! ${{ github.event.inputs.tag }} =~ -(rc|alpha|beta|preview)\.[0-9]+$ ]]; then
             echo "FINAL_RELEASE=true" >> $GITHUB_ENV
           fi
       - name: Checkout repository
