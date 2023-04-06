@@ -52,7 +52,7 @@ func Test_Validate(t *testing.T) {
 				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
 			},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
 		},
 		{

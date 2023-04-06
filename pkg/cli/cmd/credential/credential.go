@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command for the `rad provider` command.
+// NewCommand creates an instance of the command for the `rad credential` command.
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
 	cmd := &cobra.Command{
