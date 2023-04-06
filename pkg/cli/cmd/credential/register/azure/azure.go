@@ -9,8 +9,6 @@ import (
 	"context"
 	"fmt"
 
-
-	"github.com/project-radius/radius/pkg/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -20,12 +18,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	
+
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad provider create azure` command.
+// NewCommand creates an instance of the command and runner for the `rad credential create azure` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -43,7 +42,7 @@ Radius environments, and Radius links.
 Radius will use the provided subscription and resource group as the default target scope for Bicep deployment.
 The provided service principal must have the Contributor or Owner role assigned for the provided resource group
 in order to create or manage resources contained in the group. The resource group should be created before
-calling 'rad provider create azure'.
+calling 'rad credential register azure'.
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication
@@ -68,7 +67,7 @@ rad credential register azure --client-id <client id/app id> --client-secret <cl
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad provider create azure` command.
+// Runner is the runner implementation for the `rad credential register azure` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -98,11 +97,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.Workspace = workspace
-
-	// TODO: support fallback workspace
-	if !r.Workspace.IsNamedWorkspace() {
-		return workspaces.ErrNamedWorkspaceRequired
-	}
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {

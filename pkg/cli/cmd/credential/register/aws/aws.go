@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad provider create azure` command.
+// NewCommand creates an instance of the command and runner for the `rad credential register aws` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -57,7 +57,7 @@ rad credential register aws --access-key-id <access-key-id> --secret-access-key 
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad provider register aws` command.
+// Runner is the runner implementation for the `rad credential register aws` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -70,7 +70,7 @@ type Runner struct {
 	KubeContext     string
 }
 
-// NewRunner creates a new instance of the `rad provider register aws` runner.
+// NewRunner creates a new instance of the `rad credential register aws` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
