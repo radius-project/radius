@@ -8,11 +8,19 @@ package v1
 import (
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
-	// DefaultRetryAfter is the default value in seconds for the Retry-After header.
+	// DefaultRetryAfter is the default value in seconds for the Retry-After header. This value is used
+	// to determine the polling frequency of the client for long-running operations. Consider setting
+	// a smaller value like 5 seconds if your operations are expected to be fast.
 	DefaultRetryAfter = "60"
+
+	// DefaultRetryAfterDuration is the default value in time.Duration for the Retry-After header. This value is used
+	// to determine the polling frequency of the client for long-running operations. Consider setting
+	// a smaller value like 5 seconds if your operations are expected to be fast.
+	DefaultRetryAfterDuration = 60 * time.Second
 )
 
 // OperationMethod is the ARM operation of resource.

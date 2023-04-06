@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -161,16 +163,33 @@ func TestGetAsyncLocationPath(t *testing.T) {
 	operationID := uuid.New()
 
 	testCases := []struct {
-		desc    string
-		base    string
-		rID     string
-		loc     string
-		opID    uuid.UUID
-		av      string
-		or      string
-		os      string
-		referer url.URL
+		desc       string
+		base       string
+		rID        string
+		loc        string
+		opID       uuid.UUID
+		av         string
+		or         string
+		os         string
+		referer    url.URL
+		retryAfter time.Duration
 	}{
+		{
+			"ucp-test-headers-custom-retry-after",
+			"https://ucp.dev",
+			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			v1.LocationGlobal,
+			operationID,
+			"2022-03-15-privatepreview",
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			url.URL{
+				Scheme: "https",
+				Host:   "ucp.dev",
+				Path:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			},
+			10 * time.Second,
+		},
 		{
 			"ucp-test-headers",
 			"https://ucp.dev",
@@ -185,6 +204,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 				Host:   "ucp.dev",
 				Path:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			},
+			time.Second * 0,
 		},
 		{
 			"arm-test-headers",
@@ -200,6 +220,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 				Host:   "azure.dev",
 				Path:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			},
+			time.Second * 0,
 		},
 		{
 			"ucp-test-headers",
@@ -215,6 +236,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 				Host:   "ucp.dev",
 				Path:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			},
+			time.Second * 0,
 		},
 		{
 			"empty-path-headers",
@@ -230,6 +252,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 				Host:   "",
 				Path:   "",
 			},
+			time.Second * 0,
 		},
 	}
 
@@ -240,6 +263,9 @@ func TestGetAsyncLocationPath(t *testing.T) {
 
 			body := &datamodel.ContainerResource{}
 			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av, "", "")
+			if tt.retryAfter != time.Second*0 {
+				r.RetryAfter = tt.retryAfter
+			}
 
 			req := httptest.NewRequest("GET", tt.base, nil)
 			req.Header.Add(v1.RefererHeader, tt.referer.String())
@@ -260,6 +286,18 @@ func TestGetAsyncLocationPath(t *testing.T) {
 
 			} else {
 				require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
+			}
+
+			require.NotNil(t, w.Header().Get("Retry-After"))
+			if tt.retryAfter == time.Second*0 {
+				require.Equal(t, "60", w.Header().Get("Retry-After"))
+			} else {
+				parsed, err := strconv.ParseInt(w.Header().Get("Retry-After"), 10, 64)
+				require.NoError(t, err)
+
+				// Yes, this looks wierd but it's the correct way to multiply by a non-constant value.
+				duration := time.Duration(parsed) * time.Second
+				require.Equal(t, tt.retryAfter, duration)
 			}
 		})
 	}

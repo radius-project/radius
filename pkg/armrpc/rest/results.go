@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -225,10 +226,14 @@ type AsyncOperationResponse struct {
 	APIVersion  string
 	RootScope   string // Everything before providers namespace for constructing an Async operation header. Used for AWS planes
 	PathBase    string // Base Path. Used for AWS planes
+
+	// RetryAfter is the value of the Retry-After header in seconds (as a string). This determines the client's polling interval.
+	// Defaults to v1.DefaultRetryAfter. Consider setting a smaller value if your operation is expected to complete quickly.
+	RetryAfter time.Duration
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body any, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) Response {
+func NewAsyncOperationResponse(body any, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) *AsyncOperationResponse {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
@@ -238,6 +243,7 @@ func NewAsyncOperationResponse(body any, location string, code int, resourceID r
 		APIVersion:  apiVersion,
 		RootScope:   rootScope,
 		PathBase:    pathBase,
+		RetryAfter:  v1.DefaultRetryAfterDuration,
 	}
 }
 
@@ -261,7 +267,7 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", locationHeader)
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
-	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
+	w.Header().Add("Retry-After", fmt.Sprintf("%v", r.RetryAfter.Truncate(time.Second).Seconds()))
 
 	w.WriteHeader(r.Code)
 
