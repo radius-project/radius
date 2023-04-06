@@ -1,0 +1,10 @@
+{
+    "location": "global",
+    "properties": {
+        "kind": "UCPNative",
+        "resourceProviders": {
+            "Applications.Connection": "http://localhost:9081/",
+            "Applications.Core":       "http://localhost:9080/"
+        }
+    }
+}

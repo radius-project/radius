@@ -6,7 +6,6 @@ package planes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	http "net/http"
 	"net/url"
@@ -14,12 +13,12 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -32,12 +31,20 @@ var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
 
 // ProxyPlane is the controller implementation to proxy requests to appropriate RP or URL.
 type ProxyPlane struct {
-	ctrl.BaseController
+	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
+	basePath string
+	address  string
 }
 
 // NewProxyPlane creates a new ProxyPlane.
 func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &ProxyPlane{ctrl.NewBaseController(opts)}, nil
+	return &ProxyPlane{
+		Operation: armrpc_controller.NewOperation(opts.Options,
+			armrpc_controller.ResourceOptions[datamodel.Plane]{},
+		),
+		basePath: opts.BasePath,
+		address:  opts.Address,
+	}, nil
 }
 
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
@@ -54,11 +61,9 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		RawQuery: req.URL.RawQuery,
 	}
 
-	req.URL.Path = p.GetRelativePath(req.URL.Path)
-
 	// Make a copy of the incoming URL and trim the base path
 	newURL := *req.URL
-	newURL.Path = p.GetRelativePath(req.URL.Path)
+	newURL.Path = middleware.GetRelativePath(p.basePath, req.URL.Path)
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(newURL.Path)
 	if err != nil {
 		return nil, err
@@ -71,14 +76,14 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		return nil, err
 	}
 
-	plane := rest.Plane{}
-	_, err = p.GetResource(ctx, planeID.String(), &plane)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	plane, _, err := p.GetResource(ctx, planeID)
 	if err != nil {
-		if errors.Is(err, &store.ErrNotFound{}) {
-			logger.Error(err, "plane %q does not exist", planeID.String())
-			return armrpc_rest.NewNotFoundResponse(planeID), nil
-		}
 		return nil, err
+	}
+	if plane == nil {
+		restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)
+		return restResponse, nil
 	}
 
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
@@ -93,14 +98,14 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 			return nil, err
 		}
 
-		existingRG := datamodel.ResourceGroup{}
-		_, err = p.GetResource(ctx, rgID.String(), &existingRG)
+		existingRG, _, err := p.GetResource(ctx, rgID)
 		if err != nil {
-			if errors.Is(err, &store.ErrNotFound{}) {
-				logger.Error(err, fmt.Sprintf("resource group %q does not exist", rgID.String()))
-				return armrpc_rest.NewNotFoundResponse(rgID), nil
-			}
 			return nil, err
+		}
+		if existingRG == nil {
+			logger.Info(fmt.Sprintf("Resource group %s not found in db", serviceCtx.ResourceID))
+			restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)
+			return restResponse, nil
 		}
 	}
 
@@ -132,7 +137,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
 		// all the requests will be forwarded
-		proxyURL = plane.Properties.URL
+		proxyURL = *plane.Properties.URL
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -142,7 +147,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	options := proxy.ReverseProxyOptions{
 		RoundTripper:     otelhttp.NewTransport(http.DefaultTransport),
-		ProxyAddress:     p.Options.Address,
+		ProxyAddress:     p.address,
 		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
 
@@ -161,7 +166,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		HTTPScheme: httpScheme,
 		// The Host field in the request that the client makes to UCP contains the UCP Host address
 		// That address will be used to construct the URL for reverse proxying
-		UCPHost: req.Host + p.Options.BasePath,
+		UCPHost: req.Host + p.basePath,
 	}
 
 	uri, err := url.Parse(newURL.Path)

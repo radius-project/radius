@@ -80,13 +80,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	if options.AzureProvider != nil {
-		err = addAzureProviderValues(helmChart, options.AzureProvider)
-		if err != nil {
-			return false, fmt.Errorf("failed to add azure provider values, err: %w, helm output: %s", err, helmOutput.String())
-		}
-	}
-
 	if options.AWSProvider != nil {
 		err = addAWSProviderValues(helmChart, options.AWSProvider)
 		if err != nil {
@@ -219,54 +212,28 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
-	_, ok := values["global"]
+	// TODO: clean up below code using options, for now retain it since CI/CD uses old rad env init with options.
+	_, ok := values["rp"]
 	if !ok {
-		values["global"] = make(map[string]any)
+		values["rp"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]any)
-
-	_, ok = global["radius"]
-	if !ok {
-		global["radius"] = make(map[string]any)
-	}
-	radius := global["radius"].(map[string]any)
-
-	_, ok = global["rp"]
-	if !ok {
-		global["rp"] = make(map[string]any)
-	}
-	rp := global["rp"].(map[string]any)
-
-	if options.Image != "" {
-		rp["container"] = options.Image
-	}
-
-	if options.Tag != "" {
-		rp["tag"] = options.Tag
-		radius["tag"] = options.Tag
-	}
-	if options.PublicEndpointOverride != "" {
-		rp["publicEndpointOverride"] = options.PublicEndpointOverride
-	}
-
-	_, ok = global["appcorerp"]
-	if !ok {
-		global["appcorerp"] = make(map[string]any)
-	}
-	appcorerp := global["appcorerp"].(map[string]any)
+	radiusRP := values["rp"].(map[string]any)
 
 	if options.AppCoreImage != "" {
-		appcorerp["image"] = options.AppCoreImage
+		radiusRP["image"] = options.AppCoreImage
 	}
 	if options.AppCoreTag != "" {
-		appcorerp["tag"] = options.AppCoreTag
+		radiusRP["tag"] = options.AppCoreTag
 	}
-
-	_, ok = global["ucp"]
+	if options.PublicEndpointOverride != "" {
+		radiusRP["publicEndpointOverride"] = options.PublicEndpointOverride
+	}
+	_, ok = values["ucp"]
 	if !ok {
-		global["ucp"] = make(map[string]any)
+		values["ucp"] = make(map[string]any)
 	}
-	ucp := global["ucp"].(map[string]any)
+	ucp := values["ucp"].(map[string]any)
+
 	if options.UCPImage != "" {
 		ucp["image"] = options.UCPImage
 	}
@@ -274,15 +241,16 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 		ucp["tag"] = options.UCPTag
 	}
 
-	_, ok = global["engine"]
+	_, ok = values["de"]
 	if !ok {
-		global["engine"] = make(map[string]any)
+		values["de"] = make(map[string]any)
 	}
+	de := values["de"].(map[string]any)
 
-	de := global["engine"].(map[string]any)
 	if options.DEImage != "" {
 		de["image"] = options.DEImage
 	}
+
 	if options.DETag != "" {
 		de["tag"] = options.DETag
 	}
@@ -291,7 +259,6 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -301,76 +268,25 @@ func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 	}
 	values := helmChart.Values
 
-	_, ok := values["global"]
+	_, ok := values["ucp"]
 	if !ok {
-		values["global"] = make(map[string]any)
+		values["ucp"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]any)
+	ucp := values["ucp"].(map[string]any)
 
-	_, ok = global["rp"]
+	_, ok = ucp["provider"]
 	if !ok {
-		global["rp"] = make(map[string]any)
+		ucp["provider"] = make(map[string]any)
 	}
-	rp := global["rp"].(map[string]any)
+	provider := ucp["provider"].(map[string]any)
 
-	_, ok = rp["provider"]
+	_, ok = provider["aws"]
 	if !ok {
-		rp["provider"] = make(map[string]any)
+		provider["aws"] = make(map[string]any)
 	}
-	provider := rp["provider"].(map[string]any)
+	aws := provider["aws"].(map[string]any)
 
-	provider["aws"] = map[string]any{
-		"accessKeyId":     awsProvider.AccessKeyId,
-		"secretAccessKey": awsProvider.SecretAccessKey,
-		"region":          awsProvider.TargetRegion,
-	}
-
-	return nil
-}
-
-func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provider) error {
-	if azureProvider == nil {
-		return nil
-	}
-	values := helmChart.Values
-
-	_, ok := values["global"]
-	if !ok {
-		values["global"] = make(map[string]any)
-	}
-	global := values["global"].(map[string]any)
-
-	_, ok = global["rp"]
-	if !ok {
-		global["rp"] = make(map[string]any)
-	}
-	rp := global["rp"].(map[string]any)
-
-	_, ok = rp["provider"]
-	if !ok {
-		rp["provider"] = make(map[string]any)
-	}
-	provider := rp["provider"].(map[string]any)
-
-	_, ok = provider["azure"]
-	if !ok {
-		provider["azure"] = make(map[string]any)
-	}
-
-	azure := provider["azure"].(map[string]any)
-
-	if azureProvider.ServicePrincipal != nil {
-		_, ok = azure["servicePrincipal"]
-		if !ok {
-			azure["servicePrincipal"] = make(map[string]any)
-		}
-		azure["servicePrincipal"] = map[string]any{
-			"clientId":     azureProvider.ServicePrincipal.ClientID,
-			"clientSecret": azureProvider.ServicePrincipal.ClientSecret,
-			"tenantId":     azureProvider.ServicePrincipal.TenantID,
-		}
-	}
-
+	aws["region"] = awsProvider.TargetRegion
 	return nil
 }
 

@@ -225,7 +225,6 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 				Protocol:      corev1.ProtocolTCP,
 			})
 		}
-
 	}
 
 	container := corev1.Container{
@@ -412,6 +411,9 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		// 3. Create Per-container service account.
 		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, serviceAccountName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
+
+		// This is required to enable workload identity.
+		podLabels[azrenderer.AzureWorkloadIdentityUseKey] = "true"
 
 		deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDServiceAccount})
 

@@ -35,8 +35,8 @@ func Test_Render_Success(t *testing.T) {
 	resource := datamodel.DaprInvokeHttpRoute{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test-http-route",
-				Name: "test-http-route",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test.http.route",
+				Name: "test.http.route",
 				Type: linkrp.DaprInvokeHttpRoutesResourceType,
 			},
 		},

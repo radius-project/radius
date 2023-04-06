@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-      "title": "Generic Resrource Management APIs",
+      "title": "Generic Resource Management APIs",
       "description": "REST APIs for Generic Resource",
       "version": "2022-03-15-privatepreview"
     },

@@ -1,0 +1,52 @@
+name: Nightly rad CLI tests
+
+on:
+  schedule:
+    # Run every day at 11:47 PM UTC
+    - cron: '47 23 * * *'
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/test.yaml
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            file: rad
+          - os: linux
+            arch: arm64
+            file: rad
+          - os: linux
+            arch: arm
+            file: rad
+          - os: macos
+            arch: x64
+            file: rad
+          - os: macos
+            arch: arm64
+            file: rad
+          - os: windows
+            arch: x64
+            file: rad.exe
+    steps:
+      - name: Download and parse latest version
+        run:
+          echo "RAD_VERSION=$(curl https://get.radapp.dev/version/stable.txt)" >> $GITHUB_ENV
+      - name: Download file
+        run: curl https://get.radapp.dev/tools/rad/${{ env.RAD_VERSION }}/${{ matrix.os }}-${{ matrix.arch }}/${{ matrix.file }} --fail-with-body -o ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.file }}
+      - name: Test Linux x64
+        if: ${{ matrix.os == 'linux' && matrix.arch == 'x64' }}
+        run: |
+          chmod +x ./${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.file }}
+          ./${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.file }} version
+      - name: Create GitHub issue on failure
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue create --title "CLI nightly test failed - ${{ matrix.os }}-${{ matrix.arch }}" --body "Test failed on ${{ github.repository }} for ${{ matrix.os }}-${{ matrix.arch }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --repo ${{ github.repository }}

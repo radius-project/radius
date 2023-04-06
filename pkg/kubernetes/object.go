@@ -133,3 +133,7 @@ func GetShortenedTargetPortName(name string) string {
 func IsValidObjectName(name string) bool {
 	return len(validation.IsDNS1123Label(name)) == 0
 }
+
+func IsValidDaprObjectName(name string) bool {
+	return len(validation.IsDNS1123Subdomain(name)) == 0
+}

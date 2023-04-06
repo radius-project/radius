@@ -56,7 +56,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		},
 	}
 
-	service, err := r.makeService(route, options)
+	service, err := r.makeService(ctx, route, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -68,7 +68,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (rpv1.OutputResource, error) {
+func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, options renderers.RenderOptions) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(route.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
@@ -83,9 +83,10 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(route.Name),
-			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(appId.Name(), route.Name, route.ResourceTypeName()),
+			Name:        kubernetes.NormalizeResourceName(route.Name),
+			Namespace:   options.Environment.Namespace,
+			Labels:      renderers.GetLabels(ctx, options, appId.Name(), route.Name, route.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(ctx, options),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),

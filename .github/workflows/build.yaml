@@ -49,6 +49,8 @@ jobs:
             target_arch: amd64
           - target_os: darwin
             target_arch: amd64
+          - target_os: darwin
+            target_arch: arm64
     steps:
       - name: Check out repo
         uses: actions/checkout@v3
@@ -70,11 +72,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Restore the previous coverage
-        id: radius-coverage-main
         uses: actions/cache/restore@v3
         with:
           path: ./dist/cache
-          key: radius-coverage-main
+          key: radius-coverage-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -163,7 +164,7 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           path: ./dist/cache
-          key: ${{ steps.radius-coverage-main.outputs.cache-primary-key }}
+          key: radius-coverage-${{ github.sha }}-${{ github.run_number }}
 
   # Logic here:
   # - always do a docker build for validation
@@ -195,42 +196,37 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: make docker-build
-        run: make docker-build
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: latest
-      - name: make docker-build (PR)
-        run: make docker-build
-        if: startsWith(github.ref, 'refs/pull/')
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make docker-build (release)
-        run: make docker-build
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - uses: azure/docker-login@v1
         with:
           login-server: ${{ env.DOCKER_REGISTRY }}
           username: '${{ secrets.DOCKER_USERNAME }}'
           password: '${{ secrets.DOCKER_PASSWORD }}'
-      - name: make docker-push (latest)
-        run: make docker-push
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+      - name: Push container images (latest)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
         if: (github.ref == 'refs/heads/main') # push image to latest on merge to main
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-      - name: make docker-push (PR)
-        run: make docker-push
+      - name: Push container images (PR)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make docker-push (release)
-        run: make docker-push
+      - name: Push container images (release)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
@@ -337,6 +333,11 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v3
         with:
+          name: rad_cli_darwin_arm64
+          path: rad_cli_darwin_arm64
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
           name: rad_cli_darwin_amd64
           path: rad_cli_darwin_amd64
       - name: Download release artifacts
@@ -366,6 +367,13 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           overwrite: 'true'
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: rad_cli_darwin_arm64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-arm64/ --pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
           source_dir: rad_cli_linux_amd64

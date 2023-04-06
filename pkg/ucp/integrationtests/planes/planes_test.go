@@ -13,6 +13,7 @@ import (
 
 const (
 	globalPlaneCollectionURL   = "/planes?api-version=2022-09-01-privatepreview"
+	planeTypeCollectionURL     = "/planes/radius?api-version=2022-09-01-privatepreview"
 	globalPlaneResponseFixture = "testdata/globalplane_v20220901privatepreview_list_responsebody.json"
 )
 
@@ -24,5 +25,16 @@ func Test_AllPlanes_LIST(t *testing.T) {
 	response.EqualsFixture(200, radiusPlaneResponseFixture)
 
 	response = server.MakeRequest("GET", globalPlaneCollectionURL, nil)
+	response.EqualsFixture(200, radiusPlaneListResponseFixture)
+}
+
+func Test_AllPlanes_LIST_BY_TYPE(t *testing.T) {
+	server := testserver.Start(t)
+	defer server.Close()
+
+	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
+	response.EqualsFixture(200, radiusPlaneResponseFixture)
+
+	response = server.MakeRequest("GET", planeTypeCollectionURL, nil)
 	response.EqualsFixture(200, radiusPlaneListResponseFixture)
 }

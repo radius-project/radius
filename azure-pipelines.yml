@@ -50,6 +50,9 @@ stages:
     - task: GoTool@0
       inputs:
         version: '1.20'
+    - task: DockerInstaller@0
+      inputs:
+        dockerVersion: '20.10.17'
     - script: |
         echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
       displayName: Set Go cache paths
@@ -254,8 +257,7 @@ stages:
           --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
           --name $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
           --yes \
-          --verbose \
-          --no-wait
+          --verbose
       displayName: Delete environment resource groups
       condition: always()
       continueOnError: 'true'
