@@ -30,5 +30,8 @@ func GetConfig() (*rest.Config, error) {
 		return nil, fmt.Errorf("failed to connect with kubeconfig: %w", err)
 	}
 
+	config.QPS = 200
+	config.Burst = 200
+
 	return config, nil
 }

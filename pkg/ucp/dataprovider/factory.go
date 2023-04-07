@@ -63,6 +63,9 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		}
 	}
 
+	config.QPS = 200
+	config.Burst = 200
+
 	// We only need to interact with UCP's store types.
 	scheme := runtime.NewScheme()
 
