@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radInit
+package radinit
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -122,7 +122,7 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("cool-existing-env"),
 					},
 				})
-				initExistingEnvironmentSelection(mocks.Prompter, common.SelectExistingEnvironmentCreateSentinel)
+				initExistingEnvironmentSelection(mocks.Prompter, SelectExistingEnvironmentCreateSentinel)
 
 				// Use default env name and namespace
 				initEnvNamePrompt(mocks.Prompter)
@@ -287,7 +287,7 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("default"),
 					},
 				})
-
+				initExistingEnvironmentSelection(mocks.Prompter, "default")
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
@@ -795,25 +795,25 @@ func initRadiusReinstallYes(prompter *prompt.MockInterface) {
 
 func initEnvNamePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterEnvironmentNamePrompt, gomock.Any()).
+		GetTextInput(validation.EnterEnvironmentNamePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
 func initEnvNamePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterEnvironmentNamePrompt, gomock.Any()).
+		GetTextInput(validation.EnterEnvironmentNamePrompt, gomock.Any()).
 		Return("", errors.New("unable to read prompt")).Times(1)
 }
 
 func initNamespacePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterNamespacePrompt, gomock.Any()).
+		GetTextInput(EnterNamespacePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
 func initNamespacePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterNamespacePrompt, gomock.Any()).
+		GetTextInput(EnterNamespacePrompt, gomock.Any()).
 		Return("", errors.New("Unable to read namespace")).Times(1)
 }
 
@@ -855,7 +855,7 @@ func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClien
 
 func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.SelectExistingEnvironmentPrompt).
+		GetListInput(gomock.Any(), SelectExistingEnvironmentPrompt).
 		Return(choice, nil).Times(1)
 }
 

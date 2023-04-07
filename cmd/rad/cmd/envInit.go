@@ -17,7 +17,8 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
+	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -71,7 +72,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	namespace, err := common.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
+	namespace, err := radinit.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -107,7 +108,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return fmt.Errorf("unknown environment type: %s", kind)
 	}
 
-	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
+	environmentName, err := validation.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}

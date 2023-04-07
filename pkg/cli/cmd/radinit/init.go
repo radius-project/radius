@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radInit
+package radinit
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -65,8 +65,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
-	commonflags.AddWorkspaceFlag(cmd)
-	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().Bool("dev", false, "Setup Radius for development")
 	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
 	return cmd, runner
@@ -206,7 +204,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		// The best way to accomplish that is to run SelectedExistingEnvironment in non-interactive mode
 		// first, and then try again interactively if we get no results.
 		if r.Dev {
-			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", false, r.Prompter, environments)
+			r.EnvName, err = SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -216,7 +214,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 
 		if r.EnvName == "" {
-			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", true, r.Prompter, environments)
+			r.EnvName, err = SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -270,7 +268,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.EnvName = "default"
 		} else {
-			r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
+			r.EnvName, err = validation.SelectEnvironmentName(cmd, "default", true, r.Prompter)
 			if err != nil {
 				if errors.Is(err, &prompt.ErrExitConsole{}) {
 					return &cli.FriendlyError{Message: err.Error()}
@@ -283,7 +281,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Dev {
 			r.Namespace = "default"
 		} else {
-			r.Namespace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
+			r.Namespace, err = SelectNamespace(cmd, "default", true, r.Prompter)
 			if err != nil {
 				return &cli.FriendlyError{Message: "Namespace not specified"}
 			}
@@ -305,7 +303,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 					return &cli.FriendlyError{Message: "Error reading cloud provider"}
 				}
 				switch cloudProvider {
-				case common.AzureCloudProvider:
+				case validation.AzureCloudProvider:
 					r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
 						if errors.Is(err, &prompt.ErrExitConsole{}) {
@@ -313,7 +311,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 						}
 						return err
 					}
-				case common.AWSCloudProvider:
+				case validation.AWSCloudProvider:
 					r.AwsCloudProvider, err = r.SetupInterface.ParseAWSProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
 						if errors.Is(err, &prompt.ErrExitConsole{}) {
@@ -419,7 +417,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr(r.Namespace),
 			},
-			Providers: &providers,
+			Providers:     &providers,
 			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		}
 
@@ -560,7 +558,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 
 // Selects the cloud provider, returns -1 if back and -2 if not supported
 func selectCloudProvider(prompter prompt.Interface) (string, error) {
-	values := []string{common.AzureCloudProvider, common.AWSCloudProvider, backNavigator}
+	values := []string{validation.AzureCloudProvider, validation.AWSCloudProvider, backNavigator}
 	return prompter.GetListInput(values, selectCloudProviderPrompt)
 }
 
