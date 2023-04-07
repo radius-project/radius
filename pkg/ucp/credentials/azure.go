@@ -52,12 +52,11 @@ func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name str
 
 	switch p := cred.Properties.(type) {
 	case *ucpapi.AzureServicePrincipalProperties:
-
 		switch c := p.Storage.(type) {
 		case *ucpapi.InternalCredentialStorageProperties:
 			storage = c
 		default:
-			return nil, errors.New("invalid InternalCredentialStorageProperties")
+			return nil, errors.New("invalid AzureServicePrincipalProperties")
 		}
 	default:
 		return nil, errors.New("invalid InternalCredentialStorageProperties")

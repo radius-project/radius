@@ -22,17 +22,17 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ armrpc_controller.Controller = (*DeleteCredential)(nil)
+var _ armrpc_controller.Controller = (*DeleteAzureCredential)(nil)
 
 // DeleteAzureCredential is the controller implementation to delete a UCP Azure credential.
-type DeleteCredential struct {
+type DeleteAzureCredential struct {
 	armrpc_controller.Operation[*datamodel.AzureCredential, datamodel.AzureCredential]
 	secretClient secret.Client
 }
 
 // NewDeleteAzureCredential creates a new DeleteAzureCredential.
 func NewDeleteAzureCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &DeleteCredential{
+	return &DeleteAzureCredential{
 		Operation: armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.AzureCredential]{
 				RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
@@ -43,7 +43,7 @@ func NewDeleteAzureCredential(opts ctrl.Options) (armrpc_controller.Controller, 
 	}, nil
 }
 
-func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+func (c *DeleteAzureCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -77,6 +77,6 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("Deleted Credential %s successfully", serviceCtx.ResourceID))
+	logger.Info(fmt.Sprintf("Deleted Azure Credential %s successfully", serviceCtx.ResourceID))
 	return armrpc_rest.NewOKResponse(nil), nil
 }

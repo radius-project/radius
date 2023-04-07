@@ -56,7 +56,7 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 		case *ucpapi.InternalCredentialStorageProperties:
 			storage = c
 		default:
-			return nil, errors.New("invalid InternalCredentialStorageProperties")
+			return nil, errors.New("invalid AWSAccessKeyCredentialProperties")
 		}
 	default:
 		return nil, errors.New("invalid InternalCredentialStorageProperties")
