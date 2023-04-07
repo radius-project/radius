@@ -1,6 +1,0 @@
-{
-    "location": "global",
-    "id": "/planes/radius/local/resourceGroups/test-rg",
-    "name": "test-rg",
-    "type": "System.Planes/resourceGroups"
-}

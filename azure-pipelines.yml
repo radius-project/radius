@@ -50,6 +50,9 @@ stages:
     - task: GoTool@0
       inputs:
         version: '1.20'
+    - task: DockerInstaller@0
+      inputs:
+        dockerVersion: '20.10.17'
     - script: |
         echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
       displayName: Set Go cache paths
@@ -247,7 +250,7 @@ stages:
         PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH: $(Build.SourcesDirectory)/samples
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
-      artifact: $(targetName)FunctionalTest.$(Build.BuildNumber)
+      artifact: $(targetName)FunctionalTest.$(Build.BuildNumber).$(System.JobAttempt)
       condition: always()
     - script: |
         az group delete \

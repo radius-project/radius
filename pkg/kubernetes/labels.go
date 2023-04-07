@@ -64,6 +64,19 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 	}
 }
 
+// MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes Dapr resource associated with a Radius resource.
+// The descriptive labels are a superset of the selector labels.
+func MakeDescriptiveDaprLabels(application string, resource string, resourceType string) map[string]string {
+	return map[string]string{
+		LabelRadiusApplication:  NormalizeResourceName(application),
+		LabelRadiusResource:     NormalizeDaprResourceName(resource),
+		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),
+		LabelName:               NormalizeDaprResourceName(resource),
+		LabelPartOf:             NormalizeResourceName(application),
+		LabelManagedBy:          LabelManagedByRadiusRP,
+	}
+}
+
 // MakeSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
@@ -97,7 +110,7 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 }
 
 // NormalizeResourceName normalizes resource name used for kubernetes resource name scoped in namespace.
-// All name will be validated by swagger validaiton so that it does not get non-RFC1035 compliant characters.
+// All name will be validated by swagger validation so that it does not get non-RFC1035 compliant characters.
 // Therefore, this function will lowercase the name without allowed character validation.
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
 func NormalizeResourceName(name string) string {
@@ -107,6 +120,23 @@ func NormalizeResourceName(name string) string {
 	}
 
 	if !IsValidObjectName(normalized) {
+		// This should not happen.
+		panic(normalized + " is an invalid name.")
+	}
+	return normalized
+}
+
+// NormalizeDaprResourceName normalizes resource name used for kubernetes Dapr resource name scoped in namespace.
+// All name will be validated by swagger validation so that it does not get non-RFC1035 compliant characters.
+// Therefore, this function will lowercase the name without allowed character validation.
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+func NormalizeDaprResourceName(name string) string {
+	normalized := strings.ToLower(name)
+	if normalized == "" {
+		return normalized
+	}
+
+	if !IsValidDaprObjectName(normalized) {
 		// This should not happen.
 		panic(normalized + " is an invalid name.")
 	}

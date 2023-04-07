@@ -40,3 +40,33 @@ func TestIsValidObjectName(t *testing.T) {
 		})
 	}
 }
+
+func TestIsValidDaprObjectName(t *testing.T) {
+	tests := []struct {
+		in    string
+		valid bool
+	}{
+		{
+			"default.corerp.resources.dapr.pubsub.generic",
+			true,
+		},
+		{
+			"default.corerp-resources-dapr-pubsub-generic",
+			true,
+		},
+		{
+			"default_corerp_resources_dapr_pubsub_generic",
+			false,
+		},
+		{
+			"",
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			require.Equal(t, tt.valid, IsValidDaprObjectName(tt.in))
+		})
+	}
+}

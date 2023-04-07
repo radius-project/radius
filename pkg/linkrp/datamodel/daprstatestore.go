@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -25,6 +26,11 @@ type DaprStateStore struct {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if cn, ok := do.ComputedValues[renderers.ComponentNameKey].(string); ok {
+		r.Properties.ComponentName = cn
+	}
 	return nil
 }
 

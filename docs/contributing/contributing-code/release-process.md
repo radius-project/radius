@@ -125,8 +125,7 @@ If sample validation passes, we can start the process of creating the final rele
 1. Go through steps 1-3 of "Creating an RC release" above, substituting the final release version instead of the RC version.
 
    For example, if the RC version is `v0.17.0-rc1`, the final release version would be `v0.17.0`.
-1. Manually upload [Grafana dashboard json](https://github.com/project-radius/radius/tree/main/grafana) to radiuspublic storage account under `tools/grafana`.
-1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)  
+1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)
 1. Check the stable version marker
 
    The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.

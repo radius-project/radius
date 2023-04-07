@@ -8,7 +8,6 @@ package resource_test
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
@@ -95,10 +94,10 @@ func Test_KubeMetadataCascade(t *testing.T) {
 				require.Len(t, pods.Items, 1)
 				t.Logf("validated number of pods: %d", len(pods.Items))
 				pod := pods.Items[0]
-				require.True(t, isMapSubSet(expectedAnnotations, pod.Annotations))
-				require.True(t, isMapSubSet(expectedLabels, pod.Labels))
-				require.True(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations))
-				require.True(t, isMapNonIntersecting(notExpectedLabels, pod.Labels))
+				require.True(t, functional.IsMapSubSet(expectedAnnotations, pod.Annotations))
+				require.True(t, functional.IsMapSubSet(expectedLabels, pod.Labels))
+				require.True(t, functional.IsMapNonIntersecting(notExpectedAnnotations, pod.Annotations))
+				require.True(t, functional.IsMapNonIntersecting(notExpectedLabels, pod.Labels))
 
 				// Verify deployment labels and annotations
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
@@ -107,39 +106,13 @@ func Test_KubeMetadataCascade(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, deployments.Items, 1)
 				deployment := deployments.Items[0]
-				require.True(t, isMapSubSet(expectedAnnotations, deployment.Annotations))
-				require.True(t, isMapSubSet(expectedLabels, deployment.Labels))
-				require.True(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations))
-				require.True(t, isMapNonIntersecting(notExpectedLabels, pod.Labels))
+				require.True(t, functional.IsMapSubSet(expectedAnnotations, deployment.Annotations))
+				require.True(t, functional.IsMapSubSet(expectedLabels, deployment.Labels))
+				require.True(t, functional.IsMapNonIntersecting(notExpectedAnnotations, pod.Annotations))
+				require.True(t, functional.IsMapNonIntersecting(notExpectedLabels, pod.Labels))
 			},
 		},
 	})
 
 	test.Test(t)
-}
-
-func isMapSubSet(expectedMap map[string]string, actualMap map[string]string) bool {
-	if len(expectedMap) > len(actualMap) {
-		return false
-	}
-
-	for k1, v1 := range expectedMap {
-		v2, ok := actualMap[k1]
-		if !(ok && strings.EqualFold(v1, v2)) {
-			return false
-		}
-
-	}
-
-	return true
-}
-
-func isMapNonIntersecting(notExpectedMap map[string]string, actualMap map[string]string) bool {
-	for k1 := range notExpectedMap {
-		if _, ok := actualMap[k1]; ok {
-			return false
-		}
-	}
-
-	return true
 }

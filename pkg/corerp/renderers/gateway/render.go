@@ -71,7 +71,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port)
 	}
 
-	gatewayObject, err := MakeGateway(options, gateway, gateway.Name, applicationName, hostname)
+	gatewayObject, err := MakeGateway(ctx, options, gateway, gateway.Name, applicationName, hostname)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -84,7 +84,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		},
 	}
 
-	httpRouteObjects, err := MakeHttpRoutes(options, *gateway, &gateway.Properties, gatewayName, applicationName)
+	httpRouteObjects, err := MakeHttpRoutes(ctx, options, *gateway, &gateway.Properties, gatewayName, applicationName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -97,7 +97,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 }
 
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
-func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
+func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
 	includes := []contourv1.Include{}
 	sslPassthrough := false
 
@@ -188,9 +188,10 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 			APIVersion: contourv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(resourceName),
-			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, gateway.ResourceTypeName()),
+			Name:        kubernetes.NormalizeResourceName(resourceName),
+			Namespace:   options.Environment.Namespace,
+			Labels:      renderers.GetLabels(ctx, options, applicationName, resourceName, gateway.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(ctx, options),
 		},
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: virtualHost,
@@ -205,7 +206,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 }
 
 // MakeHttpRoutes creates the kubernetes httproute construct from the corerp gateway datamodel
-func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]rpv1.OutputResource, error) {
+func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]rpv1.OutputResource, error) {
 	dependencies := options.Dependencies
 	objects := make(map[string]*contourv1.HTTPProxy)
 
@@ -266,9 +267,10 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 				APIVersion: contourv1.SchemeGroupVersion.String(),
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      routeResourceName,
-				Namespace: options.Environment.Namespace,
-				Labels:    kubernetes.MakeDescriptiveLabels(applicationName, routeName, resource.ResourceTypeName()),
+				Name:        routeResourceName,
+				Namespace:   options.Environment.Namespace,
+				Labels:      renderers.GetLabels(ctx, options, applicationName, routeName, resource.ResourceTypeName()),
+				Annotations: renderers.GetAnnotations(ctx, options),
 			},
 			Spec: contourv1.HTTPProxySpec{
 				Routes: []contourv1.Route{

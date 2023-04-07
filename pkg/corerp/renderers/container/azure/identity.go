@@ -26,6 +26,10 @@ import (
 const (
 	azureWorkloadIdentityClientID = "azure.workload.identity/client-id"
 	azureWorkloadIdentityTenantID = "azure.workload.identity/tenant-id"
+
+	// AzureWorkloadIdentityUseKey represents the key of azure workload identity to enable in Pod and SA.
+	// https://azure.github.io/azure-workload-identity/docs/topics/service-account-labels-and-annotations.html?highlight=azure.workload.identity#pod
+	AzureWorkloadIdentityUseKey = "azure.workload.identity/use"
 )
 
 // MakeManagedIdentity builds a user-assigned managed identity output resource.
@@ -158,7 +162,7 @@ func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantI
 // MakeFederatedIdentitySA builds service account for the federated identity.
 func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
-	labels["azure.workload.identity/use"] = "true"
+	labels[AzureWorkloadIdentityUseKey] = "true"
 
 	sa := &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
