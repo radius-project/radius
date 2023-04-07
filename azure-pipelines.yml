@@ -250,7 +250,7 @@ stages:
         PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH: $(Build.SourcesDirectory)/samples
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
-      artifact: $(targetName)FunctionalTest.$(Build.BuildNumber)
+      artifact: $(targetName)FunctionalTest.$(Build.BuildNumber).$(System.JobAttempt)
       condition: always()
     - script: |
         az group delete \
