@@ -249,7 +249,7 @@ model Root<PlaneResource> {
 
 @armResourceOperations
 interface ResourceGroups
-    extends ResourceGroupResourceOperations<
+    extends CommonResourceOperations<
             ResourceGroupResource,
             BasicResourceProperties,
             Root<PlaneResource>
@@ -257,7 +257,7 @@ interface ResourceGroups
 
 @armResourceOperations
 interface AzureCredential
-    extends CredentialResourceOperations<
+    extends CommonResourceOperations<
             AzureCredentialResource,
             AzureCredentialProperties,
             AzurePlaneNameParameter
@@ -266,7 +266,7 @@ interface AzureCredential
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
 @armResourceOperations
 interface AWSCredential
-    extends CredentialResourceOperations<
+    extends CommonResourceOperations<
             AWSCredentialResource,
             AWSCredentialProperties,
             AWSPlaneNameParameter

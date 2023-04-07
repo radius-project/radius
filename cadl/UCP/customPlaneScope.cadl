@@ -100,18 +100,6 @@ interface PlaneTypeOperations<
       PlaneInstanceParameters<TResource, TRootParams>
     > {}
 
-interface ResourceGroupResourceOperations<
-  TResource extends ArmResource,
-  TProperties extends object,
-  TRootParams
-> extends CommonResourceOperations<TResource, TProperties, TRootParams> {}
-
-interface CredentialResourceOperations<
-  TResource extends ArmResource,
-  TProperties extends object,
-  TRootParams
-> extends CommonResourceOperations<TResource, TProperties, TRootParams> {}
-
 interface ListByParent<TResource extends ArmResource, TRootParams> {
   @get
   //@pageable
