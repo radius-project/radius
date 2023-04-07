@@ -67,6 +67,7 @@ type ServiceOptions struct {
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
 	Location                string
+	EnableProfiling         bool
 }
 
 type Service struct {
@@ -118,7 +119,6 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
-
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
 	// TODO: this is used EVERYWHERE right now. We'd like to pass
 	// around storage provider instead but will have to refactor
@@ -158,8 +158,9 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 			// TODO: These fields are not used in UCP. We'd like to unify these
 			// options types eventually, but that will take some time.
-			SecretClient: nil,
-			KubeClient:   nil,
+			SecretClient:    nil,
+			KubeClient:      nil,
+			EnableProfiling: s.options.EnableProfiling,
 		},
 	}
 

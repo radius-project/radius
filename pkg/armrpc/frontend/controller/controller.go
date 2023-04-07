@@ -40,6 +40,9 @@ type Options struct {
 
 	// StatusManager
 	StatusManager sm.StatusManager
+
+	// EnableProfiling determines if pprof profiling is enabled
+	EnableProfiling bool
 }
 
 // ResourceOptions represents the options and filters for resource.

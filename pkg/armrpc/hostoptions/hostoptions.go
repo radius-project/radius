@@ -44,6 +44,9 @@ type HostOptions struct {
 
 	// UCPConnection is a connection to the UCP endpoint.
 	UCPConnection sdk.Connection
+
+	// EnableProfiling determines if pprof profiling is enabled
+	EnableProfiling bool
 }
 
 func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConfig, error) {
@@ -88,11 +91,14 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
+	enableProfiling := os.Getenv("ENABLE_PROFILING") == "true"
+
 	return HostOptions{
-		Config:        conf,
-		K8sConfig:     k8s,
-		Arm:           arm,
-		UCPConnection: ucp_conn,
+		Config:          conf,
+		K8sConfig:       k8s,
+		Arm:             arm,
+		UCPConnection:   ucp_conn,
+		EnableProfiling: enableProfiling,
 	}, nil
 }
 

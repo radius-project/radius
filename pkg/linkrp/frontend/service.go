@@ -48,9 +48,10 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	opts := ctrl.Options{
-		DataProvider:  s.StorageProvider,
-		KubeClient:    s.KubeClient,
-		StatusManager: s.OperationStatusManager,
+		DataProvider:    s.StorageProvider,
+		KubeClient:      s.KubeClient,
+		StatusManager:   s.OperationStatusManager,
+		EnableProfiling: s.Options.EnableProfiling,
 	}
 
 	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, sv.NewSecretValueClient(s.Options.Arm), s.KubeClient)

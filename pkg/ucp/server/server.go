@@ -53,6 +53,7 @@ type Options struct {
 	Identity               hostoptions.Identity
 	UCPConnection          sdk.Connection
 	Location               string
+	EnableProfiling        bool
 }
 
 const UCPProviderName = "ucp"
@@ -112,6 +113,8 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		return Options{}, err
 	}
 
+	enableProfiling := os.Getenv("ENABLE_PROFILING") == "true"
+
 	return Options{
 		Port:                   port,
 		TLSCertDir:             tlsCertDir,
@@ -126,6 +129,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		Identity:               identity,
 		UCPConnection:          ucpConn,
 		Location:               location,
+		EnableProfiling:        enableProfiling,
 	}, nil
 }
 
@@ -146,6 +150,7 @@ func NewServer(options *Options) (*hosting.Host, error) {
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
 			Location:               options.Location,
+			EnableProfiling:        options.EnableProfiling,
 		}),
 	}
 
