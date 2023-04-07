@@ -230,7 +230,7 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all ResourceGroupResources in the given resource group
+// NewListByRootScopePager - Lists information about all ResourceGroupResource
 // Generated from API version 2022-09-01-privatepreview
 // planeType - The plane type.
 // planeName - The name of the plane

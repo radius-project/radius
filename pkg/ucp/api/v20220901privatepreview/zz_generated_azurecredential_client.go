@@ -215,7 +215,7 @@ func (client *AzureCredentialClient) getHandleResponse(resp *http.Response) (Azu
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all AzureCredentialResources in the given credential
+// NewListByRootScopePager - Lists information about all AzureCredentialResource
 // Generated from API version 2022-09-01-privatepreview
 // planeName - The name of the plane
 // options - AzureCredentialClientListByRootScopeOptions contains the optional parameters for the AzureCredentialClient.ListByRootScope

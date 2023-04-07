@@ -215,7 +215,7 @@ func (client *AwsCredentialClient) getHandleResponse(resp *http.Response) (AwsCr
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all AWSCredentialResources in the given credential
+// NewListByRootScopePager - Lists information about all AWSCredentialResource
 // Generated from API version 2022-09-01-privatepreview
 // planeName - The name of the plane
 // options - AwsCredentialClientListByRootScopeOptions contains the optional parameters for the AwsCredentialClient.ListByRootScope

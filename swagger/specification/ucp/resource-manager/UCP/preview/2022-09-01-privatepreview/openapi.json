@@ -270,7 +270,7 @@
           "ResourceGroups"
         ],
         "operationId": "ResourceGroups_ListByRootScope",
-        "description": "Lists information about all ResourceGroupResources in the given resource group",
+        "description": "Lists information about all ResourceGroupResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -483,7 +483,7 @@
           "AWSCredential"
         ],
         "operationId": "AwsCredential_ListByRootScope",
-        "description": "Lists information about all AWSCredentialResources in the given credential",
+        "description": "Lists information about all AWSCredentialResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -665,7 +665,7 @@
           "AzureCredential"
         ],
         "operationId": "AzureCredential_ListByRootScope",
-        "description": "Lists information about all AzureCredentialResources in the given credential",
+        "description": "Lists information about all AzureCredentialResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
