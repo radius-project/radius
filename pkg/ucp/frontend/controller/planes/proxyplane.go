@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -145,7 +146,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	}
 
 	options := proxy.ReverseProxyOptions{
-		RoundTripper:     http.DefaultTransport,
+		RoundTripper:     otelhttp.NewTransport(http.DefaultTransport),
 		ProxyAddress:     p.address,
 		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
