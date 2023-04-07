@@ -14,21 +14,28 @@ import (
 )
 
 const (
-	DefaultQPS   float32 = 200.0
-	DefaultBurst int     = 200
+	// DefaultQPS is the default number of queries per second.
+	DefaultQPS float32 = 200.0
+	// DefaultBurst is the default number of queries client handles concurrently.
+	DefaultBurst int = 200
 )
 
-// NewClusterConfig gets the Kubernetes config
-func NewClusterConfig() (*rest.Config, error) {
+// NewClusterConfig loads kubeconfig in cluster or from the file specified by configFilePath.
+// If configFilePath is empty string, we will use kube config from home directory.
+func NewClusterConfig(configFilePath string) (*rest.Config, error) {
+	if configFilePath == "" {
+		configFilePath = clientcmd.RecommendedHomeFile
+	}
+
 	config, err := rest.InClusterConfig()
 	if errors.Is(err, rest.ErrNotInCluster) {
 		// Not in a cluster, fall back to local kubeconfig
-		config, err = clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
+		config, err = clientcmd.BuildConfigFromFlags("", configFilePath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to connect with kubeconfig: %w", err)
+			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 		}
 	} else if err != nil {
-		return nil, fmt.Errorf("failed to connect with in-cluster config: %w", err)
+		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}
 
 	config.QPS = DefaultQPS
@@ -37,25 +44,30 @@ func NewClusterConfig() (*rest.Config, error) {
 	return config, nil
 }
 
-// NewClusterConfigWithContext creates cluster config with context.
-func NewClusterConfigWithContext(onlyInCluster bool, contextName string) (*rest.Config, error) {
+// NewClusterConfigWithContext loads kubeconfig in cluster or from the file specified by configFilePath.
+// If configFilePath is empty string, we will use kube config from home directory.
+func NewClusterConfigWithContext(configFilePath, contextName string, onlyInCluster bool) (*rest.Config, error) {
+	if configFilePath == "" {
+		configFilePath = clientcmd.RecommendedHomeFile
+	}
+
 	var err error
 	var config *rest.Config
 
 	if onlyInCluster {
 		config, err = rest.InClusterConfig()
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
+			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 		}
 	} else {
-		cfg, err := clientcmd.LoadFromFile(clientcmd.RecommendedHomeFile)
+		cfg, err := clientcmd.LoadFromFile(configFilePath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
+			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 		}
 
 		config, err = clientcmd.NewNonInteractiveClientConfig(*cfg, contextName, nil, nil).ClientConfig()
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
+			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 		}
 	}
 

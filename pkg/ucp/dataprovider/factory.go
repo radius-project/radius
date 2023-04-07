@@ -34,7 +34,7 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		return nil, errors.New("failed to initialize APIServer client: namespace is required")
 	}
 
-	config, err := kubeutil.NewClusterConfigWithContext(opt.APIServer.InCluster, opt.APIServer.Context)
+	cfg, err := kubeutil.NewClusterConfigWithContext("", opt.APIServer.Context, opt.APIServer.InCluster)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		},
 	}
 
-	rc, err := runtimeclient.New(config, options)
+	rc, err := runtimeclient.New(cfg, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
 	}
