@@ -10,6 +10,7 @@ import (
 
 	model "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -25,9 +26,9 @@ const (
 )
 
 func Test_GetConfigurationAzure(t *testing.T) {
-	envConfig := &Configuration{
-		Runtime: RuntimeConfiguration{
-			Kubernetes: &KubernetesRuntime{
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				EnvironmentNamespace: "default",
 			},
 		},
@@ -53,9 +54,9 @@ func Test_GetConfigurationAzure(t *testing.T) {
 }
 
 func Test_GetConfigurationAWS(t *testing.T) {
-	envConfig := &Configuration{
-		Runtime: RuntimeConfiguration{
-			Kubernetes: &KubernetesRuntime{
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				EnvironmentNamespace: "default",
 			},
 		},
@@ -79,9 +80,9 @@ func Test_GetConfigurationAWS(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, envConfig, result)
 
-	appConfig := &Configuration{
-		Runtime: RuntimeConfiguration{
-			Kubernetes: &KubernetesRuntime{
+	appConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				Namespace: "app-default",
 			},
 		},

@@ -46,7 +46,7 @@ func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.M
 }
 
 func Test_Engine_Success(t *testing.T) {
-	recipeMetadata := recipes.RecipeMetadata{
+	recipeMetadata := recipes.Metadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
@@ -55,9 +55,9 @@ func Test_Engine_Success(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-	envConfig := &configloader.Configuration{
-		Runtime: configloader.RuntimeConfiguration{
-			Kubernetes: &configloader.KubernetesRuntime{
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				Namespace: "default",
 			},
 		},
@@ -77,7 +77,7 @@ func Test_Engine_Success(t *testing.T) {
 			"port": 10255,
 		},
 	}
-	recipeDefinition := &configloader.RecipeDefinition{
+	recipeDefinition := &recipes.Definition{
 		Driver:       "bicep",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
@@ -98,13 +98,13 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, _ := setup(t)
 
-	recipeDefinition := &configloader.RecipeDefinition{
+	recipeDefinition := &recipes.Definition{
 		Driver:       "invalid",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}
 
-	recipeMetadata := recipes.RecipeMetadata{
+	recipeMetadata := recipes.Metadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
@@ -123,7 +123,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 func Test_Engine_Lookup_Error(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, _ := setup(t)
-	recipeMetadata := recipes.RecipeMetadata{
+	recipeMetadata := recipes.Metadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
@@ -140,7 +140,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 func Test_Engine_Load_Error(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, _ := setup(t)
-	recipeMetadata := recipes.RecipeMetadata{
+	recipeMetadata := recipes.Metadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
@@ -149,7 +149,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-	recipeDefinition := &configloader.RecipeDefinition{
+	recipeDefinition := &recipes.Definition{
 		Driver:       "bicep",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",

@@ -21,7 +21,6 @@ import (
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/rp/util"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -48,7 +47,7 @@ type bicepDriver struct {
 }
 
 // Execute fetches the recipe contents from acr and deploys the recipe by making a call to ucp and returns the recipe result.
-func (d *bicepDriver) Execute(ctx context.Context, configuration configloader.Configuration, recipe recipes.RecipeMetadata, definition configloader.RecipeDefinition) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.Metadata, definition recipes.Definition) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
 
@@ -138,8 +137,8 @@ func createRecipeContextParameter(resourceID, environmentID, environmentNamespac
 			Name: parsedEnv.Name(),
 			ID:   environmentID,
 		},
-		Runtime: configloader.RuntimeConfiguration{
-			Kubernetes: &configloader.KubernetesRuntime{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				Namespace:            environmentNamespace,
 				EnvironmentNamespace: environmentNamespace,
 			},

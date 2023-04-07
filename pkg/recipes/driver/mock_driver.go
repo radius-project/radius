@@ -10,7 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	recipes "github.com/project-radius/radius/pkg/recipes"
-	configloader "github.com/project-radius/radius/pkg/recipes/configloader"
 )
 
 // MockDriver is a mock of Driver interface.
@@ -37,7 +36,7 @@ func (m *MockDriver) EXPECT() *MockDriverMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockDriver) Execute(arg0 context.Context, arg1 configloader.Configuration, arg2 recipes.RecipeMetadata, arg3 configloader.RecipeDefinition) (*recipes.RecipeOutput, error) {
+func (m *MockDriver) Execute(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.Metadata, arg3 recipes.Definition) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)

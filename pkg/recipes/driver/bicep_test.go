@@ -11,7 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -66,8 +65,8 @@ func Test_ContextParameter(t *testing.T) {
 			Name: "env0",
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		},
-		Runtime: configloader.RuntimeConfiguration{
-			Kubernetes: &configloader.KubernetesRuntime{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				Namespace:            "radius-test-app",
 				EnvironmentNamespace: "radius-test-env",
 			},
@@ -101,8 +100,8 @@ func Test_DevParameterWithContextParameter(t *testing.T) {
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
-		Runtime: configloader.RuntimeConfiguration{
-			Kubernetes: &configloader.KubernetesRuntime{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
 				EnvironmentNamespace: "radius-test-env",
 				Namespace:            "radius-test-app",
 			},

@@ -9,13 +9,12 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
 )
 
 // Driver is an interface to implement recipe deployment.
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
-	Execute(ctx context.Context, configuration configloader.Configuration, recipe recipes.RecipeMetadata, definition configloader.RecipeDefinition) (*recipes.RecipeOutput, error)
+	Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.Metadata, definition recipes.Definition) (*recipes.RecipeOutput, error)
 }
 
 // RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
@@ -28,7 +27,7 @@ type RecipeContext struct {
 	// Environment represents environment resource information.
 	Environment ResourceInfo `json:"environment,omitempty"`
 	// Runtime represents Kubernetes Runtime configuration.
-	Runtime configloader.RuntimeConfiguration `json:"runtime,omitempty"`
+	Runtime recipes.RuntimeConfiguration `json:"runtime,omitempty"`
 }
 
 // Resource contains the information needed to deploy a recipe.

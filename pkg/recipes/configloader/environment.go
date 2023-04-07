@@ -35,7 +35,7 @@ type environmentLoader struct {
 }
 
 // LoadConfiguration fetches environment/application information and return runtime and provider configuration.
-func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.RecipeMetadata) (*Configuration, error) {
+func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.Metadata) (*recipes.Configuration, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {
 		return nil, err
@@ -52,11 +52,11 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 	return getConfiguration(environment, application)
 }
 
-func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*Configuration, error) {
-	configuration := Configuration{Runtime: RuntimeConfiguration{}, Providers: datamodel.Providers{}}
+func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*recipes.Configuration, error) {
+	configuration := recipes.Configuration{Runtime: recipes.RuntimeConfiguration{}, Providers: datamodel.Providers{}}
 	if environment.Properties.Compute != nil && *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
 		// This is a Kubernetes environment
-		configuration.Runtime.Kubernetes = &KubernetesRuntime{}
+		configuration.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 		var err error
 		// Prefer application namespace if set
 		if application != nil {
@@ -87,7 +87,7 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 }
 
 //	LoadRecipe fetches the recipe information from the environment.
-func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.RecipeMetadata) (*RecipeDefinition, error) {
+func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metadata) (*recipes.Definition, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Recip
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
 
-	return &RecipeDefinition{
+	return &recipes.Definition{
 		Driver:       Bicep,
 		ResourceType: *found.LinkType,
 		Parameters:   found.Parameters,
