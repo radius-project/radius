@@ -51,6 +51,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 				"BucketName": bucketName,
 			},
 		}
+		t.Logf("Going to delete %s", deleteURL)
 		deleteBody, err := json.Marshal(deleteRequestBody)
 		require.NoError(t, err)
 
