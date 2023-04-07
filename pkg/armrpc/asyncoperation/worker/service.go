@@ -10,7 +10,7 @@ import (
 
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
@@ -56,7 +56,7 @@ func (s *Service) Init(ctx context.Context) error {
 	s.Controllers = NewControllerRegistry(s.StorageProvider)
 
 	if s.Options.K8sConfig != nil {
-		s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
+		s.KubeClient, err = kubeutil.NewKubeClient(s.Options.K8sConfig)
 		if err != nil {
 			return err
 		}

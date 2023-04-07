@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package client
+package kubeutil
 
 import (
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -16,8 +16,8 @@ import (
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
 
-// CreateKubeClient creates new kubernetes clients.
-func CreateKubeClient(config *rest.Config) (runtimeclient.Client, error) {
+// NewKubeClient creates new kubernetes clients.
+func NewKubeClient(config *rest.Config) (runtimeclient.Client, error) {
 	scheme := runtime.NewScheme()
 
 	// TODO: add required resource scheme.

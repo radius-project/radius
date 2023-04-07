@@ -36,6 +36,10 @@ type APIServerOptions struct {
 
 	// Namespace configures the Kubernetes namespace used for data-storage. The namespace must already exist.
 	Namespace string `yaml:"namespace"`
+
+	QPS *float32 `yaml:"QPS,omitempty"`
+
+	Burst int `yaml:"Burst,omitempty"`
 }
 
 // CosmosDBOptions represents cosmosdb options for data storage provider.

@@ -9,17 +9,15 @@ import (
 	context "context"
 	"errors"
 	"fmt"
-	"path/filepath"
 
-	"github.com/mitchellh/go-homedir"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	store "github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/store/apiserverstore"
 	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/project-radius/radius/pkg/ucp/store/cosmosdb"
 	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -36,35 +34,10 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		return nil, errors.New("failed to initialize APIServer client: namespace is required")
 	}
 
-	var err error
-	var config *rest.Config
-
-	if opt.APIServer.InCluster {
-		config, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
-		}
-	} else {
-		home, err := homedir.Dir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
-		}
-
-		kubeConfig := filepath.Join(home, ".kube", "config")
-		cmdconfig, err := clientcmd.LoadFromFile(kubeConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
-		}
-
-		clientconfig := clientcmd.NewNonInteractiveClientConfig(*cmdconfig, opt.APIServer.Context, nil, nil)
-		config, err = clientconfig.ClientConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)
-		}
+	config, err := kubeutil.NewClusterConfigWithContext(opt.APIServer.InCluster, opt.APIServer.Context)
+	if err != nil {
+		return nil, err
 	}
-
-	config.QPS = 200
-	config.Burst = 200
 
 	// We only need to interact with UCP's store types.
 	scheme := runtime.NewScheme()
