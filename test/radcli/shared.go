@@ -202,6 +202,24 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
+func LoadConfigWithWorkspaceAndApplication(t *testing.T) *viper.Viper {
+
+	var yamlData = `
+workspaces: 
+  default: test-workspace
+  items: 
+    test-workspace: 
+      connection: 
+        context: test-context
+        kind: kubernetes
+      defaultApplication: /planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application
+      environment: /planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment
+      scope: /planes/radius/local/resourceGroups/test-resource-group
+`
+
+	return LoadConfig(t, yamlData)
+}
+
 func LoadEmptyConfig(t *testing.T) *viper.Viper {
 
 	var yamlData = `

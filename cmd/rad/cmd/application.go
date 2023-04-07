@@ -11,8 +11,6 @@ import (
 
 func init() {
 	RootCmd.AddCommand(applicationCmd)
-	applicationCmd.PersistentFlags().StringP("application", "a", "", "The application name")
-	applicationCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 }
 
 func NewAppCommand() *cobra.Command {

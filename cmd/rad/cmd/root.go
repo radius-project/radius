@@ -18,6 +18,10 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	app_switch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	app_delete "github.com/project-radius/radius/pkg/cli/cmd/app/delete"
+	app_list "github.com/project-radius/radius/pkg/cli/cmd/app/list"
+	app_show "github.com/project-radius/radius/pkg/cli/cmd/app/show"
+	app_status "github.com/project-radius/radius/pkg/cli/cmd/app/status"
 	credential "github.com/project-radius/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
@@ -228,6 +232,18 @@ func initSubCommands() {
 
 	workspaceSwitchCmd, _ := workspace_switch.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceSwitchCmd)
+
+	appDeleteCmd, _ := app_delete.NewCommand(framework)
+	applicationCmd.AddCommand(appDeleteCmd)
+
+	appListCmd, _ := app_list.NewCommand(framework)
+	applicationCmd.AddCommand(appListCmd)
+
+	appShowCmd, _ := app_show.NewCommand(framework)
+	applicationCmd.AddCommand(appShowCmd)
+
+	appStatusCmd, _ := app_status.NewCommand(framework)
+	applicationCmd.AddCommand(appStatusCmd)
 
 	appSwitchCmd, _ := app_switch.NewCommand(framework)
 	applicationCmd.AddCommand(appSwitchCmd)
