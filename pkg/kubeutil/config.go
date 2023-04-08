@@ -21,9 +21,9 @@ const (
 	ServerBurst int = 200
 
 	// CliQPS is the default number of queries per second for CLI.
-	CliQPS float32 = 20.0
+	CliQPS float32 = 50.0
 	// CliBurst is the default number of queries k8sclient handles concurrently for CLI.
-	CliBurst int = 20
+	CliBurst int = 100
 )
 
 // ConfigOptions is custom options to configure kubernetes client config.
