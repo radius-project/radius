@@ -106,7 +106,7 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 }
 
 func getCurrentKubeContext() (string, error) {
-	k8sConfig, err := kubeutil.LoadKubeConfig("")
+	k8sConfig, err := kubeutil.LoadDefaultConfig()
 	if err != nil {
 		return "", err
 	}

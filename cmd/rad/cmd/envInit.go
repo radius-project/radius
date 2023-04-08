@@ -99,7 +99,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	switch kind {
 	case Kubernetes:
-		k8sConfig, err := kubeutil.LoadKubeConfig("")
+		k8sConfig, err := kubeutil.LoadDefaultConfig()
 		if err != nil {
 			return err
 		}

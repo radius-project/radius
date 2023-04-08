@@ -146,7 +146,7 @@ func GetConfig(context string) (*rest.Config, error) {
 
 // Creating a Kubernetes client
 func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := kubeutil.LoadKubeConfig("")
+	k8sConfig, err := kubeutil.LoadDefaultConfig()
 	if err != nil {
 		return nil, nil, "", err
 	}

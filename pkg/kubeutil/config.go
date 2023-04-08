@@ -54,6 +54,12 @@ func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
 	return options
 }
 
+// LoadDefaultConfig returns kube config from home directory.
+func LoadDefaultConfig() (*api.Config, error) {
+	// empty config file path falls back to the default .kube/config in home directory.
+	return LoadKubeConfig("")
+}
+
 // LoadKubeConfig loads kubenetes config from home directory.
 func LoadKubeConfig(configFilePath string) (*api.Config, error) {
 	if configFilePath == "" {
