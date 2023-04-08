@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -25,8 +24,6 @@ func TestBuildConfigOptions(t *testing.T) {
 			in:   nil,
 			out: &ConfigOptions{
 				ConfigFilePath: clientcmd.RecommendedHomeFile,
-				QPS:            rest.DefaultQPS,
-				Burst:          rest.DefaultBurst,
 			},
 		},
 		{
@@ -38,7 +35,6 @@ func TestBuildConfigOptions(t *testing.T) {
 			out: &ConfigOptions{
 				ConfigFilePath: "custom",
 				QPS:            ServerQPS,
-				Burst:          rest.DefaultBurst,
 			},
 		},
 		{
@@ -49,7 +45,6 @@ func TestBuildConfigOptions(t *testing.T) {
 			},
 			out: &ConfigOptions{
 				ConfigFilePath: "custom",
-				QPS:            rest.DefaultQPS,
 				Burst:          ServerBurst,
 			},
 		},
@@ -87,8 +82,51 @@ users:
 `), os.FileMode(0755))
 	require.NoError(t, err)
 
-	cfg, err := NewClusterConfig(&ConfigOptions{ConfigFilePath: configFile.Name(), QPS: ServerQPS, Burst: ServerBurst})
-	require.NoError(t, err)
-	require.Equal(t, ServerQPS, cfg.QPS)
-	require.Equal(t, ServerBurst, cfg.Burst)
+	optionTests := []struct {
+		name string
+		in   *ConfigOptions
+		out  *ConfigOptions
+	}{
+		{
+			name: "only QPS",
+			in: &ConfigOptions{
+				ConfigFilePath: configFile.Name(),
+				QPS:            ServerQPS,
+			},
+			out: &ConfigOptions{
+				QPS: ServerQPS,
+			},
+		},
+		{
+			name: "only Burst",
+			in: &ConfigOptions{
+				ConfigFilePath: configFile.Name(),
+				Burst:          ServerBurst,
+			},
+			out: &ConfigOptions{
+				Burst: ServerBurst,
+			},
+		},
+		{
+			name: "QPS and Burst",
+			in: &ConfigOptions{
+				ConfigFilePath: configFile.Name(),
+				QPS:            ServerQPS,
+				Burst:          ServerBurst,
+			},
+			out: &ConfigOptions{
+				QPS:   ServerQPS,
+				Burst: ServerBurst,
+			},
+		},
+	}
+
+	for _, tc := range optionTests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := NewClusterConfig(tc.in)
+			require.NoError(t, err)
+			require.Equal(t, tc.out.QPS, cfg.QPS)
+			require.Equal(t, tc.out.Burst, cfg.Burst)
+		})
+	}
 }

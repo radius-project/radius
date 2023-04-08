@@ -43,14 +43,6 @@ func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
 		options.ConfigFilePath = clientcmd.RecommendedHomeFile
 	}
 
-	if options.QPS < rest.DefaultQPS {
-		options.QPS = rest.DefaultQPS
-	}
-
-	if options.Burst < rest.DefaultBurst {
-		options.Burst = rest.DefaultBurst
-	}
-
 	return options
 }
 
@@ -60,7 +52,8 @@ func LoadDefaultConfig() (*api.Config, error) {
 	return LoadKubeConfig("")
 }
 
-// LoadKubeConfig loads kubenetes config from home directory.
+// LoadKubeConfig loads kubenetes config from specified config file.
+// If configFilePath is empty, it will use the default config from home directory.
 func LoadKubeConfig(configFilePath string) (*api.Config, error) {
 	if configFilePath == "" {
 		configFilePath = clientcmd.RecommendedHomeFile
@@ -86,8 +79,13 @@ func NewClusterConfig(options *ConfigOptions) (*rest.Config, error) {
 		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}
 
-	config.QPS = options.QPS
-	config.Burst = options.Burst
+	if options.QPS > 0.0 {
+		config.QPS = options.QPS
+	}
+
+	if options.Burst > 0 {
+		config.Burst = options.Burst
+	}
 
 	return config, nil
 }
@@ -111,8 +109,13 @@ func NewClusterConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}
 
-	merged.QPS = options.QPS
-	merged.Burst = options.Burst
+	if options.QPS > 0.0 {
+		merged.QPS = options.QPS
+	}
+
+	if options.Burst > 0 {
+		merged.Burst = options.Burst
+	}
 
 	return merged, nil
 }
