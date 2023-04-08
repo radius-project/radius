@@ -24,6 +24,7 @@ concurrency:
 
 env:
   GOVER: '^1.20'
+  GOTESTSUMVERSION: 1.10.0
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
   DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 
@@ -83,8 +84,10 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
+          GOTESTSUM_OPTS: '--junitfile ./dist/unit_test_results.xml'
           GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
         run: |
+          go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
@@ -122,6 +125,19 @@ jobs:
         env:
           COVERAGE_FILE: ./dist/ut_coverage.out
           GO_TOOL_COVER: go tool cover
+      # The test results file output by gotestsum is missing file and line number on the XML elements
+      # which is needed for the annotations to work. This script adds the missing information.
+      - name: 'Transform Test Results'
+        if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux' 
+        run: |
+          python ./.github/scripts/transform_test_results.py ${{ github.workspace }} ./dist/unit_test_results.xml ./dist/unit_test_results_fixed.xml
+      - name: 'Report Test Results'
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        # Always is REQUIRED here. Otherwise, the action will be skipped when the unit tests fail, which
+        # defeats the purpose. YES it is counterintuitive.
+        if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux' 
+        with:
+          files: './dist/unit_test_results_fixed.xml'
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
         with:

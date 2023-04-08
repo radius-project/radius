@@ -14,9 +14,26 @@ ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.23.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
 
+# Use gotestsum if available, otherwise use go test. We want to enable testing with just 'make test'
+# without external dependencies, but want to use gotestsum in our CI pipelines for the improved
+# reporting.
+#
+# See: https://github.com/gotestyourself/gotestsum
+#
+# Gotestsum is a drop-in replacement for go test, but it provides a much nicer formatted output
+# and it can also generate JUnit XML reports.
+ifeq (, $(shell which gotestsum))
+GOTEST_TOOL ?= go test
+else
+# Use these options by default but allow an override via env-var
+GOTEST_OPTS ?=
+# We need the double dash here to separate the 'gotestsum' options from the 'go test' options
+GOTEST_TOOL ?= gotestsum $(GOTESTSUM_OPTS) --
+endif
+
 .PHONY: test
 test: test-get-envtools ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -v ./pkg/... $(GOTEST_OPTS)
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-get-envtools
 test-get-envtools:
@@ -24,19 +41,19 @@ test-get-envtools:
 
 .PHONY: test-validate-cli
 test-validate-cli: ## Run cli integration tests
-	CGO_ENABLED=1 go test -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-kubernetes: ## Runs Kubernetes functional tests
-	CGO_ENABLED=1 go test ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-corerp: ## Runs Applications.Core functional tests
-	CGO_ENABLED=1 go test ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
 test-functional-samples: ## Runs Samples functional tests
-	CGO_ENABLED=1 go test ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-ucp: ## Runs UCP functional tests
-	CGO_ENABLED=1 go test ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh

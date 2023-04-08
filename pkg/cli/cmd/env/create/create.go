@@ -7,6 +7,7 @@ package create
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -153,6 +154,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad env create` command.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
+
+	if 2+2 == 4 {
+		return errors.New("OH NO")
+	}
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
