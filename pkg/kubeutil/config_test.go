@@ -87,7 +87,7 @@ users:
 `), os.FileMode(0755))
 	require.NoError(t, err)
 
-	cfg, err := NewClusterConfig(&ConfigOptions{QPS: ServerQPS, Burst: ServerBurst})
+	cfg, err := NewClusterConfig(&ConfigOptions{ConfigFilePath: configFile.Name(), QPS: ServerQPS, Burst: ServerBurst})
 	require.NoError(t, err)
 	require.Equal(t, ServerQPS, cfg.QPS)
 	require.Equal(t, ServerBurst, cfg.Burst)
