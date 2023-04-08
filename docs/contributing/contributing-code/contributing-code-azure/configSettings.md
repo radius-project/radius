@@ -148,7 +148,6 @@ ucp:
 ### apiServer
 | Key | Description | Example |
 |-----|-------------|---------|
-| inCluster | Configures the APIServer store to use "in-cluster" credentials (must be `true`/`false`) | `true` |
 | context | The Kubernetes context name to use for the connection | `myContext` |
 | namespace | The Kubernetes namespace used for data-storage | `radius-system` |
 
@@ -191,13 +190,11 @@ environment:
 storageProvider:
   provider: "apiserver"
   apiserver:
-    incluster: true
     context: ""
     namespace: "radius-system"
 queueProvider:
   provider: "apiserver"
   apiserver:
-    incluster: true
     context: ""
     namespace: "radius-system"
 metricsProvider:
@@ -220,7 +217,6 @@ ucp:
 storageProvider:
   provider: "apiserver"
   apiserver:
-    incluster: true
     context: ""
     namespace: "radius-system"
 secretProvider:
