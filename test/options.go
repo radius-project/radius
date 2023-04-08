@@ -16,6 +16,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/kubeutil"
 )
 
 type TestOptions struct {
@@ -30,7 +31,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	k8sconfig, err := kubernetes.ReadKubeConfig()
+	k8sconfig, err := kubeutil.LoadKubeConfig("")
 	require.NoError(t, err, "failed to read k8s config")
 
 	k8s, restConfig, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)

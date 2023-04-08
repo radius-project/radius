@@ -10,7 +10,58 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
+
+func TestBuildConfigOptions(t *testing.T) {
+	optionTests := []struct {
+		name string
+		in   *ConfigOptions
+		out  *ConfigOptions
+	}{
+		{
+			name: "nil",
+			in:   nil,
+			out: &ConfigOptions{
+				ConfigFilePath: clientcmd.RecommendedHomeFile,
+				QPS:            rest.DefaultQPS,
+				Burst:          rest.DefaultBurst,
+			},
+		},
+		{
+			name: "only QPS",
+			in: &ConfigOptions{
+				ConfigFilePath: "custom",
+				QPS:            ServerQPS,
+			},
+			out: &ConfigOptions{
+				ConfigFilePath: "custom",
+				QPS:            ServerQPS,
+				Burst:          rest.DefaultBurst,
+			},
+		},
+		{
+			name: "only Burst",
+			in: &ConfigOptions{
+				ConfigFilePath: "custom",
+				Burst:          ServerBurst,
+			},
+			out: &ConfigOptions{
+				ConfigFilePath: "custom",
+				QPS:            rest.DefaultQPS,
+				Burst:          ServerBurst,
+			},
+		},
+	}
+
+	for _, tc := range optionTests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := buildConfigOptions(tc.in)
+			require.Equal(t, tc.out, result)
+		})
+	}
+}
 
 func TestNewClusterConfig(t *testing.T) {
 	configFile, _ := os.CreateTemp("", "")
@@ -36,13 +87,8 @@ users:
 `), os.FileMode(0755))
 	require.NoError(t, err)
 
-	cfg, err := NewClusterConfig(configFile.Name())
+	cfg, err := NewClusterConfig(&ConfigOptions{QPS: ServerQPS, Burst: ServerBurst})
 	require.NoError(t, err)
-	require.Equal(t, DefaultQPS, cfg.QPS)
-	require.Equal(t, DefaultBurst, cfg.Burst)
-
-	cfg, err = NewClusterConfigWithContext(configFile.Name(), "", false)
-	require.NoError(t, err)
-	require.Equal(t, DefaultQPS, cfg.QPS)
-	require.Equal(t, DefaultBurst, cfg.Burst)
+	require.Equal(t, ServerQPS, cfg.QPS)
+	require.Equal(t, ServerBurst, cfg.Burst)
 }

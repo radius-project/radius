@@ -136,7 +136,7 @@ func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 }
 
 func getKubernetes() (*rest.Config, error) {
-	cfg, err := kubeutil.NewClusterConfig("")
+	cfg, err := kubeutil.NewClusterConfig(&kubeutil.ConfigOptions{QPS: kubeutil.ServerQPS, Burst: kubeutil.ServerBurst})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
 	}

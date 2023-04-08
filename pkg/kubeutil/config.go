@@ -11,68 +11,102 @@ import (
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 const (
-	// DefaultQPS is the default number of queries per second.
-	DefaultQPS float32 = 200.0
-	// DefaultBurst is the default number of queries client handles concurrently.
-	DefaultBurst int = 200
+	// ServerBurst is the default number of queries per second for server.
+	ServerQPS float32 = 200.0
+	// ServerBurst is the default number of queries k8sclient handles concurrently for server.
+	ServerBurst int = 200
+
+	// CliQPS is the default number of queries per second for CLI.
+	CliQPS float32 = 20.0
+	// CliBurst is the default number of queries k8sclient handles concurrently for CLI.
+	CliBurst int = 20
 )
 
-// NewClusterConfig loads kubeconfig in cluster or from the file specified by configFilePath.
-// If configFilePath is empty string, we will use kube config from home directory.
-func NewClusterConfig(configFilePath string) (*rest.Config, error) {
+// ConfigOptions is custom options to configure kubernetes client config.
+type ConfigOptions struct {
+	ConfigFilePath string
+	QPS            float32
+	Burst          int
+	ContextName    string
+}
+
+func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
+	if options == nil {
+		options = &ConfigOptions{}
+	}
+
+	if options.ConfigFilePath == "" {
+		options.ConfigFilePath = clientcmd.RecommendedHomeFile
+	}
+
+	if options.QPS < rest.DefaultQPS {
+		options.QPS = rest.DefaultQPS
+	}
+
+	if options.Burst < rest.DefaultBurst {
+		options.Burst = rest.DefaultBurst
+	}
+
+	return options
+}
+
+// LoadKubeConfig loads kubenetes config from home directory.
+func LoadKubeConfig(configFilePath string) (*api.Config, error) {
 	if configFilePath == "" {
 		configFilePath = clientcmd.RecommendedHomeFile
 	}
 
-	config, err := rest.InClusterConfig()
+	return clientcmd.LoadFromFile(configFilePath)
+}
+
+// NewClusterConfig loads kubeconfig in cluster or from the file.
+func NewClusterConfig(options *ConfigOptions) (*rest.Config, error) {
+	options = buildConfigOptions(options)
+
+	var config *rest.Config
+	var err error
+
+	config, err = rest.InClusterConfig()
 	if errors.Is(err, rest.ErrNotInCluster) {
-		// Not in a cluster, fall back to local kubeconfig
-		config, err = clientcmd.BuildConfigFromFlags("", configFilePath)
+		config, err = NewClusterConfigFromLocal(options)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
+			return nil, err
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}
 
-	config.QPS = DefaultQPS
-	config.Burst = DefaultBurst
+	config.QPS = options.QPS
+	config.Burst = options.Burst
 
 	return config, nil
 }
 
-// NewClusterConfigWithContext loads kubeconfig in cluster or from the file specified by configFilePath.
-// If configFilePath is empty string, we will use kube config from home directory.
-func NewClusterConfigWithContext(configFilePath, contextName string, onlyInCluster bool) (*rest.Config, error) {
-	if configFilePath == "" {
-		configFilePath = clientcmd.RecommendedHomeFile
+// NewClusterConfigFromLocal loads config from local home directory.
+func NewClusterConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
+	options = buildConfigOptions(options)
+
+	cfg, err := LoadKubeConfig(options.ConfigFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}
 
-	var err error
-	var config *rest.Config
-
-	if onlyInCluster {
-		config, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
-		}
-	} else {
-		cfg, err := clientcmd.LoadFromFile(configFilePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
-		}
-
-		config, err = clientcmd.NewNonInteractiveClientConfig(*cfg, contextName, nil, nil).ClientConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
-		}
+	contextName := options.ContextName
+	if contextName == "" {
+		contextName = cfg.CurrentContext
 	}
 
-	config.QPS = DefaultQPS
-	config.Burst = DefaultBurst
+	merged, err := clientcmd.NewNonInteractiveClientConfig(*cfg, contextName, nil, nil).ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
+	}
 
-	return config, nil
+	merged.QPS = options.QPS
+	merged.Burst = options.Burst
+
+	return merged, nil
 }

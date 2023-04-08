@@ -26,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -98,7 +99,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	switch kind {
 	case Kubernetes:
-		k8sConfig, err := kubernetes.ReadKubeConfig()
+		k8sConfig, err := kubeutil.LoadKubeConfig("")
 		if err != nil {
 			return err
 		}

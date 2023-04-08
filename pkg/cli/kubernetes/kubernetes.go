@@ -9,8 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -27,11 +25,11 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -47,22 +45,6 @@ func init() {
 	_ = apiextv1.AddToScheme(Scheme)
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = contourv1.AddToScheme(Scheme)
-}
-
-func ReadKubeConfig() (*api.Config, error) {
-	var kubeConfig string
-	if home := homeDir(); home != "" {
-		kubeConfig = filepath.Join(home, ".kube", "config")
-	} else {
-		return nil, errors.New("no HOME directory, cannot find kubeconfig")
-	}
-
-	config, err := clientcmd.LoadFromFile(kubeConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return config, nil
 }
 
 func CreateExtensionClient(context string) (clientset.Interface, error) {
@@ -155,29 +137,16 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 }
 
 func GetConfig(context string) (*rest.Config, error) {
-	config, err := ReadKubeConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, context, nil, nil)
-	merged, err := clientconfig.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-	return merged, err
-}
-
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	return os.Getenv("USERPROFILE") // windows
+	return kubeutil.NewClusterConfigFromLocal(&kubeutil.ConfigOptions{
+		ContextName: context,
+		QPS:         kubeutil.CliQPS,
+		Burst:       kubeutil.CliBurst,
+	})
 }
 
 // Creating a Kubernetes client
 func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := ReadKubeConfig()
+	k8sConfig, err := kubeutil.LoadKubeConfig("")
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -216,5 +185,5 @@ type Impl struct {
 
 // Fetches the kubecontext from the system
 func (i *Impl) GetKubeContext() (*api.Config, error) {
-	return ReadKubeConfig()
+	return kubeutil.LoadKubeConfig("")
 }

@@ -96,7 +96,10 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 
 	var cfg *kube_rest.Config
 	if opts.Config.UCP.Kind == config.UCPConnectionKindKubernetes {
-		cfg, err = kubeutil.NewClusterConfig("")
+		cfg, err = kubeutil.NewClusterConfig(&kubeutil.ConfigOptions{
+			QPS:   kubeutil.ServerQPS,
+			Burst: kubeutil.ServerBurst,
+		})
 		if err != nil {
 			return Options{}, fmt.Errorf("failed to get kubernetes config: %w", err)
 		}

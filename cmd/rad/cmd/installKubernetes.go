@@ -11,9 +11,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/spf13/cobra"
 )
 
@@ -106,7 +106,7 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 }
 
 func getCurrentKubeContext() (string, error) {
-	k8sConfig, err := kubernetes.ReadKubeConfig()
+	k8sConfig, err := kubeutil.LoadKubeConfig("")
 	if err != nil {
 		return "", err
 	}

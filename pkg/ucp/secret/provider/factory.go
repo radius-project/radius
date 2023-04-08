@@ -44,7 +44,10 @@ func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secr
 
 func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	s := scheme.Scheme
-	cfg, err := kubeutil.NewClusterConfig("")
+	cfg, err := kubeutil.NewClusterConfig(&kubeutil.ConfigOptions{
+		QPS:   kubeutil.ServerQPS,
+		Burst: kubeutil.ServerBurst,
+	})
 	if err != nil {
 		return nil, err
 	}
