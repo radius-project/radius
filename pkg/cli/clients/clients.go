@@ -74,6 +74,8 @@ type DeploymentClient interface {
 	Deploy(ctx context.Context, options DeploymentOptions) (DeploymentResult, error)
 }
 
+//go:generate mockgen -destination=./mock_diagnosticsclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients DiagnosticsClient
+
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
 type DiagnosticsClient interface {
 	Expose(ctx context.Context, options ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error)
