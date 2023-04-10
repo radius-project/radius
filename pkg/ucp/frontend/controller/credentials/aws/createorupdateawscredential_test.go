@@ -25,13 +25,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Credential(t *testing.T) {
+func Test_AWS_Credential(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewCreateOrUpdateCredential(ctrl.Options{
+	credentialCtrl, err := NewCreateOrUpdateAWSCredential(ctrl.Options{
 		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
@@ -79,15 +79,6 @@ func Test_Credential(t *testing.T) {
 			},
 		},
 		{
-			name:       "test_invalid_credential_kind",
-			filename:   "invalid-kind-aws-credential.json",
-			headerfile: testHeaderFile,
-			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
-			expected:   armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"),
-			fn:         setupEmptyMocks,
-			err:        nil,
-		},
-		{
 			name:       "test_credential_created",
 			filename:   "aws-credential.json",
 			headerfile: testHeaderFile,
@@ -126,7 +117,7 @@ func Test_Credential(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fn(*mockStorageClient, *mockSecretClient)
 
-			credentialVersionedInput := &v20220901privatepreview.CredentialResource{}
+			credentialVersionedInput := &v20220901privatepreview.AWSCredentialResource{}
 			credentialInput := testutil.ReadFixture(tt.filename)
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
 			require.NoError(t, err)
@@ -138,7 +129,7 @@ func Test_Credential(t *testing.T) {
 
 			response, err := credentialCtrl.Run(ctx, nil, request)
 			if tt.err != nil {
-				require.Equal(t, err, tt.err)
+				require.Equal(t, tt.err, err)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, response)
@@ -149,7 +140,7 @@ func Test_Credential(t *testing.T) {
 }
 
 func getAwsResponse() armrpc_rest.Response {
-	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.CredentialResource{
+	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.AWSCredentialResource{
 		Location: to.Ptr("West US"),
 		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
@@ -157,11 +148,11 @@ func getAwsResponse() armrpc_rest.Response {
 		Tags: map[string]*string{
 			"env": to.Ptr("dev"),
 		},
-		Properties: &v20220901privatepreview.AWSCredentialProperties{
+		Properties: &v20220901privatepreview.AWSAccessKeyCredentialProperties{
 			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:        to.Ptr("aws.com.iam"),
+			Kind:        to.Ptr("AccessKey"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
+				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("aws-awscloud-default"),
 			},
 		},

@@ -194,15 +194,23 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 		return nil, err
 	}
 
-	awsCredentialClient, err := v20220901privatepreview.NewAWSCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	awsCredentialClient, err := v20220901privatepreview.NewAwsCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	return &cli_credential.UCPCredentialManagementClient{
-		CredentialInterface: &cli_credential.Impl{
-			AzureCredentialClient: *azureCredentialClient,
-			AWSCredentialClient:   *awsCredentialClient,
-		},
-	}, nil
+	azureCMClient := &cli_credential.AzureCredentialManagementClient{
+		AzureCredentialClient: *azureCredentialClient,
+	}
+
+	awsCMClient := &cli_credential.AWSCredentialManagementClient{
+		AWSCredentialClient: *awsCredentialClient,
+	}
+
+	cpClient := &cli_credential.UCPCredentialManagementClient{
+		AzClient:  azureCMClient,
+		AWSClient: awsCMClient,
+	}
+
+	return cpClient, nil
 }

@@ -13,11 +13,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
-// CredentialDataModelToVersioned converts version agnostic credential datamodel to versioned model.
-func CredentialDataModelToVersioned(model *datamodel.Credential, version string) (v1.VersionedModelInterface, error) {
+// AzureCredentialDataModelToVersioned converts version agnostic Azure credential datamodel to versioned model.
+func AzureCredentialDataModelToVersioned(model *datamodel.AzureCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.CredentialResource{}
+		versioned := &v20220901privatepreview.AzureCredentialResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -28,11 +28,11 @@ func CredentialDataModelToVersioned(model *datamodel.Credential, version string)
 	}
 }
 
-// CredentialDataModelFromVersioned converts versioned credential model to datamodel.
-func CredentialDataModelFromVersioned(content []byte, version string) (*datamodel.Credential, error) {
+// AzureCredentialDataModelFromVersioned converts versioned Azure credential model to datamodel.
+func AzureCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AzureCredential, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		vm := &v20220901privatepreview.CredentialResource{}
+		vm := &v20220901privatepreview.AzureCredentialResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}
@@ -40,7 +40,7 @@ func CredentialDataModelFromVersioned(content []byte, version string) (*datamode
 		if err != nil {
 			return nil, err
 		}
-		return dm.(*datamodel.Credential), nil
+		return dm.(*datamodel.AzureCredential), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
-package azure
+package aws
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func Test_Credential_Delete(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewDeleteCredential(ctrl.Options{
+	credentialCtrl, err := NewDeleteAWSCredential(ctrl.Options{
 		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
@@ -47,7 +47,7 @@ func Test_Credential_Delete(t *testing.T) {
 	}{
 		{
 			name:       "test_credential_deletion",
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupCredentialDeleteSuccessMocks,
 			expected:   rest.NewOKResponse(nil),
@@ -55,7 +55,7 @@ func Test_Credential_Delete(t *testing.T) {
 		},
 		{
 			name:       "test_non_existent_credential_deletion",
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupNonExistentCredentialDeleteMocks,
 			expected:   armrpc_rest.NewNoContentResponse(),
@@ -63,7 +63,7 @@ func Test_Credential_Delete(t *testing.T) {
 		},
 		{
 			name:       "test_failed_credential_existence_check",
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupCredentialExistenceCheckFailureMocks,
 			expected:   nil,
@@ -71,7 +71,7 @@ func Test_Credential_Delete(t *testing.T) {
 		},
 		{
 			name:       "test_non_existent_secret_deletion",
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupNonExistentSecretDeleteMocks,
 			expected:   armrpc_rest.NewNoContentResponse(),
@@ -79,7 +79,7 @@ func Test_Credential_Delete(t *testing.T) {
 		},
 		{
 			name:       "test_secret_deletion_failure",
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupSecretDeleteFailureMocks,
 			expected:   nil,
@@ -87,7 +87,7 @@ func Test_Credential_Delete(t *testing.T) {
 		},
 		{
 			name:       "test_non_existing_credential_deletion_from_storage",
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupNonExistingCredentialDeleteFromStorageMocks,
 			expected:   armrpc_rest.NewNoContentResponse(),
@@ -95,7 +95,7 @@ func Test_Credential_Delete(t *testing.T) {
 		},
 		{
 			name:       "test_failed_credential_deletion_from_storage",
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			headerfile: testHeaderFile,
 			fn:         setupFailedCredentialDeleteFromStorageMocks,
 			expected:   nil,
@@ -108,9 +108,7 @@ func Test_Credential_Delete(t *testing.T) {
 			tt.fn(*mockStorageClient, *mockSecretClient)
 			request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, tt.headerfile, nil)
 			require.NoError(t, err)
-
 			ctx := testutil.ARMTestContextFromRequest(request)
-
 			response, err := credentialCtrl.Run(ctx, nil, request)
 			if tt.err != nil {
 				require.Equal(t, err, tt.err)
@@ -123,9 +121,9 @@ func Test_Credential_Delete(t *testing.T) {
 }
 
 func setupCredentialMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	datamodelCredential := datamodel.Credential{
+	datamodelCredential := datamodel.AWSCredential{
 		BaseResource: v1.BaseResource{},
-		Properties: &datamodel.CredentialResourceProperties{
+		Properties: &datamodel.AWSCredentialResourceProperties{
 			Kind: datamodel.AWSCredentialKind,
 		},
 	}
@@ -157,7 +155,6 @@ func setupCredentialExistenceCheckFailureMocks(mockStorageClient store.MockStora
 
 func setupNonExistentSecretDeleteMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
 	setupCredentialMocks(mockStorageClient, mockSecretClient)
-
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(&secret.ErrNotFound{}).Times(1)
 }
 
@@ -176,7 +173,6 @@ func setupNonExistingCredentialDeleteFromStorageMocks(mockStorageClient store.Mo
 
 func setupFailedCredentialDeleteFromStorageMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
 	setupCredentialMocks(mockStorageClient, mockSecretClient)
-
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Failed Storage Deletion")).Times(1)
 }

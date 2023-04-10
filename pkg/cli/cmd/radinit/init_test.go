@@ -474,7 +474,7 @@ func Test_Run_InstallAndCreateEnvironment_WithAzureProvider_WithRecipes(t *testi
 
 	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
 	credentialManagementClient.EXPECT().
-		Put(context.Background(), gomock.Any()).
+		PutAzure(context.Background(), gomock.Any()).
 		Return(nil).Times(1)
 
 	configFileInterface.EXPECT().
@@ -550,7 +550,7 @@ func Test_Run_InstallAndCreateEnvironment_WithAWSProvider(t *testing.T) {
 
 	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
 	credentialManagementClient.EXPECT().
-		Put(context.Background(), gomock.Any()).
+		PutAWS(context.Background(), gomock.Any()).
 		Return(nil).Times(1)
 
 	configFileInterface.EXPECT().

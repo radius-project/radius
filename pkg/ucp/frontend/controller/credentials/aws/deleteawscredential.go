@@ -23,28 +23,28 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ armrpc_controller.Controller = (*DeleteCredential)(nil)
+var _ armrpc_controller.Controller = (*DeleteAWSCredential)(nil)
 
-// DeleteCredential is the controller implementation to delete a UCP credential.
-type DeleteCredential struct {
-	armrpc_controller.Operation[*datamodel.Credential, datamodel.Credential]
+// DeleteAWSCredential is the controller implementation to delete a UCP AWS credential.
+type DeleteAWSCredential struct {
+	armrpc_controller.Operation[*datamodel.AWSCredential, datamodel.AWSCredential]
 	secretClient secret.Client
 }
 
-// NewDeleteCredential creates a new DeleteCredential.
-func NewDeleteCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &DeleteCredential{
+// NewDeleteAWSCredential creates a new DeleteCredential.
+func NewDeleteAWSCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+	return &DeleteAWSCredential{
 		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.Credential]{
-				RequestConverter:  converter.CredentialDataModelFromVersioned,
-				ResponseConverter: converter.CredentialDataModelToVersioned,
+			armrpc_controller.ResourceOptions[datamodel.AWSCredential]{
+				RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
+				ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 			},
 		),
 		secretClient: opts.SecretClient,
 	}, nil
 }
 
-func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -78,6 +78,6 @@ func (c *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("Deleted Credential %s successfully", serviceCtx.ResourceID))
+	logger.Info(fmt.Sprintf("Deleted AWS Credential %s successfully", serviceCtx.ResourceID))
 	return rest.NewOKResponse(nil), nil
 }

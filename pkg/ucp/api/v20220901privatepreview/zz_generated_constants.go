@@ -14,7 +14,55 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
-// CredentialStorageKind - credential store kinds supported.
+// AWSCredentialKind - AWS credential kinds supported.
+type AWSCredentialKind string
+
+const (
+	AWSCredentialKindAccessKey AWSCredentialKind = "AccessKey"
+)
+
+// PossibleAWSCredentialKindValues returns the possible values for the AWSCredentialKind const type.
+func PossibleAWSCredentialKindValues() []AWSCredentialKind {
+	return []AWSCredentialKind{	
+		AWSCredentialKindAccessKey,
+	}
+}
+
+// AzureCredentialKind - Azure credential kinds supported.
+type AzureCredentialKind string
+
+const (
+	AzureCredentialKindServicePrincipal AzureCredentialKind = "ServicePrincipal"
+)
+
+// PossibleAzureCredentialKindValues returns the possible values for the AzureCredentialKind const type.
+func PossibleAzureCredentialKindValues() []AzureCredentialKind {
+	return []AzureCredentialKind{	
+		AzureCredentialKindServicePrincipal,
+	}
+}
+
+// CreatedByType - The type of identity that created the resource.
+type CreatedByType string
+
+const (
+	CreatedByTypeApplication CreatedByType = "Application"
+	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
+	CreatedByTypeUser CreatedByType = "User"
+)
+
+// PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
+func PossibleCreatedByTypeValues() []CreatedByType {
+	return []CreatedByType{	
+		CreatedByTypeApplication,
+		CreatedByTypeKey,
+		CreatedByTypeManagedIdentity,
+		CreatedByTypeUser,
+	}
+}
+
+// CredentialStorageKind - Credential store kinds supported.
 type CredentialStorageKind string
 
 const (
@@ -43,6 +91,32 @@ func PossiblePlaneKindValues() []PlaneKind {
 		PlaneKindAWS,
 		PlaneKindAzure,
 		PlaneKindUCPNative,
+	}
+}
+
+// ProvisioningState - Provisioning state of the link at the time the operation was called
+type ProvisioningState string
+
+const (
+	ProvisioningStateAccepted ProvisioningState = "Accepted"
+	ProvisioningStateCanceled ProvisioningState = "Canceled"
+	ProvisioningStateDeleting ProvisioningState = "Deleting"
+	ProvisioningStateFailed ProvisioningState = "Failed"
+	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
+	ProvisioningStateUpdating ProvisioningState = "Updating"
+)
+
+// PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
+func PossibleProvisioningStateValues() []ProvisioningState {
+	return []ProvisioningState{	
+		ProvisioningStateAccepted,
+		ProvisioningStateCanceled,
+		ProvisioningStateDeleting,
+		ProvisioningStateFailed,
+		ProvisioningStateProvisioning,
+		ProvisioningStateSucceeded,
+		ProvisioningStateUpdating,
 	}
 }
 

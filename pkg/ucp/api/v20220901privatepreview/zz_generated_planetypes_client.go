@@ -23,17 +23,17 @@ import (
 	"strings"
 )
 
-// PlanesTypeClient contains the methods for the PlanesType group.
-// Don't use this type directly, use NewPlanesTypeClient() instead.
-type PlanesTypeClient struct {
+// PlaneTypesClient contains the methods for the PlaneTypes group.
+// Don't use this type directly, use NewPlaneTypesClient() instead.
+type PlaneTypesClient struct {
 	host string
 	pl runtime.Pipeline
 }
 
-// NewPlanesTypeClient creates a new instance of PlanesTypeClient with the specified values.
+// NewPlaneTypesClient creates a new instance of PlaneTypesClient with the specified values.
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewPlanesTypeClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*PlanesTypeClient, error) {
+func NewPlaneTypesClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*PlaneTypesClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -45,35 +45,35 @@ func NewPlanesTypeClient(credential azcore.TokenCredential, options *arm.ClientO
 	if err != nil {
 		return nil, err
 	}
-	client := &PlanesTypeClient{
+	client := &PlaneTypesClient{
 		host: ep,
 pl: pl,
 	}
 	return client, nil
 }
 
-// List - List all planes of {planeType}.
+// Get - Retrieves information about a PlaneResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-09-01-privatepreview
-// planeType - The type of the plane
-// options - PlanesTypeClientListOptions contains the optional parameters for the PlanesTypeClient.List method.
-func (client *PlanesTypeClient) List(ctx context.Context, planeType string, options *PlanesTypeClientListOptions) (PlanesTypeClientListResponse, error) {
-	req, err := client.listCreateRequest(ctx, planeType, options)
+// planeType - The plane type.
+// options - PlaneTypesClientGetOptions contains the optional parameters for the PlaneTypesClient.Get method.
+func (client *PlaneTypesClient) Get(ctx context.Context, planeType string, options *PlaneTypesClientGetOptions) (PlaneTypesClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, planeType, options)
 	if err != nil {
-		return PlanesTypeClientListResponse{}, err
+		return PlaneTypesClientGetResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return PlanesTypeClientListResponse{}, err
+		return PlaneTypesClientGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return PlanesTypeClientListResponse{}, runtime.NewResponseError(resp)
+		return PlaneTypesClientGetResponse{}, runtime.NewResponseError(resp)
 	}
-	return client.listHandleResponse(resp)
+	return client.getHandleResponse(resp)
 }
 
-// listCreateRequest creates the List request.
-func (client *PlanesTypeClient) listCreateRequest(ctx context.Context, planeType string, options *PlanesTypeClientListOptions) (*policy.Request, error) {
+// getCreateRequest creates the Get request.
+func (client *PlaneTypesClient) getCreateRequest(ctx context.Context, planeType string, options *PlaneTypesClientGetOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
@@ -90,11 +90,11 @@ func (client *PlanesTypeClient) listCreateRequest(ctx context.Context, planeType
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *PlanesTypeClient) listHandleResponse(resp *http.Response) (PlanesTypeClientListResponse, error) {
-	result := PlanesTypeClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.PlaneResourceList); err != nil {
-		return PlanesTypeClientListResponse{}, err
+// getHandleResponse handles the Get response.
+func (client *PlaneTypesClient) getHandleResponse(resp *http.Response) (PlaneTypesClientGetResponse, error) {
+	result := PlaneTypesClientGetResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.PlaneResource); err != nil {
+		return PlaneTypesClientGetResponse{}, err
 	}
 	return result, nil
 }

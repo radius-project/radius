@@ -148,23 +148,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	credential := ucp.CredentialResource{
-		Name:     to.Ptr("default"),
+	credential := ucp.AzureCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AzureCredential),
 		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 			},
 			TenantID:     &r.TenantID,
 			ClientID:     &r.ClientID,
 			ClientSecret: &r.ClientSecret,
+			Kind:         to.Ptr("ServicePrincipal"),
 		},
 	}
 
 	// 1) Update server-side to add/change credentials
-	err = client.Put(ctx, credential)
+	err = client.PutAzure(ctx, credential)
 	if err != nil {
 		return err
 	}

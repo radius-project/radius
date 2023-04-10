@@ -18,45 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCredentialConvertVersionedToDataModel(t *testing.T) {
+func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 	conversionTests := []struct {
 		filename string
-		expected *datamodel.Credential
+		expected *datamodel.AzureCredential
 		err      error
 	}{
 		{
-			filename: "credentialresource-aws.json",
-			expected: &datamodel.Credential{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/aws/awscloud/providers/System.AWS/credentials/default",
-						Name:     "default",
-						Type:     "System.AWS/credentials",
-						Location: "west-us-2",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
-				},
-				Properties: &datamodel.CredentialResourceProperties{
-					Kind: "aws.com.iam",
-					AWSCredential: &datamodel.AWSCredentialProperties{
-						AccessKeyID:     "00000000-0000-0000-0000-000000000000",
-						SecretAccessKey: "00000000-0000-0000-0000-000000000000",
-					},
-					Storage: &datamodel.CredentialStorageProperties{
-						Kind:               datamodel.InternalStorageKind,
-						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
-					},
-				},
-			},
-		},
-		{
 			filename: "credentialresource-azure.json",
-			expected: &datamodel.Credential{
+			expected: &datamodel.AzureCredential{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
 						ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
@@ -71,8 +41,8 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 						UpdatedAPIVersion: Version,
 					},
 				},
-				Properties: &datamodel.CredentialResourceProperties{
-					Kind: "azure.com.serviceprincipal",
+				Properties: &datamodel.AzureCredentialResourceProperties{
+					Kind: "ServicePrincipal",
 					AzureCredential: &datamodel.AzureCredentialProperties{
 						TenantID:     "00000000-0000-0000-0000-000000000000",
 						ClientID:     "00000000-0000-0000-0000-000000000000",
@@ -94,22 +64,22 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-empty-storage.json",
+			filename: "credentialresource-empty-storage-azure.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-empty-storage-kind.json",
+			filename: "credentialresource-empty-storage-kind-azure.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"},
 		},
 		{
-			filename: "credentialresource-invalid-storagekind.json",
+			filename: "credentialresource-invalid-storagekind-azure.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())},
 		},
 	}
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(tt.filename)
-			r := &CredentialResource{}
+			r := &AzureCredentialResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
@@ -119,42 +89,22 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 				require.ErrorIs(t, err, tt.err)
 			} else {
 				require.NoError(t, err)
-				ct := dm.(*datamodel.Credential)
+				ct := dm.(*datamodel.AzureCredential)
 				require.Equal(t, tt.expected, ct)
 			}
 		})
 	}
 }
 
-func TestCredentialConvertDataModelToVersioned(t *testing.T) {
+func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 	conversionTests := []struct {
 		filename string
-		expected *CredentialResource
+		expected *AzureCredentialResource
 		err      error
 	}{
 		{
-			filename: "credentialresourcedatamodel-aws.json",
-			expected: &CredentialResource{
-				ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
-				Name:     to.Ptr("default"),
-				Type:     to.Ptr("System.AWS/credentials"),
-				Location: to.Ptr("west-us-2"),
-				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
-				},
-				Properties: &AWSCredentialProperties{
-					Kind:        to.Ptr("aws.com.iam"),
-					AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(CredentialStorageKindInternal),
-						SecretName: to.Ptr("aws-awscloud-default"),
-					},
-				},
-			},
-		},
-		{
 			filename: "credentialresourcedatamodel-azure.json",
-			expected: &CredentialResource{
+			expected: &AzureCredentialResource{
 				ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
 				Name:     to.Ptr("default"),
 				Type:     to.Ptr("System.Azure/credentials"),
@@ -163,11 +113,11 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 					"env": to.Ptr("dev"),
 				},
 				Properties: &AzureServicePrincipalProperties{
-					Kind:     to.Ptr("azure.com.serviceprincipal"),
+					Kind:     to.Ptr("ServicePrincipal"),
 					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(CredentialStorageKindInternal),
+						Kind:       to.Ptr(string(CredentialStorageKindInternal)),
 						SecretName: to.Ptr("azure-azurecloud-default"),
 					},
 				},
@@ -181,11 +131,11 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(tt.filename)
-			r := &datamodel.Credential{}
+			r := &datamodel.AzureCredential{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
-			versioned := &CredentialResource{}
+			versioned := &AzureCredentialResource{}
 			err = versioned.ConvertFrom(r)
 
 			if tt.err != nil {

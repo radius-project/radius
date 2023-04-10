@@ -18,28 +18,28 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 )
 
-var _ armrpc_controller.Controller = (*CreateOrUpdateCredential)(nil)
+var _ armrpc_controller.Controller = (*CreateOrUpdateAzureCredential)(nil)
 
-// CreateOrUpdateCredential is the controller implementation to create/update a UCP credential.
-type CreateOrUpdateCredential struct {
-	armrpc_controller.Operation[*datamodel.Credential, datamodel.Credential]
+// CreateOrUpdateAzureCredential is the controller implementation to create/update a UCP Azure credential.
+type CreateOrUpdateAzureCredential struct {
+	armrpc_controller.Operation[*datamodel.AzureCredential, datamodel.AzureCredential]
 	secretClient secret.Client
 }
 
-// NewCreateOrUpdateCredential creates a new CreateOrUpdateCredential.
-func NewCreateOrUpdateCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &CreateOrUpdateCredential{
+// NewCreateOrUpdateAzureCredential creates a new CreateOrUpdateAzureCredential.
+func NewCreateOrUpdateAzureCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+	return &CreateOrUpdateAzureCredential{
 		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.Credential]{
-				RequestConverter:  converter.CredentialDataModelFromVersioned,
-				ResponseConverter: converter.CredentialDataModelToVersioned,
+			armrpc_controller.ResourceOptions[datamodel.AzureCredential]{
+				RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
+				ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 			},
 		),
 		secretClient: opts.SecretClient,
 	}, nil
 }
 
-func (c *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := c.GetResourceFromRequest(ctx, req)
 	if err != nil {

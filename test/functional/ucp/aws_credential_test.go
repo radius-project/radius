@@ -13,60 +13,54 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
 )
-
-func Test_Azure_Credential_Operations(t *testing.T) {
-	test := NewUCPTest(t, "Test_Azure_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceTypePath := "/planes/azure/azuretest/providers/System.Azure/credentials"
-		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
-		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
-		runCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureCredentialObject())
-	})
-
-	test.Test(t)
-}
 
 func Test_AWS_Credential_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		resourceTypePath := "/planes/aws/awstest/providers/System.AWS/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
 		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
-		runCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSCredentialObject())
+		runAWSCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSTestCredentialObject(), getExpectedAWSTestCredentialObject())
 	})
 
 	test.Test(t)
 }
 
-func runCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, credential ucp.CredentialResource) {
+func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AWSCredentialResource, expectedCredential ucp.AWSCredentialResource) {
 	// Create credential operation
-	createCredential(t, roundTripper, resourceUrl, credential)
+	createAWSTestCredential(t, roundTripper, resourceUrl, createCredential)
+
 	// Create duplicate credential
-	createCredential(t, roundTripper, resourceUrl, credential)
+	createAWSTestCredential(t, roundTripper, resourceUrl, createCredential)
+
 	// List credential operation
-	credentialList := listCredential(t, roundTripper, collectionUrl)
-	require.Equal(t, len(credentialList), 1)
-	require.Equal(t, credentialList[0], credential)
+	credentialList := listAWSTestCredential(t, roundTripper, collectionUrl)
+
+	index, err := getIndexOfAWSTestCredential(*expectedCredential.ID, credentialList)
+	require.NoError(t, err)
+	require.Equal(t, credentialList[index], expectedCredential)
 
 	// Check for correctness of credential
-	createdCredential, statusCode := getCredential(t, roundTripper, resourceUrl)
+	createdCredential, statusCode := getAWSTestCredential(t, roundTripper, resourceUrl)
+
 	require.Equal(t, http.StatusOK, statusCode)
-	require.Equal(t, createdCredential, credential)
+	require.Equal(t, createdCredential, expectedCredential)
 
 	// Delete credential operation
-	statusCode, err := deleteCredential(t, roundTripper, resourceUrl)
+	statusCode, err = deleteAWSTestCredential(t, roundTripper, resourceUrl)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
 
 	// Delete non-existent credential
-	statusCode, err = deleteCredential(t, roundTripper, resourceUrl)
+	statusCode, err = deleteAWSTestCredential(t, roundTripper, resourceUrl)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNoContent, statusCode)
 }
 
-func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.CredentialResource) {
+func createAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.AWSCredentialResource) {
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
 	createRequest, err := NewUCPRequest(http.MethodPut, url, bytes.NewBuffer(body))
@@ -79,7 +73,7 @@ func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, 
 	t.Logf("Credential: %s created/updated successfully", url)
 }
 
-func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.CredentialResource, int) {
+func getAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.AWSCredentialResource, int) {
 	getCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
@@ -91,14 +85,14 @@ func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (uc
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	credential := ucp.CredentialResource{}
+	credential := ucp.AWSCredentialResource{}
 	err = json.Unmarshal(payload, &credential)
 	require.NoError(t, err)
 
 	return credential, result.StatusCode
 }
 
-func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
+func deleteAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
 	deleteCredentialRequest, err := NewUCPRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 
@@ -106,16 +100,16 @@ func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) 
 	return res.StatusCode, err
 }
 
-func listCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.CredentialResource {
+func listAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.AWSCredentialResource {
 	listCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	res, err := roundTripper.RoundTrip(listCredentialRequest)
 	require.NoError(t, err)
-	return getCredentialList(t, res)
+	return getAWSTestCredentialList(t, res)
 }
 
-func getCredentialList(t *testing.T, res *http.Response) []ucp.CredentialResource {
+func getAWSTestCredentialList(t *testing.T, res *http.Response) []ucp.AWSCredentialResource {
 	body := res.Body
 	defer body.Close()
 
@@ -124,11 +118,11 @@ func getCredentialList(t *testing.T, res *http.Response) []ucp.CredentialResourc
 	require.NoError(t, err)
 	list, ok := data["value"].([]any)
 	require.Equal(t, ok, true)
-	var credentialList []ucp.CredentialResource
+	var credentialList []ucp.AWSCredentialResource
 	for _, item := range list {
 		s, err := json.Marshal(item)
 		require.NoError(t, err)
-		credential := ucp.CredentialResource{}
+		credential := ucp.AWSCredentialResource{}
 		err = json.Unmarshal(s, &credential)
 		require.NoError(t, err)
 		credentialList = append(credentialList, credential)
@@ -136,29 +130,8 @@ func getCredentialList(t *testing.T, res *http.Response) []ucp.CredentialResourc
 	return credentialList
 }
 
-func getAzureCredentialObject() ucp.CredentialResource {
-	return ucp.CredentialResource{
-		Location: to.Ptr("global"),
-		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
-		Name:     to.Ptr("default"),
-		Type:     to.Ptr("System.Azure/credentials"),
-		Tags: map[string]*string{
-			"env": to.Ptr("dev"),
-		},
-		Properties: &ucp.AzureServicePrincipalProperties{
-			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:     to.Ptr("azure.com.serviceprincipal"),
-			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure-azuretest-default"),
-			},
-		},
-	}
-}
-
-func getAWSCredentialObject() ucp.CredentialResource {
-	return ucp.CredentialResource{
+func getAWSTestCredentialObject() ucp.AWSCredentialResource {
+	return ucp.AWSCredentialResource{
 		Location: to.Ptr("global"),
 		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
@@ -166,13 +139,58 @@ func getAWSCredentialObject() ucp.CredentialResource {
 		Tags: map[string]*string{
 			"env": to.Ptr("dev"),
 		},
-		Properties: &ucp.AWSCredentialProperties{
-			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:        to.Ptr("aws.com.iam"),
+		Properties: &ucp.AWSAccessKeyCredentialProperties{
+			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:            to.Ptr("AccessKey"),
 			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
+				Kind:       to.Ptr(string(ucp.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("aws-awstest-default"),
 			},
 		},
 	}
+}
+
+func getExpectedAWSTestCredentialObject() ucp.AWSCredentialResource {
+	return ucp.AWSCredentialResource{
+		Location: to.Ptr("global"),
+		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
+		Name:     to.Ptr("default"),
+		Type:     to.Ptr("System.AWS/credentials"),
+		Tags: map[string]*string{
+			"env": to.Ptr("dev"),
+		},
+		Properties: &ucp.AWSAccessKeyCredentialProperties{
+			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:        to.Ptr("AccessKey"),
+			Storage: &ucp.InternalCredentialStorageProperties{
+				Kind:       to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				SecretName: to.Ptr("aws-awstest-default"),
+			},
+		},
+	}
+}
+
+func getIndexOfAWSTestCredential(testCredentialId string, credentialList []ucp.AWSCredentialResource) (int, error) {
+	found := false
+	foundCredentials := make([]string, len(credentialList))
+	testCredentialIndex := -1
+
+	for index := range credentialList {
+		foundCredentials[index] = *credentialList[index].ID
+		if *credentialList[index].ID == testCredentialId {
+			if !found {
+				testCredentialIndex = index
+				found = true
+			} else {
+				return -1, fmt.Errorf("credential %s duplicated in credentialList: %v", testCredentialId, foundCredentials)
+			}
+		}
+	}
+
+	if !found {
+		return -1, fmt.Errorf("credential: %s not found in credentialList: %v", testCredentialId, foundCredentials)
+	}
+
+	return testCredentialIndex, nil
 }

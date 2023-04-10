@@ -18,28 +18,28 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 )
 
-var _ armrpc_controller.Controller = (*CreateOrUpdateCredential)(nil)
+var _ armrpc_controller.Controller = (*CreateOrUpdateAWSCredential)(nil)
 
-// CreateOrUpdateCredential is the controller implementation to create/update a UCP credential.
-type CreateOrUpdateCredential struct {
-	armrpc_controller.Operation[*datamodel.Credential, datamodel.Credential]
+// CreateOrUpdateAWSCredential is the controller implementation to create/update a UCP AWS credential.
+type CreateOrUpdateAWSCredential struct {
+	armrpc_controller.Operation[*datamodel.AWSCredential, datamodel.AWSCredential]
 	secretClient secret.Client
 }
 
-// NewCreateOrUpdateCredential creates a new CreateOrUpdateCredential.
-func NewCreateOrUpdateCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &CreateOrUpdateCredential{
+// NewCreateOrUpdateAWSCredential creates a new CreateOrUpdateAWSCredential.
+func NewCreateOrUpdateAWSCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+	return &CreateOrUpdateAWSCredential{
 		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.Credential]{
-				RequestConverter:  converter.CredentialDataModelFromVersioned,
-				ResponseConverter: converter.CredentialDataModelToVersioned,
+			armrpc_controller.ResourceOptions[datamodel.AWSCredential]{
+				RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
+				ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 			},
 		),
 		secretClient: opts.SecretClient,
 	}, nil
 }
 
-func (c *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+func (c *CreateOrUpdateAWSCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := c.GetResourceFromRequest(ctx, req)
 	if err != nil {

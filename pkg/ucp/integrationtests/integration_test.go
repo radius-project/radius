@@ -517,7 +517,7 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	expectedResponse := armrpc_v1.ErrorResponse{
 		Error: armrpc_v1.ErrorDetails{
 			Code:    "InvalidApiVersionParameter",
-			Message: "API version 'unsupported-version' for type 'ucp/ucp' is not supported. The supported api-versions are '2022-09-01-privatepreview'.",
+			Message: "API version 'unsupported-version' for type 'ucp/openapi' is not supported. The supported api-versions are '2022-09-01-privatepreview'.",
 		},
 	}
 	responseBody, err := io.ReadAll(response.Body)

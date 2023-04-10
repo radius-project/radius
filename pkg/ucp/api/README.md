@@ -34,7 +34,7 @@ These settings apply only when `--tag=ucp-2022-09-01-privatepreview` is specifie
 
 ```yaml $(tag) == 'ucp-2022-09-01-privatepreview'
 input-file:
-  - ../../../swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/ucp.json
+  - ../../../swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/openapi.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```

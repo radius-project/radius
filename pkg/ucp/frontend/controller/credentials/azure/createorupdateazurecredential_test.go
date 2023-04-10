@@ -25,13 +25,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Credential(t *testing.T) {
+func Test_Azure_Credential(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewCreateOrUpdateCredential(ctrl.Options{
+	credentialCtrl, err := NewCreateOrUpdateAzureCredential(ctrl.Options{
 		Options: armrpc_controller.Options{
 			StorageClient: mockStorageClient,
 		},
@@ -79,15 +79,6 @@ func Test_Credential(t *testing.T) {
 			},
 		},
 		{
-			name:       "test_invalid_credential_kind",
-			filename:   "invalid-kind-azure-credential.json",
-			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
-			expected:   armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"),
-			fn:         setupEmptyMocks,
-			err:        nil,
-		},
-		{
 			name:       "test_credential_created",
 			filename:   "azure-credential.json",
 			headerfile: testHeaderFile,
@@ -125,7 +116,7 @@ func Test_Credential(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fn(*mockStorageClient, *mockSecretClient)
-			credentialVersionedInput := &v20220901privatepreview.CredentialResource{}
+			credentialVersionedInput := &v20220901privatepreview.AzureCredentialResource{}
 			credentialInput := testutil.ReadFixture(tt.filename)
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
 			require.NoError(t, err)
@@ -146,7 +137,7 @@ func Test_Credential(t *testing.T) {
 }
 
 func getAzureCredentialResponse() armrpc_rest.Response {
-	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.CredentialResource{
+	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.AzureCredentialResource{
 		Location: to.Ptr("West US"),
 		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
@@ -157,9 +148,9 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 		Properties: &v20220901privatepreview.AzureServicePrincipalProperties{
 			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:     to.Ptr("azure.com.serviceprincipal"),
+			Kind:     to.Ptr("ServicePrincipal"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
+				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("azure-azurecloud-default"),
 			},
 		},
