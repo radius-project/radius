@@ -209,6 +209,7 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 			continue
 		}
 
+		defer response.Body.Close()
 		content, err := io.ReadAll(response.Body)
 		require.NoError(t, err)
 

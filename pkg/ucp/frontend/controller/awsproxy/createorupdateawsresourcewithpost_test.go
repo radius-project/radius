@@ -83,9 +83,9 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusCreated, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
@@ -180,9 +180,9 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusCreated, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
@@ -273,9 +273,9 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
@@ -356,9 +356,9 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusCreated, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)
@@ -441,9 +441,9 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusCreated, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)
@@ -538,8 +538,8 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	res := w.Result()
 	require.Equal(t, http.StatusCreated, res.StatusCode)
 	body, err := io.ReadAll(res.Body)
-	require.NoError(t, err)
 	defer res.Body.Close()
+	require.NoError(t, err)
 
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)

@@ -352,6 +352,7 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 
 	require.Equal(t, http.StatusOK, response.StatusCode)
 
+	defer response.Body.Close()
 	registerPlaneResponseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
@@ -383,6 +384,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
 
+	defer createResourceGroupResponse.Body.Close()
 	createResourceGroupResponseBody, err := io.ReadAll(createResourceGroupResponse.Body)
 	require.NoError(t, err)
 
@@ -417,6 +419,7 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 	require.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
 	require.Equal(t, "http://"+proxyRequest.Host+basePath+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
+	defer proxyRequestResponse.Body.Close()
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
 	responseAppList := []map[string]any{}
@@ -441,6 +444,7 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient C
 	require.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
 	require.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
 
+	defer proxyRequestResponse.Body.Close()
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
 	responseAppList := []map[string]any{}
@@ -520,6 +524,7 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 			Message: "API version 'unsupported-version' for type 'ucp/ucp' is not supported. The supported api-versions are '2022-09-01-privatepreview'.",
 		},
 	}
+	defer response.Body.Close()
 	responseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
