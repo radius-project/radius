@@ -32,11 +32,11 @@ func TestBuildConfigOptions(t *testing.T) {
 			name: "only QPS",
 			in: &ConfigOptions{
 				ConfigFilePath: "custom",
-				QPS:            ServerQPS,
+				QPS:            DefaultServerQPS,
 			},
 			out: &ConfigOptions{
 				ConfigFilePath: "custom",
-				QPS:            ServerQPS,
+				QPS:            DefaultServerQPS,
 				Burst:          0,
 			},
 		},
@@ -44,12 +44,12 @@ func TestBuildConfigOptions(t *testing.T) {
 			name: "only Burst",
 			in: &ConfigOptions{
 				ConfigFilePath: "custom",
-				Burst:          ServerBurst,
+				Burst:          DefaultServerBurst,
 			},
 			out: &ConfigOptions{
 				ConfigFilePath: "custom",
 				QPS:            0.0,
-				Burst:          ServerBurst,
+				Burst:          DefaultServerBurst,
 			},
 		},
 	}
@@ -95,10 +95,10 @@ users:
 			name: "only QPS",
 			in: &ConfigOptions{
 				ConfigFilePath: configFile.Name(),
-				QPS:            ServerQPS,
+				QPS:            DefaultServerQPS,
 			},
 			out: &ConfigOptions{
-				QPS:   ServerQPS,
+				QPS:   DefaultServerQPS,
 				Burst: 0,
 			},
 		},
@@ -106,23 +106,23 @@ users:
 			name: "only Burst",
 			in: &ConfigOptions{
 				ConfigFilePath: configFile.Name(),
-				Burst:          ServerBurst,
+				Burst:          DefaultServerBurst,
 			},
 			out: &ConfigOptions{
 				QPS:   0.0,
-				Burst: ServerBurst,
+				Burst: DefaultServerBurst,
 			},
 		},
 		{
 			name: "QPS and Burst",
 			in: &ConfigOptions{
 				ConfigFilePath: configFile.Name(),
-				QPS:            ServerQPS,
-				Burst:          ServerBurst,
+				QPS:            DefaultServerQPS,
+				Burst:          DefaultServerBurst,
 			},
 			out: &ConfigOptions{
-				QPS:   ServerQPS,
-				Burst: ServerBurst,
+				QPS:   DefaultServerQPS,
+				Burst: DefaultServerBurst,
 			},
 		},
 	}

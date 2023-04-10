@@ -36,8 +36,8 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 
 	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
 		ContextName: opt.APIServer.Context,
-		QPS:         kubeutil.ServerQPS,
-		Burst:       kubeutil.ServerBurst,
+		QPS:         kubeutil.DefaultServerQPS,
+		Burst:       kubeutil.DefaultServerBurst,
 	})
 	if err != nil {
 		return nil, err

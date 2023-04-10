@@ -99,8 +99,8 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
 			// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
 			ContextName: "",
-			QPS:         kubeutil.ServerQPS,
-			Burst:       kubeutil.ServerBurst,
+			QPS:         kubeutil.DefaultServerQPS,
+			Burst:       kubeutil.DefaultServerBurst,
 		})
 		if err != nil {
 			return Options{}, fmt.Errorf("failed to get kubernetes config: %w", err)

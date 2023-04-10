@@ -138,8 +138,8 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 func GetCLIClientConfig(context string) (*rest.Config, error) {
 	return kubeutil.NewClientConfigFromLocal(&kubeutil.ConfigOptions{
 		ContextName: context,
-		QPS:         kubeutil.CliQPS,
-		Burst:       kubeutil.CliBurst,
+		QPS:         kubeutil.DefaultCLIQPS,
+		Burst:       kubeutil.DefaultCLIBurst,
 	})
 }
 

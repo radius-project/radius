@@ -37,8 +37,8 @@ func initAPIServer(ctx context.Context, name string, opt QueueProviderOptions) (
 
 	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
 		ContextName: opt.APIServer.Context,
-		QPS:         kubeutil.ServerQPS,
-		Burst:       kubeutil.ServerBurst,
+		QPS:         kubeutil.DefaultServerQPS,
+		Burst:       kubeutil.DefaultServerBurst,
 	})
 	if err != nil {
 		return nil, err
