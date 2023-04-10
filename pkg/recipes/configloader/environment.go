@@ -20,10 +20,6 @@ import (
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 
-const (
-	Bicep = "bicep"
-)
-
 func NewEnvironmentLoader(armOptions *arm.ClientOptions) ConfigurationLoader {
 	return &environmentLoader{ArmClientOptions: armOptions}
 }
@@ -99,7 +95,7 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metad
 	}
 
 	return &recipes.Definition{
-		Driver:       Bicep,
+		Driver:       recipes.DriverBicep,
 		ResourceType: *found.LinkType,
 		Parameters:   found.Parameters,
 		TemplatePath: *found.TemplatePath,

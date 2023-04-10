@@ -68,6 +68,10 @@ type RecipeOutput struct {
 	Values map[string]any
 }
 
+const (
+	DriverBicep = "bicep"
+)
+
 type ErrRecipeNotFound struct {
 	Name        string
 	Environment string
