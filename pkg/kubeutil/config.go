@@ -43,6 +43,16 @@ func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
 		options.ConfigFilePath = clientcmd.RecommendedHomeFile
 	}
 
+	if options.QPS < 0.0 {
+		// if QPS is zero, RESTClient uses its own default value.
+		options.QPS = 0.0
+	}
+
+	if options.Burst < 0 {
+		// if Burst is zero, RESTClient uses its own default value.
+		options.Burst = 0
+	}
+
 	return options
 }
 

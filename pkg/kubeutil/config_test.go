@@ -24,6 +24,8 @@ func TestBuildConfigOptions(t *testing.T) {
 			in:   nil,
 			out: &ConfigOptions{
 				ConfigFilePath: clientcmd.RecommendedHomeFile,
+				QPS:            0.0,
+				Burst:          0,
 			},
 		},
 		{
@@ -35,6 +37,7 @@ func TestBuildConfigOptions(t *testing.T) {
 			out: &ConfigOptions{
 				ConfigFilePath: "custom",
 				QPS:            ServerQPS,
+				Burst:          0,
 			},
 		},
 		{
@@ -45,7 +48,21 @@ func TestBuildConfigOptions(t *testing.T) {
 			},
 			out: &ConfigOptions{
 				ConfigFilePath: "custom",
+				QPS:            0.0,
 				Burst:          ServerBurst,
+			},
+		},
+		{
+			name: "invalid values",
+			in: &ConfigOptions{
+				ConfigFilePath: "custom",
+				QPS:            -1.0,
+				Burst:          -1,
+			},
+			out: &ConfigOptions{
+				ConfigFilePath: "custom",
+				QPS:            0.0,
+				Burst:          0,
 			},
 		},
 	}
@@ -94,7 +111,8 @@ users:
 				QPS:            ServerQPS,
 			},
 			out: &ConfigOptions{
-				QPS: ServerQPS,
+				QPS:   ServerQPS,
+				Burst: 0,
 			},
 		},
 		{
@@ -104,6 +122,7 @@ users:
 				Burst:          ServerBurst,
 			},
 			out: &ConfigOptions{
+				QPS:   0.0,
 				Burst: ServerBurst,
 			},
 		},
