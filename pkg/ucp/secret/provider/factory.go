@@ -44,9 +44,11 @@ func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secr
 
 func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	s := scheme.Scheme
-	cfg, err := kubeutil.NewClusterConfig(&kubeutil.ConfigOptions{
-		QPS:   kubeutil.ServerQPS,
-		Burst: kubeutil.ServerBurst,
+	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+		// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
+		ContextName: "",
+		QPS:         kubeutil.ServerQPS,
+		Burst:       kubeutil.ServerBurst,
 	})
 	if err != nil {
 		return nil, err

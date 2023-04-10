@@ -52,7 +52,7 @@ func (s *Service) Init(ctx context.Context) error {
 	}
 	s.OperationStatusManager = manager.New(opSC, reqQueueClient, s.ProviderName, s.Options.Config.Env.RoleLocation)
 
-	s.KubeClient, err = kubeutil.NewKubeClient(s.Options.K8sConfig)
+	s.KubeClient, err = kubeutil.NewRuntimeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err
 	}

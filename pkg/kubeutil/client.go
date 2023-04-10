@@ -16,8 +16,8 @@ import (
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
 
-// NewKubeClient creates new kubernetes clients.
-func NewKubeClient(config *rest.Config) (runtimeclient.Client, error) {
+// NewRuntimeClient creates new kubernetes clients.
+func NewRuntimeClient(config *rest.Config) (runtimeclient.Client, error) {
 	scheme := runtime.NewScheme()
 
 	// TODO: add required resource scheme.

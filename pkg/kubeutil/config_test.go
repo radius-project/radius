@@ -52,19 +52,6 @@ func TestBuildConfigOptions(t *testing.T) {
 				Burst:          ServerBurst,
 			},
 		},
-		{
-			name: "invalid values",
-			in: &ConfigOptions{
-				ConfigFilePath: "custom",
-				QPS:            -1.0,
-				Burst:          -1,
-			},
-			out: &ConfigOptions{
-				ConfigFilePath: "custom",
-				QPS:            0.0,
-				Burst:          0,
-			},
-		},
 	}
 
 	for _, tc := range optionTests {
@@ -75,7 +62,7 @@ func TestBuildConfigOptions(t *testing.T) {
 	}
 }
 
-func TestNewClusterConfig(t *testing.T) {
+func TestNewClientConfig(t *testing.T) {
 	configFile, _ := os.CreateTemp("", "")
 	defer os.Remove(configFile.Name())
 
@@ -142,7 +129,7 @@ users:
 
 	for _, tc := range optionTests {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg, err := NewClusterConfig(tc.in)
+			cfg, err := NewClientConfig(tc.in)
 			require.NoError(t, err)
 			require.Equal(t, tc.out.QPS, cfg.QPS)
 			require.Equal(t, tc.out.Burst, cfg.Burst)

@@ -7,7 +7,6 @@ package kubernetes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -48,7 +47,7 @@ func init() {
 }
 
 func CreateExtensionClient(context string) (clientset.Interface, error) {
-	merged, err := GetConfig(context)
+	merged, err := GetCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +61,7 @@ func CreateExtensionClient(context string) (clientset.Interface, error) {
 }
 
 func CreateDynamicClient(context string) (dynamic.Interface, error) {
-	merged, err := GetConfig(context)
+	merged, err := GetCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +75,7 @@ func CreateDynamicClient(context string) (dynamic.Interface, error) {
 }
 
 func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
-	merged, err := GetConfig(context)
+	merged, err := GetCLIClientConfig(context)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -90,7 +89,7 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 }
 
 func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
-	merged, err := GetConfig(context)
+	merged, err := GetCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +111,7 @@ func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Cli
 }
 
 func CreateRESTMapper(context string) (meta.RESTMapper, error) {
-	merged, err := GetConfig(context)
+	merged, err := GetCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +135,8 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 	return nil
 }
 
-func GetConfig(context string) (*rest.Config, error) {
-	return kubeutil.NewClusterConfigFromLocal(&kubeutil.ConfigOptions{
+func GetCLIClientConfig(context string) (*rest.Config, error) {
+	return kubeutil.NewClientConfigFromLocal(&kubeutil.ConfigOptions{
 		ContextName: context,
 		QPS:         kubeutil.CliQPS,
 		Burst:       kubeutil.CliBurst,
@@ -146,20 +145,9 @@ func GetConfig(context string) (*rest.Config, error) {
 
 // Creating a Kubernetes client
 func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := kubeutil.LoadDefaultConfig()
+	contextName, _, err := kubeutil.GetContextFromConfigFileIfExists(contextName)
 	if err != nil {
 		return nil, nil, "", err
-	}
-
-	if contextName == "" && k8sConfig.CurrentContext == "" {
-		return nil, nil, "", errors.New("no kubernetes context is set")
-	} else if contextName == "" {
-		contextName = k8sConfig.CurrentContext
-	}
-
-	context := k8sConfig.Contexts[contextName]
-	if context == nil {
-		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
 	}
 
 	client, _, err := CreateTypedClient(contextName)
@@ -185,5 +173,5 @@ type Impl struct {
 
 // Fetches the kubecontext from the system
 func (i *Impl) GetKubeContext() (*api.Config, error) {
-	return kubeutil.LoadKubeConfig("")
+	return kubeutil.LoadConfigFile("")
 }

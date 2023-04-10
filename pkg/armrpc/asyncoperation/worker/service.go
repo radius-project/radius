@@ -56,7 +56,7 @@ func (s *Service) Init(ctx context.Context) error {
 	s.Controllers = NewControllerRegistry(s.StorageProvider)
 
 	if s.Options.K8sConfig != nil {
-		s.KubeClient, err = kubeutil.NewKubeClient(s.Options.K8sConfig)
+		s.KubeClient, err = kubeutil.NewRuntimeClient(s.Options.K8sConfig)
 		if err != nil {
 			return err
 		}

@@ -43,28 +43,30 @@ func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
 		options.ConfigFilePath = clientcmd.RecommendedHomeFile
 	}
 
-	if options.QPS < 0.0 {
-		// if QPS is zero, RESTClient uses its own default value.
-		options.QPS = 0.0
-	}
-
-	if options.Burst < 0 {
-		// if Burst is zero, RESTClient uses its own default value.
-		options.Burst = 0
-	}
-
 	return options
 }
 
-// LoadDefaultConfig returns kube config from home directory.
-func LoadDefaultConfig() (*api.Config, error) {
-	// empty config file path falls back to the default .kube/config in home directory.
-	return LoadKubeConfig("")
+// GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
+func GetContextFromConfigFileIfExists(contextName string) (string, *api.Context, error) {
+	cfg, err := LoadConfigFile("")
+	if err != nil {
+		return "", nil, err
+	}
+
+	if contextName == "" {
+		contextName = cfg.CurrentContext
+	}
+
+	if cfg.Contexts[contextName] == nil {
+		return "", nil, fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	}
+
+	return contextName, cfg.Contexts[contextName], nil
 }
 
-// LoadKubeConfig loads kubenetes config from specified config file.
+// LoadConfigFile loads kubernetes config from specified config file.
 // If configFilePath is empty, it will use the default config from home directory.
-func LoadKubeConfig(configFilePath string) (*api.Config, error) {
+func LoadConfigFile(configFilePath string) (*api.Config, error) {
 	if configFilePath == "" {
 		configFilePath = clientcmd.RecommendedHomeFile
 	}
@@ -72,8 +74,8 @@ func LoadKubeConfig(configFilePath string) (*api.Config, error) {
 	return clientcmd.LoadFromFile(configFilePath)
 }
 
-// NewClusterConfig loads kubeconfig in cluster or from the file.
-func NewClusterConfig(options *ConfigOptions) (*rest.Config, error) {
+// NewClientConfig loads kubeconfig in cluster or from the file.
+func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 	options = buildConfigOptions(options)
 
 	var config *rest.Config
@@ -81,7 +83,7 @@ func NewClusterConfig(options *ConfigOptions) (*rest.Config, error) {
 
 	config, err = rest.InClusterConfig()
 	if errors.Is(err, rest.ErrNotInCluster) {
-		config, err = NewClusterConfigFromLocal(options)
+		config, err = NewClientConfigFromLocal(options)
 		if err != nil {
 			return nil, err
 		}
@@ -100,11 +102,11 @@ func NewClusterConfig(options *ConfigOptions) (*rest.Config, error) {
 	return config, nil
 }
 
-// NewClusterConfigFromLocal loads config from local home directory.
-func NewClusterConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
+// NewClientConfigFromLocal loads config from local home directory.
+func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	options = buildConfigOptions(options)
 
-	cfg, err := LoadKubeConfig(options.ConfigFilePath)
+	cfg, err := LoadConfigFile(options.ConfigFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}

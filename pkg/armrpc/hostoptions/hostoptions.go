@@ -136,7 +136,12 @@ func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 }
 
 func getKubernetes() (*rest.Config, error) {
-	cfg, err := kubeutil.NewClusterConfig(&kubeutil.ConfigOptions{QPS: kubeutil.ServerQPS, Burst: kubeutil.ServerBurst})
+	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+		// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
+		ContextName: "",
+		QPS:         kubeutil.ServerQPS,
+		Burst:       kubeutil.ServerBurst,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
 	}

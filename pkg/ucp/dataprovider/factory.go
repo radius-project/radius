@@ -34,7 +34,7 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		return nil, errors.New("failed to initialize APIServer client: namespace is required")
 	}
 
-	cfg, err := kubeutil.NewClusterConfig(&kubeutil.ConfigOptions{
+	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
 		ContextName: opt.APIServer.Context,
 		QPS:         kubeutil.ServerQPS,
 		Burst:       kubeutil.ServerBurst,

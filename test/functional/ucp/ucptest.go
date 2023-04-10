@@ -63,7 +63,7 @@ func (ucptest UCPTest) Test(t *testing.T) {
 		}
 	})
 
-	config, err := kubernetes.GetConfig("")
+	config, err := kubernetes.GetCLIClientConfig("")
 	require.NoError(t, err, "failed to read kubeconfig")
 
 	connection, err := sdk.NewKubernetesConnectionFromConfig(config)

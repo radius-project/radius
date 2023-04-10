@@ -31,16 +31,16 @@ func NewTestOptions(t *testing.T) TestOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	k8sconfig, err := kubeutil.LoadDefaultConfig()
+	contextName, _, err := kubeutil.GetContextFromConfigFileIfExists("")
 	require.NoError(t, err, "failed to read k8s config")
 
-	k8s, restConfig, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
+	k8s, restConfig, err := kubernetes.CreateTypedClient(contextName)
 	require.NoError(t, err, "failed to create kubernetes client")
 
-	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
+	dynamicClient, err := kubernetes.CreateDynamicClient(contextName)
 	require.NoError(t, err, "failed to create kubernetes dyamic client")
 
-	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
+	client, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
 	require.NoError(t, err, "failed to create runtime client")
 
 	return TestOptions{

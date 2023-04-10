@@ -76,7 +76,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 }
 
 func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
-
 	config := ConfigFromContext(ctx)
 	section, err := cli.ReadWorkspaceSection(config)
 	if err != nil {
@@ -86,7 +85,7 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		return nil
 	}
 
-	currentKubeContext, err := getCurrentKubeContext()
+	currentContext, _, err := kubeutil.GetContextFromConfigFileIfExists("")
 	if err != nil {
 		return err
 	}
@@ -96,20 +95,11 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		workspaceProvider = workspaces.AzureProvider{ResourceGroup: azProvider.ResourceGroup, SubscriptionID: azProvider.SubscriptionID}
 	}
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
-		cli.UpdateAzProvider(section, workspaceProvider, currentKubeContext)
+		cli.UpdateAzProvider(section, workspaceProvider, currentContext)
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func getCurrentKubeContext() (string, error) {
-	k8sConfig, err := kubeutil.LoadDefaultConfig()
-	if err != nil {
-		return "", err
-	}
-
-	return k8sConfig.CurrentContext, nil
 }
