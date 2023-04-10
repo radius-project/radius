@@ -86,7 +86,7 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 	return &configuration, nil
 }
 
-//	LoadRecipe fetches the recipe information from the environment.
+// LoadRecipe fetches the recipe information from the environment.
 func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metadata) (*recipes.Definition, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {

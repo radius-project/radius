@@ -14,6 +14,6 @@ import (
 type ConfigurationLoader interface {
 	// LoadConfiguration fetches environment/application information and return runtime and provider configuration.
 	LoadConfiguration(ctx context.Context, recipe recipes.Metadata) (*recipes.Configuration, error)
-	//	LoadRecipe fetches the recipe information from the environment.
+	// LoadRecipe fetches the recipe information from the environment.
 	LoadRecipe(ctx context.Context, recipe recipes.Metadata) (*recipes.Definition, error)
 }
