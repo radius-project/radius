@@ -80,6 +80,7 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusCreated, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 
@@ -88,7 +89,6 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	require.NotNil(t, res.Header.Get("Azure-AsyncOperation"))
 	require.Equal(t, testResource.AzureAsyncOpHeader, res.Header.Get("Azure-AsyncOperation"))
-	defer res.Body.Close()
 
 	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
@@ -180,9 +180,9 @@ func Test_UpdateAWSResource(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusCreated, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
@@ -266,9 +266,9 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
