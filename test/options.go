@@ -31,7 +31,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	contextName, _, err := kubeutil.GetContextFromConfigFileIfExists("")
+	contextName, _, err := kubeutil.GetContextFromConfigFileIfExists(nil)
 	require.NoError(t, err, "failed to read k8s config")
 
 	k8s, restConfig, err := kubernetes.CreateTypedClient(contextName)
