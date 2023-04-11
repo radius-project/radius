@@ -25,7 +25,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/kubeutil"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -137,26 +136,6 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 	}
 
 	return contextName, nil
-}
-
-// NewKubernetesClients creates clientset and runtime clients and returns context name with the created clients.
-func NewKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
-	contextName, err := GetContextFromConfigFileIfExists("", contextName)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	client, _, err := NewClientset(contextName)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	runtimeClient, err := NewRuntimeClient(contextName, Scheme)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	return client, runtimeClient, contextName, nil
 }
 
 //go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/project-radius/radius/pkg/cli/kubernetes github.com/project-radius/radius/pkg/cli/kubernetes Interface
