@@ -109,11 +109,11 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 
 	switch c := connectionConfig.(type) {
 	case *workspaces.KubernetesConnectionConfig:
-		k8sClient, config, err := kubernetes.CreateTypedClient(c.Context)
+		k8sClient, config, err := kubernetes.NewClientset(c.Context)
 		if err != nil {
 			return nil, err
 		}
-		client, err := kubernetes.CreateRuntimeClient(c.Context, kubernetes.Scheme)
+		client, err := kubernetes.NewRuntimeClient(c.Context, kubernetes.Scheme)
 		if err != nil {
 			return nil, err
 		}

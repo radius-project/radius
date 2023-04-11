@@ -24,7 +24,7 @@ func (i *Impl) Run(ctx context.Context, options Options) error {
 	// We allow initialization of other context, or the client + config. This is the
 	// most flexible for tests.
 	if options.Client == nil && options.RESTConfig == nil {
-		client, restConfig, err := kubernetes.CreateTypedClient(options.KubeContext)
+		client, restConfig, err := kubernetes.NewClientset(options.KubeContext)
 		if err != nil {
 			return err
 		}

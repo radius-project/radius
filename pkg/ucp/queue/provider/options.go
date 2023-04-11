@@ -23,9 +23,6 @@ type InMemoryQueueOptions struct {
 
 // APIServerOptions represents options for the configuring the Kubernetes APIServer store.
 type APIServerOptions struct {
-	// InCluster configures the APIServer store to use "in-cluster" credentials. Use this when running inside a Kubernetes cluster.
-	InCluster bool `yaml:"incluster"`
-
 	// Context configures the Kubernetes context name to use for the connection. Use this for NON-production scenarios to test
 	// against a specific cluster.
 	Context string `yaml:"context"`

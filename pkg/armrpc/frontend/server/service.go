@@ -13,7 +13,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -52,7 +52,7 @@ func (s *Service) Init(ctx context.Context) error {
 	}
 	s.OperationStatusManager = manager.New(opSC, reqQueueClient, s.ProviderName, s.Options.Config.Env.RoleLocation)
 
-	s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
+	s.KubeClient, err = kubeutil.NewRuntimeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err
 	}
