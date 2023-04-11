@@ -134,7 +134,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	var registry *workspaces.Registry
 	switch kind {
 	case Kubernetes:
-		k8sGoClient, _, contextName, err = kubernetes.CreateKubernetesClients("")
+		k8sGoClient, _, contextName, err = kubernetes.NewKubernetesClients("")
 		if err != nil {
 			return err
 		}

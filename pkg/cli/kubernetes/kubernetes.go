@@ -139,8 +139,8 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 	return contextName, nil
 }
 
-// Creating a Kubernetes client
-func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
+// NewKubernetesClients creates clientset and runtime clients and returns context name with the created clients.
+func NewKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
 	contextName, err := GetContextFromConfigFileIfExists("", contextName)
 	if err != nil {
 		return nil, nil, "", err

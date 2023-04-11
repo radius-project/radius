@@ -21,7 +21,7 @@ type Impl struct {
 
 // Ensure sure namespace is available
 func (i *Impl) ValidateNamespace(ctx context.Context, namespace string) error {
-	k8sGoClient, _, _, err := kubernetes.CreateKubernetesClients("")
+	k8sGoClient, _, _, err := kubernetes.NewKubernetesClients("")
 	if err != nil {
 		return err
 	}
