@@ -6,12 +6,37 @@
 package kubernetes
 
 import (
+	"context"
 	"errors"
 	"os"
 	"testing"
 
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
+	clienttesting "k8s.io/client-go/testing"
 )
+
+func TestEnsureNamespace(t *testing.T) {
+	f := k8sfake.NewSimpleClientset(&v1.Namespace{ObjectMeta: meta_v1.ObjectMeta{Name: "radius-test"}})
+
+	testutil.PrependPatchReactor(f, "namespaces", func(pa clienttesting.PatchAction) runtime.Object {
+		return &v1.Namespace{
+			ObjectMeta: meta_v1.ObjectMeta{
+				Name: pa.GetName(),
+			},
+		}
+	})
+
+	ctx := context.TODO()
+	err := EnsureNamespace(ctx, f, "radius-test")
+	require.NoError(t, err)
+	_, err = f.CoreV1().Namespaces().Get(ctx, "radius-test", meta_v1.GetOptions{})
+	require.NoError(t, err)
+}
 
 func TestGetContextFromConfigFileIfExists(t *testing.T) {
 	configFile, _ := os.CreateTemp("", "")
