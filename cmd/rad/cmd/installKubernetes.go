@@ -11,9 +11,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
+	clikube "github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/spf13/cobra"
 )
 
@@ -85,7 +85,7 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		return nil
 	}
 
-	currentContext, _, err := kubeutil.GetContextFromConfigFileIfExists(nil)
+	currentContext, err := clikube.GetContextFromConfigFileIfExists("", "")
 	if err != nil {
 		return err
 	}

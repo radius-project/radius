@@ -46,26 +46,6 @@ func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
 	return options
 }
 
-// GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
-func GetContextFromConfigFileIfExists(options *ConfigOptions) (string, *api.Context, error) {
-	options = buildConfigOptions(options)
-	cfg, err := LoadConfigFile(options.ConfigFilePath)
-	if err != nil {
-		return "", nil, err
-	}
-
-	contextName := options.ContextName
-	if contextName == "" {
-		contextName = cfg.CurrentContext
-	}
-
-	if cfg.Contexts[contextName] == nil {
-		return "", nil, fmt.Errorf("kubernetes context '%s' could not be found", contextName)
-	}
-
-	return contextName, cfg.Contexts[contextName], nil
-}
-
 // LoadConfigFile loads kubernetes config from specified config file.
 // If configFilePath is empty, it will use the default config from home directory.
 func LoadConfigFile(configFilePath string) (*api.Config, error) {

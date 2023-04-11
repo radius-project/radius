@@ -7,6 +7,7 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -144,9 +145,32 @@ func NewCLIClientConfig(context string) (*rest.Config, error) {
 	})
 }
 
+// GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
+func GetContextFromConfigFileIfExists(configFilePath, context string) (string, error) {
+	cfg, err := kubeutil.LoadConfigFile(configFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	contextName := context
+	if contextName == "" {
+		contextName = cfg.CurrentContext
+	}
+
+	if contextName == "" {
+		return "", errors.New("no kubernetes context is set")
+	}
+
+	if cfg.Contexts[contextName] == nil {
+		return "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	}
+
+	return contextName, nil
+}
+
 // Creating a Kubernetes client
 func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
-	contextName, _, err := kubeutil.GetContextFromConfigFileIfExists(&kubeutil.ConfigOptions{ContextName: contextName})
+	contextName, err := GetContextFromConfigFileIfExists("", contextName)
 	if err != nil {
 		return nil, nil, "", err
 	}
