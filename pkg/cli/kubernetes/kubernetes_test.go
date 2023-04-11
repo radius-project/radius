@@ -99,6 +99,12 @@ users:
 			in:         "",
 			err:        errors.New("no kubernetes context is set"),
 		},
+		{
+			name:       "try to get non-existing config file",
+			configFile: "non-existing",
+			in:         "",
+			err:        errors.New("open non-existing: no such file or directory"),
+		},
 	}
 
 	for _, tc := range tests {

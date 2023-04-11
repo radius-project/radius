@@ -13,18 +13,13 @@ import (
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s_runtime "k8s.io/apimachinery/pkg/runtime"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"k8s.io/client-go/discovery"
-	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -47,21 +42,8 @@ func init() {
 	_ = contourv1.AddToScheme(Scheme)
 }
 
-func CreateExtensionClient(context string) (clientset.Interface, error) {
-	merged, err := NewCLIClientConfig(context)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := clientset.NewForConfig(merged)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, err
-}
-
-func CreateDynamicClient(context string) (dynamic.Interface, error) {
+// NewDynamicClient creates a dynamic resource Kubernetes client.
+func NewDynamicClient(context string) (dynamic.Interface, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
@@ -75,7 +57,8 @@ func CreateDynamicClient(context string) (dynamic.Interface, error) {
 	return client, err
 }
 
-func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
+// NewClientset creates the typed Kubernetes client and return rest client config.
+func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, nil, err
@@ -89,7 +72,8 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 	return client, merged, err
 }
 
-func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
+// NewRuntimeClient creates a new runtime client.
+func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
@@ -111,20 +95,7 @@ func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Cli
 	return c, nil
 }
 
-func CreateRESTMapper(context string) (meta.RESTMapper, error) {
-	merged, err := NewCLIClientConfig(context)
-	if err != nil {
-		return nil, err
-	}
-
-	d, err := discovery.NewDiscoveryClientForConfig(merged)
-	if err != nil {
-		return nil, err
-	}
-
-	return restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(d)), nil
-}
-
+// EnsureNamespace creates or get Kubernetes namespace.
 func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	namespaceApply := applycorev1.Namespace(namespace)
 
@@ -175,12 +146,12 @@ func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.
 		return nil, nil, "", err
 	}
 
-	client, _, err := CreateTypedClient(contextName)
+	client, _, err := NewClientset(contextName)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	runtimeClient, err := CreateRuntimeClient(contextName, Scheme)
+	runtimeClient, err := NewRuntimeClient(contextName, Scheme)
 	if err != nil {
 		return nil, nil, "", err
 	}

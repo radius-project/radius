@@ -33,13 +33,13 @@ func NewTestOptions(t *testing.T) TestOptions {
 	contextName, err := kubernetes.GetContextFromConfigFileIfExists("", "")
 	require.NoError(t, err, "failed to read k8s config")
 
-	k8s, restConfig, err := kubernetes.CreateTypedClient(contextName)
+	k8s, restConfig, err := kubernetes.NewClientset(contextName)
 	require.NoError(t, err, "failed to create kubernetes client")
 
-	dynamicClient, err := kubernetes.CreateDynamicClient(contextName)
+	dynamicClient, err := kubernetes.NewDynamicClient(contextName)
 	require.NoError(t, err, "failed to create kubernetes dyamic client")
 
-	client, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
+	client, err := kubernetes.NewRuntimeClient(contextName, kubernetes.Scheme)
 	require.NoError(t, err, "failed to create runtime client")
 
 	return TestOptions{
