@@ -47,7 +47,7 @@ func init() {
 }
 
 func CreateExtensionClient(context string) (clientset.Interface, error) {
-	merged, err := GetCLIClientConfig(context)
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func CreateExtensionClient(context string) (clientset.Interface, error) {
 }
 
 func CreateDynamicClient(context string) (dynamic.Interface, error) {
-	merged, err := GetCLIClientConfig(context)
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func CreateDynamicClient(context string) (dynamic.Interface, error) {
 }
 
 func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
-	merged, err := GetCLIClientConfig(context)
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -89,7 +89,7 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 }
 
 func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
-	merged, err := GetCLIClientConfig(context)
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Cli
 }
 
 func CreateRESTMapper(context string) (meta.RESTMapper, error) {
-	merged, err := GetCLIClientConfig(context)
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,8 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 	return nil
 }
 
-func GetCLIClientConfig(context string) (*rest.Config, error) {
+// NewCLIClientConfig creates new Kubernetes client config loading from local home directory with CLI options.
+func NewCLIClientConfig(context string) (*rest.Config, error) {
 	return kubeutil.NewClientConfigFromLocal(&kubeutil.ConfigOptions{
 		ContextName: context,
 		QPS:         kubeutil.DefaultCLIQPS,
@@ -145,7 +146,7 @@ func GetCLIClientConfig(context string) (*rest.Config, error) {
 
 // Creating a Kubernetes client
 func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
-	contextName, _, err := kubeutil.GetContextFromConfigFileIfExists(contextName)
+	contextName, _, err := kubeutil.GetContextFromConfigFileIfExists(&kubeutil.ConfigOptions{ContextName: contextName})
 	if err != nil {
 		return nil, nil, "", err
 	}

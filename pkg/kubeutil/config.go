@@ -47,12 +47,14 @@ func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
 }
 
 // GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
-func GetContextFromConfigFileIfExists(contextName string) (string, *api.Context, error) {
-	cfg, err := LoadConfigFile("")
+func GetContextFromConfigFileIfExists(options *ConfigOptions) (string, *api.Context, error) {
+	options = buildConfigOptions(options)
+	cfg, err := LoadConfigFile(options.ConfigFilePath)
 	if err != nil {
 		return "", nil, err
 	}
 
+	contextName := options.ContextName
 	if contextName == "" {
 		contextName = cfg.CurrentContext
 	}

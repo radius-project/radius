@@ -99,7 +99,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	switch kind {
 	case Kubernetes:
-		defaultEnvName, _, err = kubeutil.GetContextFromConfigFileIfExists("")
+		defaultEnvName, _, err = kubeutil.GetContextFromConfigFileIfExists(nil)
 		if err != nil {
 			return err
 		}
@@ -253,7 +253,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			return err
 		}
 	} else {
-		config, err := kubernetes.GetCLIClientConfig(contextName)
+		config, err := kubernetes.NewCLIClientConfig(contextName)
 		if err != nil {
 			return err
 		}
@@ -352,7 +352,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 }
 
 func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName, namespace, subscriptionID, resourceGroup string) (string, error) {
-	config, err := kubernetes.GetCLIClientConfig(kubeCtxName)
+	config, err := kubernetes.NewCLIClientConfig(kubeCtxName)
 	if err != nil {
 		return "", err
 	}

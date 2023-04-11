@@ -85,7 +85,7 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		return nil
 	}
 
-	currentContext, _, err := kubeutil.GetContextFromConfigFileIfExists("")
+	currentContext, _, err := kubeutil.GetContextFromConfigFileIfExists(nil)
 	if err != nil {
 		return err
 	}
