@@ -92,6 +92,16 @@ users:
 		out  *ConfigOptions
 	}{
 		{
+			name: "default",
+			in: &ConfigOptions{
+				ConfigFilePath: configFile.Name(),
+			},
+			out: &ConfigOptions{
+				QPS:   0.0,
+				Burst: 0,
+			},
+		},
+		{
 			name: "only QPS",
 			in: &ConfigOptions{
 				ConfigFilePath: configFile.Name(),
