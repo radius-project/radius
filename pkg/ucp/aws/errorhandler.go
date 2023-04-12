@@ -15,11 +15,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 )
 
-func IsAWSResourceNotFound(err error) bool {
-	target := &types.ResourceNotFoundException{}
-	return errors.As(err, &target)
-}
-
 func HandleAWSError(err error) (armrpc_rest.Response, error) {
 	operationErr := &smithy.OperationError{}
 	if !errors.As(err, &operationErr) {
@@ -59,6 +54,11 @@ func HandleAWSError(err error) (armrpc_rest.Response, error) {
 	}
 
 	return armrpc_rest.NewInternalServerErrorARMResponse(e), nil
+}
+
+func IsAWSResourceNotFoundError(err error) bool {
+	target := &types.ResourceNotFoundException{}
+	return errors.As(err, &target)
 }
 
 // AWSMissingPropertyError is an error type to be returned when the call to UCP CreateWithPost
