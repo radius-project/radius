@@ -38,7 +38,8 @@ func Test_AWS_DeleteResource(t *testing.T) {
 	setupTestAWSResource(t, ctx, bucketName)
 
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceID := validation.GetResourceIdentifier(ctx, t, s3BucketResourceType, bucketName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
+		require.NoError(t, err)
 
 		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
@@ -98,7 +99,8 @@ func Test_AWS_ListResources(t *testing.T) {
 	setupTestAWSResource(t, ctx, bucketName)
 
 	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceID := validation.GetResourceIdentifier(ctx, t, s3BucketResourceType, bucketName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
+		require.NoError(t, err)
 
 		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
@@ -155,7 +157,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 			Identifier: &resourceName,
 			TypeName:   &awsS3BucketResourceType,
 		})
-		if aws.IsAWSResourceNotFound(err) {
+		if aws.IsAWSResourceNotFoundError(err) {
 			return
 		}
 		// Just in case delete fails

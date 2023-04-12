@@ -42,7 +42,9 @@ type AWSResourceSet struct {
 
 func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
-		resourceType := GetResourceTypeName(ctx, t, &resource)
+		resourceType, err := GetResourceTypeName(ctx, &resource)
+		require.NoError(t, err)
+
 		resourceResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			Identifier: to.Ptr(resource.Identifier),
 			TypeName:   &resourceType,
@@ -59,15 +61,19 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	}
 }
 
-func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client awsclient.AWSCloudControlClient) error {
-	resourceType := GetResourceTypeName(ctx, t, resource)
+func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) error {
+	resourceType, err := GetResourceTypeName(ctx, resource)
+	if err != nil {
+		return err
+	}
 
 	// Check if the resource exists
-	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		Identifier: to.Ptr(resource.Identifier),
 		TypeName:   &resourceType,
 	})
-	notFound := awsclient.IsAWSResourceNotFound(err)
+
+	notFound := awsclient.IsAWSResourceNotFoundError(err)
 	if notFound {
 		// Resource does not need to be deleted
 		return nil
@@ -89,19 +95,23 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 	}, maxWaitTime)
 }
 
-func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client awsclient.AWSCloudControlClient) {
+func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) (bool, error) {
 	// Verify that the resource is indeed deleted
-	resourceType := GetResourceTypeName(ctx, t, resource)
-	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	resourceType, err := GetResourceTypeName(ctx, resource)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		Identifier: to.Ptr(resource.Identifier),
 		TypeName:   &resourceType,
 	})
 
-	notFound := awsclient.IsAWSResourceNotFound(err)
-	require.True(t, notFound)
+	return awsclient.IsAWSResourceNotFoundError(err), err
+
 }
 
-func GetResourceIdentifier(ctx context.Context, t *testing.T, resourceType string, name string) string {
+func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	sessionToken := ""
@@ -114,17 +124,26 @@ func GetResourceIdentifier(ctx context.Context, t *testing.T, resourceType strin
 		Credentials: credentialsProvider,
 	})
 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	require.NoError(t, err)
+	if err != nil {
+		return "", err
+	}
 
-	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name
+	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 
-func GetResourceTypeName(ctx context.Context, t *testing.T, resource *AWSResource) string {
-	id := GetResourceIdentifier(ctx, t, resource.Type, resource.Name)
+func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, error) {
+	id, err := GetResourceIdentifier(ctx, resource.Type, resource.Name)
+	if err != nil {
+		return "", err
+	}
+
 	resourceID, err := resources.Parse(id)
-	require.NoError(t, err)
+	if err != nil {
+		return "", err
+	}
+
 	resourceType := resources.ToAWSResourceType(resourceID)
-	return resourceType
+	return resourceType, nil
 }
 
 // assertFieldsArePresent ensures that all fields in actual exist and are equivalent in expected

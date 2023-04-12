@@ -11,6 +11,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -33,6 +34,7 @@ const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 	APIVersion             = "2022-03-15-privatepreview"
 	TestNamespace          = "kind-radius"
+	AWSDeletionRetryLimit  = 5
 
 	// Used to check required features
 	daprComponentCRD         = "components.dapr.io"
@@ -244,6 +246,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
+				// Use the AWS CloudControl.Get method to validate that the resources are created
 				validation.ValidateAWSResources(ctx, t, step.AWSResources, ct.Options.AWSClient)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
@@ -273,16 +276,33 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
-		// Delete AWS resources if they were created
+		// Delete AWS resources if they were created. This delete logic is here because deleting a Radius application
+		// will not delete the AWS resources that were created as part of the Bicep deployment.
 		if step.AWSResources != nil && len(step.AWSResources.Resources) > 0 {
 			for _, resource := range step.AWSResources.Resources {
 				t.Logf("deleting %s", resource.Name)
-				err := validation.DeleteAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				// Use the AWS CloudControl.Delete method to delete the resource
+				err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient)
 				require.NoErrorf(t, err, "failed to delete %s", resource.Name)
 				t.Logf("finished deleting %s", ct.Description)
 
-				t.Logf("validating deletion of AWS resource for %s", ct.Description)
-				validation.ValidateNoAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				// Retry
+				notFound := false
+				for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
+					t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
+
+					// Use AWS CloudControl.Get method to validate that the resource is deleted
+					notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+					t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
+
+					if notFound {
+						break
+					} else {
+						// Wait for 10 seconds
+						time.Sleep(10 * time.Second)
+					}
+				}
+				require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
 				t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 			}
 		}
