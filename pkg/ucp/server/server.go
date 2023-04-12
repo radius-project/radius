@@ -17,6 +17,8 @@ import (
 	"github.com/project-radius/radius/pkg/kubeutil"
 	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
 	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
+	profilerprovider "github.com/project-radius/radius/pkg/profiler/provider"
+	profilerservice "github.com/project-radius/radius/pkg/profiler/service"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/backend"
@@ -40,20 +42,20 @@ const (
 )
 
 type Options struct {
-	Port                   string
-	StorageProviderOptions dataprovider.StorageProviderOptions
-	LoggingOptions         ucplog.LoggingOptions
-	SecretProviderOptions  provider.SecretProviderOptions
-	QueueProviderOptions   qprovider.QueueProviderOptions
-	MetricsProviderOptions metricsprovider.MetricsProviderOptions
-	TracerProviderOptions  trace.Options
-	TLSCertDir             string
-	BasePath               string
-	InitialPlanes          []rest.Plane
-	Identity               hostoptions.Identity
-	UCPConnection          sdk.Connection
-	Location               string
-	EnableProfiling        bool
+	Port                    string
+	StorageProviderOptions  dataprovider.StorageProviderOptions
+	LoggingOptions          ucplog.LoggingOptions
+	SecretProviderOptions   provider.SecretProviderOptions
+	QueueProviderOptions    qprovider.QueueProviderOptions
+	MetricsProviderOptions  metricsprovider.MetricsProviderOptions
+	ProfilerProviderOptions profilerprovider.ProfilerProviderOptions
+	TracerProviderOptions   trace.Options
+	TLSCertDir              string
+	BasePath                string
+	InitialPlanes           []rest.Plane
+	Identity                hostoptions.Identity
+	UCPConnection           sdk.Connection
+	Location                string
 }
 
 const UCPProviderName = "ucp"
@@ -83,6 +85,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	qproviderOpts := opts.Config.QueueProvider
 	metricsOpts := opts.Config.MetricsProvider
 	traceOpts := opts.Config.TracerProvider
+	profilerOpts := opts.Config.ProfilerProvider
 	loggingOpts := opts.Config.Logging
 	identity := opts.Config.Identity
 	// Set the default authentication method if AuthMethod is not set.
@@ -113,23 +116,21 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		return Options{}, err
 	}
 
-	enableProfiling := os.Getenv("ENABLE_PROFILING") == "true"
-
 	return Options{
-		Port:                   port,
-		TLSCertDir:             tlsCertDir,
-		BasePath:               basePath,
-		StorageProviderOptions: storeOpts,
-		SecretProviderOptions:  secretOpts,
-		QueueProviderOptions:   qproviderOpts,
-		MetricsProviderOptions: metricsOpts,
-		TracerProviderOptions:  traceOpts,
-		LoggingOptions:         loggingOpts,
-		InitialPlanes:          planes,
-		Identity:               identity,
-		UCPConnection:          ucpConn,
-		Location:               location,
-		EnableProfiling:        enableProfiling,
+		Port:                    port,
+		TLSCertDir:              tlsCertDir,
+		BasePath:                basePath,
+		StorageProviderOptions:  storeOpts,
+		SecretProviderOptions:   secretOpts,
+		QueueProviderOptions:    qproviderOpts,
+		MetricsProviderOptions:  metricsOpts,
+		TracerProviderOptions:   traceOpts,
+		ProfilerProviderOptions: profilerOpts,
+		LoggingOptions:          loggingOpts,
+		InitialPlanes:           planes,
+		Identity:                identity,
+		UCPConnection:           ucpConn,
+		Location:                location,
 	}, nil
 }
 
@@ -150,7 +151,6 @@ func NewServer(options *Options) (*hosting.Host, error) {
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
 			Location:               options.Location,
-			EnableProfiling:        options.EnableProfiling,
 		}),
 	}
 
@@ -167,14 +167,22 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, metricsservice.NewService(metricOptions))
 	}
 
+	if options.ProfilerProviderOptions.Enabled {
+		profilerOptions := profilerservice.HostOptions{
+			Config: &options.ProfilerProviderOptions,
+		}
+		hostingServices = append(hostingServices, profilerservice.NewService(profilerOptions))
+	}
+
 	if enableAsyncWorker {
 		backendServiceOptions := hostOpts.HostOptions{
 			Config: &hostOpts.ProviderConfig{
-				StorageProvider: options.StorageProviderOptions,
-				SecretProvider:  options.SecretProviderOptions,
-				QueueProvider:   options.QueueProviderOptions,
-				MetricsProvider: options.MetricsProviderOptions,
-				TracerProvider:  options.TracerProviderOptions,
+				StorageProvider:  options.StorageProviderOptions,
+				SecretProvider:   options.SecretProviderOptions,
+				QueueProvider:    options.QueueProviderOptions,
+				MetricsProvider:  options.MetricsProviderOptions,
+				TracerProvider:   options.TracerProviderOptions,
+				ProfilerProvider: options.ProfilerProviderOptions,
 			},
 		}
 		hostingServices = append(hostingServices, backend.NewService(backendServiceOptions))

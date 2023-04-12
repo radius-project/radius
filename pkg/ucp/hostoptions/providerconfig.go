@@ -7,6 +7,7 @@ package hostoptions
 
 import (
 	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
+	profilerprovider "github.com/project-radius/radius/pkg/profiler/provider"
 	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -18,16 +19,17 @@ import (
 
 // UCPConfig includes the resource provider configuration.
 type UCPConfig struct {
-	StorageProvider dataprovider.StorageProviderOptions    `yaml:"storageProvider"`
-	Planes          []rest.Plane                           `yaml:"planes"`
-	SecretProvider  provider.SecretProviderOptions         `yaml:"secretProvider"`
-	MetricsProvider metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
-	QueueProvider   qprovider.QueueProviderOptions         `yaml:"queueProvider"`
-	TracerProvider  trace.Options                          `yaml:"tracerProvider"`
-	Logging         ucplog.LoggingOptions                  `yaml:"logging"`
-	Identity        Identity                               `yaml:"identity,omitempty"`
-	UCP             config.UCPOptions                      `yaml:"ucp"`
-	Location        string                                 `yaml:"location"`
+	StorageProvider  dataprovider.StorageProviderOptions      `yaml:"storageProvider"`
+	Planes           []rest.Plane                             `yaml:"planes"`
+	SecretProvider   provider.SecretProviderOptions           `yaml:"secretProvider"`
+	MetricsProvider  metricsprovider.MetricsProviderOptions   `yaml:"metricsProvider"`
+	ProfilerProvider profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
+	QueueProvider    qprovider.QueueProviderOptions           `yaml:"queueProvider"`
+	TracerProvider   trace.Options                            `yaml:"tracerProvider"`
+	Logging          ucplog.LoggingOptions                    `yaml:"logging"`
+	Identity         Identity                                 `yaml:"identity,omitempty"`
+	UCP              config.UCPOptions                        `yaml:"ucp"`
+	Location         string                                   `yaml:"location"`
 }
 
 const (

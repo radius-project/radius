@@ -13,7 +13,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
@@ -73,10 +72,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	}
 
 	ctrl.ConfigureDefaultHandlers(router, ctrlOpts.Options)
-
-	if ctrlOpts.EnableProfiling {
-		server.AttachProfiler(router)
-	}
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))

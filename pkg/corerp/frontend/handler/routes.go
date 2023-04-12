@@ -48,10 +48,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		return err
 	}
 
-	if ctrlOpts.EnableProfiling {
-		server.AttachProfiler(router)
-	}
-
 	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath, "rootScope")
 	if err != nil {
 		return err

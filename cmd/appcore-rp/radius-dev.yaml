@@ -8,6 +8,9 @@ storageProvider:
     inmemory: true
 queueProvider:
   provider: inmemory
+profilerProvider:
+  enabled: true
+  port: 6060
 secretProvider:
   provider: etcd
   etcd:

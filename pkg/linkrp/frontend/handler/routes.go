@@ -44,10 +44,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	}
 	resourceGroupPath := "/resourcegroups/{resourceGroupName}"
 
-	if ctrlOpts.EnableProfiling {
-		server.AttachProfiler(router)
-	}
-
 	// Configure the default ARM handlers.
 	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations, ctrlOpts)
 	if err != nil {

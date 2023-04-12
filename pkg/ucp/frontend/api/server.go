@@ -67,7 +67,6 @@ type ServiceOptions struct {
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
 	Location                string
-	EnableProfiling         bool
 }
 
 type Service struct {
@@ -160,7 +159,6 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 			// options types eventually, but that will take some time.
 			SecretClient:    nil,
 			KubeClient:      nil,
-			EnableProfiling: s.options.EnableProfiling,
 		},
 	}
 

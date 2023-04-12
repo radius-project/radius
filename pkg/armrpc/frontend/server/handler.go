@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -199,18 +198,4 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
 	}
-}
-
-func AttachProfiler(router *mux.Router) {
-	router.HandleFunc("/debug/pprof/", pprof.Index)
-	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	router.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	router.HandleFunc("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
-	router.HandleFunc("/debug/pprof/block", pprof.Handler("block").ServeHTTP)
-	router.HandleFunc("/debug/pprof/goroutine", pprof.Handler("goroutine").ServeHTTP)
-	router.HandleFunc("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
-	router.HandleFunc("/debug/pprof/mutex", pprof.Handler("mutex").ServeHTTP)
-	router.HandleFunc("/debug/pprof/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
 }
