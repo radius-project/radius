@@ -195,6 +195,8 @@ func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+// DONOTUSE: EnvSwitch updates ~/.rad/config.yaml to switch environment. This
+// can impact the other functional tests running concurrently.
 func (cli *CLI) EnvSwitch(ctx context.Context, environmentName string) (string, error) {
 	args := []string{
 		"env",
@@ -268,18 +270,20 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) Recipelist(ctx context.Context) (string, error) {
+func (cli *CLI) Recipelist(ctx context.Context, envName string) (string, error) {
 	args := []string{
 		"recipe",
 		"list",
+		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeRegister(ctx context.Context, recipeName, templatePath, linkType string) (string, error) {
+func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templatePath, linkType string) (string, error) {
 	args := []string{
 		"recipe",
 		"register",
+		"--environment", envName,
 		"--name", recipeName,
 		"--template-path", templatePath,
 		"--link-type", linkType,
@@ -287,19 +291,21 @@ func (cli *CLI) RecipeRegister(ctx context.Context, recipeName, templatePath, li
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeUnregister(ctx context.Context, recipeName string) (string, error) {
+func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName string) (string, error) {
 	args := []string{
 		"recipe",
 		"unregister",
+		"--environment", envName,
 		"--name", recipeName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeShow(ctx context.Context, recipeName string) (string, error) {
+func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string) (string, error) {
 	args := []string{
 		"recipe",
 		"show",
+		"--environment", envName,
 		"--name", recipeName,
 	}
 	return cli.RunCommand(ctx, args)
