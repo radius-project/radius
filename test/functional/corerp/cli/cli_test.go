@@ -45,29 +45,24 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	// get the current environment to switch back to after the test since the environment is used
 	// for AWS test and has the AWS scope which the environment created in this does not.
-	output, err := cli.EnvShow(ctx)
-	require.NoError(t, err)
-	// switch to the environment used in the test template since it has dev recipes enabled.
-	_, err = cli.EnvSwitch(ctx, test.Steps[0].CoreRPResources.Resources[0].Name)
-	prevEnv := strings.Trim(strings.Split(output, "\n")[1], " ")
-	require.NoError(t, err)
+	envName := test.Steps[0].CoreRPResources.Resources[0].Name
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	linkType := "Applications.Link/linkType"
 	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, recipeName, recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, recipeTemplate, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
 	t.Run("Validate rad recipe list", func(t *testing.T) {
-		output, err := cli.Recipelist(ctx)
+		output, err := cli.Recipelist(ctx, envName)
 		require.NoError(t, err)
 		require.Regexp(t, recipeName, output)
 		require.Regexp(t, linkType, output)
 		require.Regexp(t, recipeTemplate, output)
 	})
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, recipeName)
+		output, err := cli.RecipeUnregister(ctx, envName, recipeName)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
 	})
@@ -75,10 +70,10 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
 		showRecipeLinkType := "Applications.Link/mongoDatabases"
-		output, err := cli.RecipeRegister(ctx, showRecipeName, showRecipeTemplate, showRecipeLinkType)
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, showRecipeName)
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName)
 		require.NoError(t, err)
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
@@ -93,14 +88,10 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, "mongo-azure", recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
 		require.Error(t, err)
 		require.Contains(t, output, "recipe with name \"mongo-azure\" already exists in the environment")
 	})
-	// switch the environment back since the environment created by this test does not have the
-	// aws provider scope and gets deleted after the test runs
-	_, err = cli.EnvSwitch(ctx, prevEnv)
-	require.NoError(t, err)
 }
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
