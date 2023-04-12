@@ -195,17 +195,6 @@ func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
-// DONOTUSE: EnvSwitch updates ~/.rad/config.yaml to switch environment. This
-// can impact the other functional tests running concurrently.
-func (cli *CLI) EnvSwitch(ctx context.Context, environmentName string) (string, error) {
-	args := []string{
-		"env",
-		"switch",
-		environmentName,
-	}
-	return cli.RunCommand(ctx, args)
-}
-
 func (cli *CLI) EnvList(ctx context.Context) (string, error) {
 	args := []string{
 		"env",
