@@ -21,6 +21,7 @@ var (
 	SpecFiles embed.FS
 
 	//go:embed specification/common-types/resource-management/v2/types.json
+	//go:embed specification/common-types/resource-management/v3/types.json
 	//go:embed specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/*.json
 	SpecFilesUCP embed.FS
 )

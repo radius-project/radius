@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/etcd"
@@ -37,18 +37,23 @@ func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secr
 	}
 	secretClient, ok := client.(*etcdstore.ETCDClient)
 	if !ok {
-		return nil, errors.New("No etcd Client detected")
+		return nil, errors.New("no etcd Client detected")
 	}
 	return &etcd.Client{ETCDClient: secretClient.Client()}, nil
 }
 
 func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	s := scheme.Scheme
-	config, err := kube.GetConfig()
+	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+		// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
+		ContextName: "",
+		QPS:         kubeutil.DefaultServerQPS,
+		Burst:       kubeutil.DefaultServerBurst,
+	})
 	if err != nil {
 		return nil, err
 	}
-	client, err := controller_runtime.New(config, controller_runtime.Options{Scheme: s})
+	client, err := controller_runtime.New(cfg, controller_runtime.Options{Scheme: s})
 	if err != nil {
 		return nil, err
 	}

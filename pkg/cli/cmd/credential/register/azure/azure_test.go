@@ -149,24 +149,24 @@ func Test_Run(t *testing.T) {
 			config := radcli.LoadConfig(t, string(yamlData))
 			config.SetConfigFile(configPath)
 
-			expectedPut := ucp.CredentialResource{
-				Name:     to.Ptr("default"),
+			expectedPut := ucp.AzureCredentialResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AzureCredential),
 				ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
-						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+						Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 					},
 					ClientID:     to.Ptr("cool-client-id"),
 					ClientSecret: to.Ptr("cool-client-secret"),
 					TenantID:     to.Ptr("cool-tenant-id"),
+					Kind:         to.Ptr("ServicePrincipal"),
 				},
 			}
 
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
-				Put(gomock.Any(), expectedPut).
+				PutAzure(gomock.Any(), expectedPut).
 				Return(nil).
 				Times(1)
 

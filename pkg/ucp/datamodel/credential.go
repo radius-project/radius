@@ -11,29 +11,49 @@ const (
 	// InternalStorageKind represents ucp credential storage type for internal credential type
 	InternalStorageKind = "Internal"
 	// AzureCredentialKind represents ucp credential kind for azure credentials.
-	AzureCredentialKind = "azure.com.serviceprincipal"
+	AzureCredentialKind = "ServicePrincipal"
 	// AWSCredentialKind represents ucp credential kind for aws credentials.
-	AWSCredentialKind = "aws.com.iam"
+	AWSCredentialKind = "AccessKey"
 )
 
 // Credential represents UCP Credential.
-type Credential struct {
+type AzureCredential struct {
 	v1.BaseResource
 
-	Properties *CredentialResourceProperties `json:"properties,omitempty"`
+	Properties *AzureCredentialResourceProperties `json:"properties,omitempty"`
 }
 
 // ResourceTypeName gives the type of ucp resource.
-func (c *Credential) ResourceTypeName() string {
+func (c *AzureCredential) ResourceTypeName() string {
 	return c.Type
 }
 
-// Credential Properties represents UCP Credential Properties.
-type CredentialResourceProperties struct {
-	// Kind is the kind of credential resource.
+// Credential represents UCP Credential.
+type AWSCredential struct {
+	v1.BaseResource
+
+	Properties *AWSCredentialResourceProperties `json:"properties,omitempty"`
+}
+
+// ResourceTypeName gives the type of ucp resource.
+func (c *AWSCredential) ResourceTypeName() string {
+	return c.Type
+}
+
+// Azure Credential Properties represents UCP Credential Properties.
+type AzureCredentialResourceProperties struct {
+	// Kind is the kind of azure credential resource.
 	Kind string `json:"kind,omitempty"`
 	// AzureCredential is the azure service principal credentials.
 	AzureCredential *AzureCredentialProperties `json:"azureCredential,omitempty"`
+	// Storage contains the properties of the storage associated with the kind.
+	Storage *CredentialStorageProperties `json:"storage,omitempty"`
+}
+
+// AWS Credential Properties represents UCP Credential Properties.
+type AWSCredentialResourceProperties struct {
+	// Kind is the kind of aws credential resource.
+	Kind string `json:"kind,omitempty"`
 	// AWSCredential is the aws iam credentials.
 	AWSCredential *AWSCredentialProperties `json:"awsCredential,omitempty"`
 	// Storage contains the properties of the storage associated with the kind.

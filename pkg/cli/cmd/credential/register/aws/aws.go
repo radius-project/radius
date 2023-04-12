@@ -131,19 +131,19 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	credential := ucp.CredentialResource{
+	credential := ucp.AWSCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AWSCredential),
-		Properties: &ucp.AWSCredentialProperties{
+		Properties: &ucp.AWSAccessKeyCredentialProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 			},
 			AccessKeyID:     &r.AccessKeyID,
 			SecretAccessKey: &r.SecretAccessKey,
 		},
 	}
 
-	err = client.Put(ctx, credential)
+	err = client.PutAWS(ctx, credential)
 	if err != nil {
 		return err
 	}

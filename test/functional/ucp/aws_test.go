@@ -72,6 +72,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 			require.Equal(t, http.StatusOK, getResponse.StatusCode)
 
 			// Read the request status from the body
+			defer getResponse.Body.Close()
 			payload, err := io.ReadAll(getResponse.Body)
 			require.NoError(t, err)
 			body := map[string]any{}
@@ -113,6 +114,7 @@ func Test_AWS_ListResources(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, listResponse.StatusCode)
 
+		defer listResponse.Body.Close()
 		payload, err := io.ReadAll(listResponse.Body)
 		require.NoError(t, err)
 		body := map[string][]any{}

@@ -152,6 +152,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
+		defer listResponse.Body.Close()
 		listResponseBody, err := io.ReadAll(listResponse.Body)
 		if err != nil {
 			return err
@@ -183,6 +184,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
+		defer createResponse.Body.Close()
 		createResponseBody, err := io.ReadAll(createResponse.Body)
 		if err != nil {
 			return err
@@ -205,6 +207,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
+		defer listResponse.Body.Close()
 		listResponseBody, err = io.ReadAll(listResponse.Body)
 		if err != nil {
 			return err
@@ -229,6 +232,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
+		defer getResponse.Body.Close()
 		getResponseBody, err := io.ReadAll(getResponse.Body)
 		if err != nil {
 			return err
@@ -272,6 +276,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
+		defer listResponse.Body.Close()
 		listResponseBody, err = io.ReadAll(listResponse.Body)
 		if err != nil {
 			return err

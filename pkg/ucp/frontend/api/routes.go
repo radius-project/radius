@@ -255,9 +255,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt.Options,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AzureCredential]{
+						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 					},
 				)
 			},
@@ -268,9 +268,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt.Options,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AzureCredential]{
+						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 					},
 				)
 			},
@@ -278,12 +278,12 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		{
 			ParentRouter:   azureCredentialResourceSubRouter,
 			Method:         v1.OperationPut,
-			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
+			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateAzureCredential,
 		},
 		{
 			ParentRouter:   azureCredentialResourceSubRouter,
 			Method:         v1.OperationDelete,
-			HandlerFactory: azure_credential_ctrl.NewDeleteCredential,
+			HandlerFactory: azure_credential_ctrl.NewDeleteAzureCredential,
 		},
 
 		// AWS Credential Handlers
@@ -293,9 +293,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt.Options,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AWSCredential]{
+						RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 					},
 				)
 			},
@@ -306,9 +306,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt.Options,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AWSCredential]{
+						RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 					},
 				)
 			},
@@ -316,12 +316,12 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		{
 			ParentRouter:   awsCredentialResourceSubRouter,
 			Method:         v1.OperationPut,
-			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
+			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateAWSCredential,
 		},
 		{
 			ParentRouter:   awsCredentialResourceSubRouter,
 			Method:         v1.OperationDelete,
-			HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
+			HandlerFactory: aws_credential_ctrl.NewDeleteAWSCredential,
 		},
 		// Proxy request should take the least priority in routing and should therefore be last
 		{

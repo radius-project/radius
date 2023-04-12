@@ -89,12 +89,12 @@ func Test_Run(t *testing.T) {
 	t.Run("Create aws provider", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			expectedPut := ucp.CredentialResource{
+			expectedPut := ucp.AWSCredentialResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AWSCredential),
-				Properties: &ucp.AWSCredentialProperties{
+				Properties: &ucp.AWSAccessKeyCredentialProperties{
 					Storage: &ucp.CredentialStorageProperties{
-						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+						Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 					},
 					AccessKeyID:     to.Ptr(testAccessKeyId),
 					SecretAccessKey: to.Ptr(testSecretAccessKey),
@@ -103,7 +103,7 @@ func Test_Run(t *testing.T) {
 
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
-				Put(gomock.Any(), expectedPut).
+				PutAWS(gomock.Any(), expectedPut).
 				Return(nil).
 				Times(1)
 

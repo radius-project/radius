@@ -54,7 +54,7 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "a Kubernetes connection is required"}
 	}
 
-	k8sClient, _, err := kubernetes.CreateTypedClient(context)
+	k8sClient, _, err := kubernetes.NewClientset(context)
 	if err != nil {
 		return err
 	}

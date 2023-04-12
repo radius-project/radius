@@ -109,11 +109,11 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 
 	switch c := connectionConfig.(type) {
 	case *workspaces.KubernetesConnectionConfig:
-		k8sClient, config, err := kubernetes.CreateTypedClient(c.Context)
+		k8sClient, config, err := kubernetes.NewClientset(c.Context)
 		if err != nil {
 			return nil, err
 		}
-		client, err := kubernetes.CreateRuntimeClient(c.Context, kubernetes.Scheme)
+		client, err := kubernetes.NewRuntimeClient(c.Context, kubernetes.Scheme)
 		if err != nil {
 			return nil, err
 		}
@@ -194,15 +194,23 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 		return nil, err
 	}
 
-	awsCredentialClient, err := v20220901privatepreview.NewAWSCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	awsCredentialClient, err := v20220901privatepreview.NewAwsCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	return &cli_credential.UCPCredentialManagementClient{
-		CredentialInterface: &cli_credential.Impl{
-			AzureCredentialClient: *azureCredentialClient,
-			AWSCredentialClient:   *awsCredentialClient,
-		},
-	}, nil
+	azureCMClient := &cli_credential.AzureCredentialManagementClient{
+		AzureCredentialClient: *azureCredentialClient,
+	}
+
+	awsCMClient := &cli_credential.AWSCredentialManagementClient{
+		AWSCredentialClient: *awsCredentialClient,
+	}
+
+	cpClient := &cli_credential.UCPCredentialManagementClient{
+		AzClient:  azureCMClient,
+		AWSClient: awsCMClient,
+	}
+
+	return cpClient, nil
 }

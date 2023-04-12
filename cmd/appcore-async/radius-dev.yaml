@@ -18,15 +18,9 @@ storageProvider:
     # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
     masterKey: set-me-in-a-different-way
 
-  # Uncomment to use the Kubernetes APIServer store.
-  # This supports two modes:
-  # - incluster = true => uses the credentials/service-account of a pod. FOR PRODUCTION USE.
-  # - incluster = false => uses your LOCAL kubernetes context. For TESTING
-
   # provider: "apiserver"
   # apiserver:
-  #   incluster: true
-  #   context: <specify your kubernetes context name when incluster = false - leave blank to use default>
+  #   context: <specify your kubernetes context name when you use local context - leave blank to use default>
   #   namespace: 'default'
 
   # Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).

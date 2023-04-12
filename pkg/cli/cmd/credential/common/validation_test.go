@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -74,7 +75,7 @@ func Test_Environment_Selection(t *testing.T) {
 			interactive: true,
 			expectedEnv: testEnvName,
 			err:         nil,
-			mockSetup:   func(m *prompt.MockInterface) {setupEnvNameTextPrompt(m, testEnvName)},
+			mockSetup:   func(m *prompt.MockInterface) { setupEnvNameTextPrompt(m, testEnvName) },
 		},
 		{
 			name:        "environment name interactive",
@@ -83,7 +84,7 @@ func Test_Environment_Selection(t *testing.T) {
 			interactive: true,
 			expectedEnv: defaultTestValue,
 			err:         nil,
-			mockSetup:   func(m *prompt.MockInterface) {setupEnvNameTextPrompt(m, "")},
+			mockSetup:   func(m *prompt.MockInterface) { setupEnvNameTextPrompt(m, "") },
 		},
 	}
 	for _, tt := range tests {
@@ -93,7 +94,7 @@ func Test_Environment_Selection(t *testing.T) {
 			if tt.mockSetup != nil {
 				tt.mockSetup(prompter)
 			}
-			selected, err := SelectEnvironmentName(tt.cmd, tt.defaultVal, tt.interactive, prompter)
+			selected, err := validation.SelectEnvironmentName(tt.cmd, tt.defaultVal, tt.interactive, prompter)
 			if tt.err != nil {
 				require.Equal(t, err, tt.err)
 			} else {
@@ -106,6 +107,6 @@ func Test_Environment_Selection(t *testing.T) {
 
 func setupEnvNameTextPrompt(prompter *prompt.MockInterface, value string) {
 	prompter.EXPECT().
-		GetTextInput(EnterEnvironmentNamePrompt, gomock.Any()).
+		GetTextInput(validation.EnterEnvironmentNamePrompt, gomock.Any()).
 		Return(value, nil).Times(1)
 }

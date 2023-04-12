@@ -9,30 +9,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s_runtime "k8s.io/apimachinery/pkg/runtime"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"k8s.io/client-go/discovery"
-	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/restmapper"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli/output"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/project-radius/radius/pkg/kubeutil"
 )
 
 var (
@@ -49,38 +41,9 @@ func init() {
 	_ = contourv1.AddToScheme(Scheme)
 }
 
-func ReadKubeConfig() (*api.Config, error) {
-	var kubeConfig string
-	if home := homeDir(); home != "" {
-		kubeConfig = filepath.Join(home, ".kube", "config")
-	} else {
-		return nil, errors.New("no HOME directory, cannot find kubeconfig")
-	}
-
-	config, err := clientcmd.LoadFromFile(kubeConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return config, nil
-}
-
-func CreateExtensionClient(context string) (clientset.Interface, error) {
-	merged, err := GetConfig(context)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := clientset.NewForConfig(merged)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, err
-}
-
-func CreateDynamicClient(context string) (dynamic.Interface, error) {
-	merged, err := GetConfig(context)
+// NewDynamicClient creates a dynamic resource Kubernetes client.
+func NewDynamicClient(context string) (dynamic.Interface, error) {
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +56,9 @@ func CreateDynamicClient(context string) (dynamic.Interface, error) {
 	return client, err
 }
 
-func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
-	merged, err := GetConfig(context)
+// NewClientset creates the typed Kubernetes client and return rest client config.
+func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -107,8 +71,9 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 	return client, merged, err
 }
 
-func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
-	merged, err := GetConfig(context)
+// NewRuntimeClient creates a new runtime client.
+func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
+	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -129,20 +94,7 @@ func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Cli
 	return c, nil
 }
 
-func CreateRESTMapper(context string) (meta.RESTMapper, error) {
-	merged, err := GetConfig(context)
-	if err != nil {
-		return nil, err
-	}
-
-	d, err := discovery.NewDiscoveryClientForConfig(merged)
-	if err != nil {
-		return nil, err
-	}
-
-	return restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(d)), nil
-}
-
+// EnsureNamespace creates or get Kubernetes namespace.
 func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	namespaceApply := applycorev1.Namespace(namespace)
 
@@ -154,56 +106,36 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 	return nil
 }
 
-func GetConfig(context string) (*rest.Config, error) {
-	config, err := ReadKubeConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, context, nil, nil)
-	merged, err := clientconfig.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-	return merged, err
+// NewCLIClientConfig creates new Kubernetes client config loading from local home directory with CLI options.
+func NewCLIClientConfig(context string) (*rest.Config, error) {
+	return kubeutil.NewClientConfigFromLocal(&kubeutil.ConfigOptions{
+		ContextName: context,
+		QPS:         kubeutil.DefaultCLIQPS,
+		Burst:       kubeutil.DefaultCLIBurst,
+	})
 }
 
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	return os.Getenv("USERPROFILE") // windows
-}
-
-// Creating a Kubernetes client
-func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := ReadKubeConfig()
+// GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
+func GetContextFromConfigFileIfExists(configFilePath, context string) (string, error) {
+	cfg, err := kubeutil.LoadConfigFile(configFilePath)
 	if err != nil {
-		return nil, nil, "", err
+		return "", err
 	}
 
-	if contextName == "" && k8sConfig.CurrentContext == "" {
-		return nil, nil, "", errors.New("no kubernetes context is set")
-	} else if contextName == "" {
-		contextName = k8sConfig.CurrentContext
+	contextName := context
+	if contextName == "" {
+		contextName = cfg.CurrentContext
 	}
 
-	context := k8sConfig.Contexts[contextName]
-	if context == nil {
-		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	if contextName == "" {
+		return "", errors.New("no kubernetes context is set")
 	}
 
-	client, _, err := CreateTypedClient(contextName)
-	if err != nil {
-		return nil, nil, "", err
+	if cfg.Contexts[contextName] == nil {
+		return "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
 	}
 
-	runtimeClient, err := CreateRuntimeClient(contextName, Scheme)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	return client, runtimeClient, contextName, nil
+	return contextName, nil
 }
 
 //go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/project-radius/radius/pkg/cli/kubernetes github.com/project-radius/radius/pkg/cli/kubernetes Interface
@@ -216,5 +148,5 @@ type Impl struct {
 
 // Fetches the kubecontext from the system
 func (i *Impl) GetKubeContext() (*api.Config, error) {
-	return ReadKubeConfig()
+	return kubeutil.LoadConfigFile("")
 }
