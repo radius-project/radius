@@ -18,6 +18,10 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	app_switch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	app_delete "github.com/project-radius/radius/pkg/cli/cmd/app/delete"
+	app_list "github.com/project-radius/radius/pkg/cli/cmd/app/list"
+	app_show "github.com/project-radius/radius/pkg/cli/cmd/app/show"
+	app_status "github.com/project-radius/radius/pkg/cli/cmd/app/status"
 	credential "github.com/project-radius/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
@@ -28,7 +32,6 @@ import (
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
-	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
 	recipe_show "github.com/project-radius/radius/pkg/cli/cmd/recipe/show"
@@ -53,6 +56,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
 	"github.com/project-radius/radius/pkg/trace"
 	"go.opentelemetry.io/otel"
 
@@ -196,7 +200,7 @@ func initSubCommands() {
 	groupCmd := group.NewCommand(framework)
 	RootCmd.AddCommand(groupCmd)
 
-	initCmd, _ := radInit.NewCommand(framework)
+	initCmd, _ := radinit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
@@ -228,6 +232,18 @@ func initSubCommands() {
 
 	workspaceSwitchCmd, _ := workspace_switch.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceSwitchCmd)
+
+	appDeleteCmd, _ := app_delete.NewCommand(framework)
+	applicationCmd.AddCommand(appDeleteCmd)
+
+	appListCmd, _ := app_list.NewCommand(framework)
+	applicationCmd.AddCommand(appListCmd)
+
+	appShowCmd, _ := app_show.NewCommand(framework)
+	applicationCmd.AddCommand(appShowCmd)
+
+	appStatusCmd, _ := app_status.NewCommand(framework)
+	applicationCmd.AddCommand(appStatusCmd)
 
 	appSwitchCmd, _ := app_switch.NewCommand(framework)
 	applicationCmd.AddCommand(appSwitchCmd)

@@ -117,8 +117,8 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 	return plane, result.StatusCode
 }
 
-func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.PlanesClientListResponse {
-	listRequest, err := NewUCPRequest(
+func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.PlaneResourceListResult {
+	listRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -133,7 +133,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	listOfPlanes := v20220901privatepreview.PlanesClientListResponse{}
+	listOfPlanes := v20220901privatepreview.PlaneResourceListResult{}
 	require.NoError(t, json.Unmarshal(payload, &listOfPlanes))
 	return listOfPlanes
 }

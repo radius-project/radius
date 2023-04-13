@@ -17,9 +17,11 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
+	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
+	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	clikube "github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
@@ -71,7 +73,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	namespace, err := common.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
+	namespace, err := radinit.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -97,17 +99,16 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	switch kind {
 	case Kubernetes:
-		k8sConfig, err := kubernetes.ReadKubeConfig()
+		defaultEnvName, err = clikube.GetContextFromConfigFileIfExists("", "")
 		if err != nil {
 			return err
 		}
-		defaultEnvName = k8sConfig.CurrentContext
 
 	default:
 		return fmt.Errorf("unknown environment type: %s", kind)
 	}
 
-	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
+	environmentName, err := validation.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -133,7 +134,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	var registry *workspaces.Registry
 	switch kind {
 	case Kubernetes:
-		k8sGoClient, _, contextName, err = kubernetes.CreateKubernetesClients("")
+		contextName, err = kubernetes.GetContextFromConfigFileIfExists("", "")
+		if err != nil {
+			return err
+		}
+
+		k8sGoClient, _, err = kubernetes.NewClientset(contextName)
 		if err != nil {
 			return err
 		}
@@ -252,7 +258,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			return err
 		}
 	} else {
-		config, err := kubernetes.GetConfig(contextName)
+		config, err := kubernetes.NewCLIClientConfig(contextName)
 		if err != nil {
 			return err
 		}
@@ -351,7 +357,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 }
 
 func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName, namespace, subscriptionID, resourceGroup string) (string, error) {
-	config, err := kubernetes.GetConfig(kubeCtxName)
+	config, err := kubernetes.NewCLIClientConfig(kubeCtxName)
 	if err != nil {
 		return "", err
 	}

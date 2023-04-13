@@ -76,9 +76,9 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusAccepted, res.StatusCode)
+	defer res.Body.Close()
 	body, err = io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	require.Equal(t, []byte("{}"), body)
 }
@@ -132,9 +132,9 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusNoContent, res.StatusCode)
+	defer res.Body.Close()
 	body, err = io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	require.Equal(t, []byte(""), body)
 }
@@ -196,9 +196,9 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusAccepted, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	require.Equal(t, []byte("{}"), body)
 }

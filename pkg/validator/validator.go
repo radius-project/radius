@@ -147,6 +147,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	var errs []ValidationError
 
 	// Read content for validation and recover later.
+	defer req.Body.Close()
 	content, err := io.ReadAll(req.Body)
 	if err != nil {
 		return []ValidationError{{

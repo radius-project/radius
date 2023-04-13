@@ -307,9 +307,9 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	res := w.Result()
 	require.Equal(t, http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	defer res.Body.Close()
 
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)

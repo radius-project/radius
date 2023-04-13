@@ -26,6 +26,10 @@ func Test_Storage(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
+						Name: "azstorage-workload-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
 						Name: name,
 						Type: validation.ApplicationsResource,
 					},

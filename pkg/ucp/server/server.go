@@ -14,9 +14,9 @@ import (
 	"time"
 
 	hostOpts "github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
 	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
-	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/backend"
@@ -96,7 +96,12 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 
 	var cfg *kube_rest.Config
 	if opts.Config.UCP.Kind == config.UCPConnectionKindKubernetes {
-		cfg, err = kube.GetConfig()
+		cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+			// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
+			ContextName: "",
+			QPS:         kubeutil.DefaultServerQPS,
+			Burst:       kubeutil.DefaultServerBurst,
+		})
 		if err != nil {
 			return Options{}, fmt.Errorf("failed to get kubernetes config: %w", err)
 		}

@@ -42,14 +42,23 @@ func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.C
 // Fetch gets the Azure credentials from secret storage.
 func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AzureCredential, error) {
 	// 1. Fetch the secret name of Azure service principal credentials from UCP.
-	cred, err := p.client.Get(ctx, "azure", planeName, name, &ucpapi.AzureCredentialClientGetOptions{})
+	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AzureCredentialClientGetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// We support only kubernetes secret, but we may support multiple secret stores.
-	storage, ok := cred.Properties.GetCredentialResourceProperties().Storage.(*ucpapi.InternalCredentialStorageProperties)
-	if !ok {
+	var storage *ucpapi.InternalCredentialStorageProperties
+
+	switch p := cred.Properties.(type) {
+	case *ucpapi.AzureServicePrincipalProperties:
+		switch c := p.Storage.(type) {
+		case *ucpapi.InternalCredentialStorageProperties:
+			storage = c
+		default:
+			return nil, errors.New("invalid AzureServicePrincipalProperties")
+		}
+	default:
 		return nil, errors.New("invalid InternalCredentialStorageProperties")
 	}
 

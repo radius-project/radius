@@ -138,7 +138,7 @@ func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, r
 func startTestRP(t *testing.T, configContext string) {
 	ctx := context.Background()
 	// Deploy a pod with the TestRP image to the k8s cluster where UCP is running
-	config, err := kubernetes.GetConfig(configContext)
+	config, err := kubernetes.NewCLIClientConfig(configContext)
 	require.NoError(t, err)
 	clientset, err := k8s.NewForConfig(config)
 	require.NoError(t, err)

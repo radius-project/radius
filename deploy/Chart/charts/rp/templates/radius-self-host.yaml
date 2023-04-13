@@ -4,20 +4,13 @@ environment:
   name: self-hosted
   roleLocation: "global"
 storageProvider:
-  # Kubernetes APIServer store.
-  # This supports two modes:
-  # - incluster = true => uses the credentials/service-account of a pod. FOR PRODUCTION USE.
-  # - incluster = false => uses your LOCAL kubernetes context. For TESTING
-  #
   provider: "apiserver"
   apiserver:
-    incluster: true
     context: ""
     namespace: "radius-system"
 queueProvider:
   provider: "apiserver"
   apiserver:
-    incluster: true
     context: ""
     namespace: "radius-system"
 metricsProvider:

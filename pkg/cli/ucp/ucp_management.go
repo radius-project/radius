@@ -401,13 +401,22 @@ func (amc *ARMApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 		return []corerpv20220315.EnvironmentResource{}, err
 	}
 
-	response, err := groupClient.List(ctx, "radius", scope.FindScope("radius"), nil)
-	if err != nil {
-		return []corerpv20220315.EnvironmentResource{}, err
+	resourceGroupList := []ucpv20220901.ResourceGroupResource{}
+
+	pager := groupClient.NewListByRootScopePager("radius", scope.FindScope("radius"), nil)
+
+	for pager.More() {
+		nextPage, err := pager.NextPage(ctx)
+		if err != nil {
+			return []corerpv20220315.EnvironmentResource{}, err
+		}
+		for _, resourceGroup := range nextPage.Value {
+			resourceGroupList = append(resourceGroupList, *resourceGroup)
+		}
 	}
 
 	envResourceList := []corerpv20220315.EnvironmentResource{}
-	for _, group := range response.Value {
+	for _, group := range resourceGroupList {
 		// Now query environments inside each group.
 		envClient, err := corerpv20220315.NewEnvironmentsClient(*group.ID, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 		if err != nil {
@@ -525,22 +534,26 @@ func (amc *ARMApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 }
 
 func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20220901.ResourceGroupResource, error) {
-	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListOptions
+	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListByRootScopeOptions
 	resourceGroupResources := []ucpv20220901.ResourceGroupResource{}
 	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return resourceGroupResources, err
 	}
 
-	resp, err := resourcegroupClient.List(ctx, planeType, planeName, resourceGroupOptions)
-	if err != nil {
-		return resourceGroupResources, err
-	}
+	pager := resourcegroupClient.NewListByRootScopePager(planeType, planeName, resourceGroupOptions)
 
-	resourceGroupList := resp.ResourceGroupResourceList.Value
-	for _, resourceGroup := range resourceGroupList {
-		resourceGroupResources = append(resourceGroupResources, *resourceGroup)
+	for pager.More() {
+		resp, err := pager.NextPage(ctx)
+		if err != nil {
+			return resourceGroupResources, err
+		}
 
+		resourceGroupList := resp.Value
+		for _, resourceGroup := range resourceGroupList {
+			resourceGroupResources = append(resourceGroupResources, *resourceGroup)
+
+		}
 	}
 
 	return resourceGroupResources, nil

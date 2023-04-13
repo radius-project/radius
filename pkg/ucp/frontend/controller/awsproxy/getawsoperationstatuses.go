@@ -45,7 +45,7 @@ func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter
 	response, err := p.awsOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	})
-	if awsclient.IsAWSResourceNotFound(err) {
+	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)

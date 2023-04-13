@@ -49,7 +49,7 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	})
 	if err != nil {
-		if awsclient.IsAWSResourceNotFound(err) {
+		if awsclient.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil
 		}
 		return awsclient.HandleAWSError(err)

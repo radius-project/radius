@@ -5,19 +5,28 @@
 
 ##@ Generate (Code and Schema Generation)
 
+GOOS ?= $(shell go env GOOS)
+
+ifeq ($(GOOS),windows)
+   CMD_EXT = .cmd
+endif
+
 .PHONY: generate
 generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 	
 .PHONY: generate-cadl-installed
 generate-cadl-installed:
 	@echo "$(ARROW) Detecting cadl..."
-	cd cadl/Applications.Link && npx -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
+	cd cadl/Applications.Link && npx$(CMD_EXT) -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
+
 
 .PHONY: generate-openapi-spec
 generate-openapi-spec:
-	@echo  "Generating openapi specs for link resources from cadl models."
-	cd cadl/Applications.Link && npx cadl compile .
+	@echo  "Generating openapi specs from cadl models."
+	cd cadl/Applications.Link && npx$(CMD_EXT) cadl compile .
+	cd cadl/UCP && npx$(CMD_EXT) cadl compile . 
+
 .PHONY: generate-node-installed
 generate-node-installed:
 	@echo "$(ARROW) Detecting node..."
