@@ -69,6 +69,9 @@ func CreateRecipeContextParameter(resourceID, environmentID, environmentNamespac
 // In case of conflict the developer parameter takes precedence. If recipe has context parameter defined adds the context information to the parameters list
 func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *linkrp.RecipeContext) map[string]any {
 	parameters := map[string]any{}
+	if devParams == nil {
+		devParams = map[string]any{}
+	}
 	for k, v := range operatorParams {
 		if _, ok := devParams[k]; !ok {
 			devParams[k] = v
