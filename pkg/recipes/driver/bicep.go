@@ -163,8 +163,8 @@ func createRecipeContextParameter(resourceID, environmentID, environmentNamespac
 func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *RecipeContext) map[string]any {
 	parameters := map[string]any{}
 	for k, v := range operatorParams {
-		if _, ok := devParams[k]; !ok {
-			devParams[k] = v
+		parameters[k] = map[string]any{
+			"value": v,
 		}
 	}
 	for k, v := range devParams {

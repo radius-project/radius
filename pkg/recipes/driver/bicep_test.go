@@ -125,6 +125,106 @@ func Test_DevParameterWithContextParameter(t *testing.T) {
 	actualParams := createRecipeParameters(devParams, nil, true, &recipeContext)
 	require.Equal(t, expectedParams, actualParams)
 }
+
+func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
+	operatorParams := map[string]any{
+		"throughput": 400,
+		"port":       2030,
+		"name":       "test-parameters",
+	}
+	recipeContext := RecipeContext{
+		Resource: Resource{
+			ResourceInfo: ResourceInfo{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				Name: "mongo0",
+			},
+			Type: "Applications.Link/mongoDatabases",
+		},
+		Application: ResourceInfo{
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			Name: "testApplication",
+		},
+		Environment: ResourceInfo{
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			Name: "env0",
+		},
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				EnvironmentNamespace: "radius-test-env",
+				Namespace:            "radius-test-app",
+			},
+		},
+	}
+
+	expectedParams := map[string]any{
+		"throughput": map[string]any{
+			"value": 400,
+		},
+		"port": map[string]any{
+			"value": 2030,
+		},
+		"name": map[string]any{
+			"value": "test-parameters",
+		},
+		"context": map[string]any{
+			"value": recipeContext,
+		},
+	}
+	actualParams := createRecipeParameters(nil, operatorParams, true, &recipeContext)
+	require.Equal(t, expectedParams, actualParams)
+}
+
+func Test_DevParameterWithOperatorParameter(t *testing.T) {
+	operatorParams := map[string]any{
+		"throughput": 400,
+		"port":       2030,
+		"name":       "test-parameters",
+	}
+	devParams := map[string]any{
+		"throughput": 800,
+		"port":       2060,
+	}
+	recipeContext := RecipeContext{
+		Resource: Resource{
+			ResourceInfo: ResourceInfo{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				Name: "mongo0",
+			},
+			Type: "Applications.Link/mongoDatabases",
+		},
+		Application: ResourceInfo{
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			Name: "testApplication",
+		},
+		Environment: ResourceInfo{
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			Name: "env0",
+		},
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				EnvironmentNamespace: "radius-test-env",
+				Namespace:            "radius-test-app",
+			},
+		},
+	}
+
+	expectedParams := map[string]any{
+		"throughput": map[string]any{
+			"value": 800,
+		},
+		"port": map[string]any{
+			"value": 2060,
+		},
+		"name": map[string]any{
+			"value": "test-parameters",
+		},
+		"context": map[string]any{
+			"value": recipeContext,
+		},
+	}
+	actualParams := createRecipeParameters(devParams, operatorParams, true, &recipeContext)
+	require.Equal(t, expectedParams, actualParams)
+}
 func Test_ContextParameterError(t *testing.T) {
 	envID := "error-env"
 	linkContext, err := createRecipeContextParameter("/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0", envID, "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
