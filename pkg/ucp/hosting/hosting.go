@@ -52,11 +52,11 @@ func (host *Host) RunAsync(ctx context.Context) (<-chan error, <-chan LifecycleM
 	serviceErrors := make(chan LifecycleMessage, len(host.Services))
 
 	go func() {
+		defer close(stopped)
 		fmt.Println(fmt.Sprintf("@@@@@@ Before calling host.Run in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 		err := host.Run(ctx, serviceErrors)
 		fmt.Println(fmt.Sprintf("@@@@@@ After calling host.Run in %s, goroutineCount: %v", util.GetCaller(), runtime.NumGoroutine()))
 		stopped <- err
-		close(stopped)
 	}()
 
 	return stopped, serviceErrors
