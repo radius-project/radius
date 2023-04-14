@@ -81,6 +81,7 @@ func Start(t *testing.T) *TestServer {
 	ctx, cancel := testcontext.New(t)
 
 	stoppedChan := make(chan struct{})
+	defer close(stoppedChan)
 	go func() {
 		// We can't pass the test logger into the etcd service because it is forbidden to log
 		// using the test logger after the test finishes.
@@ -96,8 +97,6 @@ func Start(t *testing.T) *TestServer {
 		if err != nil {
 			t.Logf("error from etcd: %v", err)
 		}
-
-		close(stoppedChan)
 	}()
 
 	storageOptions := dataprovider.StorageProviderOptions{
