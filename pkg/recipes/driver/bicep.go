@@ -187,8 +187,7 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 	}
 
 	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
-	raw := fmt.Sprintf("/planes/deployments/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName)
-	return resources.ParseResource(raw)
+	return resources.ParseResource(fmt.Sprintf("/planes/deployments/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
 }
 
 func createProviderConfig(resourceGroup string, envProviders coreDatamodel.Providers) clients.ProviderConfig {
