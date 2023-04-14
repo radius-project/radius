@@ -86,14 +86,34 @@ catch [Net.WebException] {
 Write-Output "rad CLI version: $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version")"
 
 # Add RadiusRoot directory to User Path environment variable
-$UserPathEnvironmentVar = [Environment]::GetEnvironmentVariable("PATH", "User")
+try {
+    $registryKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+    $originalPath = $registryKey.GetValue(`
+            'PATH', `
+            '', `
+            [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames `
+    )
+    $originalValueKind = $registryKey.GetValueKind('PATH')
+    $pathParts = $originalPath -split ';'
 
-if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
-    Write-Output "Adding $RadiusRoot to User Path..."
-    [System.Environment]::SetEnvironmentVariable("PATH", $UserPathEnvironmentVar + ";$RadiusRoot", "User")
-    # Also add the path to the current session
-    $env:PATH += ";$RadiusRoot"
+    if (!($pathParts -contains $RadiusRoot)) {
+        Write-Output "Adding $RadiusRoot to User Path..."
+        # Update the registry
+        $registryKey.SetValue( `
+                'PATH', `
+                "$originalPath;$RadiusRoot", `
+                $originalValueKind `
+        )
+        # Update the current process' environment variable
+        $env:PATH += ";$InstallFolder"
+    }
 }
+finally {
+    if ($registryKey) {
+        $registryKey.Close()
+    }
+}
+
 Write-Output "rad CLI has been successfully installed"
 
 Write-Output "`r`nInstalling Bicep..."
