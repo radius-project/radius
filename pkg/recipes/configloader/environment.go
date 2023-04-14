@@ -89,6 +89,10 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metad
 		return nil, err
 	}
 
+	if environment.Properties.Recipes == nil {
+		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
+	}
+
 	found, ok := environment.Properties.Recipes[recipe.Name]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
