@@ -42,7 +42,7 @@ type AWSResourceSet struct {
 
 func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
-		resourceType, err := GetResourceTypeName(ctx, &resource)
+		resourceType, err := GetResourceTypeName(ctx, &resource, t)
 		require.NoError(t, err)
 
 		resourceResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
@@ -61,8 +61,8 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	}
 }
 
-func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) error {
-	resourceType, err := GetResourceTypeName(ctx, resource)
+func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient, t *testing.T) error {
+	resourceType, err := GetResourceTypeName(ctx, resource, t)
 	if err != nil {
 		return err
 	}
@@ -95,9 +95,9 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 	}, maxWaitTime)
 }
 
-func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) (bool, error) {
+func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient, t *testing.T) (bool, error) {
 	// Verify that the resource is indeed deleted
-	resourceType, err := GetResourceTypeName(ctx, resource)
+	resourceType, err := GetResourceTypeName(ctx, resource, t)
 	if err != nil {
 		return false, err
 	}
@@ -111,7 +111,7 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 
 }
 
-func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
+func GetResourceIdentifier(ctx context.Context, resourceType string, name string, t *testing.T) (string, error) {
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	sessionToken := ""
@@ -128,11 +128,14 @@ func GetResourceIdentifier(ctx context.Context, resourceType string, name string
 		return "", err
 	}
 
+	debugging := "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name
+	t.Logf("AWS account info is  %s", debugging)
+
 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 
-func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, error) {
-	id, err := GetResourceIdentifier(ctx, resource.Type, resource.Name)
+func GetResourceTypeName(ctx context.Context, resource *AWSResource, t *testing.T) (string, error) {
+	id, err := GetResourceIdentifier(ctx, resource.Type, resource.Name, t)
 	if err != nil {
 		return "", err
 	}

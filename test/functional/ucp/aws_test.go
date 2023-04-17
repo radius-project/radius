@@ -38,7 +38,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 	setupTestAWSResource(t, ctx, bucketName)
 
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName, t)
 		require.NoError(t, err)
 
 		// Construct resource collection url
@@ -100,7 +100,7 @@ func Test_AWS_ListResources(t *testing.T) {
 	setupTestAWSResource(t, ctx, bucketName)
 
 	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName, t)
 		require.NoError(t, err)
 
 		// Construct resource collection url
