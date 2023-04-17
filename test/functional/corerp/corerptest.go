@@ -282,7 +282,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			for _, resource := range step.AWSResources.Resources {
 				t.Logf("deleting %s", resource.Name)
 				// Use the AWS CloudControl.Delete method to delete the resource
-				err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient)
+				err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient, t)
 				require.NoErrorf(t, err, "failed to delete %s", resource.Name)
 				t.Logf("finished deleting %s", ct.Description)
 
@@ -292,7 +292,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 					t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
 
 					// Use AWS CloudControl.Get method to validate that the resource is deleted
-					notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+					notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient, t)
 					t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
 
 					if notFound {
