@@ -24,6 +24,10 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 		} else {
 			tls.SSLPassthrough = false
 		}
+
+		tls.CertificateFrom = to.String(src.Properties.TLS.CertificateFrom)
+		tls.Hostname = to.String(src.Properties.TLS.Hostname)
+		tls.MinimumProtocolVersion = to.String(src.Properties.TLS.MinimumProtocolVersion)
 	}
 
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
@@ -85,7 +89,10 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	var tls *GatewayPropertiesTLS
 	if g.Properties.TLS != nil {
 		tls = &GatewayPropertiesTLS{
-			SSLPassthrough: to.Ptr(g.Properties.TLS.SSLPassthrough),
+			CertificateFrom:        to.Ptr(g.Properties.TLS.CertificateFrom),
+			Hostname:               to.Ptr(g.Properties.TLS.Hostname),
+			MinimumProtocolVersion: to.Ptr(g.Properties.TLS.MinimumProtocolVersion),
+			SSLPassthrough:         to.Ptr(g.Properties.TLS.SSLPassthrough),
 		}
 	}
 

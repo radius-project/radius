@@ -76,8 +76,8 @@ QYP6qDTvyLieC2CKFFQbfll3jQ==
 
 resource secret 'core/Secret@v1' = {
   metadata: {
-    name: 'ssl-passthrough-secret'
-    namespace: 'default-corerp-resources-gateway-sslpassthrough'
+    name: 'tls-termination-secret'
+    namespace: 'default-corerp-resources-gateway-tlstermination'
   }
   stringData: {
     key: key
@@ -86,7 +86,7 @@ resource secret 'core/Secret@v1' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateway-sslpassthrough'
+  name: 'corerp-resources-gateways'
   location: location
   properties: {
     environment: environment
@@ -94,15 +94,17 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'ssl-gtwy-gtwy'
+  name: 'gtwy-gtwy'
   location: location
   properties: {
     application: app.id
     tls: { 
-      sslPassthrough: true 
+      minimumProtocolVersion: '1.2'
+      certificateFrom: 'tls-termination-secret'
     } 
     routes: [
       {
+        path: '/'
         destination: frontendRoute.id
       }
     ]
@@ -110,7 +112,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
 }
 
 resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'ssl-gtwy-front-rte'
+  name: 'tls-gtwy-front-rte'
   location: location
   properties: {
     application: app.id
@@ -119,16 +121,12 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'ssl-gtwy-front-ctnr'
+  name: 'tls-gtwy-front-ctnr'
   location: location
   properties: {
     application: app.id
     container: {
       image: magpieimage
-      env: {
-        TLS_KEY: base64ToString(secret.data.key)
-        TLS_CERT: base64ToString(secret.data.cert)
-      }
       ports: {
         web: {
           containerPort: port
