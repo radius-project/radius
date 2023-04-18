@@ -173,7 +173,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
-				// Get hostname from root HTTPProxy in 'default' namespace
+				// Get hostname from root HTTPProxy in application namespace
 				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
@@ -217,12 +217,12 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gtwy-gtwy",
+						Name: "tls-gtwy-gtwy",
 						Type: validation.GatewaysResource,
 						App:  name,
 					},
 					{
-						Name: "gtwy-front-rte",
+						Name: "tls-gtwy-front-rte",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
@@ -236,15 +236,15 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gtwy-front-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "gtwy-front-rte"),
+						validation.NewK8sPodForResource(name, "tls-gtwy-front-ctnr"),
+						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-front-rte"),
+						validation.NewK8sServiceForResource(name, "tls-gtwy-front-rte"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
-				// Get hostname from root HTTPProxy in 'default' namespace
+				// Get hostname from root HTTPProxy in application namespace
 				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)

@@ -74,6 +74,12 @@ QYP6qDTvyLieC2CKFFQbfll3jQ==
 -----END PRIVATE KEY-----
 '''
 
+resource ns 'core/Namespace@v1' = {
+  metadata: {
+    name: 'default-corerp-resources-gateway-tlstermination'
+  }
+}
+
 resource secret 'core/Secret@v1' = {
   metadata: {
     name: 'tls-termination-secret'
@@ -86,7 +92,7 @@ resource secret 'core/Secret@v1' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateways'
+  name: 'corerp-resources-gateways-tls-termination'
   location: location
   properties: {
     environment: environment
@@ -94,7 +100,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'gtwy-gtwy'
+  name: 'tls-gtwy-gtwy'
   location: location
   properties: {
     application: app.id

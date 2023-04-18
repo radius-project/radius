@@ -77,7 +77,6 @@ QYP6qDTvyLieC2CKFFQbfll3jQ==
 resource secret 'core/Secret@v1' = {
   metadata: {
     name: 'ssl-passthrough-secret'
-    namespace: 'default-corerp-resources-gateway-sslpassthrough'
   }
   stringData: {
     key: key
@@ -94,7 +93,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'ssl-gtwy-gtwy'
+  name: 'ssl-gtwy-gtwy3'
   location: location
   properties: {
     application: app.id
