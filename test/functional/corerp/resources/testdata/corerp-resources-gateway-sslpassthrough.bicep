@@ -93,7 +93,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'ssl-gtwy-gtwy3'
+  name: 'ssl-gtwy-gtwy'
   location: location
   properties: {
     application: app.id

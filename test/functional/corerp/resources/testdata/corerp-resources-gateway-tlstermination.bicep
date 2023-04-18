@@ -92,7 +92,7 @@ resource secret 'core/Secret@v1' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateways-tls-termination'
+  name: 'corerp-resources-gateway-tls-termination'
   location: location
   properties: {
     environment: environment
