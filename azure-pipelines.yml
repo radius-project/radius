@@ -191,44 +191,26 @@ stages:
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
-        dist/rad install kubernetes \
-        --chart ${{ variables.RADIUS_CHART_LOCATION }} --tag ${{ variables.REL_VERSION }} \
-        --set rp.image=${{ variables.DOCKER_REGISTRY }}/appcore-rp,rp.tag=${{ variables.REL_VERSION }},\
-        ucp.image=${{ variables.DOCKER_REGISTRY }}/ucpd,ucp.tag=${{ variables.REL_VERSION }}
-        dist/rad workspace create kubernetes
-        dist/rad group create kind-radius
-        dist/rad group switch kind-radius
-        dist/rad env create kind-radius
-        dist/rad env switch kind-radius 
-        dist/rad env update kind-radius --azure-subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} --azure-resource-group $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)
-        dist/rad env update kind-radius --aws-region $AWS_REGION --aws-account-id $(AWS_ACCOUNT_ID)
+        dist/rad env init kubernetes \
+          --chart ${{ variables.RADIUS_CHART_LOCATION }} --tag ${{ variables.REL_VERSION }} \
+          --appcore-image ${{ variables.DOCKER_REGISTRY }}/appcore-rp --appcore-tag ${{ variables.REL_VERSION }} \
+          --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ variables.REL_VERSION }} \
+          --provider-azure \
+          --provider-azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
+          --provider-azure-client-id $INTEGRATION_TEST_SP_APP_ID \
+          --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
+          --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
+          --provider-azure-subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --provider-aws \
+          --provider-aws-access-key-id $(AWS_ACCESS_KEY_ID) \
+          --provider-aws-secret-access-key $(AWS_SECRET_ACCESS_KEY) \
+          --provider-aws-region $AWS_REGION
         dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
           --client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --tenant-id $INTEGRATION_TEST_TENANT_ID
         dist/rad credential register aws \
           --access-key-id "$(AWS_ACCESS_KEY_ID)" \
           --secret-access-key "$(AWS_SECRET_ACCESS_KEY)"
-               
-    # dist/rad env init kubernetes \
-    #   --chart ${{ variables.RADIUS_CHART_LOCATION }} --tag ${{ variables.REL_VERSION }} \
-    #   --appcore-image ${{ variables.DOCKER_REGISTRY }}/appcore-rp --appcore-tag ${{ variables.REL_VERSION }} \
-    #   --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ variables.REL_VERSION }} \
-    #   --provider-azure \
-    #   --provider-azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
-    #   --provider-azure-client-id $INTEGRATION_TEST_SP_APP_ID \
-    #   --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
-    #   --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
-    #   --provider-azure-subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-    #   --provider-aws \
-    #   --provider-aws-access-key-id $(AWS_ACCESS_KEY_ID) \
-    #   --provider-aws-secret-access-key $(AWS_SECRET_ACCESS_KEY) \
-    #   --provider-aws-region $AWS_REGION
-    # dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
-    #   --client-secret $INTEGRATION_TEST_SP_PASSWORD \
-    #   --tenant-id $INTEGRATION_TEST_TENANT_ID
-    # dist/rad credential register aws \
-    #   --access-key-id "$(AWS_ACCESS_KEY_ID)" \
-    #   --secret-access-key "$(AWS_SECRET_ACCESS_KEY)"
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
@@ -236,9 +218,8 @@ stages:
         INTEGRATION_TEST_RESOURCE_GROUP_NAME: $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
-        AWS_ACCOUNT_ID: $(AWS_ACCOUNT_ID)
         AWS_REGION: $(AWS_REGION)
-      displayName: Install and initialize rad environment
+      displayName: rad env init kubernetes
     - script: |
         kubectl set image deployment/bicep-de -n radius-system de=$(DE_IMAGE):$(DE_TAG)
       condition: and(ne(variables['DE_IMAGE'], ''), ne(variables['DE_TAG'], ''))
@@ -266,7 +247,6 @@ stages:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
-        AWS_ACCOUNT_ID: $(AWS_ACCOUNT_ID)
         PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH: $(Build.SourcesDirectory)/samples
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
