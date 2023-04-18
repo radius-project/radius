@@ -99,20 +99,43 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
 func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
 	includes := []contourv1.Include{}
-	sslPassthrough := false
 
 	if len(gateway.Properties.Routes) < 1 {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
+	sslPassthrough := false
+	var contourTLSConfig *contourv1.TLS
 	if gateway.Properties.TLS != nil {
-		if !gateway.Properties.TLS.SSLPassthrough {
-			return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("only sslPassthrough is supported for TLS currently")
-		} else {
+		if gateway.Properties.TLS.SSLPassthrough {
 			sslPassthrough = true
+		}
+
+		if gateway.Properties.TLS.CertificateFrom != "" {
+			// Set the TLS minimum protocol version if it is declared,
+			// otherwise use the default of 1.2
+			minimumProtocolVersion := renderers.DefaultTLSVersion
+			if gateway.Properties.TLS.MinimumProtocolVersion != "" {
+				minimumProtocolVersion = gateway.Properties.TLS.MinimumProtocolVersion
+			}
+
+			// Get the Kubernetes secret name from the certificateFrom property,
+			// and prepend the namespace to it
+			secretName := fmt.Sprintf("%s/%s", options.Environment.Namespace, gateway.Properties.TLS.CertificateFrom)
+
+			contourTLSConfig = &contourv1.TLS{
+				SecretName:             secretName,
+				MinimumProtocolVersion: minimumProtocolVersion,
+			}
 		}
 	}
 
+	// If sslPassthrough and gateway TLS termination are both configured, then report an error
+	if sslPassthrough && contourTLSConfig != nil {
+		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("Only one of tls.certificateFrom and tls.sslPassthrough can be specified at a time")
+	}
+
+	// If sslPassthrough is true, then we can only have one route
 	if sslPassthrough && len(gateway.Properties.Routes) > 1 {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
 	}
@@ -151,6 +174,7 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 
 	virtualHost := &contourv1.VirtualHost{
 		Fqdn: virtualHostname,
+		TLS:  contourTLSConfig,
 	}
 
 	var tcpProxy *contourv1.TCPProxy

@@ -21,6 +21,9 @@ const (
 
 	// DefaultSecurePort represents the default port of HTTPS endpoint.
 	DefaultSecurePort int32 = 443
+
+	// DefaultTLSVersion represents the default TLS version.
+	DefaultTLSVersion = "1.2"
 )
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/corerp/renderers Renderer

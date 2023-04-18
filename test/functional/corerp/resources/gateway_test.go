@@ -108,61 +108,10 @@ func Test_Gateway(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort int, isHttps bool) error {
-	// stopChan will close the port-forward connection on close
-	stopChan := make(chan struct{})
-
-	// portChan will be populated with the assigned port once the port-forward connection is opened on it
-	portChan := make(chan int)
-
-	// errorChan will contain any errors created from initializing the port-forwarding session
-	errorChan := make(chan error)
-
-	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
-
-	select {
-	case err := <-errorChan:
-		return fmt.Errorf("portforward failed with error: %s", err)
-	case localPort := <-portChan:
-		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
-
-		t.Logf("Portforward session active at %s", baseURL)
-
-		if isHttps {
-			if err := testGatewayAvailability(t, hostname, baseURL, "", 404, true); err != nil {
-				close(stopChan)
-				return err
-			}
-			return nil
-		}
-
-		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200, false); err != nil {
-			close(stopChan)
-			return err
-		}
-
-		// Both of these URLs route to the same backend service,
-		// but /backend2 maps to / which allows it to access /healthz
-		if err := testGatewayAvailability(t, hostname, baseURL, "backend2/healthz", 200, false); err != nil {
-			close(stopChan)
-			return err
-		}
-
-		if err := testGatewayAvailability(t, hostname, baseURL, "backend1/healthz", 404, false); err != nil {
-			close(stopChan)
-			return err
-		}
-
-		// All of the requests were successful
-		t.Logf("All requests encountered the correct status code")
-		return nil
-	}
-}
-
-func Test_HTTPSGateway(t *testing.T) {
-	template := "testdata/corerp-resources-secure-gateway.bicep"
-	name := "corerp-resources-gateways"
-	appNamespace := "default-corerp-resources-gateways"
+func Test_Gateway_SSLPassthrough(t *testing.T) {
+	template := "testdata/corerp-resources-gateway-sslpassthrough.bicep"
+	name := "corerp-resources-gateway-sslpassthrough"
+	appNamespace := "default-corerp-resources-gateway-sslpassthrough"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -222,6 +171,57 @@ func Test_HTTPSGateway(t *testing.T) {
 	})
 
 	test.Test(t)
+}
+
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort int, isHttps bool) error {
+	// stopChan will close the port-forward connection on close
+	stopChan := make(chan struct{})
+
+	// portChan will be populated with the assigned port once the port-forward connection is opened on it
+	portChan := make(chan int)
+
+	// errorChan will contain any errors created from initializing the port-forwarding session
+	errorChan := make(chan error)
+
+	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
+
+	select {
+	case err := <-errorChan:
+		return fmt.Errorf("portforward failed with error: %s", err)
+	case localPort := <-portChan:
+		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
+
+		t.Logf("Portforward session active at %s", baseURL)
+
+		if isHttps {
+			if err := testGatewayAvailability(t, hostname, baseURL, "", 404, true); err != nil {
+				close(stopChan)
+				return err
+			}
+			return nil
+		}
+
+		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200, false); err != nil {
+			close(stopChan)
+			return err
+		}
+
+		// Both of these URLs route to the same backend service,
+		// but /backend2 maps to / which allows it to access /healthz
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend2/healthz", 200, false); err != nil {
+			close(stopChan)
+			return err
+		}
+
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend1/healthz", 404, false); err != nil {
+			close(stopChan)
+			return err
+		}
+
+		// All of the requests were successful
+		t.Logf("All requests encountered the correct status code")
+		return nil
+	}
 }
 
 func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {

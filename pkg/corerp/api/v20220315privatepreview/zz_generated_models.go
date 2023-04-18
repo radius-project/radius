@@ -776,6 +776,15 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - TLS configuration for the Gateway.
 type GatewayPropertiesTLS struct {
+	// Declares which Kubernetes TLS secret will be used.
+	CertificateFrom *string `json:"certificateFrom,omitempty"`
+
+	// Hostname
+	Hostname *string `json:"hostname,omitempty"`
+
+	// TLS minimum protocol version (defaults to 1.2).
+	MinimumProtocolVersion *string `json:"minimumProtocolVersion,omitempty"`
+
 	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 	SSLPassthrough *bool `json:"sslPassthrough,omitempty"`
 }
