@@ -138,7 +138,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	desiredState := map[string]any{
 		"BucketName":    resourceName,
-		"AccessControl": "PublicRead",
+		"AccessControl": "Private",
 	}
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
