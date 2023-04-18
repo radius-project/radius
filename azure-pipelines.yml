@@ -236,6 +236,7 @@ stages:
         INTEGRATION_TEST_RESOURCE_GROUP_NAME: $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_ACCOUNT_ID: $(AWS_ACCOUNT_ID)
         AWS_REGION: $(AWS_REGION)
       displayName: Install and initialize rad environment
     - script: |
@@ -265,6 +266,7 @@ stages:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
+        AWS_ACCOUNT_ID: $(AWS_ACCOUNT_ID)
         PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH: $(Build.SourcesDirectory)/samples
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
