@@ -82,7 +82,7 @@ resource ns 'core/Namespace@v1' = {
 
 resource secret 'core/Secret@v1' = {
   metadata: {
-    name: 'tls-termination-secret'
+    name: 'tlstermination-secret'
     namespace: 'default-corerp-resources-gateway-tlstermination'
   }
   stringData: {
@@ -92,7 +92,7 @@ resource secret 'core/Secret@v1' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateway-tls-termination'
+  name: 'corerp-resources-gateway-tlstermination'
   location: location
   properties: {
     environment: environment
@@ -106,7 +106,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
     application: app.id
     tls: { 
       minimumProtocolVersion: '1.2'
-      certificateFrom: 'tls-termination-secret'
+      certificateFrom: 'tlstermination-secret'
     } 
     routes: [
       {

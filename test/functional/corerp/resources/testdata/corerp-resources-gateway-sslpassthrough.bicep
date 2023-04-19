@@ -76,7 +76,7 @@ QYP6qDTvyLieC2CKFFQbfll3jQ==
 
 resource secret 'core/Secret@v1' = {
   metadata: {
-    name: 'ssl-passthrough-secret'
+    name: 'sslpassthrough-secret'
   }
   stringData: {
     key: key
