@@ -71,7 +71,6 @@ func (a *AsyncValue[T]) Get(ctx context.Context) (*T, error) {
 		if result.Err != nil {
 			return nil, result.Err
 		}
-		close(initialized)
 		return result.Value, nil
 	}
 }
