@@ -213,7 +213,7 @@ stages:
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
         AWS_ACCOUNT_ID: $(AWS_ACCOUNT_ID)
-      displayName: rad env init kubernetes
+      displayName: rad env init kubernetes minus provider
     - script: |
         kubectl set image deployment/bicep-de -n radius-system de=$(DE_IMAGE):$(DE_TAG)
       condition: and(ne(variables['DE_IMAGE'], ''), ne(variables['DE_TAG'], ''))
