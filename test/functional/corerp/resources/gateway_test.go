@@ -227,7 +227,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "gtwy-front-ctnr",
+						Name: "tls-gtwy-front-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
