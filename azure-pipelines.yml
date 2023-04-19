@@ -205,8 +205,6 @@ stages:
         echo "-------------"
         echo ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
         echo "-------------"
-
-
         dist/rad env update kind-radius --azure-subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} --azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME
         dist/rad env update kind-radius --aws-region $AWS_REGION --aws-account-id $AWS_ACCOUNT_ID
         dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
