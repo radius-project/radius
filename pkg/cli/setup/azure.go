@@ -68,6 +68,12 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 		return nil, err
 	}
 
+	fmt.Printf(
+		"\nAn Azure service principal with a corresponding role assignment on your resource group is required to create Azure resources.\n\nFor example, you can create one using the following command:\n\033[36maz ad sp create-for-rbac --role Owner --scope /subscriptions/%s/resourceGroups/%s\033[0m\n\nFor more information refer to https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac and https://aka.ms/azadsp-more\n\n",
+		subscription.ID,
+		resourceGroup,
+	)
+
 	clientID, err := prompter.GetTextInput(
 		"Enter the `appId` of the service principal used to create Azure resources",
 		"Enter AppId...",
