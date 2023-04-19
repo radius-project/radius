@@ -208,8 +208,6 @@ stages:
         dist/rad credential register aws \
           --access-key-id $AWS_ACCESS_KEY_ID \
           --secret-access-key $AWS_SECRET_ACCESS_KEY
-        cat ~/.rad/config.yaml
-        dist/rad env show -o json
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
@@ -219,7 +217,7 @@ stages:
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
         AWS_ACCOUNT_ID: $(AWS_ACCOUNT_ID)
-      displayName: rad env init kubernetes minus provider
+      displayName: rad init kubernetes
     - script: |
         kubectl set image deployment/bicep-de -n radius-system de=$(DE_IMAGE):$(DE_TAG)
       condition: and(ne(variables['DE_IMAGE'], ''), ne(variables['DE_TAG'], ''))
