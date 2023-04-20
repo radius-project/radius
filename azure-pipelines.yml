@@ -225,7 +225,8 @@ stages:
           --tenant-id $INTEGRATION_TEST_TENANT_ID
         dist/rad credential register aws \
           --access-key-id $AWS_ACCESS_KEY_ID \
-          --secret-access-key $AWS_SECRET_ACCESS_KEY       
+          --secret-access-key $AWS_SECRET_ACCESS_KEY
+        cat ~/.rad/config.yaml       
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
