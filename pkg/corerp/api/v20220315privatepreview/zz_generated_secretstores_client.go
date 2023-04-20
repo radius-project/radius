@@ -55,7 +55,7 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Create or update an secret store.
+// CreateOrUpdate - Create or update a secret store.
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // secretStoreName - The name of the secret store.
@@ -105,7 +105,7 @@ func (client *SecretStoresClient) createOrUpdateHandleResponse(resp *http.Respon
 	return result, nil
 }
 
-// Delete - Delete an secret store.
+// Delete - Delete a secret store.
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // secretStoreName - The name of the secret store.
@@ -144,7 +144,7 @@ func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, secre
 	return req, nil
 }
 
-// Get - Gets the properties of an secret store.
+// Get - Gets the properties of a secret store.
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // secretStoreName - The name of the secret store.
@@ -247,7 +247,7 @@ func (client *SecretStoresClient) listHandleResponse(resp *http.Response) (Secre
 	return result, nil
 }
 
-// ListSecrets - List the secrets of an secret stores.
+// ListSecrets - List the secrets of a secret stores.
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // secretStoreName - The name of the secret store.
