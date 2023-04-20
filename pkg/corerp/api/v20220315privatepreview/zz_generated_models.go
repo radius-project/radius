@@ -1179,6 +1179,86 @@ type SecretObjectProperties struct {
 	Version *string `json:"version,omitempty"`
 }
 
+type SecretStoreProperties struct {
+	// REQUIRED; An object to represent key-value type secrets
+	Data map[string]*SecretValueProperties `json:"data,omitempty"`
+
+	// The resource id of external secret store.
+	Resource *string `json:"resource,omitempty"`
+
+	// The type of secret store data
+	Type *SecretStoreDataType `json:"type,omitempty"`
+
+	// READ-ONLY; Provisioning state of the SecretStore at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// SecretStoreResource - Radius SecretStore Resource.
+type SecretStoreResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
+	// REQUIRED
+	Properties *SecretStoreProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// SecretStoreResourceList - The list of SecretStores.
+type SecretStoreResourceList struct {
+	// The link used to get the next page of SecretStores list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of SecretStore.
+	Value []*SecretStoreResource `json:"value,omitempty"`
+}
+
+// SecretStoresClientCreateOrUpdateOptions contains the optional parameters for the SecretStoresClient.CreateOrUpdate method.
+type SecretStoresClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SecretStoresClientDeleteOptions contains the optional parameters for the SecretStoresClient.Delete method.
+type SecretStoresClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SecretStoresClientGetOptions contains the optional parameters for the SecretStoresClient.Get method.
+type SecretStoresClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SecretStoresClientListOptions contains the optional parameters for the SecretStoresClient.List method.
+type SecretStoresClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SecretStoresClientUpdateOptions contains the optional parameters for the SecretStoresClient.Update method.
+type SecretStoresClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+type SecretValueProperties struct {
+	// The value of secret.
+	Value *string `json:"value,omitempty"`
+
+	// The referenced secret in properties.resource
+	ValueFrom *ValueFromProperties `json:"valueFrom,omitempty"`
+}
+
 // SystemData - Metadata pertaining to creation and last modification of the resource.
 type SystemData struct {
 	// The timestamp of resource creation (UTC).
@@ -1249,6 +1329,14 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+type ValueFromProperties struct {
+	// REQUIRED; The name of the referenced secret.
+	Name *string `json:"name,omitempty"`
+
+	// The version of the referenced secret.
+	Version *string `json:"version,omitempty"`
 }
 
 // VolumeClassification provides polymorphic access to related types.

@@ -139,6 +139,31 @@ type HTTPRoutesClientUpdateResponse struct {
 	HTTPRouteResource
 }
 
+// SecretStoresClientCreateOrUpdateResponse contains the response from method SecretStoresClient.CreateOrUpdate.
+type SecretStoresClientCreateOrUpdateResponse struct {
+	SecretStoreResource
+}
+
+// SecretStoresClientDeleteResponse contains the response from method SecretStoresClient.Delete.
+type SecretStoresClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// SecretStoresClientGetResponse contains the response from method SecretStoresClient.Get.
+type SecretStoresClientGetResponse struct {
+	SecretStoreResource
+}
+
+// SecretStoresClientListResponse contains the response from method SecretStoresClient.List.
+type SecretStoresClientListResponse struct {
+	SecretStoreResourceList
+}
+
+// SecretStoresClientUpdateResponse contains the response from method SecretStoresClient.Update.
+type SecretStoresClientUpdateResponse struct {
+	SecretStoreResource
+}
+
 // VolumesClientCreateOrUpdateResponse contains the response from method VolumesClient.CreateOrUpdate.
 type VolumesClientCreateOrUpdateResponse struct {
 	VolumeResource
