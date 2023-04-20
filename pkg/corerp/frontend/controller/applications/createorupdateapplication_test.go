@@ -16,7 +16,7 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -34,7 +34,7 @@ const (
 	testEnvID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
 )
 
-func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateApplicationRun_CreateNew_20230415preview(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
@@ -53,7 +53,7 @@ func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testin
 
 	for _, tt := range ctrlTests {
 		t.Run(tt.desc, func(t *testing.T) {
-			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
+			appInput, appDataModel, expectedOutput := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -107,7 +107,7 @@ func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testin
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.ApplicationResource{}
+				actualOutput := &v20230415preview.ApplicationResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 				require.Equal(t, "new-resource-etag", w.Header().Get("ETag"))
@@ -116,7 +116,7 @@ func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testin
 	}
 }
 
-func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateApplicationRun_Update_20230415preview(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
@@ -129,7 +129,7 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 		shouldFail         bool
 	}{
 		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", 200, false},
-		{"update-resource-with-diff-env", "If-Match", "", "application20220315privatepreview_input_diff_env.json", "resource-etag", 400, true},
+		{"update-resource-with-diff-env", "If-Match", "", "application20230415preview_input_diff_env.json", "resource-etag", 400, true},
 		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", 200, false},
 		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", 200, false},
 		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", 412, true},
@@ -138,9 +138,9 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 
 	for _, tt := range ctrlTests {
 		t.Run(tt.desc, func(t *testing.T) {
-			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
+			appInput, appDataModel, expectedOutput := getTestModels20230415preview()
 			if tt.inputFile != "" {
-				appInput = &v20220315privatepreview.ApplicationResource{}
+				appInput = &v20230415preview.ApplicationResource{}
 				_ = json.Unmarshal(testutil.ReadFixture(tt.inputFile), appInput)
 			}
 			w := httptest.NewRecorder()
@@ -193,7 +193,7 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.ApplicationResource{}
+				actualOutput := &v20230415preview.ApplicationResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -203,7 +203,7 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 	}
 }
 
-func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateApplicationRun_PatchNonExisting_20230415preview(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
@@ -221,7 +221,7 @@ func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t 
 
 	for _, tt := range ctrlTests {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			appInput, _, _ := getTestModels20220315privatepreview()
+			appInput, _, _ := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -262,7 +262,7 @@ func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t 
 	}
 }
 
-func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateApplicationRun_PatchExisting_20230415preview(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
@@ -281,7 +281,7 @@ func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *te
 
 	for _, tt := range ctrlTests {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
+			appInput, appDataModel, expectedOutput := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -333,7 +333,7 @@ func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *te
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.ApplicationResource{}
+				actualOutput := &v20230415preview.ApplicationResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 			}
@@ -341,7 +341,7 @@ func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *te
 	}
 }
 
-func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateApplicationRun_CreateExisting_20230415preview(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	ctrlTests := []struct {
@@ -359,8 +359,8 @@ func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *t
 
 	for _, tt := range ctrlTests {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			appInput, appDataModel, _ := getTestModels20220315privatepreview()
-			_, conflictDataModel, _ := getTestModels20220315privatepreview()
+			appInput, appDataModel, _ := getTestModels20230415preview()
+			_, conflictDataModel, _ := getTestModels20230415preview()
 
 			conflictDataModel.Name = "existing"
 			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/" + tt.existingResourceName

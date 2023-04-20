@@ -13,17 +13,17 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	v20230415preview "github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRunWith20220315PrivatePreview(t *testing.T) {
+func TestRunWith20230415preview(t *testing.T) {
 	// arrange
 	opts := ctrl.Options{}
 	op, err := NewGetOperations(opts)
 	require.NoError(t, err)
 	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
-		APIVersion: v20220315privatepreview.Version,
+		APIVersion: v20230415preview.Version,
 	})
 	w := httptest.NewRecorder()
 

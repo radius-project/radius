@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	v20230415preview "github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -26,9 +26,9 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/applicationresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.ApplicationResource{},
+			"../../api/v20230415preview/testdata/applicationresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.ApplicationResource{},
 			nil,
 		},
 		// TODO: add new conversion tests.
@@ -63,8 +63,8 @@ func TestApplicationDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/applicationresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/applicationresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		// TODO: add new conversion tests.

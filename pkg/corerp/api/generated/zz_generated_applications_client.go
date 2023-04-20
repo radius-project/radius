@@ -57,7 +57,7 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 
 // CreateOrUpdate - Create or update an Application.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // applicationName - The name of the application.
 // applicationResource - application details
 // options - ApplicationsClientCreateOrUpdateOptions contains the optional parameters for the ApplicationsClient.CreateOrUpdate
@@ -90,7 +90,7 @@ func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Contex
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, applicationResource)
@@ -107,7 +107,7 @@ func (client *ApplicationsClient) createOrUpdateHandleResponse(resp *http.Respon
 
 // Delete - Delete an Application.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // applicationName - The name of the application.
 // options - ApplicationsClientDeleteOptions contains the optional parameters for the ApplicationsClient.Delete method.
 func (client *ApplicationsClient) Delete(ctx context.Context, applicationName string, options *ApplicationsClientDeleteOptions) (ApplicationsClientDeleteResponse, error) {
@@ -138,7 +138,7 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, appli
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -146,7 +146,7 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, appli
 
 // Get - Gets the properties of an Application.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // applicationName - The name of the application.
 // options - ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
 func (client *ApplicationsClient) Get(ctx context.Context, applicationName string, options *ApplicationsClientGetOptions) (ApplicationsClientGetResponse, error) {
@@ -177,7 +177,7 @@ func (client *ApplicationsClient) getCreateRequest(ctx context.Context, applicat
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -193,7 +193,7 @@ func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (Applic
 }
 
 // NewListByScopePager - List all applications in the given scope.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // options - ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.ListByScope
 // method.
 func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) *runtime.Pager[ApplicationsClientListByScopeResponse] {
@@ -233,7 +233,7 @@ func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, 
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -250,7 +250,7 @@ func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response)
 
 // Update - Update the properties of an existing Application.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // applicationName - The name of the application.
 // applicationResource - application details
 // options - ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
@@ -282,7 +282,7 @@ func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, appli
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, applicationResource)

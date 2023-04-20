@@ -19,7 +19,7 @@ For proxying requests to the AWS plane, UCP needs to perform request translation
 <br/><br/>
 
 ## UCP Resource Definitions
-The swagger defintions for UCP resources are defined in swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/ucp.json.
+The swagger defintions for UCP resources are defined in swagger/specification/ucp/resource-manager/UCP/preview/2023-04-15-preview/ucp.json.
 
 <br/><br/>
 

@@ -1,0 +1,45 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+    "name": "env0",
+    "type": "applications.core/environments",
+    "location": "West US",
+    "systemData": {
+        "createdAt": "2022-03-22T18:54:52.6857175Z",
+        "createdBy": "fake@hotmail.com",
+        "createdByType": "User",
+        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+        "lastModifiedBy": "fake@hotmail.com",
+        "lastModifiedByType": "User"
+    },
+    "provisioningState": "Succeeded",
+    "properties": {
+        "compute": {
+            "kind": "kubernetes",
+            "kubernetes": {
+                "resourceId": "fakeid",
+                "namespace": "default"
+            }
+        },
+        "recipes": {
+            "mongo-azure": {
+                "linkType": "Applications.Link/mongoDatabases",
+                "templatePath": "radius.azurecr.io/recipes/mongodatabases/azure:1.0"
+            }, 
+            "redis-kubernetes": {
+                "linkType": "Applications.Link/redisCaches",
+                "templatePath": "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"
+            }
+        },
+        "useDevRecipes": true,
+        "providers": {
+            "azure": {
+                "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
+            }
+        }
+    },
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroup": "radius-test-rg",
+    "createdApiVersion": "2023-04-15-preview",
+    "updatedApiVersion": "2023-04-15-preview"
+}

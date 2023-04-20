@@ -29,10 +29,10 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -383,7 +383,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		//ignore the id of the resource group created
-		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20230415preview.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil || !isGroupCreated {
@@ -392,7 +392,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 		// We'll remove this in the future.
-		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20230415preview.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil {

@@ -177,7 +177,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			v1.LocationGlobal,
 			operationID,
-			"2022-03-15-privatepreview",
+			"2023-04-15-preview",
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
 			url.URL{
@@ -192,7 +192,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			v1.LocationGlobal,
 			operationID,
-			"2022-03-15-privatepreview",
+			"2023-04-15-preview",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
 			url.URL{

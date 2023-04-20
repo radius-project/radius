@@ -19,9 +19,9 @@ func TestGetValidatorKey(t *testing.T) {
 		version      string
 		expected     string
 	}{
-		{"applications.core/environments", "2022-03-15-privatepreview", "applications.core/environments-2022-03-15-privatepreview"},
-		{"applications.Core/environments", "2022-03-15-privatepreview", "applications.core/environments-2022-03-15-privatepreview"},
-		{"Applications.Core/environments", "2022-03-15-privatepreview", "applications.core/environments-2022-03-15-privatepreview"},
+		{"applications.core/environments", "2023-04-15-preview", "applications.core/environments-2023-04-15-preview"},
+		{"applications.Core/environments", "2023-04-15-preview", "applications.core/environments-2023-04-15-preview"},
+		{"Applications.Core/environments", "2023-04-15-preview", "applications.core/environments-2023-04-15-preview"},
 	}
 
 	for _, tt := range keyTests {
@@ -35,12 +35,12 @@ func TestParseSpecFilePath(t *testing.T) {
 		parsed map[string]string
 	}{
 		{
-			path: "specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json",
+			path: "specification/applications/resource-manager/Applications.Core/preview/2023-04-15-preview/environments.json",
 			parsed: map[string]string{
 				"productname":  "applications",
 				"provider":     "applications.core",
 				"state":        "preview",
-				"version":      "2022-03-15-privatepreview",
+				"version":      "2023-04-15-preview",
 				"resourcetype": "environments",
 			},
 		},
@@ -64,7 +64,7 @@ func TestParseSpecFilePath(t *testing.T) {
 func TestLoader(t *testing.T) {
 	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "{rootScope:.*}", "rootScope")
 	require.NoError(t, err)
-	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
+	v, ok := l.GetValidator("applications.core/environments", "2023-04-15-preview")
 	require.True(t, ok)
 	require.NotNil(t, v)
 }

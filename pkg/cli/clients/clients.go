@@ -11,8 +11,8 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	ucp_v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
+	ucp_v20230415preview "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -149,10 +149,10 @@ type ApplicationsManagementClient interface {
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)
-	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20220901privatepreview.ResourceGroupResource) (bool, error)
+	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20230415preview.ResourceGroupResource) (bool, error)
 	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
-	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220901privatepreview.ResourceGroupResource, error)
-	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)
+	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20230415preview.ResourceGroupResource, error)
+	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20230415preview.ResourceGroupResource, error)
 
 	// ShowRecipe shows recipe details including list of all parameters for a given recipe registered to an environment
 	ShowRecipe(ctx context.Context, environmentName string, recipeName string) (corerp.EnvironmentRecipeProperties, error)

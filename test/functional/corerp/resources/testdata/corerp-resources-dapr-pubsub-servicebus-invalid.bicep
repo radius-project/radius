@@ -6,7 +6,7 @@ param environment string
 
 param location string = resourceGroup().location
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-dapr-pubsub-servicebus-invalid'
   location: location
   properties: {
@@ -14,7 +14,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource publisher 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'sb-publisher'
   location: location
   properties: {
@@ -46,7 +46,7 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsub 'Applications.Link/daprPubSubBrokers@2023-04-15-preview' = {
   name: 'sb-pubsub'
   location: location
   properties: {

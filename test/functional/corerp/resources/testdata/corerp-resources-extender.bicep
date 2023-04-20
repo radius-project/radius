@@ -3,7 +3,7 @@ import radius as radius
 param magpieimage string
 param environment string 
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-extender'
   location: 'global'
   properties: {
@@ -11,7 +11,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource twilio 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+resource twilio 'Applications.Link/extenders@2023-04-15-preview' = {
   name: 'extr-twilio'
   location: 'global'
   properties: {
@@ -24,7 +24,7 @@ resource twilio 'Applications.Link/extenders@2022-03-15-privatepreview' = {
   }
 }
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource container 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'extr-ctnr'
   location: 'global'
   properties: {

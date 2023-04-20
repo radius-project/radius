@@ -24,7 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 )
@@ -53,7 +53,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20230415preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -73,7 +73,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20230415preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -88,7 +88,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20230415preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -176,10 +176,10 @@ func Test_Run(t *testing.T) {
 		}).
 		Times(1)
 
-	app := v20220315privatepreview.ApplicationResource{
-		Properties: &v20220315privatepreview.ApplicationProperties{
-			Status: &v20220315privatepreview.ResourceStatus{
-				Compute: &v20220315privatepreview.KubernetesCompute{
+	app := v20230415preview.ApplicationResource{
+		Properties: &v20230415preview.ApplicationProperties{
+			Status: &v20230415preview.ResourceStatus{
+				Compute: &v20230415preview.KubernetesCompute{
 					Kind:      to.Ptr("kubernetes"),
 					Namespace: to.Ptr("test-namespace-app"),
 				},

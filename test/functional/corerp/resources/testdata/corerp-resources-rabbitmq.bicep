@@ -25,7 +25,7 @@ param username string = 'guest'
 @secure()
 param password string 
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-rabbitmq'
   location: location
   properties: {
@@ -33,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'rmq-app-ctnr'
   location: location
   properties: {
@@ -54,7 +54,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource rabbitmqContainer 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'rmq-ctnr'
   location: location
   properties: {
@@ -71,7 +71,7 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
   }
 }
 
-resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource rabbitmqRoute 'Applications.Core/httpRoutes@2023-04-15-preview' = {
   name: 'rmq-rte'
   location: location
   properties: {
@@ -80,7 +80,7 @@ resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   }
 }
 
-resource rabbitmq 'Applications.Link/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
+resource rabbitmq 'Applications.Link/rabbitMQMessageQueues@2023-04-15-preview' = {
   name: 'rmq-rmq'
   location: location
   properties: {

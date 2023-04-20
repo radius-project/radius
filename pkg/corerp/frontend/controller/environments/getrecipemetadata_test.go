@@ -15,13 +15,13 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
+func TestGetRecipeMetadataRun_20230415preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 	mStorageClient := store.NewMockStorageClient(mctrl)
@@ -29,7 +29,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
-		envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20230415preview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
 
@@ -54,7 +54,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		actualOutput := &v20230415preview.EnvironmentResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
@@ -95,7 +95,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get recipe metadata non existing recipe", func(t *testing.T) {
-		envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envDataModel, _ := getTestModelsGetRecipeMetadata20230415preview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)

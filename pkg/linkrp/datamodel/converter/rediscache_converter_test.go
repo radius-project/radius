@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -25,9 +25,9 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RedisCacheResource{},
+			"../../api/v20230415preview/testdata/rediscacheresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.RedisCacheResource{},
 			nil,
 		},
 		{
@@ -61,13 +61,13 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/rediscacheresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/rediscacheresource-invalid.json",
+			"2023-04-15-preview",
 			errors.New("json: cannot unmarshal number into Go struct field RedisCacheProperties.properties.resource of type string"),
 		},
 		{
@@ -99,9 +99,9 @@ func TestRedisCacheSecretsDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscachesecretsdatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RedisCacheSecrets{},
+			"../../api/v20230415preview/testdata/rediscachesecretsdatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.RedisCacheSecrets{},
 			nil,
 		},
 		{

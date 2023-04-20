@@ -15,7 +15,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteGatewayRun_20220315PrivatePreview(t *testing.T) {
+func TestDeleteGatewayRun_20230415preview(t *testing.T) {
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
@@ -61,7 +61,7 @@ func TestDeleteGatewayRun_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", tt.etag)
 
 			ctx := testutil.ARMTestContextFromRequest(req)
-			_, gtwyDataModel, _ := getTestModels20220315privatepreview()
+			_, gtwyDataModel, _ := getTestModels20230415preview()
 
 			gtwyDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
@@ -102,7 +102,7 @@ func TestDeleteGatewayRun_20220315PrivatePreview(t *testing.T) {
 
 			// If happy path, expect that the returned object has Deleting state
 			if tt.code == http.StatusAccepted {
-				actualOutput := &v20220315privatepreview.GatewayResource{}
+				actualOutput := &v20230415preview.GatewayResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 			}
 		})

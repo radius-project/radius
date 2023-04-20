@@ -6,7 +6,7 @@ param sub string = subscription().subscriptionId
 
 param magpieimage string 
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-04-15-preview' = {
   name: 'corerp-resources-environment-devrecipe-env'
   location: 'global'
   properties: {
@@ -24,7 +24,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-mongodb-devrecipe'
   location: 'global'
   properties: {
@@ -38,7 +38,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'mongodb-devrecipe-app-ctnr'
   location: 'global'
   properties: {
@@ -62,7 +62,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
+resource recipedb 'Applications.Link/mongoDatabases@2023-04-15-preview' = {
   name: 'mongo-devrecipe-db'
   location: 'global'
   properties: {

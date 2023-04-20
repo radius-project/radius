@@ -22,7 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/sdk"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -189,12 +189,12 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 
 	clientOptions := sdk.NewClientOptions(connection)
 
-	azureCredentialClient, err := v20220901privatepreview.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	azureCredentialClient, err := v20230415preview.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	awsCredentialClient, err := v20220901privatepreview.NewAwsCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	awsCredentialClient, err := v20230415preview.NewAwsCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}

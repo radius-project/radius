@@ -13,7 +13,7 @@ import (
 
 const (
 	testHeaderfile = "resource-request-headers.json"
-	testAPIVersion = "2022-03-15-privatepreview"
+	testAPIVersion = "2023-04-15-preview"
 )
 
 // TestResourceDataModel represents test resource.

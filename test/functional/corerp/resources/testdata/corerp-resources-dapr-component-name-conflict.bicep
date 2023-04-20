@@ -4,7 +4,7 @@ param environment string
 
 param location string = resourceGroup().location
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-dapr-component-name-conflict'
   location: 'global'
   properties: {
@@ -13,7 +13,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 // Dapr Component #1
-resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsub 'Applications.Link/daprPubSubBrokers@2023-04-15-preview' = {
   name: 'dapr-component'
   location: 'global'
   properties: {
@@ -33,7 +33,7 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
 }
 
 // Dapr Component #2
-resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privatepreview' = {
+resource secretstore 'Applications.Link/daprSecretStores@2023-04-15-preview' = {
   name: 'dapr-component'
   location: 'global'
   properties: {

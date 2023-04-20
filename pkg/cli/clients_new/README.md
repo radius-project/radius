@@ -12,11 +12,11 @@ The following are the settings for this using this API with AutoRest.
 
 ### Input OpenAPI specificiations
 
-#### Tag: 2022-03-15-privatepreview
+#### Tag: 2023-04-15-preview
 
-These settings apply only when `--tag=2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=2023-04-15-preview` is specified on the command line.
 
-```yaml $(tag) == '2022-03-15-privatepreview'
+```yaml $(tag) == '2023-04-15-preview'
 input-file:
   - ../../../pkg/cli/swagger/genericResource.json
 modelerfour: 
@@ -38,11 +38,11 @@ azure-arm: true
 
 ### Output
 
-#### Tag: 2022-03-15-privatepreview
+#### Tag: 2023-04-15-preview
 
-These settings apply only when `--tag=2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=2023-04-15-preview` is specified on the command line.
 
-```yaml $(tag) == '2022-03-15-privatepreview'
+```yaml $(tag) == '2023-04-15-preview'
 output-folder: ./generated
 ```
 

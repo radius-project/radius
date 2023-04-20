@@ -1,0 +1,12 @@
+{
+  "parameters": {
+    "api-version": "2023-04-15-preview",
+    "resourceGroupName": "rg1",
+    "planeType": "radius",
+    "planeName": "local"
+  },
+  "responses": {
+    "200": {},
+    "204": {}
+  }
+}

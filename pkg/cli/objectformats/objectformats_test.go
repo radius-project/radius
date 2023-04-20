@@ -10,13 +10,13 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_GenericEnvTableFormat(t *testing.T) {
-	obj := v20220315privatepreview.EnvironmentResource{
+	obj := v20230415preview.EnvironmentResource{
 		Name: to.Ptr("test_env_resource"),
 	}
 

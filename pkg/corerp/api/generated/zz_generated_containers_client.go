@@ -57,7 +57,7 @@ func NewContainersClient(rootScope string, credential azcore.TokenCredential, op
 
 // CreateOrUpdate - Create or update a Container.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // containerName - The name of the conatiner.
 // containerResource - containers details
 // options - ContainersClientCreateOrUpdateOptions contains the optional parameters for the ContainersClient.CreateOrUpdate
@@ -90,7 +90,7 @@ func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context,
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, containerResource)
@@ -107,7 +107,7 @@ func (client *ContainersClient) createOrUpdateHandleResponse(resp *http.Response
 
 // Delete - Delete a Container.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // containerName - The name of the conatiner.
 // options - ContainersClientDeleteOptions contains the optional parameters for the ContainersClient.Delete method.
 func (client *ContainersClient) Delete(ctx context.Context, containerName string, options *ContainersClientDeleteOptions) (ContainersClientDeleteResponse, error) {
@@ -138,7 +138,7 @@ func (client *ContainersClient) deleteCreateRequest(ctx context.Context, contain
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -146,7 +146,7 @@ func (client *ContainersClient) deleteCreateRequest(ctx context.Context, contain
 
 // Get - Gets the properties of an Container.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // containerName - The name of the conatiner.
 // options - ContainersClientGetOptions contains the optional parameters for the ContainersClient.Get method.
 func (client *ContainersClient) Get(ctx context.Context, containerName string, options *ContainersClientGetOptions) (ContainersClientGetResponse, error) {
@@ -177,7 +177,7 @@ func (client *ContainersClient) getCreateRequest(ctx context.Context, containerN
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -193,7 +193,7 @@ func (client *ContainersClient) getHandleResponse(resp *http.Response) (Containe
 }
 
 // NewListByScopePager - List all containers in the given scope.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // options - ContainersClientListByScopeOptions contains the optional parameters for the ContainersClient.ListByScope method.
 func (client *ContainersClient) NewListByScopePager(options *ContainersClientListByScopeOptions) *runtime.Pager[ContainersClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ContainersClientListByScopeResponse]{
@@ -232,7 +232,7 @@ func (client *ContainersClient) listByScopeCreateRequest(ctx context.Context, op
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -249,7 +249,7 @@ func (client *ContainersClient) listByScopeHandleResponse(resp *http.Response) (
 
 // Update - Update the properties of an existing Container.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // containerName - The name of the conatiner.
 // containersResource - Container details
 // options - ContainersClientUpdateOptions contains the optional parameters for the ContainersClient.Update method.
@@ -281,7 +281,7 @@ func (client *ContainersClient) updateCreateRequest(ctx context.Context, contain
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, containersResource)

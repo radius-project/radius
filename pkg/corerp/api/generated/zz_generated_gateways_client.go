@@ -57,7 +57,7 @@ func NewGatewaysClient(rootScope string, credential azcore.TokenCredential, opti
 
 // CreateOrUpdate - Create or update a Gateway.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // gatewayName - The name of the Gateway.
 // gatewayResource - Gateway details
 // options - GatewaysClientCreateOrUpdateOptions contains the optional parameters for the GatewaysClient.CreateOrUpdate method.
@@ -89,7 +89,7 @@ func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, g
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, gatewayResource)
@@ -106,7 +106,7 @@ func (client *GatewaysClient) createOrUpdateHandleResponse(resp *http.Response) 
 
 // Delete - Delete a Gateway.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // gatewayName - The name of the Gateway.
 // options - GatewaysClientDeleteOptions contains the optional parameters for the GatewaysClient.Delete method.
 func (client *GatewaysClient) Delete(ctx context.Context, gatewayName string, options *GatewaysClientDeleteOptions) (GatewaysClientDeleteResponse, error) {
@@ -137,7 +137,7 @@ func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayNa
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -145,7 +145,7 @@ func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayNa
 
 // Get - Gets the properties of a Gateway.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // gatewayName - The name of the Gateway.
 // options - GatewaysClientGetOptions contains the optional parameters for the GatewaysClient.Get method.
 func (client *GatewaysClient) Get(ctx context.Context, gatewayName string, options *GatewaysClientGetOptions) (GatewaysClientGetResponse, error) {
@@ -176,7 +176,7 @@ func (client *GatewaysClient) getCreateRequest(ctx context.Context, gatewayName 
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -192,7 +192,7 @@ func (client *GatewaysClient) getHandleResponse(resp *http.Response) (GatewaysCl
 }
 
 // NewListByScopePager - List all Gateways in the given scope.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // options - GatewaysClientListByScopeOptions contains the optional parameters for the GatewaysClient.ListByScope method.
 func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByScopeOptions) *runtime.Pager[GatewaysClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[GatewaysClientListByScopeResponse]{
@@ -231,7 +231,7 @@ func (client *GatewaysClient) listByScopeCreateRequest(ctx context.Context, opti
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -248,7 +248,7 @@ func (client *GatewaysClient) listByScopeHandleResponse(resp *http.Response) (Ga
 
 // Update - Update the properties of an existing Gateway.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // gatewayName - The name of the Gateway.
 // gatewayResource - Gateway details
 // options - GatewaysClientUpdateOptions contains the optional parameters for the GatewaysClient.Update method.
@@ -280,7 +280,7 @@ func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayNa
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, gatewayResource)

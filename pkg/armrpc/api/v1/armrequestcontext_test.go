@@ -25,7 +25,7 @@ func TestFromARMRequest(t *testing.T) {
 	}{
 		{
 			"With referer header",
-			"https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
+			"https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-04-15-preview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 		{
@@ -35,7 +35,7 @@ func TestFromARMRequest(t *testing.T) {
 		},
 		{
 			"With referer path base",
-			"https://radius.dev/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
+			"https://radius.dev/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-04-15-preview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 	}
@@ -55,7 +55,7 @@ func TestFromARMRequest(t *testing.T) {
 			require.NoError(t, err)
 
 			serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
-			require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
+			require.Equal(t, "2023-04-15-preview", serviceCtx.APIVersion)
 			require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 			require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
 			require.Equal(t, tt.resourceID, serviceCtx.ResourceID.String())
@@ -93,7 +93,7 @@ func TestFromContext(t *testing.T) {
 
 	sCtx := ARMRequestContextFromContext(newCtx)
 	require.NotNil(t, sCtx)
-	require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
+	require.Equal(t, "2023-04-15-preview", sCtx.APIVersion)
 }
 
 func TestTopQueryParam(t *testing.T) {

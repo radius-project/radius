@@ -4,4 +4,4 @@
 // ------------------------------------------------------------
 package versions
 
-const DefaultAPIVersion = "2022-09-01-privatepreview"
+const DefaultAPIVersion = "2023-04-15-preview"

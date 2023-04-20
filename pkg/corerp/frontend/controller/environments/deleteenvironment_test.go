@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
+func TestDeleteEnvironmentRun_20230415preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -88,7 +88,7 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", tt.ifMatchETag)
 
 			ctx := testutil.ARMTestContextFromRequest(req)
-			_, envDataModel, _ := getTestModels20220315privatepreview()
+			_, envDataModel, _ := getTestModels20230415preview()
 
 			mStorageClient.
 				EXPECT().

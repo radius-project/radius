@@ -57,7 +57,7 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 
 // CreateOrUpdate - Create or update an Environment.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // environmentName - The name of the environment
 // environmentResource - environment details
 // options - EnvironmentsClientCreateOrUpdateOptions contains the optional parameters for the EnvironmentsClient.CreateOrUpdate
@@ -90,7 +90,7 @@ func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Contex
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, environmentResource)
@@ -107,7 +107,7 @@ func (client *EnvironmentsClient) createOrUpdateHandleResponse(resp *http.Respon
 
 // Delete - Delete an Environment.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // environmentName - The name of the environment
 // options - EnvironmentsClientDeleteOptions contains the optional parameters for the EnvironmentsClient.Delete method.
 func (client *EnvironmentsClient) Delete(ctx context.Context, environmentName string, options *EnvironmentsClientDeleteOptions) (EnvironmentsClientDeleteResponse, error) {
@@ -138,7 +138,7 @@ func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, envir
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -146,7 +146,7 @@ func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, envir
 
 // Get - Gets the properties of an Environment.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // environmentName - The name of the environment
 // options - EnvironmentsClientGetOptions contains the optional parameters for the EnvironmentsClient.Get method.
 func (client *EnvironmentsClient) Get(ctx context.Context, environmentName string, options *EnvironmentsClientGetOptions) (EnvironmentsClientGetResponse, error) {
@@ -177,7 +177,7 @@ func (client *EnvironmentsClient) getCreateRequest(ctx context.Context, environm
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -193,7 +193,7 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 }
 
 // NewListByScopePager - List all environments in a scope.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // options - EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.ListByScope
 // method.
 func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) *runtime.Pager[EnvironmentsClientListByScopeResponse] {
@@ -233,7 +233,7 @@ func (client *EnvironmentsClient) listByScopeCreateRequest(ctx context.Context, 
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -250,7 +250,7 @@ func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response)
 
 // Update - Update the properties of an existing Environment.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // environmentName - The name of the environment
 // environmentResource - environment details
 // options - EnvironmentsClientUpdateOptions contains the optional parameters for the EnvironmentsClient.Update method.
@@ -282,7 +282,7 @@ func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, envir
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, environmentResource)

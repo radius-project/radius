@@ -13,7 +13,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/to"
-	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 )

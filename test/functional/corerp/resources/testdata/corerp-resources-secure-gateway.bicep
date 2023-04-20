@@ -84,7 +84,7 @@ resource secret 'core/Secret@v1' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-gateways'
   location: location
   properties: {
@@ -92,7 +92,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
+resource gateway 'Applications.Core/gateways@2023-04-15-preview' = {
   name: 'gtwy-gtwy'
   location: location
   properties: {
@@ -108,7 +108,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   }
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource frontendRoute 'Applications.Core/httpRoutes@2023-04-15-preview' = {
   name: 'gtwy-front-rte'
   location: location
   properties: {
@@ -117,7 +117,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   }
 }
 
-resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource frontendContainer 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'gtwy-front-ctnr'
   location: location
   properties: {

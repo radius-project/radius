@@ -30,7 +30,7 @@
 1. To create or update an environment, here is an example curl command:
 
     ```
-    curl --location --request PUT 'http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0?api-version=2022-03-15-privatepreview' \
+    curl --location --request PUT 'http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0?api-version=2023-04-15-preview' \
     --header 'X-Ms-Arm-Resource-System-Data: {"lastModifiedBy":"fake@hotmail.com","lastModifiedByType":"User","lastModifiedAt":"2022-03-22T18:54:52.6857175Z"}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -46,7 +46,7 @@
 1. To get information about an environment, here is an example curl command:
 
     ```
-    curl --location --request GET 'http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/?api-version=2022-03-15-privatepreview'
+    curl --location --request GET 'http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/?api-version=2023-04-15-preview'
     ```
 
 1. You should also be able to see all changes in Cosmos DB

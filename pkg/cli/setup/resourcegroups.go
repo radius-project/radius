@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 )
 
 type ErrUCPResourceGroupCreationFailed struct {
@@ -54,7 +54,7 @@ func CreateWorkspaceResourceGroup(ctx context.Context, connection sdk.Connection
 func createUCPResourceGroup(ctx context.Context, connection sdk.Connection, resourceGroupName string, plane string) (string, error) {
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", connection.Endpoint(), plane, resourceGroupName, v20220901privatepreview.Version),
+		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", connection.Endpoint(), plane, resourceGroupName, v20230415preview.Version),
 		strings.NewReader(`{
 			"location": "global"
 		}`))

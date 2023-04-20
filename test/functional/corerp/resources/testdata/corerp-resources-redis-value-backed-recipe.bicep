@@ -2,7 +2,7 @@ import radius as radius
 
 param scope string = resourceGroup().id
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-04-15-preview' = {
   name: 'corerp-resources-environment-value-backed-recipe-env'
   location: 'global'
   properties: {
@@ -25,7 +25,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-redis-value-backed-recipe'
   location: 'global'
   properties: {
@@ -39,7 +39,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Link/redisCaches@2023-04-15-preview' = {
   name: 'rds-value-backed-recipe'
   location: 'global'
   properties: {

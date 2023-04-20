@@ -27,7 +27,7 @@ func TestFromContext(t *testing.T) {
 
 	sCtx := AWSRequestContextFromContext(newCtx)
 	require.NotNil(t, sCtx)
-	require.Equal(t, "2022-09-01-privatepreview", sCtx.APIVersion)
+	require.Equal(t, "2023-04-15-preview", sCtx.APIVersion)
 	require.Equal(t, "AWS::Kinesis::Stream", sCtx.ResourceTypeInAWSFormat())
 }
 

@@ -24,59 +24,59 @@ var handlerTests = []struct {
 	isAzureAPI bool
 }{
 	{
-		url:        "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/environments?api-version=2023-04-15-preview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2023-04-15-preview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2023-04-15-preview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2023-04-15-preview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes?api-version=2023-04-15-preview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2023-04-15-preview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2023-04-15-preview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2023-04-15-preview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/applications?api-version=2023-04-15-preview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2023-04-15-preview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2023-04-15-preview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2023-04-15-preview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/gateways?api-version=2023-04-15-preview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/providers/applications.core/operations?api-version=2022-03-15-privatepreview",
+		url:        "/providers/applications.core/operations?api-version=2023-04-15-preview",
 		method:     http.MethodGet,
 		isAzureAPI: true,
 	}, {
@@ -84,23 +84,23 @@ var handlerTests = []struct {
 		method:     http.MethodPut,
 		isAzureAPI: true,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2023-04-15-preview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2023-04-15-preview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2023-04-15-preview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2023-04-15-preview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0/recipe0/getmetadata?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0/recipe0/getmetadata?api-version=2023-04-15-preview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	},

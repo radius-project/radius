@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -25,21 +25,21 @@ func TestDaprStateStoreDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoresqlserverresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprStateStoreResource{},
+			"../../api/v20230415preview/testdata/daprstatestoresqlserverresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.DaprStateStoreResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoreazuretablestorageresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprStateStoreResource{},
+			"../../api/v20230415preview/testdata/daprstatestoreazuretablestorageresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.DaprStateStoreResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestogenericreresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprStateStoreResource{},
+			"../../api/v20230415preview/testdata/daprstatestogenericreresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.DaprStateStoreResource{},
 			nil,
 		},
 		{
@@ -73,23 +73,23 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoresqlserverresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/daprstatestoresqlserverresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoreazuretablestorageresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/daprstatestoreazuretablestorageresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestogenericreresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/daprstatestogenericreresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoreresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/daprstatestoreresource-invalid.json",
+			"2023-04-15-preview",
 			errors.New("json: cannot unmarshal number into Go struct field DaprStateStoreProperties.properties.resource of type string"),
 		},
 		{

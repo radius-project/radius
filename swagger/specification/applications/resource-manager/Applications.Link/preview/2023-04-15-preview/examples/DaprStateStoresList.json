@@ -1,0 +1,74 @@
+{
+    "parameters": {
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "api-version": "2023-04-15-preview"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "value": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/daprStateStore0",
+              "name": "daprStateStore0",
+              "type": "Applications.Link/daprStateStores",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "mode": "resource",
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+              }
+            },
+            {
+                "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/daprStateStore1",
+                "name": "daprStateStore1",
+                "type": "Applications.Link/daprStateStores",
+                "location": "global",
+                "properties": {
+                  "provisioningState": "Succeeded",
+                  "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                  "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                  "mode": "resource",
+                  "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
+                }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/daprStateStore2",
+              "name": "daprStateStore2",
+              "type": "Applications.Link/daprStateStores",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "mode": "values",
+                "type": "state.zookeeper",
+                "version": "v1",
+                "metadata": {
+                "foo": "bar"
+                }
+              }
+            },
+            {
+                "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/daprStateStore3",
+                "name": "daprStateStore3",
+                "type": "Applications.Link/daprStateStores",
+                "location": "global",
+                "properties": {
+                  "provisioningState": "Succeeded",
+                  "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                  "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                  "mode": "recipe",
+                  "recipe": {
+                      "name": "recipe-test"
+                  }
+                }
+            }
+          ],
+          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        }
+      }
+    }
+  }
+  

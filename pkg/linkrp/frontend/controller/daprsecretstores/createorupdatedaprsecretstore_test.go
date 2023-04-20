@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -68,7 +68,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentO
 	return rendererOutput, deploymentOutput
 }
 
-func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateDaprSecretStore_20230415preview(t *testing.T) {
 	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	ctx := context.Background()
 
@@ -90,7 +90,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
@@ -161,7 +161,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.DaprSecretStoreResource{}
+				actualOutput := &v20230415preview.DaprSecretStoreResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -181,7 +181,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 		shouldFail         bool
 	}{
 		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", false, http.StatusOK, false},
-		{"update-resource-with-diff-env-app", "If-Match", "", "20220315privatepreview_input_diffenvapp.json", "resource-etag", false, http.StatusBadRequest, true},
+		{"update-resource-with-diff-env-app", "If-Match", "", "20230415preview_input_diffenvapp.json", "resource-etag", false, http.StatusBadRequest, true},
 		{"update-resource-without-dapr-installed", "If-Match", "", "", "resource-etag", true, http.StatusBadRequest, true},
 		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", false, http.StatusOK, false},
 		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", false, http.StatusOK, false},
@@ -191,9 +191,9 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModels20230415preview()
 			if testcase.inputFile != "" {
-				input = &v20220315privatepreview.DaprSecretStoreResource{}
+				input = &v20230415preview.DaprSecretStoreResource{}
 				_ = json.Unmarshal(testutil.ReadFixture(testcase.inputFile), input)
 			}
 			w := httptest.NewRecorder()
@@ -266,7 +266,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.DaprSecretStoreResource{}
+				actualOutput := &v20230415preview.DaprSecretStoreResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 

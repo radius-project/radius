@@ -17,7 +17,7 @@ const (
 	appBicepTemplate = `import radius as radius
 param application string
 
-resource demo 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource demo 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'demo'
   location: 'global'
   properties: {
@@ -32,11 +32,11 @@ resource demo 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
   }
 }
-`  // Trailing newline intentional.
+` // Trailing newline intentional.
 
 	radYamlTemplate = `workspace:
   application: %q
-`  // Trailing newline intentional.
+` // Trailing newline intentional.
 )
 
 // ScaffoldApplication creates a working sample application in the provided directory

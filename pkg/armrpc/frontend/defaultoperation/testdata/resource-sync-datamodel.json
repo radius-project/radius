@@ -12,6 +12,6 @@
       }
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",
-    "createdApiVersion": "2022-09-01-privatepreview",
-    "updatedApiVersion": "2022-09-01-privatepreview"
+    "createdApiVersion": "2023-04-15-preview",
+    "updatedApiVersion": "2023-04-15-preview"
 }

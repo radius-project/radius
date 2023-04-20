@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -46,7 +46,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentO
 	return rendererOutput, deploymentOutput
 }
 
-func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateRabbitMQ_20230415preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -71,7 +71,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
@@ -119,7 +119,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResource{}
+				actualOutput := &v20230415preview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -138,7 +138,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 		shouldFail         bool
 	}{
 		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-with-diff-env", "If-Match", "", "20220315privatepreview_input_diff_env.json", "resource-etag", http.StatusBadRequest, true},
+		{"update-resource-with-diff-env", "If-Match", "", "20230415preview_input_diff_env.json", "resource-etag", http.StatusBadRequest, true},
 		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", http.StatusOK, false},
 		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", http.StatusOK, false},
 		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", http.StatusPreconditionFailed, true},
@@ -147,9 +147,9 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20230415preview()
 			if testcase.inputFile != "" {
-				input = &v20220315privatepreview.RabbitMQMessageQueueResource{}
+				input = &v20230415preview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(testutil.ReadFixture(testcase.inputFile), input)
 			}
 			w := httptest.NewRecorder()
@@ -197,7 +197,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResource{}
+				actualOutput := &v20230415preview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 

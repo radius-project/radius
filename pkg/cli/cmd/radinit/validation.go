@@ -10,7 +10,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/spf13/cobra"
 )
 

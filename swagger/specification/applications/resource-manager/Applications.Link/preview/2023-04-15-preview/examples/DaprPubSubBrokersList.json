@@ -1,0 +1,64 @@
+{
+    "parameters": {
+      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "api-version": "2023-04-15-preview"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "value": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub0",
+              "name": "daprPubSub0",
+              "type": "Applications.Link/daprPubSubBrokers",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "mode": "resource",
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue"
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub1",
+              "name": "daprPubSub1",
+              "type": "Applications.Link/daprPubSubBrokers",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "mode": "values",
+                "type": "pubsub.kafka",
+                "version": "v1",
+                "metadata": {
+                    "foo": "bar"
+                }
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub2",
+              "name": "daprPubSub2",
+              "type": "Applications.Link/daprPubSubBrokers",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "mode": "recipe",
+                "recipe": {
+                  "name": "pubsub-test",
+                  "parameters": {
+                      "port": 6081
+                  }
+                }
+              }
+            }
+          ],
+          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        }
+      }
+    }
+  }
+  

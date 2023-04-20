@@ -16,7 +16,7 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -35,7 +35,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	url := "/planes/radius/local/resourceGroups?api-version=2022-09-01-privatepreview"
+	url := "/planes/radius/local/resourceGroups?api-version=2023-04-15-preview"
 
 	query := store.Query{
 		RootScope:    "/planes/radius/local",
@@ -73,7 +73,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	resourceGroup := v20220901privatepreview.ResourceGroupResource{
+	resourceGroup := v20230415preview.ResourceGroupResource{
 		ID:       &testResourceGroupID,
 		Name:     &testResourceGroupName,
 		Type:     to.Ptr(ResourceGroupType),

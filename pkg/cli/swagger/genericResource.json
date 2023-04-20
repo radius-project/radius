@@ -3,7 +3,7 @@
     "info": {
       "title": "Generic Resource Management APIs",
       "description": "REST APIs for Generic Resource",
-      "version": "2022-03-15-privatepreview"
+      "version": "2023-04-15-preview"
     },
     "host": "management.azure.com",
     "schemes": [

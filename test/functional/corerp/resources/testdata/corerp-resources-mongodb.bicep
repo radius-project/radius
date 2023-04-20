@@ -6,7 +6,7 @@ param environment string
 
 param mongodbresourceid string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-mongodb'
   location: 'global'
   properties: {
@@ -14,7 +14,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'mdb-app-ctnr'
   location: 'global'
   properties: {
@@ -35,7 +35,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Link/mongoDatabases@2023-04-15-preview' = {
   name: 'mdb-db'
   location: 'global'
   properties: {

@@ -1,0 +1,26 @@
+{
+    "parameters": {
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "api-version": "2023-04-15-preview",
+      "redisCacheName": "redis0"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+          "name": "redis0",
+          "type": "Applications.Link/redisCaches",
+          "location": "global",
+          "properties": {
+            "provisioningState": "Succeeded",
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "mode":"resource",
+            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
+            "username": "username"
+          }
+        }
+      }
+    }
+  }
+  

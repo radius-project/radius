@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	v20230415preview "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 )
 
 // MockAzureCredentialManagementClientInterface is a mock of AzureCredentialManagementClientInterface interface.
@@ -81,7 +81,7 @@ func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) List(arg0 in
 }
 
 // Put mocks base method.
-func (m *MockAzureCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20220901privatepreview.AzureCredentialResource) error {
+func (m *MockAzureCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20230415preview.AzureCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", arg0, arg1)
 	ret0, _ := ret[0].(error)

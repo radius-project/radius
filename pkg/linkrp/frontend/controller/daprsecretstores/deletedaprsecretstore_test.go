@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
+func TestDeleteDaprSecretStore_20230415preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -95,7 +95,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", testcase.ifMatchETag)
 
 			ctx := testutil.ARMTestContextFromRequest(req)
-			_, daprSecretStoreDataModel, _ := getTestModels20220315privatepreview()
+			_, daprSecretStoreDataModel, _ := getTestModels20230415preview()
 
 			mStorageClient.
 				EXPECT().
@@ -154,7 +154,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 	t.Run("delete deploymentprocessor error", func(t *testing.T) {
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
-		_, daprSecretStoreDataModel, _ := getTestModels20220315privatepreview()
+		_, daprSecretStoreDataModel, _ := getTestModels20230415preview()
 		w := httptest.NewRecorder()
 
 		mStorageClient.

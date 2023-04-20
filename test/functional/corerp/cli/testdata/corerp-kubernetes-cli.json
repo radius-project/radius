@@ -40,7 +40,7 @@
   "resources": {
     "app": {
       "import": "radius",
-      "type": "Applications.Core/applications@2022-03-15-privatepreview",
+      "type": "Applications.Core/applications@2023-04-15-preview",
       "properties": {
         "name": "kubernetes-cli-json",
         "location": "[parameters('location')]",
@@ -51,7 +51,7 @@
     },
     "containera": {
       "import": "radius",
-      "type": "Applications.Core/containers@2022-03-15-privatepreview",
+      "type": "Applications.Core/containers@2023-04-15-preview",
       "properties": {
         "name": "containerA-json",
         "location": "[parameters('location')]",
@@ -68,7 +68,7 @@
     },
     "containerb": {
       "import": "radius",
-      "type": "Applications.Core/containers@2022-03-15-privatepreview",
+      "type": "Applications.Core/containers@2023-04-15-preview",
       "properties": {
         "name": "containerB-json",
         "location": "[parameters('location')]",

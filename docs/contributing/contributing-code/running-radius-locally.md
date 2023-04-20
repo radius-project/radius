@@ -167,7 +167,7 @@ curl --location --request PUT 'http://localhost:9000/apis/api.ucp.dev/v1alpha3/p
 --data-raw '{}'
 
 # 3: Create your-environment environment (make sure this matches the name of your environment in the config)
-curl --location --request PUT 'http://localhost:8080/planes/radius/local/resourceGroups/localrp/providers/Applications.Core/environments/your-environment?api-version=2022-03-15-privatepreview' \
+curl --location --request PUT 'http://localhost:8080/planes/radius/local/resourceGroups/localrp/providers/Applications.Core/environments/your-environment?api-version=2023-04-15-preview' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "location": "global",

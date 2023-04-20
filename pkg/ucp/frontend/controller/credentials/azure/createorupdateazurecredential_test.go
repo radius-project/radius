@@ -14,7 +14,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -52,7 +52,7 @@ func Test_Azure_Credential(t *testing.T) {
 			name:       "test_credential_creation",
 			filename:   "azure-credential.json",
 			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2023-04-15-preview",
 			expected:   getAzureCredentialResponse(),
 			fn:         setupCredentialSuccessMocks,
 			err:        nil,
@@ -70,7 +70,7 @@ func Test_Azure_Credential(t *testing.T) {
 			name:       "test_invalid_credential_request",
 			filename:   "invalid-request-azure-credential.json",
 			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2023-04-15-preview",
 			expected:   nil,
 			fn:         setupEmptyMocks,
 			err: &v1.ErrModelConversion{
@@ -82,7 +82,7 @@ func Test_Azure_Credential(t *testing.T) {
 			name:       "test_credential_created",
 			filename:   "azure-credential.json",
 			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2023-04-15-preview",
 			expected:   getAzureCredentialResponse(),
 			fn:         setupCredentialNotFoundMocks,
 			err:        nil,
@@ -91,7 +91,7 @@ func Test_Azure_Credential(t *testing.T) {
 			name:       "test_credential_notFound_error",
 			filename:   "azure-credential.json",
 			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2023-04-15-preview",
 			fn:         setupCredentialNotFoundErrorMocks,
 			err:        errors.New("Error"),
 		},
@@ -99,7 +99,7 @@ func Test_Azure_Credential(t *testing.T) {
 			name:       "test_credential_get_failure",
 			filename:   "azure-credential.json",
 			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2023-04-15-preview",
 			fn:         setupCredentialGetFailMocks,
 			err:        errors.New("Failed Get"),
 		},
@@ -107,7 +107,7 @@ func Test_Azure_Credential(t *testing.T) {
 			name:       "test_credential_secret_save_failure",
 			filename:   "azure-credential.json",
 			headerfile: testHeaderFile,
-			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			url:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2023-04-15-preview",
 			fn:         setupCredentialSecretSaveFailMocks,
 			err:        errors.New("Secret Save Failure"),
 		},
@@ -116,7 +116,7 @@ func Test_Azure_Credential(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fn(*mockStorageClient, *mockSecretClient)
-			credentialVersionedInput := &v20220901privatepreview.AzureCredentialResource{}
+			credentialVersionedInput := &v20230415preview.AzureCredentialResource{}
 			credentialInput := testutil.ReadFixture(tt.filename)
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
 			require.NoError(t, err)
@@ -137,7 +137,7 @@ func Test_Azure_Credential(t *testing.T) {
 }
 
 func getAzureCredentialResponse() armrpc_rest.Response {
-	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.AzureCredentialResource{
+	return armrpc_rest.NewOKResponseWithHeaders(&v20230415preview.AzureCredentialResource{
 		Location: to.Ptr("West US"),
 		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
@@ -145,12 +145,12 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 		Tags: map[string]*string{
 			"env": to.Ptr("dev"),
 		},
-		Properties: &v20220901privatepreview.AzureServicePrincipalProperties{
+		Properties: &v20230415preview.AzureServicePrincipalProperties{
 			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Kind:     to.Ptr("ServicePrincipal"),
-			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
+			Storage: &v20230415preview.InternalCredentialStorageProperties{
+				Kind:       to.Ptr(string(v20230415preview.CredentialStorageKindInternal)),
 				SecretName: to.Ptr("azure-azurecloud-default"),
 			},
 		},

@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -34,9 +34,9 @@ func TestMongoDatabaseDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.MongoDatabaseResource{},
+			"../../api/v20230415preview/testdata/mongodatabaseresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.MongoDatabaseResource{},
 			nil,
 		},
 		{
@@ -70,13 +70,13 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/mongodatabaseresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/mongodatabaseresource-invalid.json",
+			"2023-04-15-preview",
 			errors.New("json: cannot unmarshal number into Go struct field MongoDatabaseProperties.properties.resource of type string"),
 		},
 		{
@@ -108,9 +108,9 @@ func TestMongoDatabaseSecretsDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabasesecretsdatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.MongoDatabaseSecrets{},
+			"../../api/v20230415preview/testdata/mongodatabasesecretsdatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.MongoDatabaseSecrets{},
 			nil,
 		},
 		{

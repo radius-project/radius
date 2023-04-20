@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/stretchr/testify/require"
 )
 

@@ -13,7 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -251,7 +251,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		// Azure Credential Handlers
 		{
 			ParentRouter: azureCredentialCollectionSubRouter,
-			ResourceType: v20220901privatepreview.AzureCredentialType,
+			ResourceType: v20230415preview.AzureCredentialType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt.Options,
@@ -264,7 +264,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		},
 		{
 			ParentRouter: azureCredentialResourceSubRouter,
-			ResourceType: v20220901privatepreview.AzureCredentialType,
+			ResourceType: v20230415preview.AzureCredentialType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt.Options,
@@ -289,7 +289,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		// AWS Credential Handlers
 		{
 			ParentRouter: awsCredentialCollectionSubRouter,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
+			ResourceType: v20230415preview.AWSCredentialType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt.Options,
@@ -302,7 +302,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		},
 		{
 			ParentRouter: awsCredentialResourceSubRouter,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
+			ResourceType: v20230415preview.AWSCredentialType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt.Options,

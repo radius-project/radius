@@ -30,36 +30,36 @@ openapi-type: arm
 ```
 
 ``` yaml $(package-core)
-tag: package-core-2022-03-15-privatepreview
+tag: package-core-2023-04-15-preview
 ```
 
 ``` yaml $(package-link)
-tag: package-link-2022-03-15-privatepreview
+tag: package-link-2023-04-15-preview
 ```
 
-### Tag: package-core-2022-03-15-privatepreview
+### Tag: package-core-2023-04-15-preview
 
-These settings apply only when `--tag=package-core-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=package-core-2023-04-15-preview` is specified on the command line.
 
-``` yaml $(tag) == 'package-core-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-core-2023-04-15-preview'
 input-file:
-  - Applications.Core/preview/2022-03-15-privatepreview/global.json
-  - Applications.Core/preview/2022-03-15-privatepreview/environments.json
-  - Applications.Core/preview/2022-03-15-privatepreview/applications.json
-  - Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
-  - Applications.Core/preview/2022-03-15-privatepreview/gateways.json
-  - Applications.Core/preview/2022-03-15-privatepreview/containers.json
-  - Applications.Core/preview/2022-03-15-privatepreview/volumes.json
+  - Applications.Core/preview/2023-04-15-preview/global.json
+  - Applications.Core/preview/2023-04-15-preview/environments.json
+  - Applications.Core/preview/2023-04-15-preview/applications.json
+  - Applications.Core/preview/2023-04-15-preview/httpRoutes.json
+  - Applications.Core/preview/2023-04-15-preview/gateways.json
+  - Applications.Core/preview/2023-04-15-preview/containers.json
+  - Applications.Core/preview/2023-04-15-preview/volumes.json
 ```
 
-### Tag: package-link-2022-03-15-privatepreview
+### Tag: package-link-2023-04-15-preview
 
-These settings apply only when `--tag=package-link-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=package-link-2023-04-15-preview` is specified on the command line.
 
-``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-link-2023-04-15-preview'
 input-file:
-  - Applications.Link/preview/2022-03-15-privatepreview/openapi.json
-  - Applications.Link/preview/2022-03-15-privatepreview/extenders.json
+  - Applications.Link/preview/2023-04-15-preview/openapi.json
+  - Applications.Link/preview/2023-04-15-preview/extenders.json
 ```
 
 # Code Generation

@@ -22,12 +22,12 @@ basic-setup-py: true
 output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications
 ```
 
-### Tag: package-core-2022-03-15-privatepreview and python
+### Tag: package-core-2023-04-15-preview and python
 
-These settings apply only when `--tag=package-core-2022-03-15-privatepreview --python` is specified on the command line.
+These settings apply only when `--tag=package-core-2023-04-15-preview --python` is specified on the command line.
 Please also specify `--python-sdks-folder=<path to the root directory of your azure-sdk-for-python clone>`.
 
-``` yaml $(tag) == 'package-core-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-core-2023-04-15-preview'
 namespace: azure.mgmt.applications.core.v2022_03_15_privatepreview
 output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2022_03_15_privatepreview
 python:
@@ -35,12 +35,12 @@ python:
   output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2022_03_15_privatepreview
 ```
 
-### Tag: package-link-2022-03-15-privatepreview and python
+### Tag: package-link-2023-04-15-preview and python
 
-These settings apply only when `--tag=package-link-2022-03-15-privatepreview --python` is specified on the command line.
+These settings apply only when `--tag=package-link-2023-04-15-preview --python` is specified on the command line.
 Please also specify `--python-sdks-folder=<path to the root directory of your azure-sdk-for-python clone>`.
 
-``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-link-2023-04-15-preview'
 namespace: azure.mgmt.applications.link.v2022_03_15_privatepreview
 output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/link/v2022_03_15_privatepreview
 python:
@@ -55,8 +55,8 @@ Generate all API versions currently shipped for this package
 ```yaml $(multiapi) && $(track2)
 clear-output-folder: true
 batch:
-  - tag: package-core-2022-03-15-privatepreview
-  - tag: package-link-2022-03-15-privatepreview
+  - tag: package-core-2023-04-15-preview
+  - tag: package-link-2023-04-15-preview
   - multiapiscript: true
 ```
 

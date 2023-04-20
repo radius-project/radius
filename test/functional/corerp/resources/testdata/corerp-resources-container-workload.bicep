@@ -10,7 +10,7 @@ param magpieimage string
 #disable-next-line no-hardcoded-env-urls
 param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-04-15-preview' = {
   name: 'azstorage-workload-env'
   location: location
   properties: {
@@ -31,7 +31,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-container-workload'
   location: location
   properties: {
@@ -45,7 +45,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource container 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'azstorage-ctnr'
   location: location
   properties: {

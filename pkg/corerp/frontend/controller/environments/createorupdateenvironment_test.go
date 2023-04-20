@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateEnvironmentRun_20230415preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -48,7 +48,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range createNewResourceCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
+			envInput, envDataModel, expectedOutput := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -99,7 +99,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.EnvironmentResource{}
+				actualOutput := &v20230415preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -125,7 +125,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range updateExistingResourceCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
+			envInput, envDataModel, expectedOutput := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -177,7 +177,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.EnvironmentResource{}
+				actualOutput := &v20230415preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -201,7 +201,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range patchNonExistingResourceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			envInput, _, _ := getTestModels20220315privatepreview()
+			envInput, _, _ := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -254,7 +254,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range patchExistingResourceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
+			envInput, envDataModel, expectedOutput := getTestModels20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -306,7 +306,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.EnvironmentResource{}
+				actualOutput := &v20230415preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 			}
@@ -328,8 +328,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range existingResourceNamespaceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			envInput, envDataModel, _ := getTestModels20220315privatepreview()
-			_, conflictDataModel, _ := getTestModels20220315privatepreview()
+			envInput, envDataModel, _ := getTestModels20230415preview()
+			_, conflictDataModel, _ := getTestModels20230415preview()
 
 			conflictDataModel.Name = "existing"
 			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/" + tt.existingResourceName
@@ -421,7 +421,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 
 	t.Run("Add dev recipes successfully", func(t *testing.T) {
 		getDevRecipes = mockgetDevRecipes
-		envInput, envDataModel, expectedOutput := getTestModelsWithDevRecipes20220315privatepreview()
+		envInput, envDataModel, expectedOutput := getTestModelsWithDevRecipes20230415preview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
@@ -463,13 +463,13 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		actualOutput := &v20230415preview.EnvironmentResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
 
 	t.Run("Append dev recipes to user recipes successfully", func(t *testing.T) {
-		envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipes20220315privatepreview()
+		envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipes20230415preview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
@@ -511,13 +511,13 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		actualOutput := &v20230415preview.EnvironmentResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
 
 	t.Run("Append dev recipes and user recipes to existing user recipes successfully", func(t *testing.T) {
-		envExistingDataModel, envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipesToExisting20220315privatepreview()
+		envExistingDataModel, envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipesToExisting20230415preview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
@@ -558,13 +558,13 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		actualOutput := &v20230415preview.EnvironmentResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
 
 	t.Run("User recipes conflict with dev recipe names", func(t *testing.T) {
-		envInput := getTestModelsUserRecipesConflictWithReservedNames20220315privatepreview()
+		envInput := getTestModelsUserRecipesConflictWithReservedNames20230415preview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
@@ -589,21 +589,21 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 			"recipe name(s) reserved for devRecipes for: recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0)")
 	})
 	t.Run("test input recipes that has dev recipes", func(t *testing.T) {
-		envInput := &v20220315privatepreview.EnvironmentResource{
+		envInput := &v20230415preview.EnvironmentResource{
 			Location: to.Ptr("West US"),
-			Properties: &v20220315privatepreview.EnvironmentProperties{
-				Compute: &v20220315privatepreview.KubernetesCompute{
+			Properties: &v20230415preview.EnvironmentProperties{
+				Compute: &v20230415preview.KubernetesCompute{
 					Kind:       to.Ptr("kubernetes"),
 					ResourceID: to.Ptr("fakeid"),
 					Namespace:  to.Ptr("default"),
 				},
 				UseDevRecipes: to.Ptr(true),
-				Providers: &v20220315privatepreview.Providers{
-					Azure: &v20220315privatepreview.ProvidersAzure{
+				Providers: &v20230415preview.Providers{
+					Azure: &v20230415preview.ProvidersAzure{
 						Scope: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"),
 					},
 				},
-				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Recipes: map[string]*v20230415preview.EnvironmentRecipeProperties{
 					"redis": {
 						LinkType:     to.Ptr("Applications.Link/redisCache"),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:1.0"),
@@ -619,11 +619,11 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 				},
 			},
 		}
-		rawExpectedOutput := testutil.ReadFixture("environmentappenddevrecipes20220315privatepreview_output.json")
-		expectedOutput := &v20220315privatepreview.EnvironmentResource{}
+		rawExpectedOutput := testutil.ReadFixture("environmentappenddevrecipes20230415preview_output.json")
+		expectedOutput := &v20230415preview.EnvironmentResource{}
 		_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 
-		rawDataModel := testutil.ReadFixture("environmentappenddevrecipes20220315privatepreview_datamodel.json")
+		rawDataModel := testutil.ReadFixture("environmentappenddevrecipes20230415preview_datamodel.json")
 		envDataModel := &datamodel.Environment{}
 		_ = json.Unmarshal(rawDataModel, envDataModel)
 
@@ -667,13 +667,13 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		actualOutput := &v20230415preview.EnvironmentResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
 
 	t.Run("Existing user recipe conflicts with dev recipe names ", func(t *testing.T) {
-		envExistingDataModel, envInput := getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepreview()
+		envExistingDataModel, envInput := getTestModelsExistingUserRecipesConflictWithReservedNames20230415preview()
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)

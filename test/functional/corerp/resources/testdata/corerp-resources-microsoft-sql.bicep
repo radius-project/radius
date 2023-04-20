@@ -21,7 +21,7 @@ param adminPassword string
 
 param mssqlresourceid string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-microsoft-sql'
   location: location
   properties: {
@@ -29,7 +29,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource sqlapp 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'mssql-app-ctnr'
   location: location
   properties: {
@@ -53,7 +53,7 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Link/sqlDatabases@2023-04-15-preview' = {
   name: 'mssql-db'
   location: location
   properties: {

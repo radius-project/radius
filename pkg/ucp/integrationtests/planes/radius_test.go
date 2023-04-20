@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	radiusPlaneCollectionURL          = "/planes/radius?api-version=2022-09-01-privatepreview"
-	radiusPlaneResourceURL            = "/planes/radius/local?api-version=2022-09-01-privatepreview"
-	radiusPlaneRequestFixture         = "testdata/radiusplane_v20220901privatepreview_requestbody.json"
-	radiusPlaneResponseFixture        = "testdata/radiusplane_v20220901privatepreview_responsebody.json"
-	radiusPlaneListResponseFixture    = "testdata/radiusplane_v20220901privatepreview_list_responsebody.json"
-	radiusPlaneUpdatedRequestFixture  = "testdata/radiusplane_updated_v20220901privatepreview_requestbody.json"
-	radiusPlaneUpdatedResponseFixture = "testdata/radiusplane_updated_v20220901privatepreview_responsebody.json"
+	radiusPlaneCollectionURL          = "/planes/radius?api-version=2023-04-15-preview"
+	radiusPlaneResourceURL            = "/planes/radius/local?api-version=2023-04-15-preview"
+	radiusPlaneRequestFixture         = "testdata/radiusplane_v20230415preview_requestbody.json"
+	radiusPlaneResponseFixture        = "testdata/radiusplane_v20230415preview_responsebody.json"
+	radiusPlaneListResponseFixture    = "testdata/radiusplane_v20230415preview_list_responsebody.json"
+	radiusPlaneUpdatedRequestFixture  = "testdata/radiusplane_updated_v20230415preview_requestbody.json"
+	radiusPlaneUpdatedResponseFixture = "testdata/radiusplane_updated_v20230415preview_responsebody.json"
 )
 
 func Test_RadiusPlane_PUT_Create(t *testing.T) {

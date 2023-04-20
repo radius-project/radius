@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -97,7 +97,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				ShowApplication(gomock.Any(), "test-app").
-				Return(v20220315privatepreview.ApplicationResource{}, radcli.Create404Error()).Times(1)
+				Return(v20230415preview.ApplicationResource{}, radcli.Create404Error()).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -127,7 +127,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				ShowApplication(gomock.Any(), "test-app").
-				Return(v20220315privatepreview.ApplicationResource{}, nil).Times(1)
+				Return(v20230415preview.ApplicationResource{}, nil).Times(1)
 			appManagementClient.EXPECT().
 				ListAllResourcesOfTypeInApplication(gomock.Any(), "test-app", "containers").
 				Return(resources, nil).Times(1)

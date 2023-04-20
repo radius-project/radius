@@ -12,7 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 )
 
 //go:generate mockgen -destination=./mock_aws_credential_management.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential AWSCredentialManagementClientInterface

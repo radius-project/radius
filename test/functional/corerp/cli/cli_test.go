@@ -24,7 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/ucp"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
@@ -659,7 +659,7 @@ func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, option
 	client := options.ManagementClient
 	require.IsType(t, client, &ucp.ARMApplicationsManagementClient{})
 	appManagementClient := client.(*ucp.ARMApplicationsManagementClient)
-	appDeleteClient, err := v20220315privatepreview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+	appDeleteClient, err := v20230415preview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
 	require.NoError(t, err)
 	// We don't care about the response for tests
 	_, err = appDeleteClient.Delete(ctx, applicationName, nil)

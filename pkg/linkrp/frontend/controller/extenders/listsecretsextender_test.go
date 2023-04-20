@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListSecrets_20220315PrivatePreview(t *testing.T) {
+func TestListSecrets_20230415preview(t *testing.T) {
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
@@ -37,7 +37,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	_, extenderDataModel, _ := getTestModels20220315privatepreview()
+	_, extenderDataModel, _ := getTestModels20230415preview()
 	expectedSecrets := map[string]any{
 		"accountSid": "sid",
 		"authToken:": "token",

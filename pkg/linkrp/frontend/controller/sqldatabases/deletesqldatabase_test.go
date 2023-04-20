@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteSqlDatabase_20220315PrivatePreview(t *testing.T) {
+func TestDeleteSqlDatabase_20230415preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -94,7 +94,7 @@ func TestDeleteSqlDatabase_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", testcase.ifMatchETag)
 
 			ctx := testutil.ARMTestContextFromRequest(req)
-			_, sqlDataModel, _ := getTestModels20220315privatepreview()
+			_, sqlDataModel, _ := getTestModels20230415preview()
 
 			mStorageClient.
 				EXPECT().

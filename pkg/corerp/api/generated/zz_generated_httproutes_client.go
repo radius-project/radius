@@ -57,7 +57,7 @@ func NewHTTPRoutesClient(rootScope string, credential azcore.TokenCredential, op
 
 // CreateOrUpdate - Create or update an HTTP Route.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // httpRouteName - The name of the HTTP Route.
 // httpRouteResource - HTTP Route details
 // options - HTTPRoutesClientCreateOrUpdateOptions contains the optional parameters for the HTTPRoutesClient.CreateOrUpdate
@@ -90,7 +90,7 @@ func (client *HTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context,
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, httpRouteResource)
@@ -107,7 +107,7 @@ func (client *HTTPRoutesClient) createOrUpdateHandleResponse(resp *http.Response
 
 // Delete - Delete an HTTP Route.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // httpRouteName - The name of the HTTP Route.
 // options - HTTPRoutesClientDeleteOptions contains the optional parameters for the HTTPRoutesClient.Delete method.
 func (client *HTTPRoutesClient) Delete(ctx context.Context, httpRouteName string, options *HTTPRoutesClientDeleteOptions) (HTTPRoutesClientDeleteResponse, error) {
@@ -138,7 +138,7 @@ func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, httpRou
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -146,7 +146,7 @@ func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, httpRou
 
 // Get - Gets the properties of an HTTP Route.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // httpRouteName - The name of the HTTP Route.
 // options - HTTPRoutesClientGetOptions contains the optional parameters for the HTTPRoutesClient.Get method.
 func (client *HTTPRoutesClient) Get(ctx context.Context, httpRouteName string, options *HTTPRoutesClientGetOptions) (HTTPRoutesClientGetResponse, error) {
@@ -177,7 +177,7 @@ func (client *HTTPRoutesClient) getCreateRequest(ctx context.Context, httpRouteN
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -193,7 +193,7 @@ func (client *HTTPRoutesClient) getHandleResponse(resp *http.Response) (HTTPRout
 }
 
 // NewListByScopePager - List all HTTP Routes in the given scope.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // options - HTTPRoutesClientListByScopeOptions contains the optional parameters for the HTTPRoutesClient.ListByScope method.
 func (client *HTTPRoutesClient) NewListByScopePager(options *HTTPRoutesClientListByScopeOptions) *runtime.Pager[HTTPRoutesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[HTTPRoutesClientListByScopeResponse]{
@@ -232,7 +232,7 @@ func (client *HTTPRoutesClient) listByScopeCreateRequest(ctx context.Context, op
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -249,7 +249,7 @@ func (client *HTTPRoutesClient) listByScopeHandleResponse(resp *http.Response) (
 
 // Update - Update the properties of an existing HTTP Route.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // httpRouteName - The name of the HTTP Route.
 // httpRouteResource - HTTP Route details
 // options - HTTPRoutesClientUpdateOptions contains the optional parameters for the HTTPRoutesClient.Update method.
@@ -281,7 +281,7 @@ func (client *HTTPRoutesClient) updateCreateRequest(ctx context.Context, httpRou
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, httpRouteResource)

@@ -54,22 +54,22 @@ generate-ucp-crd: generate-controller-gen-installed
 .PHONY: generate-genericcliclient
 generate-genericcliclient: generate-node-installed generate-autorest-installed
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/cli/clients_new/README.md --tag=2022-03-15-privatepreview
+	autorest pkg/cli/clients_new/README.md --tag=2023-04-15-preview
 
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/corerp/api/README.md --tag=core-2022-03-15-privatepreview
+	autorest pkg/corerp/api/README.md --tag=core-2023-04-15-preview
 
 .PHONY: generate-rad-linkrp-client
 generate-rad-linkrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the linkrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
+	autorest pkg/linkrp/api/README.md --tag=link-2023-04-15-preview
 
 .PHONY: generate-rad-ucp-client
 generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/ucp/api/README.md --tag=ucp-2022-09-01-privatepreview
+	autorest pkg/ucp/api/README.md --tag=ucp-2023-04-15-preview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:

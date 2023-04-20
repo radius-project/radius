@@ -18,7 +18,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateGatewayRun_20230415preview(t *testing.T) {
 
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
@@ -91,7 +91,7 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			gatewayInput, gatewayDataModel, _ := getTestModels20220315privatepreview()
+			gatewayInput, gatewayDataModel, _ := getTestModels20230415preview()
 
 			w := httptest.NewRecorder()
 			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, gatewayInput)
@@ -166,8 +166,8 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-gateway-success",
 			v1.ProvisioningStateSucceeded,
-			"gateway20220315privatepreview_input.json",
-			"gateway20220315privatepreview_datamodel.json",
+			"gateway20230415preview_input.json",
+			"gateway20230415preview_datamodel.json",
 			nil,
 			false,
 			nil,
@@ -179,8 +179,8 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-gateway-mismatched-appid",
 			v1.ProvisioningStateSucceeded,
-			"gateway20220315privatepreview_input_appid.json",
-			"gateway20220315privatepreview_datamodel.json",
+			"gateway20230415preview_input_appid.json",
+			"gateway20230415preview_datamodel.json",
 			nil,
 			true,
 			nil,
@@ -192,8 +192,8 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-gateway-concurrency-error",
 			v1.ProvisioningStateSucceeded,
-			"gateway20220315privatepreview_input.json",
-			"gateway20220315privatepreview_datamodel.json",
+			"gateway20230415preview_input.json",
+			"gateway20230415preview_datamodel.json",
 			nil,
 			false,
 			&store.ErrConcurrency{},
@@ -205,8 +205,8 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-gateway-save-error",
 			v1.ProvisioningStateSucceeded,
-			"gateway20220315privatepreview_input.json",
-			"gateway20220315privatepreview_datamodel.json",
+			"gateway20230415preview_input.json",
+			"gateway20230415preview_datamodel.json",
 			nil,
 			false,
 			&store.ErrInvalid{Message: "testing initial save err"},
@@ -218,8 +218,8 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-gateway-enqueue-error",
 			v1.ProvisioningStateSucceeded,
-			"gateway20220315privatepreview_input.json",
-			"gateway20220315privatepreview_datamodel.json",
+			"gateway20230415preview_input.json",
+			"gateway20230415preview_datamodel.json",
 			nil,
 			false,
 			nil,
@@ -234,7 +234,7 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
-			gatewayInput := &v20220315privatepreview.GatewayResource{}
+			gatewayInput := &v20230415preview.GatewayResource{}
 			err := json.Unmarshal(testutil.ReadFixture(tt.versionedInputFile), gatewayInput)
 			require.NoError(t, err)
 

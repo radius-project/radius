@@ -1,0 +1,25 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/daprinvokehttproutes/daprInvokeHttpRoute0",
+    "name": "daprInvokeHttpRoute0",
+    "type": "applications.link/daprinvokehttproutes",
+    "location": "West US",
+    "systemData": {
+        "createdAt": "2022-03-22T18:54:52.6857175Z",
+        "createdBy": "fake@hotmail.com",
+        "createdByType": "User",
+        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+        "lastModifiedBy": "fake@hotmail.com",
+        "lastModifiedByType": "User"
+    },
+    "properties": {
+        "provisioningState": "Succeeded",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "appId": "daprAppId"
+    },
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroup": "radius-test-rg",
+    "createdApiVersion": "2023-04-15-preview",
+    "updatedApiVersion": "2023-04-15-preview"
+}

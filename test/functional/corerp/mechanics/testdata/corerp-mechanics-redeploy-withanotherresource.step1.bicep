@@ -9,7 +9,7 @@ param environment string = 'test'
 @description('Specifies the image to be deployed.')
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-mechanics-redeploy-with-another-resource'
   location: location
   properties: {
@@ -17,7 +17,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource mechanicsa 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource mechanicsa 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'mechanicsa'
   location: location
   properties: {

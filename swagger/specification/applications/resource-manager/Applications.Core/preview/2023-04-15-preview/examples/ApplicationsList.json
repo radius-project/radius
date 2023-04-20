@@ -1,0 +1,51 @@
+{
+  "parameters": {
+    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
+    "resourceGroupName": "testGroup",
+    "api-version": "2023-04-15-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+            "name": "app0",
+            "type": "Applications.Core/applications",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "extensions": [
+                {
+                  "kind": "kubernetesMetadata",
+                  "annotations": {
+                    "prometheus.io/scrape": "true",
+                    "prometheus.io/port": "80"
+                  },
+                  "labels": {
+                    "foo/bar/team": "credit",
+                    "foo/bar/contact": "radiususer"
+                  }
+                },
+                {
+                  "kind": "kubernetesNamespace",
+                  "namespace": "app-ns"
+                }
+              ]
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/app1",
+            "name": "app1",
+            "type": "Applications.Core/applications",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1"
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Core/applications?api-version=2023-04-15-preview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

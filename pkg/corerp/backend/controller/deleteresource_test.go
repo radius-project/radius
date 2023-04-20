@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
+func TestDeleteResourceRun_20230415preview(t *testing.T) {
 
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, *ctrl.Request) {
 		mctrl := gomock.NewController(t)

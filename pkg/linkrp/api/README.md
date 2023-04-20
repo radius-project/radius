@@ -15,7 +15,7 @@ npm install -g autorest
 1. Add api version tags and openapi file below in this README.md
 2. Run autorest.
 ```bash
-autorest README.md --tag=link-2022-03-15-privatepreview
+autorest README.md --tag=link-2023-04-15-preview
 ```
 3. Create or modify the corresponding datamodels in [datamodel](../datamodel/)
 4. Add the converter between versioned model and datamodel in [converter](../datamodel/converter/)
@@ -28,14 +28,14 @@ The following are the settings for this using this API with AutoRest.
 
 ### Input OpenAPI specificiations
 
-#### Tag: link-2022-03-15-privatepreview
+#### Tag: link-2023-04-15-preview
 
-These settings apply only when `--tag=link-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=link-2023-04-15-preview` is specified on the command line.
 
-```yaml $(tag) == 'link-2022-03-15-privatepreview'
+```yaml $(tag) == 'link-2023-04-15-preview'
 input-file:
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/openapi.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/extenders.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2023-04-15-preview/openapi.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2023-04-15-preview/extenders.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```
@@ -54,10 +54,10 @@ azure-arm: true
 
 ### Output
 
-#### Tag: link-2022-03-15-privatepreview
+#### Tag: link-2023-04-15-preview
 
-These settings apply only when `--tag=link-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=link-2023-04-15-preview` is specified on the command line.
 
-```yaml $(tag) == 'link-2022-03-15-privatepreview'
-output-folder: ./v20220315privatepreview
+```yaml $(tag) == 'link-2023-04-15-preview'
+output-folder: ./v20230415preview
 ```

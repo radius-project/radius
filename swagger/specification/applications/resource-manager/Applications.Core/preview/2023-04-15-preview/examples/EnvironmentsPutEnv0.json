@@ -1,0 +1,81 @@
+{
+  "parameters": {
+    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "environmentName": "env0",
+    "api-version": "2023-04-15-preview",
+    "EnvironmentResource": {
+      "location": "West US",
+      "properties": {
+        "compute": {
+          "kind": "Kubernetes",
+          "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+          "namespace": "default",
+          "identity": {
+            "kind": "azure.com.workload",
+            "oidcIssuer": "https://oidcissuer/oidc"
+          }
+        },
+        "recipes": {
+          "cosmos-recipe": {
+            "linkType": "Applications.Link/mongoDatabases",
+            "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+          }
+        },
+        "extensions": [
+          {
+            "kind": "kubernetesMetadata",
+            "annotations": {
+              "prometheus.io/scrape": "true",
+              "prometheus.io/port": "80"
+            },
+            "labels": {
+              "foo/bar/team": "credit",
+              "foo/bar/contact": "radiususer"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "name": "env0",
+        "type": "Applications.Core/environments",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "compute": {
+            "kind": "kubernetes",
+            "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+            "namespace": "default"
+          },
+          "providers" : {
+            "azure" : {
+                "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+            }
+          },
+          "recipes": {
+            "cosmos-recipe": {
+              "linkType": "Applications.Link/mongoDatabases",
+              "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+            }
+          },
+          "extensions": [
+            {
+              "kind": "kubernetesMetadata",
+              "annotations": {
+                "prometheus.io/scrape": "true",
+                "prometheus.io/port": "80"
+              },
+              "labels": {
+                "foo/bar/team": "credit",
+                "foo/bar/contact": "radiususer"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -38,6 +38,6 @@
     "tenantId": "00000000-0000-0000-0000-000000000000",
     "subscriptionId": "00000000-0000-0000-0000-000000000000",
     "resourceGroup": "radius-test-rg",
-    "createdApiVersion": "2022-03-15-privatepreview",
-    "updatedApiVersion": "2022-03-15-privatepreview"
+    "createdApiVersion": "2023-04-15-preview",
+    "updatedApiVersion": "2023-04-15-preview"
 }

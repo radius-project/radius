@@ -9,7 +9,7 @@ param environment string = 'test'
 @description('Specifies the image to be deployed.')
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'kubernetes-cli-with-resources'
   location: location
   properties: {
@@ -17,7 +17,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containera 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'containera-app-with-resources'
   location: location
   properties: {
@@ -28,7 +28,7 @@ resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerb 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'containerb-app-with-resources'
   location: location
   properties: {

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -25,9 +25,9 @@ func TestRabbitMQMessageQueueDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RabbitMQMessageQueueResource{},
+			"../../api/v20230415preview/testdata/rabbitmqresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.RabbitMQMessageQueueResource{},
 			nil,
 		},
 		{
@@ -61,13 +61,13 @@ func TestRabbitMQMessageQueueDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/rabbitmqresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/rabbitmqresource-invalid.json",
+			"2023-04-15-preview",
 			errors.New("json: cannot unmarshal number into Go struct field RabbitMQMessageQueueProperties.properties.resource of type string"),
 		},
 		{
@@ -99,9 +99,9 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqsecretsdatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RabbitMQSecrets{},
+			"../../api/v20230415preview/testdata/rabbitmqsecretsdatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.RabbitMQSecrets{},
 			nil,
 		},
 		{

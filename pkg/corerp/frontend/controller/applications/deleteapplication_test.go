@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
+func TestDeleteApplicationRun_20230415preview(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	t.Parallel()
@@ -84,7 +84,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", tt.ifMatchETag)
 
 			ctx := testutil.ARMTestContextFromRequest(req)
-			_, appDataModel, _ := getTestModels20220315privatepreview()
+			_, appDataModel, _ := getTestModels20230415preview()
 
 			tCtx.MockSC.
 				EXPECT().

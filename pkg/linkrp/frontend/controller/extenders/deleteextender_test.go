@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
+func TestDeleteExtender_20230415preview(t *testing.T) {
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
@@ -100,7 +100,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", testcase.ifMatchETag)
 
 			ctx := testutil.ARMTestContextFromRequest(req)
-			_, extenderDataModel, _ := getTestModels20220315privatepreview()
+			_, extenderDataModel, _ := getTestModels20230415preview()
 
 			mds.
 				EXPECT().

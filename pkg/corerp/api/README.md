@@ -15,7 +15,7 @@ npm install -g autorest
 1. Add api version tags and openapi file below in this README.md
 2. Run autorest.
 ```bash
-autorest README.md --tag=core-2022-03-15-privatepreview
+autorest README.md --tag=core-2023-04-15-preview
 ```
 3. Create or modify the corresponding datamodels in [datamodel](../datamodel/)
 4. Add the converter between versioned model and datamodel in [converter](../datamodel/converter/)
@@ -28,18 +28,18 @@ The following are the settings for this using this API with AutoRest.
 
 ### Input OpenAPI specificiations
 
-#### Tag: core-2022-03-15-privatepreview
+#### Tag: core-2023-04-15-preview
 
-These settings apply only when `--tag=core-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=core-2023-04-15-preview` is specified on the command line.
 
-```yaml $(tag) == 'core-2022-03-15-privatepreview'
+```yaml $(tag) == 'core-2023-04-15-preview'
 input-file:
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/gateways.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/containers.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/volumes.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2023-04-15-preview/environments.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2023-04-15-preview/applications.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2023-04-15-preview/httpRoutes.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2023-04-15-preview/gateways.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2023-04-15-preview/containers.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2023-04-15-preview/volumes.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```
@@ -59,10 +59,10 @@ azure-arm: true
 
 ### Output
 
-#### Tag: core-2022-03-15-privatepreview
+#### Tag: core-2023-04-15-preview
 
-These settings apply only when `--tag=core-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=core-2023-04-15-preview` is specified on the command line.
 
-```yaml $(tag) == 'core-2022-03-15-privatepreview'
-output-folder: ./v20220315privatepreview
+```yaml $(tag) == 'core-2023-04-15-preview'
+output-folder: ./v20230415preview
 ```

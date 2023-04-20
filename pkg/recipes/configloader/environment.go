@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/rp/kube"
@@ -37,7 +37,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 		return nil, err
 	}
 
-	var application *v20220315privatepreview.ApplicationResource
+	var application *v20230415preview.ApplicationResource
 	if recipe.ApplicationID != "" {
 		application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
 		if err != nil {
@@ -48,9 +48,9 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 	return getConfiguration(environment, application)
 }
 
-func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*recipes.Configuration, error) {
+func getConfiguration(environment *v20230415preview.EnvironmentResource, application *v20230415preview.ApplicationResource) (*recipes.Configuration, error) {
 	configuration := recipes.Configuration{Runtime: recipes.RuntimeConfiguration{}, Providers: datamodel.Providers{}}
-	if environment.Properties.Compute != nil && *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
+	if environment.Properties.Compute != nil && *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20230415preview.EnvironmentComputeKindKubernetes {
 		// This is a Kubernetes environment
 		configuration.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 		var err error

@@ -6,7 +6,7 @@ param environment string
 
 param location string = resourceGroup().location
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-dapr-statestore-generic'
   location: location
   properties: {
@@ -14,7 +14,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource myapp 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'gnrc-sts-ctnr'
   location: location
   properties: {
@@ -42,7 +42,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource redisContainer 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'gnrc-rds-ctnr'
   location: 'global'
   properties: {
@@ -60,7 +60,7 @@ resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview'
   }
 }
 
-resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+resource redisRoute 'Applications.Core/httproutes@2023-04-15-preview' = {
   name: 'gnrc-rds-rte'
   location: 'global'
   properties: {
@@ -68,7 +68,7 @@ resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Link/redisCaches@2023-04-15-preview' = {
   name: 'gnrc-rds-rds'
   location: 'global'
   properties: {
@@ -84,7 +84,7 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   }
 }
 
-resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
+resource statestore 'Applications.Link/daprStateStores@2023-04-15-preview' = {
   name: 'gnrc-sts'
   location: location
   properties: {

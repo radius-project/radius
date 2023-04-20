@@ -25,7 +25,7 @@ using OpenAPI;
 
 @service({
   title: "Applications.Link Management APIs",
-  version: "2022-03-15-privatepreview",
+  version: "2023-04-15-preview",
 })
 @doc("REST APIs for Applications.Link/daprInvokeHttpRoutes")
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)

@@ -13,24 +13,24 @@ go:
 
 ```yaml $(go) && $(multiapi)
 batch:
-  - tag: package-core-2022-03-15-privatepreview
-  - tag: package-link-2022-03-15-privatepreview
+  - tag: package-core-2023-04-15-preview
+  - tag: package-link-2023-04-15-preview
 ```
 
-### Tag: package-core-2022-03-15-privatepreview and go
+### Tag: package-core-2023-04-15-preview and go
 
-These settings apply only when `--tag=package-core-2022-03-15-privatepreview --go` is specified on the command line.
+These settings apply only when `--tag=package-core-2023-04-15-preview --go` is specified on the command line.
 Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
 
-```yaml $(tag) == 'package-core-2022-03-15-privatepreview' && $(go)
-output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/core
+```yaml $(tag) == 'package-core-2023-04-15-preview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2023-04-15-preview/core
 ```
 
-### Tag: package-link-2022-03-15-privatepreview and go
+### Tag: package-link-2023-04-15-preview and go
 
-These settings apply only when `--tag=package-link-2022-03-15-privatepreview --go` is specified on the command line.
+These settings apply only when `--tag=package-link-2023-04-15-preview --go` is specified on the command line.
 Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
 
-```yaml $(tag) == 'package-link-2022-03-15-privatepreview' && $(go)
-output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/link
+```yaml $(tag) == 'package-link-2023-04-15-preview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2023-04-15-preview/link
 ```

@@ -12,7 +12,7 @@ param port int = 3000
 @description('Specifies the environment for resources.')
 param environment string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-app-rte-kme'
   location: location
   properties: {
@@ -37,7 +37,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource container 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'ctnr-rte-kme-ctnr'
   location: location
   properties: {
@@ -58,7 +58,7 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource httproute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource httproute 'Applications.Core/httpRoutes@2023-04-15-preview' = {
   name: 'ctnr-rte-kme'
   location: location
   properties: {

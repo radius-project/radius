@@ -32,7 +32,7 @@ var radiusControllerLogSync sync.Once
 
 const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
-	APIVersion             = "2022-03-15-privatepreview"
+	APIVersion             = "2023-04-15-preview"
 	TestNamespace          = "kind-radius"
 	AWSDeletionRetryLimit  = 5
 

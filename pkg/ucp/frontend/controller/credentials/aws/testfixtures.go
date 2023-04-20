@@ -6,6 +6,6 @@
 package aws
 
 var (
-	testHeaderFile                  = "requestheaders20220901privatepreview.json"
-	testHeaderFileWithBadAPIVersion = "requestheaders20220901privatepreview_badapiversion.json"
+	testHeaderFile                  = "requestheaders20230415preview.json"
+	testHeaderFileWithBadAPIVersion = "requestheaders20230415preview_badapiversion.json"
 )

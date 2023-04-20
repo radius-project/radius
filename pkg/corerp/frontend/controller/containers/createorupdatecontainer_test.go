@@ -18,7 +18,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateContainerRun_20230415preview(t *testing.T) {
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
@@ -90,11 +90,11 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			containerInput := &v20220315privatepreview.ContainerResource{}
-			_ = json.Unmarshal(testutil.ReadFixture("container20220315privatepreview_input.json"), containerInput)
+			containerInput := &v20230415preview.ContainerResource{}
+			_ = json.Unmarshal(testutil.ReadFixture("container20230415preview_input.json"), containerInput)
 
 			containerDataModel := &datamodel.ContainerResource{}
-			_ = json.Unmarshal(testutil.ReadFixture("container20220315privatepreview_datamodel.json"), containerDataModel)
+			_ = json.Unmarshal(testutil.ReadFixture("container20230415preview_datamodel.json"), containerDataModel)
 
 			w := httptest.NewRecorder()
 			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, containerInput)
@@ -170,8 +170,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-container-success",
 			v1.ProvisioningStateSucceeded,
-			"container20220315privatepreview_input.json",
-			"container20220315privatepreview_datamodel.json",
+			"container20230415preview_input.json",
+			"container20230415preview_datamodel.json",
 			nil,
 			false,
 			nil,
@@ -183,8 +183,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-container-mismatched-appid",
 			v1.ProvisioningStateSucceeded,
-			"container20220315privatepreview_input_appid.json",
-			"container20220315privatepreview_datamodel.json",
+			"container20230415preview_input_appid.json",
+			"container20230415preview_datamodel.json",
 			nil,
 			true,
 			nil,
@@ -196,8 +196,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-container-concurrency-error",
 			v1.ProvisioningStateSucceeded,
-			"container20220315privatepreview_input.json",
-			"container20220315privatepreview_datamodel.json",
+			"container20230415preview_input.json",
+			"container20230415preview_datamodel.json",
 			nil,
 			false,
 			&store.ErrConcurrency{},
@@ -209,8 +209,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-container-save-error",
 			v1.ProvisioningStateSucceeded,
-			"container20220315privatepreview_input.json",
-			"container20220315privatepreview_datamodel.json",
+			"container20230415preview_input.json",
+			"container20230415preview_datamodel.json",
 			nil,
 			false,
 			&store.ErrInvalid{Message: "testing initial save err"},
@@ -222,8 +222,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 		{
 			"async-update-existing-container-enqueue-error",
 			v1.ProvisioningStateSucceeded,
-			"container20220315privatepreview_input.json",
-			"container20220315privatepreview_datamodel.json",
+			"container20230415preview_input.json",
+			"container20230415preview_datamodel.json",
 			nil,
 			false,
 			nil,
@@ -239,7 +239,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			containerInput := &v20220315privatepreview.ContainerResource{}
+			containerInput := &v20230415preview.ContainerResource{}
 			err := json.Unmarshal(testutil.ReadFixture(tt.versionedInputFile), containerInput)
 			require.NoError(t, err)
 

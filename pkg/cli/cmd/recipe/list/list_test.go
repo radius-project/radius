@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
@@ -67,13 +67,13 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			envResource := v20220315privatepreview.EnvironmentResource{
+			envResource := v20230415preview.EnvironmentResource{
 				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 				Name:     to.Ptr("kind-kind"),
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr(v1.LocationGlobal),
-				Properties: &v20220315privatepreview.EnvironmentProperties{
-					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Properties: &v20230415preview.EnvironmentProperties{
+					Recipes: map[string]*v20230415preview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),

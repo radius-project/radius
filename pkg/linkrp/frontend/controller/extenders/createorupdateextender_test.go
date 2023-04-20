@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -46,7 +46,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentO
 	return rendererOutput, deploymentOutput
 }
 
-func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateExtender_20230415preview(t *testing.T) {
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, renderers.RendererOutput, rpv1.DeploymentOutput) {
 		mctrl := gomock.NewController(t)
 		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
@@ -76,7 +76,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 
-			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20230415preview()
 			w := httptest.NewRecorder()
 			req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
@@ -124,7 +124,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.ExtenderResponseResource{}
+				actualOutput := &v20230415preview.ExtenderResponseResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -143,7 +143,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 		shouldFail         bool
 	}{
 		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-with-diff-env", "If-Match", "", "20220315privatepreview_input_diff_env.json", "", http.StatusBadRequest, true},
+		{"update-resource-with-diff-env", "If-Match", "", "20230415preview_input_diff_env.json", "", http.StatusBadRequest, true},
 		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", http.StatusOK, false},
 		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", http.StatusOK, false},
 		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", http.StatusPreconditionFailed, true},
@@ -155,9 +155,9 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 
-			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20230415preview()
 			if testcase.inputFile != "" {
-				input = &v20220315privatepreview.ExtenderResource{}
+				input = &v20230415preview.ExtenderResource{}
 				_ = json.Unmarshal(testutil.ReadFixture(testcase.inputFile), input)
 			}
 			w := httptest.NewRecorder()
@@ -205,7 +205,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.ExtenderResponseResource{}
+				actualOutput := &v20230415preview.ExtenderResponseResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 

@@ -8,7 +8,7 @@ package configloader
 import (
 	"testing"
 
-	model "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	model "github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"

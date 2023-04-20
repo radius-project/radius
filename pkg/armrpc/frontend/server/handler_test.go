@@ -23,7 +23,7 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 		url    string
 		method string
 	}{
-		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
+		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2023-04-15-preview",
 		method: http.MethodGet,
 	}
 
@@ -46,7 +46,7 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 		url    string
 		method string
 	}{
-		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
+		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2023-04-15-preview",
 		method: http.MethodGet,
 	}
 
@@ -68,7 +68,7 @@ func Test_HandlerErrInternal(t *testing.T) {
 		url    string
 		method string
 	}{
-		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
+		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2023-04-15-preview",
 		method: http.MethodGet,
 	}
 

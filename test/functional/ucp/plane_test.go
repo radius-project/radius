@@ -15,7 +15,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/to"
-	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	v20230415preview "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ import (
 func Test_Plane_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		planeID := "/planes/testtype/testplane"
-		apiVersion := v20220901privatepreview.Version
+		apiVersion := v20230415preview.Version
 		planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
 
 		// By default, we configure default planes (radius and deployments planes) in UCP. Verify that by calling List Planes
@@ -35,13 +35,13 @@ func Test_Plane_Operations(t *testing.T) {
 		})
 
 		// Create Plane
-		testPlane := v20220901privatepreview.PlaneResource{
+		testPlane := v20230415preview.PlaneResource{
 			ID:       to.Ptr(planeID),
 			Type:     to.Ptr("System.Planes/testtype"),
 			Name:     to.Ptr("testplane"),
 			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &v20220901privatepreview.PlaneResourceProperties{
-				Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
+			Properties: &v20230415preview.PlaneResourceProperties{
+				Kind: to.Ptr(v20230415preview.PlaneKindUCPNative),
 				ResourceProviders: map[string]*string{
 					"example.com": to.Ptr("http://localhost:8000"),
 				},
@@ -79,7 +79,7 @@ func Test_Plane_Operations(t *testing.T) {
 	test.Test(t)
 }
 
-func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20220901privatepreview.PlaneResource) {
+func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20230415preview.PlaneResource) {
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
 	createRequest, err := NewUCPRequest(
@@ -117,7 +117,7 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 	return plane, result.StatusCode
 }
 
-func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.PlaneResourceListResult {
+func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20230415preview.PlaneResourceListResult {
 	listRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -133,7 +133,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	listOfPlanes := v20220901privatepreview.PlaneResourceListResult{}
+	listOfPlanes := v20230415preview.PlaneResourceListResult{}
 	require.NoError(t, json.Unmarshal(payload, &listOfPlanes))
 	return listOfPlanes
 }

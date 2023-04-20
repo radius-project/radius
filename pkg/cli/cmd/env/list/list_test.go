@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 )
@@ -75,11 +75,11 @@ func Test_Run(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	environments := []v20220315privatepreview.EnvironmentResource{
-		v20220315privatepreview.EnvironmentResource{
+	environments := []v20230415preview.EnvironmentResource{
+		v20230415preview.EnvironmentResource{
 			Name: to.Ptr("A"),
 		},
-		v20220315privatepreview.EnvironmentResource{
+		v20230415preview.EnvironmentResource{
 			Name: to.Ptr("B"),
 		},
 	}

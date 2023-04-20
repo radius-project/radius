@@ -1,0 +1,61 @@
+{
+    "parameters": {
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000",
+      "api-version": "2023-04-15-preview"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "value": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
+              "name": "sql0",
+              "type": "Applications.Link/sqlDatabases",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+                "mode":"resource"
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Link/sqlDatabases/sql1",
+              "name": "sql1",
+              "type": "Applications.Link/sqlDatabases",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+                "database": "testDatabase",
+                "server": "testAccount1.sql.cosmos.azure.com",
+                "mode":"values"
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql2",
+              "name": "sql2",
+              "type": "Applications.Link/sqlDatabases",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+                "mode":"recipe",
+                "recipe": {
+                  "name": "sqldb",
+                  "parameters":{
+                    "foo":"bar"
+                  }
+                }
+              }
+            }
+          ],
+          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Link/sqlDatabases?api-version=2023-04-15-preview&$skiptoken=X'12345'"
+        }
+      }
+    }
+  }
+  

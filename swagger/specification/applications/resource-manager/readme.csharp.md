@@ -29,33 +29,33 @@ namespace: Applications.$(ApiVersionName)
 output-folder: $(csharp-sdks-folder)/$(ApiVersionName)/Generated
 
 batch:
-  - core-2022-03-15-privatepreview: true
+  - core-2023-04-15-preview: true
     ApiVersionName: Api2022_03_15_privatepreview
-  - link-2022-03-15-privatepreview: true
+  - link-2023-04-15-preview: true
     ApiVersionName: Api2022_03_15_privatepreview
 ```
 
-``` yaml $(core-2022-03-15-privatepreview)
-tag: package-core-2022-03-15-privatepreview
+``` yaml $(core-2023-04-15-preview)
+tag: package-core-2023-04-15-preview
 ```
 
-``` yaml $(link-2022-03-15-privatepreview)
-tag: package-link-2022-03-15-privatepreview
+``` yaml $(link-2023-04-15-preview)
+tag: package-link-2023-04-15-preview
 ```
 
-### Tag: package-core-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-core-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/core/src/Generated
+### Tag: package-core-2023-04-15-preview
+``` yaml $(tag) == 'package-core-2023-04-15-preview'
+output-folder: $(csharp-sdks-folder)/applications/management/2023-04-15-preview/core/src/Generated
 input-file:
-- Applications.Core/preview/2022-03-15-privatepreview/global.json
-- Applications.Core/preview/2022-03-15-privatepreview/environments.json
-- Applications.Core/preview/2022-03-15-privatepreview/applications.json
+- Applications.Core/preview/2023-04-15-preview/global.json
+- Applications.Core/preview/2023-04-15-preview/environments.json
+- Applications.Core/preview/2023-04-15-preview/applications.json
 ```
 
-### Tag: package-link-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/link/src/Generated
+### Tag: package-link-2023-04-15-preview
+``` yaml $(tag) == 'package-link-2023-04-15-preview'
+output-folder: $(csharp-sdks-folder)/applications/management/2023-04-15-preview/link/src/Generated
 input-file:
-- Applications.Link/preview/2022-03-15-privatepreview/openapi.json
-- Applications.Link/preview/2022-03-15-privatepreview/extenders.json
+- Applications.Link/preview/2023-04-15-preview/openapi.json
+- Applications.Link/preview/2023-04-15-preview/extenders.json
 ```

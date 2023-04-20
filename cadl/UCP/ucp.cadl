@@ -27,7 +27,7 @@ using OpenAPI;
 @armProviderNamespace
 @service({
     title: "UCP Management APIs",
-    version: "2022-09-01-privatepreview",
+    version: "2023-04-15-preview",
 })
 @doc("REST APIs for UCP")
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)

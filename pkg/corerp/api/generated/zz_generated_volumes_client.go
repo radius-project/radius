@@ -57,7 +57,7 @@ func NewVolumesClient(rootScope string, credential azcore.TokenCredential, optio
 
 // CreateOrUpdate - Create or update an Volume.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // volumeName - The name of the Volume.
 // volumeResource - Volume details
 // options - VolumesClientCreateOrUpdateOptions contains the optional parameters for the VolumesClient.CreateOrUpdate method.
@@ -89,7 +89,7 @@ func (client *VolumesClient) createOrUpdateCreateRequest(ctx context.Context, vo
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, volumeResource)
@@ -106,7 +106,7 @@ func (client *VolumesClient) createOrUpdateHandleResponse(resp *http.Response) (
 
 // Delete - Delete an Volume.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // volumeName - The name of the Volume.
 // options - VolumesClientDeleteOptions contains the optional parameters for the VolumesClient.Delete method.
 func (client *VolumesClient) Delete(ctx context.Context, volumeName string, options *VolumesClientDeleteOptions) (VolumesClientDeleteResponse, error) {
@@ -137,7 +137,7 @@ func (client *VolumesClient) deleteCreateRequest(ctx context.Context, volumeName
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -145,7 +145,7 @@ func (client *VolumesClient) deleteCreateRequest(ctx context.Context, volumeName
 
 // Get - Gets the properties of an Volume.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // volumeName - The name of the Volume.
 // options - VolumesClientGetOptions contains the optional parameters for the VolumesClient.Get method.
 func (client *VolumesClient) Get(ctx context.Context, volumeName string, options *VolumesClientGetOptions) (VolumesClientGetResponse, error) {
@@ -176,7 +176,7 @@ func (client *VolumesClient) getCreateRequest(ctx context.Context, volumeName st
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -192,7 +192,7 @@ func (client *VolumesClient) getHandleResponse(resp *http.Response) (VolumesClie
 }
 
 // NewListByScopePager - List all volumes in the given scope.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // options - VolumesClientListByScopeOptions contains the optional parameters for the VolumesClient.ListByScope method.
 func (client *VolumesClient) NewListByScopePager(options *VolumesClientListByScopeOptions) *runtime.Pager[VolumesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[VolumesClientListByScopeResponse]{
@@ -231,7 +231,7 @@ func (client *VolumesClient) listByScopeCreateRequest(ctx context.Context, optio
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -248,7 +248,7 @@ func (client *VolumesClient) listByScopeHandleResponse(resp *http.Response) (Vol
 
 // Update - Update the properties of an existing Volume.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-04-15-preview
 // volumeName - The name of the Volume.
 // volumeResource - Volume details
 // options - VolumesClientUpdateOptions contains the optional parameters for the VolumesClient.Update method.
@@ -280,7 +280,7 @@ func (client *VolumesClient) updateCreateRequest(ctx context.Context, volumeName
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-04-15-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, volumeResource)

@@ -1,0 +1,414 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Core Management APIs",
+    "description": "REST API for Applications.Core Gateway Resource",
+    "version": "2023-04-15-preview"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "flow": "implicit",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "paths": {
+    "/{rootScope}/providers/Applications.Core/gateways": {
+      "get": {
+        "description": "List all Gateways in the given scope.",
+        "operationId": "Gateways_ListByScope",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusGatewaysListByScope": {
+            "$ref": "./examples/GatewaysListByScope.json"
+          }
+        },
+        "tags": [
+          "Gateways"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gateway details.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false,
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}": {
+      "get": {
+        "description": "Gets the properties of a Gateway.",
+        "operationId": "Gateways_Get",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusGatewaysGet": {
+            "$ref": "./examples/GatewaysGet.json"
+          }
+        },
+        "tags": [
+          "Gateways"
+        ],
+        "parameters": [
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gateway details.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "Create or update a Gateway.",
+        "operationId": "Gateways_CreateOrUpdate",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusGatewaysPut": {
+            "$ref": "./examples/GatewaysPut.json"
+          }
+        },
+        "tags": [
+          "Gateways"
+        ],
+        "parameters": [
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "name": "GatewayResource",
+            "description": "Gateway details",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resource was updated successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "201": {
+            "description": "The resource will be updated asynchronously.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "204": {
+            "description": "The Gateway does not exist."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Update the properties of an existing Gateway.",
+        "operationId": "Gateways_Update",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusGatewaysPatch": {
+            "$ref": "./examples/GatewaysPatch.json"
+          }
+        },
+        "tags": [
+          "Gateways"
+        ],
+        "parameters": [
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "name": "GatewayResource",
+            "description": "Gateway details",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resource was updated successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "201": {
+            "description": "The resource will be updated asynchronously.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "204": {
+            "description": "The Gateway does not exist."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a Gateway.",
+        "operationId": "Gateways_Delete",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusGatewaysDelete": {
+            "$ref": "./examples/GatewaysDelete.json"
+          }
+        },
+        "tags": [
+          "Gateways"
+        ],
+        "parameters": [
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Gateway was successfully deleted."
+          },
+          "202": {
+            "description": "The Gateway will be deleted asynchronously."
+          },
+          "204": {
+            "description": "The Gateway does not exist."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "GatewayResourceList": {
+      "description": "The list of Gateways.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The list of Gateways.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GatewayResource"
+          }
+        },
+        "nextLink": {
+          "description": "The link used to get the next page of Gateways list.",
+          "type": "string"
+        }
+      }
+    },
+    "GatewayResource": {
+      "description": "Gateway Resource that specifies how traffic is exposed to the application.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/GatewayProperties"
+        }
+      }
+    },
+    "GatewayProperties": {
+      "description": "Gateway properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the Gateway at the time the operation was called."
+        },
+        "internal": {
+          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
+          "type": "boolean"
+        },
+        "hostname": {
+          "type": "object",
+          "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.",
+          "properties": {
+            "prefix": {
+              "description": "Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden if both are defined.",
+              "type": "string"
+            },
+            "fullyQualifiedHostname": {
+              "description": "Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS configuration for the Gateway.",
+          "properties": {
+            "sslPassthrough": {
+              "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.",
+              "type": "boolean"
+            }
+          }
+        },
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Routes attached to this Gateway",
+          "items": {
+            "$ref": "#/definitions/GatewayRoute"
+          }
+        },
+        "url": {
+          "type": "string",
+          "readOnly": true,
+          "description": "URL of the gateway resource. Readonly."
+        }
+      },
+      "required": [
+        "application",
+        "routes"
+      ]
+    },
+    "GatewayRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "The path to match the incoming request path on. Ex - /myservice.",
+          "type": "string"
+        },
+        "destination": {
+          "description": "The HttpRoute to route to. Ex - myserviceroute.id.",
+          "type": "string"
+        },
+        "replacePrefix": {
+          "description": "Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "GatewayNameParameter": {
+      "name": "gatewayName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the Gateway.",
+      "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+      "maxLength": 63,
+      "x-ms-parameter-location": "method"
+    }
+  }
+}

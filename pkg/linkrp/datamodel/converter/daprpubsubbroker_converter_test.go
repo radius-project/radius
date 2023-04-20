@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -25,15 +25,15 @@ func TestDaprPubSubBrokerDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerazureresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprPubSubBrokerResource{},
+			"../../api/v20230415preview/testdata/daprpubsubbrokerazureresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.DaprPubSubBrokerResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokergenericresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprPubSubBrokerResource{},
+			"../../api/v20230415preview/testdata/daprpubsubbrokergenericresourcedatamodel.json",
+			"2023-04-15-preview",
+			&v20230415preview.DaprPubSubBrokerResource{},
 			nil,
 		},
 		{
@@ -67,18 +67,18 @@ func TestDaprPubSubBrokerDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerazureresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/daprpubsubbrokerazureresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokergenericresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/daprpubsubbrokergenericresource.json",
+			"2023-04-15-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20230415preview/testdata/daprpubsubbrokerresource-invalid.json",
+			"2023-04-15-preview",
 			errors.New("json: cannot unmarshal number into Go struct field DaprPubSubBrokerProperties.properties.resource of type string"),
 		},
 		{

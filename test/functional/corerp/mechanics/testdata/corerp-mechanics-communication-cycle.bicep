@@ -9,7 +9,7 @@ param environment string = 'test'
 @description('Specifies the image to be deployed.')
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-mechanics-communication-cycle'
   location: location
   properties: {
@@ -17,7 +17,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource routea 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource routea 'Applications.Core/httpRoutes@2023-04-15-preview' = {
   name: 'routea'
   location: location
   properties: {
@@ -25,7 +25,7 @@ resource routea 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource mechanicsg 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource mechanicsg 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'mechanicsg'
   location: location
   properties: {
@@ -47,7 +47,7 @@ resource mechanicsg 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource routeb 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource routeb 'Applications.Core/httpRoutes@2023-04-15-preview' = {
   name: 'routeb'
   location: location
   properties: {
@@ -55,7 +55,7 @@ resource routeb 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource cyclea 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource cyclea 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'cyclea'
   location: location
   properties: {

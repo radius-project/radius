@@ -19,7 +19,7 @@ import (
 func TestFindParam(t *testing.T) {
 	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "/{rootScope:.*}", "rootScope")
 	require.NoError(t, err)
-	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
+	v, ok := l.GetValidator("applications.core/environments", "2023-04-15-preview")
 	require.True(t, ok)
 	validator := v.(*validator)
 
@@ -49,11 +49,11 @@ func TestToRouteParams(t *testing.T) {
 	ps := v.toRouteParams(req)
 	require.Equal(t, 0, len(ps))
 
-	req, _ = http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+	req, _ = http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2023-04-15-preview", nil)
 	ps = v.toRouteParams(req)
 	require.Equal(t, 2, len(ps))
 	require.Equal(t, "rootScope", ps[0].Name)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg", ps[0].Value)
 	require.Equal(t, "api-version", ps[1].Name)
-	require.Equal(t, "2022-03-15-privatepreview", ps[1].Value)
+	require.Equal(t, "2023-04-15-preview", ps[1].Value)
 }

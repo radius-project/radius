@@ -9,15 +9,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
 // DaprInvokeHttpRouteDataModelFromVersioned converts version agnostic DaprInvokeHttpRoute datamodel to versioned model.
 func DaprInvokeHttpRouteDataModelToVersioned(model *datamodel.DaprInvokeHttpRoute, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.DaprInvokeHTTPRouteResource{}
+	case v20230415preview.Version:
+		versioned := &v20230415preview.DaprInvokeHTTPRouteResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -29,8 +29,8 @@ func DaprInvokeHttpRouteDataModelToVersioned(model *datamodel.DaprInvokeHttpRout
 // DaprInvokeHttpRouteDataModelToVersioned converts versioned DaprInvokeHttpRoute model to datamodel.
 func DaprInvokeHttpRouteDataModelFromVersioned(content []byte, version string) (*datamodel.DaprInvokeHttpRoute, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.DaprInvokeHTTPRouteResource{}
+	case v20230415preview.Version:
+		am := &v20230415preview.DaprInvokeHTTPRouteResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

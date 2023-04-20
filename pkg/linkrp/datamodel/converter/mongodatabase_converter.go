@@ -9,15 +9,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
 // MongoDatabaseDataModelFromVersioned converts version agnostic MongoDatabase datamodel to versioned model.
 func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.MongoDatabaseResource{}
+	case v20230415preview.Version:
+		versioned := &v20230415preview.MongoDatabaseResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 	default:
@@ -28,8 +28,8 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 // MongoDatabaseDataModelToVersioned converts versioned MongoDatabase model to datamodel.
 func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.MongoDatabase, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.MongoDatabaseResource{}
+	case v20230415preview.Version:
+		versioned := &v20230415preview.MongoDatabaseResource{}
 		if err := json.Unmarshal(content, versioned); err != nil {
 			return nil, err
 		}
@@ -44,8 +44,8 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 // MongoDatabaseSecretsDataModelFromVersioned converts version agnostic MongoDatabaseSecrets datamodel to versioned model.
 func MongoDatabaseSecretsDataModelToVersioned(model *datamodel.MongoDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.MongoDatabaseSecrets{}
+	case v20230415preview.Version:
+		versioned := &v20230415preview.MongoDatabaseSecrets{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 

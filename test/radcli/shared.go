@@ -28,7 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -249,9 +249,9 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 	}
 }
 
-func CreateResourceGroup(resourceGroupName string) v20220901privatepreview.ResourceGroupResource {
+func CreateResourceGroup(resourceGroupName string) v20230415preview.ResourceGroupResource {
 	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)
-	return v20220901privatepreview.ResourceGroupResource{
+	return v20230415preview.ResourceGroupResource{
 		Name: &resourceGroupName,
 		ID:   &id,
 	}

@@ -1,0 +1,73 @@
+{
+  "parameters": {
+    "api-version": "2023-04-15-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "name": "Applications.Link/operations/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Link",
+              "resource": "Operations",
+              "operation": "Get operations",
+              "description": "Gets the list of Operations"
+            }
+          },
+          {
+            "name": "Applications.Link/mongoDatabases/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Link",
+              "resource": "mongoDatabases",
+              "operation": "Get/List mongoDatabases",
+              "description": "Gets/Lists mongo database link(s)"
+            }
+          },
+          {
+            "name": "Applications.Link/mongoDatabases/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Link",
+              "resource": "mongoDatabases",
+              "operation": "Create/Update mongoDatabases",
+              "description": "Creates or updates a mongo database link"
+            }
+          },
+          {
+            "name": "Applications.Link/mongoDatabases/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Link",
+              "resource": "mongoDatabases",
+              "operation": "Delete mongoDatabases",
+              "description": "Deletes a mongo database link"
+            }
+          },
+          {
+            "name": "Applications.Link/register/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Link",
+              "resource": "Applications.Link",
+              "operation": "Register 'Applications.Link' resource provider",
+              "description": "Registers the 'Applications.Link' resource provider with a subscription"
+            }
+          },
+          {
+            "name": "Applications.Link/unregister/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Link",
+              "resource": "Applications.Link",
+              "operation": "Unregister 'Applications.Link' resource provider",
+              "description": "Unregisters the 'Applications.Link' resource provider with a subscription"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

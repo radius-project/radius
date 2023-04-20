@@ -16,7 +16,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/to"
-	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	v20230415preview "github.com/project-radius/radius/pkg/ucp/api/v20230415preview"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Create resource groups
 		rgID := "/planes/radius/local/resourcegroups/test-RG"
-		apiVersion := v20220901privatepreview.Version
+		apiVersion := v20230415preview.Version
 		rgURL := fmt.Sprintf("%s%s?api-version=%s", url, rgID, apiVersion)
 
 		t.Cleanup(func() {
@@ -42,7 +42,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 
 		// Get Resource Group by calling lower case URL.
 		rg, statusCode := getResourceGroup(t, roundTripper, strings.ToLower(rgURL))
-		expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
+		expectedResourceGroup := v20230415preview.ResourceGroupResource{
 			ID:       to.Ptr(rgID),
 			Name:     to.Ptr("test-RG"),
 			Tags:     map[string]*string{},
@@ -64,7 +64,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 }
 
 func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) {
-	model := v20220901privatepreview.ResourceGroupResource{
+	model := v20230415preview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	}
 
@@ -86,7 +86,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 	t.Logf("Resource group: %s created/updated successfully", url)
 }
 
-func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.ResourceGroupResourceListResult {
+func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) v20230415preview.ResourceGroupResourceListResult {
 	listRgsRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
@@ -103,14 +103,14 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	items := v20220901privatepreview.ResourceGroupResourceListResult{}
+	items := v20230415preview.ResourceGroupResourceListResult{}
 	err = json.Unmarshal(payload, &items)
 	require.NoError(t, err)
 
 	return items
 }
 
-func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (v20220901privatepreview.ResourceGroupResource, int) {
+func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (v20230415preview.ResourceGroupResource, int) {
 	getRgRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
@@ -126,7 +126,7 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	resourceGroup := v20220901privatepreview.ResourceGroupResource{}
+	resourceGroup := v20230415preview.ResourceGroupResource{}
 	err = json.Unmarshal(payload, &resourceGroup)
 	require.NoError(t, err)
 

@@ -12,7 +12,7 @@ param port int = 3000
 @description('Specifies the image for the container resource.')
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-resources-gateway-kme'
   location: location
   properties: {
@@ -33,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
+resource gateway 'Applications.Core/gateways@2023-04-15-preview' = {
   name: 'http-gtwy-kme'
   location: location
   properties: {
@@ -58,7 +58,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   }
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource frontendRoute 'Applications.Core/httpRoutes@2023-04-15-preview' = {
   name: 'http-gtwy-front-rte-kme'
   location: location
   properties: {
@@ -67,7 +67,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   }
 }
 
-resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource frontendContainer 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'http-gtwy-front-ctnr-kme'
   location: location
   properties: {
@@ -94,7 +94,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
   }
 }
 
-resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource backendRoute 'Applications.Core/httpRoutes@2023-04-15-preview' = {
   name: 'http-gtwy-back-rte-kme'
   location: location
   properties: {
@@ -102,7 +102,7 @@ resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' =
   }
 }
 
-resource backendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource backendContainer 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'http-gtwy-back-ctnr-kme'
   location: location
   properties: {

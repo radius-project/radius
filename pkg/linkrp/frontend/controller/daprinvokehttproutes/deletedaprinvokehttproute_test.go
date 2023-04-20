@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
+func TestDeleteDaprInvokeHttpRoute_20230415preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -94,7 +94,7 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", testcase.ifMatchETag)
 
 			ctx := testutil.ARMTestContextFromRequest(req)
-			_, daprHttpRouteDataModel, _ := getTestModels20220315privatepreview()
+			_, daprHttpRouteDataModel, _ := getTestModels20230415preview()
 
 			mStorageClient.
 				EXPECT().

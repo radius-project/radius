@@ -6,7 +6,7 @@ param environment string
 
 param cosmosmongodbresourceid string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-04-15-preview' = {
   name: 'corerp-azure-connection-database-service'
   location: 'global'
   properties: {
@@ -14,7 +14,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource store 'Applications.Core/containers@2023-04-15-preview' = {
   name: 'db-service'
   location: 'global'
   properties: {
