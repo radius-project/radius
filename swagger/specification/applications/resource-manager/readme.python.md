@@ -28,11 +28,11 @@ These settings apply only when `--tag=package-core-2023-04-15-preview --python` 
 Please also specify `--python-sdks-folder=<path to the root directory of your azure-sdk-for-python clone>`.
 
 ``` yaml $(tag) == 'package-core-2023-04-15-preview'
-namespace: azure.mgmt.applications.core.v2022_03_15_privatepreview
-output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2022_03_15_privatepreview
+namespace: azure.mgmt.applications.core.v2023_04_15_preview
+output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2023_04_15_preview
 python:
-  namespace: azure.mgmt.applications.core.v2022_03_15_privatepreview
-  output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2022_03_15_privatepreview
+  namespace: azure.mgmt.applications.core.v2023_04_15_preview
+  output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2023_04_15_preview
 ```
 
 ### Tag: package-link-2023-04-15-preview and python
@@ -41,11 +41,11 @@ These settings apply only when `--tag=package-link-2023-04-15-preview --python` 
 Please also specify `--python-sdks-folder=<path to the root directory of your azure-sdk-for-python clone>`.
 
 ``` yaml $(tag) == 'package-link-2023-04-15-preview'
-namespace: azure.mgmt.applications.link.v2022_03_15_privatepreview
-output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/link/v2022_03_15_privatepreview
+namespace: azure.mgmt.applications.link.v2023_04_15_preview
+output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/link/v2023_04_15_preview
 python:
-  namespace: azure.mgmt.applications.link.v2022_03_15_privatepreview
-  output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/link/v2022_03_15_privatepreview
+  namespace: azure.mgmt.applications.link.v2023_04_15_preview
+  output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/link/v2023_04_15_preview
 ```
 
 ### Python multi-api

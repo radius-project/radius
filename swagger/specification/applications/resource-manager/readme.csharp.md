@@ -30,9 +30,9 @@ output-folder: $(csharp-sdks-folder)/$(ApiVersionName)/Generated
 
 batch:
   - core-2023-04-15-preview: true
-    ApiVersionName: Api2022_03_15_privatepreview
+    ApiVersionName: Api2023_04_15_privatepreview
   - link-2023-04-15-preview: true
-    ApiVersionName: Api2022_03_15_privatepreview
+    ApiVersionName: Api2023_04_15_privatepreview
 ```
 
 ``` yaml $(core-2023-04-15-preview)
