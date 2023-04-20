@@ -86,33 +86,14 @@ catch [Net.WebException] {
 Write-Output "rad CLI version: $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version")"
 
 # Add RadiusRoot directory to User Path environment variable
-try {
-    $registryKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
-    $originalPath = $registryKey.GetValue(`
-            'PATH', `
-            '', `
-            [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames `
-    )
-    $originalValueKind = $registryKey.GetValueKind('PATH')
-    $pathParts = $originalPath -split ';'
-
-    if (!($pathParts -contains $RadiusRoot)) {
-        Write-Output "Adding $RadiusRoot to User Path..."
-        # Update the registry
-        $registryKey.SetValue( `
-                'PATH', `
-                "$originalPath;$RadiusRoot", `
-                $originalValueKind `
-        )
-        # Update the current process' environment variable
-        $env:PATH += ";$InstallFolder"
-    }
+Write-Output "Adding $RadiusRoot to User Path..."  
+if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
+    # [Environment]::SetEnvironmentVariable sets the value kind as REG_SZ, use the function below to set a value of kind REG_EXPAND_SZ
+    Set-ItemProperty HKCU:\Environment "PATH" "$UserPathEnvironmentVar;$RadiusRoot" -Type ExpandString
+    # Also add the path to the current session
+    $env:PATH += ";$RadiusRoot"
 }
-finally {
-    if ($registryKey) {
-        $registryKey.Close()
-    }
-}
+Write-Output "rad CLI has been successfully installed"
 
 Write-Output "rad CLI has been successfully installed"
 
