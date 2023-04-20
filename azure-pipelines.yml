@@ -192,6 +192,7 @@ stages:
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
         echo "-------------HELM CHART---------------"
+        helm list -A
         helm get all radius -n radius-system
         echo "-------------HELM CHART---------------"
         dist/rad install kubernetes \
