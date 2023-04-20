@@ -95,8 +95,6 @@ if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
 }
 Write-Output "rad CLI has been successfully installed"
 
-Write-Output "rad CLI has been successfully installed"
-
 Write-Output "`r`nInstalling Bicep..."
 $cmd = (Start-Process -NoNewWindow -FilePath $RadiusCliFilePath -ArgumentList "bicep download" -PassThru -Wait)
 if ($cmd.ExitCode -ne 0) {
