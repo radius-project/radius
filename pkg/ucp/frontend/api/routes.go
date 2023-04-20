@@ -76,13 +76,13 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))
 
-	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
+	_, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
 	if err != nil {
 		return err
 	}
 
 	rootScopeRouter := router.PathPrefix(baseURL).Subrouter()
-	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
+	// rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
 
 	planeCollectionSubRouter := rootScopeRouter.Path(planeCollectionPath).Subrouter()
 	planeCollectionByTypeSubRouter := rootScopeRouter.Path(planeCollectionByType).Subrouter()

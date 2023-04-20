@@ -50,13 +50,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		return err
 	}
 
-	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath, "rootScope")
+	_, err = validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath, "rootScope")
 	if err != nil {
 		return err
 	}
 
 	rootScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
-	rootScopeRouter.Use(validator.APIValidator(specLoader))
+	// rootScopeRouter.Use(validator.APIValidator(specLoader))
 
 	mongoRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/mongodatabases").Subrouter()
 	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabaseName}").Subrouter()
