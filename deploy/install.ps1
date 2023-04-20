@@ -86,6 +86,12 @@ catch [Net.WebException] {
 Write-Output "rad CLI version: $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version")"
 
 # Add RadiusRoot directory to User Path environment variable
+$UserPathEnvironmentVar = (Get-Item -Path HKCU:\Environment).GetValue(	
+    'PATH', # the registry-value name	
+    $null, # the default value to return if no such value exists.	
+    'DoNotExpandEnvironmentNames' # the option that suppresses expansion	
+)	
+
 Write-Output "Adding $RadiusRoot to User Path..."  
 if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
     # [Environment]::SetEnvironmentVariable sets the value kind as REG_SZ, use the function below to set a value of kind REG_EXPAND_SZ
