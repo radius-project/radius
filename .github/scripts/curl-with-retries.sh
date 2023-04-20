@@ -1,9 +1,4 @@
-for i in {1..5}
-do
-    curl $@
-    echo "$?"
-    if [[ "$?" -eq 0 ]]
-    then
-    break
-    fi
-done
+# See https://everything.curl.dev/usingcurl/downloads/retry
+#
+# Unfortunately we can't use --retry-all-errors as the agent does not support it.
+curl $@ --retry 5
