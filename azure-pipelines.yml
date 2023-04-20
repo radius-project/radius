@@ -200,10 +200,9 @@ stages:
         dist/rad group switch kind-radius
         dist/rad env create kind-radius
         dist/rad env switch kind-radius
-        dist/rad env update kind-radius --azure-subscription-id $(INTEGRATION_TEST_SUBSCRIPTION_ID) --azure-resource-group $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)
+        dist/rad env update kind-radius --azure-subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} --azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME
         dist/rad env update kind-radius --aws-region $AWS_REGION --aws-account-id $AWS_ACCOUNT_ID
-        dist/rad credential register azure \
-          --client-id $INTEGRATION_TEST_SP_APP_ID \
+        dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
           --client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --tenant-id $INTEGRATION_TEST_TENANT_ID
         dist/rad credential register aws \
