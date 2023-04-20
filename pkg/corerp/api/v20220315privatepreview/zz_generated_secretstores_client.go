@@ -247,6 +247,55 @@ func (client *SecretStoresClient) listHandleResponse(resp *http.Response) (Secre
 	return result, nil
 }
 
+// ListSecrets - List the secrets of an secret stores.
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+// secretStoreName - The name of the secret store.
+// options - SecretStoresClientListSecretsOptions contains the optional parameters for the SecretStoresClient.ListSecrets
+// method.
+func (client *SecretStoresClient) ListSecrets(ctx context.Context, secretStoreName string, options *SecretStoresClientListSecretsOptions) (SecretStoresClientListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, secretStoreName, options)
+	if err != nil {
+		return SecretStoresClientListSecretsResponse{}, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return SecretStoresClientListSecretsResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return SecretStoresClientListSecretsResponse{}, runtime.NewResponseError(resp)
+	}
+	return client.listSecretsHandleResponse(resp)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *SecretStoresClient) listSecretsCreateRequest(ctx context.Context, secretStoreName string, options *SecretStoresClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}/listSecrets"
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	if secretStoreName == "" {
+		return nil, errors.New("parameter secretStoreName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{secretStoreName}", url.PathEscape(secretStoreName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *SecretStoresClient) listSecretsHandleResponse(resp *http.Response) (SecretStoresClientListSecretsResponse, error) {
+	result := SecretStoresClientListSecretsResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.SecretListProperties); err != nil {
+		return SecretStoresClientListSecretsResponse{}, err
+	}
+	return result, nil
+}
+
 // Update - Update the properties of an existing secret store.
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview

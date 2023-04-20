@@ -2094,6 +2094,37 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type SecretListProperties.
+func (s SecretListProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "data", s.Data)
+	populate(objectMap, "type", s.Type)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type SecretListProperties.
+func (s *SecretListProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", s, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "data":
+				err = unpopulate(val, "Data", &s.Data)
+				delete(rawMsg, key)
+		case "type":
+				err = unpopulate(val, "Type", &s.Type)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", s, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type SecretObjectProperties.
 func (s SecretObjectProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})

@@ -159,6 +159,11 @@ type SecretStoresClientListResponse struct {
 	SecretStoreResourceList
 }
 
+// SecretStoresClientListSecretsResponse contains the response from method SecretStoresClient.ListSecrets.
+type SecretStoresClientListSecretsResponse struct {
+	SecretListProperties
+}
+
 // SecretStoresClientUpdateResponse contains the response from method SecretStoresClient.Update.
 type SecretStoresClientUpdateResponse struct {
 	SecretStoreResource
