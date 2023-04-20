@@ -9,7 +9,7 @@ The core of Radius is using the declarative **application model** to describe co
 Radius consists of:
 
 - Extensions to the Bicep language
-- Application model that represent developer concepts with a declarative model
+- Application model that represents developer concepts with a declarative model
 - Schemas for different compute and non-compute resource types
 - CLI tools for deployment and management
 - Multiple runtimes for application hosting
