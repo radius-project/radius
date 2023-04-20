@@ -83,13 +83,13 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			envRecipes := v20220315privatepreview.EnvironmentRecipeProperties{
+			envRecipe := v20220315privatepreview.EnvironmentRecipeProperties{
 				LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
 				TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				Parameters: map[string]any{
 					"throughput": map[string]any{
-						"type": "float64",
-						"max":  float64(800),
+						"type":     "float64",
+						"maxValue": float64(800),
 					},
 					"sku": map[string]any{
 						"type": "string",
@@ -100,7 +100,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(envRecipes, nil).Times(1)
+				Return(envRecipe, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -114,52 +114,36 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-			output := outputSink.Writes[0].(output.FormattedOutput)
-			skuType := false
-			throughputType := false
-			throughputMax := false
-			outputParams := output.Obj.([]EnvironmentRecipe)
-			require.Equal(t, 3, len(outputParams))
-			for i, envRecipeObj := range output.Obj.([]EnvironmentRecipe) {
-				if i == 0 {
-					require.Equal(t, "cosmosDB", envRecipeObj.RecipeName)
-					require.Equal(t, "Applications.Link/mongoDatabases", envRecipeObj.LinkType)
-					require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", envRecipeObj.TemplatePath)
-				} else {
-					require.Equal(t, "", envRecipeObj.RecipeName)
-					require.Equal(t, "", envRecipeObj.LinkType)
-					require.Equal(t, "", envRecipeObj.TemplatePath)
-				}
-				if envRecipeObj.ParameterName == "sku" && envRecipeObj.ParameterDetailName == "type" {
-					require.Equal(t, "string", envRecipeObj.ParameterDetailValue)
-					skuType = true
-				}
 
-				if envRecipeObj.ParameterName == "throughput" {
-					if envRecipeObj.ParameterDetailName == "type" {
-						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
-						throughputType = true
-					}
-					if envRecipeObj.ParameterDetailName == "max" {
-						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
-						throughputMax = true
-					}
-				}
+			// Test recipe output
+			recipeOutput := outputSink.Writes[0].(output.FormattedOutput)
+			recipe := recipeOutput.Obj.(EnvironmentRecipe)
+			require.Equal(t, "cosmosDB", recipe.RecipeName)
+			require.Equal(t, "Applications.Link/mongoDatabases", recipe.LinkType)
+			require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", recipe.TemplatePath)
 
-				if envRecipeObj.ParameterName == "" {
-					if envRecipeObj.ParameterDetailName == "type" && !throughputType {
-						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
-						throughputType = true
-					}
-					if envRecipeObj.ParameterDetailName == "max" && !throughputMax {
-						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
-						throughputMax = true
-					}
+			// Test parameters output
+			paramOutput := outputSink.Writes[1].(output.FormattedOutput)
+			params := paramOutput.Obj.([]EnvironmentRecipe)
+			require.Equal(t, 2, len(params))
+
+			skuPresent := false
+			throughputPresent := false
+
+			for _, param := range params {
+				if param.ParameterName == "sku" {
+					require.Equal(t, "string", param.ParameterType)
+					skuPresent = true
+				}
+				if param.ParameterName == "throughput" {
+					require.Equal(t, "float64", param.ParameterType)
+					require.Equal(t, "800", param.ParameterMaxValue)
+					throughputPresent = true
 				}
 			}
-			require.True(t, skuType)
-			require.True(t, throughputType)
-			require.True(t, throughputMax)
+
+			require.True(t, skuPresent)
+			require.True(t, throughputPresent)
 		})
 	})
 }
