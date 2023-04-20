@@ -195,19 +195,36 @@ stages:
         --chart ${{ variables.RADIUS_CHART_LOCATION }} --tag ${{ variables.REL_VERSION }} \
         --set rp.image=${{ variables.DOCKER_REGISTRY }}/appcore-rp,rp.tag=${{ variables.REL_VERSION }},\
         ucp.image=${{ variables.DOCKER_REGISTRY }}/ucpd,ucp.tag=${{ variables.REL_VERSION }},ucp.provider.aws.region=$AWS_REGION
+        echo "chart location, rel version, docker registery"
+        echo ${{ variables.RADIUS_CHART_LOCATION }}
+        echo ${{ variables.REL_VERSION }}
+        echo ${{ variables.DOCKER_REGISTRY }}
+        echo "----------------------"
         dist/rad workspace create kubernetes
+        echo "----------ws------------"
+        dist/rad workspace show
         dist/rad group create kind-radius
+        echo "-----------group after creation-----------"
+        dist/rad group show
         dist/rad group switch kind-radius
+        echo "-----------group after switching ----------"
+        dist/rad group show
         dist/rad env create kind-radius
+        echo "-----------env after switching ----------"
+        dist/rad env show
         dist/rad env switch kind-radius
+        echo "-----------env after switching ----------"
+        dist/rad env show
         dist/rad env update kind-radius --azure-subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} --azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME
+         echo "-----------env after adding az provider ----------"
+        dist/rad env show
         dist/rad env update kind-radius --aws-region $AWS_REGION --aws-account-id $AWS_ACCOUNT_ID
         dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
           --client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --tenant-id $INTEGRATION_TEST_TENANT_ID
         dist/rad credential register aws \
           --access-key-id $AWS_ACCESS_KEY_ID \
-          --secret-access-key $AWS_SECRET_ACCESS_KEY
+          --secret-access-key $AWS_SECRET_ACCESS_KEY       
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
@@ -253,7 +270,7 @@ stages:
     - script: |
         az group delete \
           --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-          --name $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
+          --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
           --yes \
           --verbose
       displayName: Delete environment resource groups
