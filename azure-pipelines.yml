@@ -191,10 +191,6 @@ stages:
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
-        echo "-------------HELM CHART---------------"
-        helm list -A
-        helm get all radius -n radius-system
-        echo "-------------HELM CHART---------------"
         dist/rad install kubernetes \
         --chart ${{ variables.RADIUS_CHART_LOCATION }} --tag ${{ variables.REL_VERSION }} \
         --set rp.image=${{ variables.DOCKER_REGISTRY }}/appcore-rp,rp.tag=${{ variables.REL_VERSION }},\
@@ -219,7 +215,12 @@ stages:
         dist/rad credential register aws \
           --access-key-id $AWS_ACCESS_KEY_ID \
           --secret-access-key $AWS_SECRET_ACCESS_KEY
-        cat ~/.rad/config.yaml       
+        cat ~/.rad/config.yaml  
+        echo "-------------HELM CHART---------------"
+        helm list -A
+        helm get all radius -n radius-system
+        echo "-------------HELM CHART---------------"
+            
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
