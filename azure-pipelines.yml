@@ -219,6 +219,7 @@ stages:
          echo "-----------env after adding az provider ----------"
         dist/rad env show
         dist/rad env update kind-radius --aws-region $AWS_REGION --aws-account-id $AWS_ACCOUNT_ID
+        dist/rad workspace show
         dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
           --client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --tenant-id $INTEGRATION_TEST_TENANT_ID
