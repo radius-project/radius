@@ -40,7 +40,7 @@ input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/gateways.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/containers.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/volumes.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/secretStores.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/secretstores.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```
