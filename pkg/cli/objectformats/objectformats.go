@@ -224,7 +224,7 @@ func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetRecipeParamsTableFormat() output.FormatterOptions {
+func GetRecipeTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -239,17 +239,32 @@ func GetRecipeParamsTableFormat() output.FormatterOptions {
 				Heading:  "TEMPLATE",
 				JSONPath: "{ .TemplatePath }",
 			},
+		},
+	}
+}
+
+func GetRecipeParamsTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
 			{
 				Heading:  "PARAMETER NAME",
 				JSONPath: "{ .ParameterName }",
 			},
 			{
-				Heading:  "PARAMETER DETAIL NAME",
-				JSONPath: "{ .ParameterDetailName }",
+				Heading:  "TYPE",
+				JSONPath: "{ .ParameterType }",
 			},
 			{
-				Heading:  "PARAMETER DETAIL VALUE",
-				JSONPath: "{ .ParameterDetailValue }",
+				Heading:  "DEFAULT VALUE",
+				JSONPath: "{ .ParameterDefaultValue }",
+			},
+			{
+				Heading:  "MIN",
+				JSONPath: "{ .ParameterMinValue }",
+			},
+			{
+				Heading:  "MAX",
+				JSONPath: "{ .ParameterMaxValue }",
 			},
 		},
 	}
