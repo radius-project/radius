@@ -195,12 +195,11 @@ stages:
         --chart ${{ variables.RADIUS_CHART_LOCATION }} --tag ${{ variables.REL_VERSION }} \
         --set rp.image=${{ variables.DOCKER_REGISTRY }}/appcore-rp,rp.tag=${{ variables.REL_VERSION }},\
         ucp.image=${{ variables.DOCKER_REGISTRY }}/ucpd,ucp.tag=${{ variables.REL_VERSION }},ucp.provider.aws.region=$AWS_REGION
-        dist/rad workspace create kubernetes
+        dist/rad workspace create kubernetes dummy
         dist/rad group create kind-radius
-        dist/rad group switch kind-radius
-        dist/rad env create kind-radius 
-        dist/rad env switch kind-radius 
-        dist/rad workspace create kubernetes --group kind-radius --environment kind-radius --force
+        dist/rad env create kind-radius --group kind-radius
+        dist/rad workspace create kubernetes --group kind-radius --environment kind-radius
+        dist/rad workspace switch kind-radius
         dist/rad env update kind-radius --azure-subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} --azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME
         dist/rad env update kind-radius --aws-region $AWS_REGION --aws-account-id $AWS_ACCOUNT_ID
         dist/rad workspace list
