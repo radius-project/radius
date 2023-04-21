@@ -37,7 +37,7 @@ type GatewayTestConfig struct {
 }
 
 func Test_Gateway(t *testing.T) {
-	template := "testdata/corerp-resources-gateway.bicep"
+	template := "testdata/gateways/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
 	appNamespace := "default-corerp-resources-gateway"
 
@@ -132,7 +132,7 @@ func Test_Gateway(t *testing.T) {
 }
 
 func Test_Gateway_SSLPassthrough(t *testing.T) {
-	template := "testdata/corerp-resources-gateway-sslpassthrough.bicep"
+	template := "testdata/gateways/corerp-resources-gateway-sslpassthrough.bicep"
 	name := "corerp-resources-gateway-sslpassthrough"
 	appNamespace := "default-corerp-resources-gateway-sslpassthrough"
 
@@ -203,13 +203,16 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 }
 
 func Test_Gateway_TLSTermination(t *testing.T) {
-	template := "testdata/corerp-resources-gateway-tlstermination.bicep"
+	template := "testdata/gateways/corerp-resources-gateway-tlstermination-%d.bicep"
 	name := "corerp-resources-gateway-tlstermination"
 	appNamespace := "default-corerp-resources-gateway-tlstermination"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 1), functional.GetMagpieImage()),
+		},
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 2), functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
