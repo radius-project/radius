@@ -209,7 +209,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 1), functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 1)),
 		},
 		{
 			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 2), functional.GetMagpieImage()),
