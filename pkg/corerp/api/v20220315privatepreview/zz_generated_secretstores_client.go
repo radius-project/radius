@@ -71,7 +71,7 @@ func (client *SecretStoresClient) CreateOrUpdate(ctx context.Context, secretStor
 	if err != nil {
 		return SecretStoresClientCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
 		return SecretStoresClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
@@ -311,7 +311,7 @@ func (client *SecretStoresClient) Update(ctx context.Context, secretStoreName st
 	if err != nil {
 		return SecretStoresClientUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
 		return SecretStoresClientUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.updateHandleResponse(resp)
