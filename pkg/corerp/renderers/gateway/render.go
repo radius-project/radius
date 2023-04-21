@@ -116,7 +116,7 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 
 			contourTLSConfig = &contourv1.TLS{
 				SecretName:             secretName,
-				MinimumProtocolVersion: gateway.Properties.TLS.MinimumProtocolVersion,
+				MinimumProtocolVersion: string(gateway.Properties.TLS.MinimumProtocolVersion),
 			}
 		}
 	}

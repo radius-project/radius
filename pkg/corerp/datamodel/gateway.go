@@ -71,8 +71,36 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - Declare TLS information for the Gateway.
 type GatewayPropertiesTLS struct {
-	SSLPassthrough         bool   `json:"sslPassthrough,omitempty"`
-	Hostname               string `json:"hostname,omitempty"`
-	MinimumProtocolVersion string `json:"minimumProtocolVersion,omitempty"`
-	CertificateFrom        string `json:"certificateFrom,omitempty"`
+	SSLPassthrough         bool          `json:"sslPassthrough,omitempty"`
+	Hostname               string        `json:"hostname,omitempty"`
+	MinimumProtocolVersion TLSMinVersion `json:"minimumProtocolVersion,omitempty"`
+	CertificateFrom        string        `json:"certificateFrom,omitempty"`
+}
+
+func (k TLSMinVersion) IsValid() bool {
+	s := TLSMinVersions()
+	for _, v := range s {
+		if v == k {
+			return true
+		}
+	}
+	return false
+}
+
+func (t TLSMinVersion) IsTLSVersion(tlsMinVersion TLSMinVersion) bool {
+	return t == tlsMinVersion
+}
+
+type TLSMinVersion string
+
+const (
+	TLSMinVersion12 TLSMinVersion = "1.2"
+	TLSMinVersion13 TLSMinVersion = "1.3"
+)
+
+func TLSMinVersions() []TLSMinVersion {
+	return []TLSMinVersion{
+		TLSMinVersion12,
+		TLSMinVersion13,
+	}
 }

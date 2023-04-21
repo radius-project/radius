@@ -783,7 +783,7 @@ type GatewayPropertiesTLS struct {
 	Hostname *string `json:"hostname,omitempty"`
 
 	// TLS minimum protocol version (defaults to 1.2).
-	MinimumProtocolVersion *string `json:"minimumProtocolVersion,omitempty"`
+	MinimumProtocolVersion *TLSMinVersion `json:"minimumProtocolVersion,omitempty"`
 
 	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 	SSLPassthrough *bool `json:"sslPassthrough,omitempty"`
