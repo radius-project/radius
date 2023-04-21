@@ -6,14 +6,8 @@
 package cmd
 
 import (
-	"context"
-
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	clikube "github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/setup"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -66,6 +60,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+/*
 func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 	config := ConfigFromContext(ctx)
 	section, err := cli.ReadWorkspaceSection(config)
@@ -94,3 +89,4 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 	}
 	return nil
 }
+*/
