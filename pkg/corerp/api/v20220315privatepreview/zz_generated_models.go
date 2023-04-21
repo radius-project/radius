@@ -541,8 +541,8 @@ type EnvironmentProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *Providers `json:"providers,omitempty"`
 
-	// Dictionary of
-	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
+	// Specifies Recipes linked to the Environment.
+	Recipes map[string]map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
 
 	// Flag to use radius owned recipes.
 	UseDevRecipes *bool `json:"useDevRecipes,omitempty"`
@@ -553,9 +553,6 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
-	LinkType *string `json:"linkType,omitempty"`
-
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string `json:"templatePath,omitempty"`
 

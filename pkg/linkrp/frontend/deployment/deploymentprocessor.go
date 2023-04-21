@@ -84,7 +84,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// Fetch the environment namespace, recipe's linkType, templatePath and parameters by doing a db lookup
-	envMetadata, err := dp.getEnvironmentMetadata(ctx, basicResource.Environment, recipe.Name)
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, basicResource.Environment, recipe.Name, resource.ResourceTypeName())
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -564,7 +564,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 }
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the link and linked resources ```
-func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (envMetadata EnvironmentMetadata, err error) {
+func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string, linkType string) (envMetadata EnvironmentMetadata, err error) {
 	env := &coreDatamodel.Environment{}
 	if err = rp_util.FetchScopeResource(ctx, dp.sp, environmentID, env); err != nil {
 		return
@@ -577,9 +577,9 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 		return envMetadata, fmt.Errorf("cannot find namespace in the environment resource")
 	}
 	// identify recipe's template path associated with provided recipe name
-	recipe, ok := env.Properties.Recipes[recipeName]
+	recipe, ok := env.Properties.Recipes[linkType][recipeName]
 	if ok {
-		envMetadata.RecipeLinkType = recipe.LinkType
+		envMetadata.RecipeLinkType = linkType
 		envMetadata.RecipeTemplatePath = recipe.TemplatePath
 		envMetadata.RecipeParameters = recipe.Parameters
 	} else if recipeName != "" {

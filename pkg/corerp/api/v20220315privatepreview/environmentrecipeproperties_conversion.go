@@ -24,8 +24,6 @@ func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) e
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
-
-	dst.LinkType = to.Ptr(recipe.LinkType)
 	dst.TemplatePath = to.Ptr(recipe.TemplatePath)
 	dst.Parameters = recipe.Parameters
 	return nil

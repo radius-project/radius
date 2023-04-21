@@ -48,7 +48,6 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 		}
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "Applications.Link/mongoDatabases", string(*versioned.LinkType))
 		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.TemplatePath))
 		require.Equal(t, expectedOutput, versioned.Parameters)
 	})

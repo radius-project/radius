@@ -75,19 +75,29 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 			var errorRecipes string
 			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
 			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
-			for k, v := range newResource.Properties.Recipes {
-				if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
-					if errorRecipes != "" {
-						errorRecipes += ", "
+			// for k, v := range newResource.Properties.Recipes {
+			// 	if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
+			// 		if errorRecipes != "" {
+			// 			errorRecipes += ", "
+			// 		}
+			// 		errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
+			// 	}
+			// }
+			for resourceType, recipe := range newResource.Properties.Recipes {
+				for recipeName, recipeDetails := range recipe {
+					if val, ok := devRecipes[resourceType][recipeName]; ok && val.TemplatePath != recipeDetails.TemplatePath {
+						if errorRecipes != "" {
+							errorRecipes += ", "
+						}
+						errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", recipeName, resourceType, recipeDetails.TemplatePath)
 					}
-					errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
 				}
 			}
 			if errorRecipes != "" {
 				return nil, fmt.Errorf(errorPrefix + errorRecipes)
 			}
 		} else {
-			newResource.Properties.Recipes = map[string]datamodel.EnvironmentRecipeProperties{}
+			newResource.Properties.Recipes = map[string]map[string]datamodel.EnvironmentRecipeProperties{}
 		}
 		maps.Copy(newResource.Properties.Recipes, devRecipes)
 	}
@@ -121,8 +131,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-var getDevRecipes = func(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
-	recipes := map[string]datamodel.EnvironmentRecipeProperties{}
+var getDevRecipes = func(ctx context.Context) (map[string]map[string]datamodel.EnvironmentRecipeProperties, error) {
+	recipes := map[string]map[string]datamodel.EnvironmentRecipeProperties{}
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
@@ -163,9 +173,10 @@ var getDevRecipes = func(ctx context.Context) (map[string]datamodel.EnvironmentR
 						if err != nil {
 							return fmt.Errorf("error occurred while finding highest version for repo %s - %s", repoPath, err.Error())
 						}
-						recipes[name] = datamodel.EnvironmentRecipeProperties{
-							LinkType:     linkType,
-							TemplatePath: repoPath + ":" + fmt.Sprintf("%.1f", version),
+						recipes[linkType] = map[string]datamodel.EnvironmentRecipeProperties{
+							name: datamodel.EnvironmentRecipeProperties{
+								TemplatePath: repoPath + ":" + fmt.Sprintf("%.1f", version),
+							},
 						}
 						return nil
 					})
