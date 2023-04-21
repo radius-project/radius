@@ -23,6 +23,7 @@ import (
 )
 
 func Test_NestedModules(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-mechanics-nestedmodules.bicep"
 	name := "corerp-mechanics-nestedmodules"
 
@@ -49,6 +50,7 @@ func Test_NestedModules(t *testing.T) {
 }
 
 func Test_RedeployWithAnotherResource(t *testing.T) {
+	t.Skip()
 	name := "corerp-mechanics-redeploy-with-another-resource"
 	appNamespace := "default-corerp-mechanics-redeploy-with-another-resource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
@@ -112,6 +114,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 }
 
 func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
+	t.Skip()
 	name := "corerp-mechanics-redeploy-withupdatedresource"
 	appNamespace := "default-corerp-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"

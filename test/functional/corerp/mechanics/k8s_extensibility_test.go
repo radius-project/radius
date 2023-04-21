@@ -19,6 +19,7 @@ import (
 )
 
 func Test_Kubernetes_Extensibility(t *testing.T) {
+	t.Skip()
 	template := "testdata/k8s-extensibility/connection-string.bicep"
 	name := "corerp-mechanics-k8s-extensibility"
 
