@@ -433,3 +433,11 @@ func RequireRecipeName(cmd *cobra.Command) (string, error) {
 
 	return recipeName, nil
 }
+
+func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) < 1 {
+		return "", errors.New("no recipe name provided")
+	}
+	recipeName := args[0]
+	return recipeName, nil
+}

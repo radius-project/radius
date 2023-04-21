@@ -33,7 +33,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Unregister Command",
-			Input:         []string{"--name", "test_recipe"},
+			Input:         []string{"test_recipe"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -42,7 +42,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with fallback workspace",
-			Input:         []string{"--name", "test_recipe"},
+			Input:         []string{"test_recipe"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -60,7 +60,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with too many args",
-			Input:         []string{"--name", "foo", "bar", "foo1"},
+			Input:         []string{"foo", "bar", "foo1"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",

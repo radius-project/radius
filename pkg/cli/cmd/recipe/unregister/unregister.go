@@ -29,7 +29,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short:   "Unregister a recipe from an environment",
 		Long:    `Unregister a recipe from an environment`,
 		Example: `rad recipe unregister --name cosmosdb`,
-		Args:    cobra.ExactArgs(0),
+		Args:    cobra.ExactArgs(1),
 		RunE:    framework.RunCommand(runner),
 	}
 
@@ -37,8 +37,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	commonflags.AddRecipeFlag(cmd)
-	_ = cmd.MarkFlagRequired("name")
 
 	return cmd, runner
 }
@@ -81,7 +79,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environment
 
-	recipeName, err := cli.RequireRecipeName(cmd)
+	recipeName, err := cli.RequireRecipeNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}

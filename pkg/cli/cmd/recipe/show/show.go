@@ -24,7 +24,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "show --name [recipe-name]",
+		Use:   "show [recipe-name]",
 		Short: "Show recipe details",
 		Long: `Show recipe details
 
@@ -35,23 +35,21 @@ By default, the command is scoped to the resource group and environment defined 
 By default, the command outputs a human-readable table. You can customize the output format with the output flag.`,
 		Example: `
 # show the details of a recipe
-rad recipe show --name redis-prod
+rad recipe show redis-prod
 
 # show the details of a recipe, with a JSON output
-rad recipe show --name redis-prod --output json
+rad recipe show redis-prod --output json
 	
 # show the details of a recipe, with a specified environment and group
-rad recipe show --name redis-dev --group dev --environment dev`,
+rad recipe show redis-dev --group dev --environment dev`,
 		RunE: framework.RunCommand(runner),
-		Args: cobra.ExactArgs(0),
+		Args: cobra.ExactArgs(1),
 	}
 
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	commonflags.AddRecipeFlag(cmd)
-	_ = cmd.MarkFlagRequired("name")
 
 	return cmd, runner
 }
@@ -94,7 +92,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environment
 
-	recipeName, err := cli.RequireRecipeName(cmd)
+	recipeName, err := cli.RequireRecipeNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
