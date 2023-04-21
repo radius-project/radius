@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	aws "github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
@@ -77,7 +75,7 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		// TODO: Add checks for duplicate workspace names and append random number mechanisms
 		workspace := workspace
 
-		populateProvidersToWorkspace(workspace, providersList)
+		//populateProvidersToWorkspace(workspace, providersList)
 
 		name := strings.ToLower(workspace.Name)
 		section.Default = name
@@ -91,6 +89,7 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 	return nil
 }
 
+/*
 func populateProvidersToWorkspace(workspace *workspaces.Workspace, providersList []any) {
 	for _, provider := range providersList {
 		switch p := provider.(type) {
@@ -110,7 +109,7 @@ func populateProvidersToWorkspace(workspace *workspaces.Workspace, providersList
 			}
 		}
 	}
-}
+}*/
 
 func (i *ConfigFileInterfaceImpl) ConfigFromContext(ctx context.Context) *viper.Viper {
 	return ConfigFromContext(ctx)
