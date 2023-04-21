@@ -92,9 +92,9 @@ func Test_Gateway(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
+				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s}", hostname)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
@@ -174,9 +174,9 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
+				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s}", hostname)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
@@ -248,9 +248,9 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
+				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s}", hostname)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
