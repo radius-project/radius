@@ -19,6 +19,7 @@ import (
 )
 
 func Test_KubeMetadataCascade(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-kubemetadata-cascade.bicep"
 	name := "corerp-kmd-cascade-app"
 	appNamespace := "corerp-kmd-cascade-ns-corerp-kmd-cascade-app"

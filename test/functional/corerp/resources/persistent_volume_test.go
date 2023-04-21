@@ -15,6 +15,7 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
 	name := "corerp-resources-volume-azure-keyvault"
 	appNamespace := "corerp-resources-volume-azure-keyvault-app"

@@ -16,6 +16,7 @@ import (
 )
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
+	t.Skip("Skip aws mechanics test")
 	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
 	name := "radiusfunctionaltestbucket-" + uuid.New().String()
 

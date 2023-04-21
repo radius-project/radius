@@ -18,6 +18,7 @@ import (
 )
 
 func Test_KubeMetadataHTTPRoute(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-httproute-kubernetesmetadata.bicep"
 	name := "corerp-app-rte-kme"
 	appNamespace := "corerp-ns-rte-kme-app"

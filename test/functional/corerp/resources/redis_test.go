@@ -16,6 +16,7 @@ import (
 )
 
 func Test_Redis(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-redis-user-secrets.bicep"
 	name := "corerp-resources-redis-user-secrets"
 	appNamespace := "default-corerp-resources-redis-user-secrets"

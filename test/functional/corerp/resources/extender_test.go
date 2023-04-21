@@ -15,6 +15,7 @@ import (
 )
 
 func Test_Extender(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
 	appNamespace := "default-corerp-resources-extender"

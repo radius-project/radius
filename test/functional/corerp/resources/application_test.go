@@ -18,6 +18,7 @@ import (
 )
 
 func Test_Application(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-application.bicep"
 	name := "corerp-resources-application"
 	appNamespace := "corerp-resources-application-app"

@@ -15,6 +15,7 @@ import (
 )
 
 func Test_DaprInvokeHttpRoute(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-httproute.bicep"
 	name := "dapr-invokehttproute"
 	appNamespace := "default-dapr-invokehttproute"

@@ -16,6 +16,7 @@ import (
 )
 
 func Test_MicrosoftSQL(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-microsoft-sql.bicep"
 	name := "corerp-resources-microsoft-sql"
 

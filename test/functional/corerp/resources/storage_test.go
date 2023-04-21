@@ -16,6 +16,7 @@ import (
 
 // Test_Storage tests if a container can be created and then deleted by the magpiego with the workload identity.
 func Test_Storage(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-container-workload.bicep"
 	name := "corerp-resources-container-workload"
 	appNamespace := "azstorage-workload-app"

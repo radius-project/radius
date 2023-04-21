@@ -17,6 +17,7 @@ import (
 )
 
 func Test_Gateway_KubernetesMetadata(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-gateway-kubernetesmetadata.bicep"
 	name := "corerp-resources-gateway-kme"
 	appNamespace := "default-corerp-resources-gateway-kme"

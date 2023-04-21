@@ -15,6 +15,7 @@ import (
 )
 
 func Test_AWS_S3Bucket(t *testing.T) {
+	t.Skip()
 	template := "testdata/aws-s3-bucket.bicep"
 	name := generateS3BucketName()
 

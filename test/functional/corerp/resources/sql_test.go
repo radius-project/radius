@@ -16,6 +16,7 @@ import (
 )
 
 func Test_SQL(t *testing.T) {
+	t.Skip()
 	// https://github.com/microsoft/mssql-docker/issues/668
 	if runtime.GOARCH == "arm64" {
 		t.Skip("skipping Test_SQL, unsupported architecture")

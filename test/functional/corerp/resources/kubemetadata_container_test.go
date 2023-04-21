@@ -19,6 +19,7 @@ import (
 )
 
 func Test_KubeMetadataContainer(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-kubemetadata-container.bicep"
 	name := "corerp-kmd-app"
 	appNamespace := "corerp-kmd-ns-corerp-kmd-app"

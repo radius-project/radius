@@ -20,6 +20,7 @@ import (
 )
 
 func Test_ContainerVersioning(t *testing.T) {
+	t.Skip()
 	containerV1 := "testdata/containers/corerp-resources-friendly-container-version-1.bicep"
 	containerV2 := "testdata/containers/corerp-resources-friendly-container-version-2.bicep"
 

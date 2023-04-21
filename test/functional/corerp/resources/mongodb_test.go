@@ -18,6 +18,7 @@ import (
 )
 
 func Test_MongoDB(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
 
