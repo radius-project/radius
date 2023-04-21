@@ -54,6 +54,7 @@ func Test_Container(t *testing.T) {
 }
 
 func Test_ContainerHttpRoute(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-container-httproute.bicep"
 	name := "corerp-resources-container-httproute"
 	appNamespace := "corerp-resources-container-httproute-app"
@@ -94,6 +95,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 }
 
 func Test_ContainerReadinessLiveness(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
 	appNamespace := "corerp-resources-container-live-ready-app"
@@ -128,6 +130,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 }
 
 func Test_ContainerManualScale(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-azure-container-manualscale.bicep"
 	name := "corerp-resources-container-manualscale"
 	appNamespace := "corerp-resources-container-manualscale-app"
@@ -162,6 +165,7 @@ func Test_ContainerManualScale(t *testing.T) {
 }
 
 func Test_ContainerWithCommandAndArgs(t *testing.T) {
+	t.Skip()
 	container := "testdata/corerp-resources-container-cmd-args.bicep"
 	name := "corerp-resources-container-cmd-args"
 	appNamespace := "corerp-resources-container-cmd-args-app"

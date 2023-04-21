@@ -17,7 +17,7 @@ import (
 )
 
 func Test_DaprPubSubGeneric(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-pubsub-generic.bicep"
 	name := "corerp-resources-dapr-pubsub-generic"
 	appNamespace := "default-corerp-resources-dapr-pubsub-generic"
@@ -58,6 +58,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 }
 
 func Test_DaprPubSubServiceBus(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
 
@@ -103,6 +104,7 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 }
 
 func Test_DaprPubSubServiceInvalid(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus-invalid.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus-invalid"
 

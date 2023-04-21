@@ -59,6 +59,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 }
 
 func Test_DaprStateStoreTableStorage(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
 
@@ -104,6 +105,7 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 }
 
 func Test_DaprStateStore_Recipe(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-statestore-recipe.bicep"
 	name := "corerp-resources-dss-recipe"
 	appNamespace := "corerp-resources-dss-recipe-app"

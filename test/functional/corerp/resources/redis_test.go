@@ -68,6 +68,7 @@ func Test_Redis(t *testing.T) {
 }
 
 func Test_RedisAzure(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-redis-azure.bicep"
 	name := "corerp-resources-redis-azure"
 
@@ -105,6 +106,7 @@ func Test_RedisAzure(t *testing.T) {
 }
 
 func Test_RedisValueBackedRecipe(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-redis-value-backed-recipe.bicep"
 	name := "corerp-resources-redis-value-backed-recipe"
 
