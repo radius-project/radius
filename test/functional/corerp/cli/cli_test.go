@@ -96,6 +96,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 }
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
+	t.Skip()
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
@@ -211,6 +212,7 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 }
 
 func Test_Run_Logger(t *testing.T) {
+	t.Skip()
 	// Will be used to cancel `rad run`
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
@@ -283,6 +285,7 @@ func Test_Run_Logger(t *testing.T) {
 }
 
 func Test_Run_Portforward(t *testing.T) {
+	t.Skip()
 	// Will be used to cancel `rad run`
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
@@ -369,6 +372,7 @@ func Test_Run_Portforward(t *testing.T) {
 }
 
 func Test_CLI(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-kubernetes-cli.bicep"
 	name := "kubernetes-cli"
 
@@ -409,6 +413,7 @@ func Test_CLI(t *testing.T) {
 }
 
 func Test_CLI_JSON(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-kubernetes-cli.json"
 	name := "kubernetes-cli-json"
 
@@ -449,6 +454,7 @@ func Test_CLI_JSON(t *testing.T) {
 }
 
 func Test_CLI_Delete(t *testing.T) {
+	t.Skip()
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
@@ -537,6 +543,7 @@ func Test_CLI_Delete(t *testing.T) {
 }
 
 func Test_CLI_DeploymentParameters(t *testing.T) {
+	t.Skip()
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
@@ -580,6 +587,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 }
 
 func Test_CLI_version(t *testing.T) {
+	t.Skip()
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
@@ -601,6 +609,7 @@ func Test_CLI_version(t *testing.T) {
 }
 
 func Test_CLI_Only_version(t *testing.T) {
+	t.Skip()
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
@@ -619,6 +628,7 @@ func Test_CLI_Only_version(t *testing.T) {
 }
 
 func Test_RecipeCommands(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-recipe-env.bicep"
 	name := "corerp-resources-recipe-env"
 

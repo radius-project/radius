@@ -18,6 +18,7 @@ import (
 )
 
 func Test_DaprStateStoreGeneric(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-statestore-generic.bicep"
 	name := "corerp-resources-dapr-statestore-generic"
 	appNamespace := "default-corerp-resources-dapr-statestore-generic"

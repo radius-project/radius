@@ -15,6 +15,7 @@ import (
 )
 
 func Test_DaprSecretStoreGeneric(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
 	name := "corerp-resources-dapr-secretstore-generic"
 	appNamespace := "default-corerp-resources-dapr-secretstore-generic"

@@ -17,6 +17,7 @@ import (
 )
 
 func Test_DaprPubSubGeneric(t *testing.T) {
+	//t.Skip()
 	template := "testdata/corerp-resources-dapr-pubsub-generic.bicep"
 	name := "corerp-resources-dapr-pubsub-generic"
 	appNamespace := "default-corerp-resources-dapr-pubsub-generic"
