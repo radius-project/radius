@@ -1,0 +1,20 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
+    "name": "sql0",
+    "type": "Applications.Datastores/sqlDatabases",
+    "properties": {
+        "status": {
+            "outputResources": [{
+              "LocalID": "Deployment",
+              "ResourceType": {
+                "Type": "azure.sql.database",
+                "Provider": "azure"
+              }
+            }]
+        },
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+        "mode": "resource"
+    }
+}
