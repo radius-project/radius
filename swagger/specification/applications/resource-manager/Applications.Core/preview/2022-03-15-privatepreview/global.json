@@ -53,10 +53,7 @@
     },
     "Application": {
       "description": "Specifies the resource id of the application",
-      "type": "string",
-      "example": [
-        "app.id"
-      ]
+      "type": "string"
     },
     "BasicResourceProperties": {
       "description": "Basic properties of a Radius resource.",
