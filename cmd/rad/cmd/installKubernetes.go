@@ -58,18 +58,9 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
-	alreadyInstalled, err := helm.Install(cmd.Context(), clusterOptions, kubeContext)
+	_, err = helm.Install(cmd.Context(), clusterOptions, kubeContext)
 	if err != nil {
 		return err
-	}
-
-	//installation completed. update workspaces, if any.
-	if !alreadyInstalled {
-		// install doesn't configure providers, user init to configure providers.
-		err = updateWorkspaces(cmd.Context(), nil)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
