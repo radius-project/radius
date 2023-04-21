@@ -107,35 +107,21 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 	sslPassthrough := false
 	var contourTLSConfig *contourv1.TLS
 	if gateway.Properties.TLS != nil {
-		if gateway.Properties.TLS.SSLPassthrough {
-			sslPassthrough = true
-		}
+		sslPassthrough = gateway.Properties.TLS.SSLPassthrough
 
 		if gateway.Properties.TLS.CertificateFrom != "" {
-			// Set the TLS minimum protocol version if it is declared,
-			// otherwise use the default of 1.2
-			minimumProtocolVersion := renderers.DefaultTLSVersion
-			if gateway.Properties.TLS.MinimumProtocolVersion != "" {
-				minimumProtocolVersion = gateway.Properties.TLS.MinimumProtocolVersion
-			}
-
 			// Get the Kubernetes secret name from the certificateFrom property,
 			// and prepend the namespace to it
 			secretName := fmt.Sprintf("%s/%s", options.Environment.Namespace, gateway.Properties.TLS.CertificateFrom)
 
 			contourTLSConfig = &contourv1.TLS{
 				SecretName:             secretName,
-				MinimumProtocolVersion: minimumProtocolVersion,
+				MinimumProtocolVersion: gateway.Properties.TLS.MinimumProtocolVersion,
 			}
 		}
 	}
 
-	// If sslPassthrough and gateway TLS termination are both configured, then report an error
-	if sslPassthrough && contourTLSConfig != nil {
-		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("Only one of tls.certificateFrom and tls.sslPassthrough can be specified at a time")
-	}
-
-	// If sslPassthrough is true, then we can only have one route
+	// If SSL Passthrough is enabled, then we can only have one route
 	if sslPassthrough && len(gateway.Properties.Routes) > 1 {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
 	}

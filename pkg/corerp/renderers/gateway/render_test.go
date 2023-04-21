@@ -1261,33 +1261,6 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 	validateGateway(t, output.Resources, expectedGatewaySpec, "")
 }
 
-func Test_Render_TLSTermination_SSLPassthrough_MutuallyExclusive(t *testing.T) {
-	r := &Renderer{}
-
-	properties, _ := makeTestGateway(datamodel.GatewayProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
-		},
-		TLS: &datamodel.GatewayPropertiesTLS{
-			SSLPassthrough:         true,
-			Hostname:               "myapp.radapp.dev",
-			MinimumProtocolVersion: "1.2",
-			CertificateFrom:        "myapp-tls-secret",
-		},
-	})
-	resource := makeResource(t, properties)
-	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
-
-	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
-	require.Error(t, err)
-	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*v1.ErrClientRP).Message, "Only one of tls.certificateFrom and tls.sslPassthrough can be specified at a time")
-	require.Len(t, output.Resources, 0)
-	require.Empty(t, output.SecretValues)
-	require.Empty(t, output.ComputedValues)
-}
-
 func validateGateway(t *testing.T, outputResources []rpv1.OutputResource, expectedGatewaySpec *contourv1.HTTPProxySpec, kmeOption string) {
 	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
 
