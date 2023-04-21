@@ -92,7 +92,7 @@ func Test_Gateway(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				hostname, status, err, _ := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 
@@ -174,7 +174,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				hostname, status, err, _ := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 
@@ -251,7 +251,8 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				hostname, status, err, s := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				t.Logf("HTTPPROXYSTATUS: %v", *s)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 

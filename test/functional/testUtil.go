@@ -55,20 +55,20 @@ func setDefault() (string, string) {
 }
 
 // GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status (e.g. "Valid", "Invalid")
-func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, namespace, application string) (hostname string, status string, err error) {
+func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, namespace, application string) (hostname string, status string, err error, spec *contourv1.HTTPProxyStatus) {
 	httpproxies, err := GetHTTPProxyList(ctx, client, namespace, application)
 	if err != nil {
-		return "", "", fmt.Errorf("could not retrieve list of cluster HTTPProxies: %w", err)
+		return "", "", fmt.Errorf("could not retrieve list of cluster HTTPProxies: %w", err), nil
 	}
 
 	for _, httpProxy := range httpproxies.Items {
 		if httpProxy.Spec.VirtualHost != nil {
 			// Found a root proxy
-			return httpProxy.Spec.VirtualHost.Fqdn, httpProxy.Status.Description, nil
+			return httpProxy.Spec.VirtualHost.Fqdn, httpProxy.Status.Description, nil, &httpProxy.Status
 		}
 	}
 
-	return "", "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
+	return "", "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies"), nil
 }
 
 // GetHTTPProxyList returns a list of HTTPProxies for the specified application

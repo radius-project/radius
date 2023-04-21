@@ -82,7 +82,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, appName)
+				hostname, status, err, _ := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, appName)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 
