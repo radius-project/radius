@@ -16,7 +16,6 @@ import (
 )
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
-	//t.Skip("Skip aws mechanics test")
 	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
 	name := "radiusfunctionaltestbucket-" + uuid.New().String()
 
@@ -72,7 +71,6 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 }
 
 func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
-	//t.Skip("This test will fail because step 2 is updating a create-and-write-only property.")
 	name := "my-db"
 	templateFmt := "testdata/aws-mechanics-redeploy-withcreateandwriteonlypropertyupdate.step%d.bicep"
 

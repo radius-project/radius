@@ -23,7 +23,6 @@ import (
 )
 
 func Test_NestedModules(t *testing.T) {
-	//t.Skip("Skipping nested modules test until we can figure out how to make it work")
 	template := "testdata/corerp-mechanics-nestedmodules.bicep"
 	name := "corerp-mechanics-nestedmodules"
 
@@ -50,7 +49,6 @@ func Test_NestedModules(t *testing.T) {
 }
 
 func Test_RedeployWithAnotherResource(t *testing.T) {
-	//t.Skip("Skipping redeploy with another resource test until we can figure out how to make it work")
 	name := "corerp-mechanics-redeploy-with-another-resource"
 	appNamespace := "default-corerp-mechanics-redeploy-with-another-resource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
@@ -114,7 +112,6 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 }
 
 func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
-	//t.Skip()
 	name := "corerp-mechanics-redeploy-withupdatedresource"
 	appNamespace := "default-corerp-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
@@ -185,7 +182,6 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 }
 
 func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
-	//t.Skip()
 	name := "corerp-mechanics-redeploy-withtwoseparateresource"
 	appNamespace := "default-corerp-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
@@ -249,7 +245,6 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 }
 
 func Test_CommunicationCycle(t *testing.T) {
-	//t.Skip()
 	name := "corerp-mechanics-communication-cycle"
 	appNamespace := "default-corerp-mechanics-communication-cycle"
 	template := "testdata/corerp-mechanics-communication-cycle.bicep"
@@ -300,7 +295,6 @@ func Test_CommunicationCycle(t *testing.T) {
 }
 
 func Test_InvalidResourceIDs(t *testing.T) {
-	//t.Skip()
 	name := "corerp-mechanics-invalid-resourceids"
 	template := "testdata/corerp-mechanics-invalid-resourceids.bicep"
 
