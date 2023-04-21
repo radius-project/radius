@@ -161,7 +161,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	id := "self"
 	envProperties := &corerp.EnvironmentProperties{
-		UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
+		//UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		Compute: &corerp.KubernetesCompute{
 			Kind:       to.Ptr(corerp.EnvironmentComputeKindKubernetes),
 			ResourceID: &id,
