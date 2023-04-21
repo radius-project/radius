@@ -124,7 +124,7 @@ stages:
         echo $OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
         echo $OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
         mkdir -p kind/
-        curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.11.0/kind-linux-amd64"
+        curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.18.0/kind-linux-amd64"
         chmod +x "kind/kind"
         # Create KinD cluster with OIDC Issuer keys
         cat <<EOF | kind create cluster --name radius --config=-
