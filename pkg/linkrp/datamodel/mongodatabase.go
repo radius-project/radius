@@ -66,6 +66,10 @@ func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
+	return &r.Properties.Recipe
+}
+
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
 	return linkrp.MongoDatabasesResourceType
 }

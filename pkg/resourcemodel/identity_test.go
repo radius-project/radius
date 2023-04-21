@@ -15,11 +15,19 @@ import (
 )
 
 var values = []struct {
-	ExpectedID string
-	Identity   ResourceIdentity
+	Description string
+	ExpectedID  string
+	Identity    ResourceIdentity
 }{
 	{
-		ExpectedID: "/subscriptions/0000/resourceGroups/mygroup/providers/Microsoft.DocumentDB/accounts/someaccount",
+		// Ensure that default-initialized identity does not panic.
+		Description: "empty",
+		ExpectedID:  "",
+		Identity:    ResourceIdentity{},
+	},
+	{
+		Description: "Azure",
+		ExpectedID:  "/subscriptions/0000/resourceGroups/mygroup/providers/Microsoft.DocumentDB/accounts/someaccount",
 		Identity: ResourceIdentity{
 			ResourceType: &ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
@@ -33,7 +41,8 @@ var values = []struct {
 	},
 	{
 		// "core" group
-		ExpectedID: "/planes/kubernetes/local/namespaces/test-namespace/providers/core/Secret/test-name",
+		Description: "Kubernetes (core)",
+		ExpectedID:  "/planes/kubernetes/local/namespaces/test-namespace/providers/core/Secret/test-name",
 		Identity: ResourceIdentity{
 			ResourceType: &ResourceType{
 				Type:     resourcekinds.Secret,
@@ -49,7 +58,8 @@ var values = []struct {
 	},
 	{
 		// Cluster-scoped resource
-		ExpectedID: "/planes/kubernetes/local/providers/secrets/SecretProviderClass/test-name",
+		Description: "Kubernetes (cluster-scoped)",
+		ExpectedID:  "/planes/kubernetes/local/providers/secrets/SecretProviderClass/test-name",
 		Identity: ResourceIdentity{
 			ResourceType: &ResourceType{
 				Type:     resourcekinds.SecretProviderClass,
@@ -64,7 +74,8 @@ var values = []struct {
 	},
 	{
 		// Namespaced non-core group
-		ExpectedID: "/planes/kubernetes/local/namespaces/test-namespace/providers/apps/Deployment/test-name",
+		Description: "Kubernetes (non-core)",
+		ExpectedID:  "/planes/kubernetes/local/namespaces/test-namespace/providers/apps/Deployment/test-name",
 		Identity: ResourceIdentity{
 			ResourceType: &ResourceType{
 				Type:     resourcekinds.Deployment,
@@ -79,7 +90,8 @@ var values = []struct {
 		},
 	},
 	{
-		ExpectedID: "/planes/aws/aws/accounts/0000/regions/us-west-2/providers/AWS.Kinesis/Stream/mystream",
+		Description: "AWS",
+		ExpectedID:  "/planes/aws/aws/accounts/0000/regions/us-west-2/providers/AWS.Kinesis/Stream/mystream",
 		Identity: ResourceIdentity{
 			ResourceType: &ResourceType{
 				Type:     "AWS.Kinesis/Stream",
@@ -95,7 +107,7 @@ var values = []struct {
 // Test that all formats of ResourceIdentifier round-trip with BSON
 func Test_ResourceIdentifier_BSONRoundTrip(t *testing.T) {
 	for _, input := range values {
-		t.Run(string(input.Identity.ResourceType.Type), func(t *testing.T) {
+		t.Run(input.Description, func(t *testing.T) {
 			b, err := bson.Marshal(&input.Identity)
 			require.NoError(t, err)
 
@@ -111,7 +123,7 @@ func Test_ResourceIdentifier_BSONRoundTrip(t *testing.T) {
 // Test that all formats of ResourceIdentifier round-trip with JSON
 func Test_ResourceIdentifier_JSONRoundTrip(t *testing.T) {
 	for _, input := range values {
-		t.Run(string(input.Identity.ResourceType.Type), func(t *testing.T) {
+		t.Run(input.Description, func(t *testing.T) {
 			b, err := json.Marshal(&input.Identity)
 			require.NoError(t, err)
 
@@ -126,7 +138,7 @@ func Test_ResourceIdentifier_JSONRoundTrip(t *testing.T) {
 
 func Test_GetID(t *testing.T) {
 	for _, input := range values {
-		t.Run(string(input.Identity.ResourceType.Type), func(t *testing.T) {
+		t.Run(input.Description, func(t *testing.T) {
 			id := input.Identity.GetID()
 			require.Equal(t, input.ExpectedID, id)
 		})
