@@ -1189,8 +1189,14 @@ type SecretObjectProperties struct {
 }
 
 type SecretStoreProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
 	// REQUIRED; An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties `json:"data,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
 
 	// The resource id of external secret store.
 	Resource *string `json:"resource,omitempty"`
@@ -1200,6 +1206,9 @@ type SecretStoreProperties struct {
 
 	// READ-ONLY; Provisioning state of the SecretStore at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // SecretStoreResource - Radius SecretStore Resource.
@@ -1207,7 +1216,7 @@ type SecretStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *SecretStoreProperties `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -1218,9 +1227,6 @@ type SecretStoreResource struct {
 
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
-
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`

@@ -2167,9 +2167,12 @@ func (s *SecretObjectProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type SecretStoreProperties.
 func (s SecretStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", s.Application)
 	populate(objectMap, "data", s.Data)
+	populate(objectMap, "environment", s.Environment)
 	populate(objectMap, "provisioningState", s.ProvisioningState)
 	populate(objectMap, "resource", s.Resource)
+	populate(objectMap, "status", s.Status)
 	populate(objectMap, "type", s.Type)
 	return json.Marshal(objectMap)
 }
@@ -2183,14 +2186,23 @@ func (s *SecretStoreProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &s.Application)
+				delete(rawMsg, key)
 		case "data":
 				err = unpopulate(val, "Data", &s.Data)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &s.Environment)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &s.ProvisioningState)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &s.Resource)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &s.Status)
 				delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &s.Type)
@@ -2210,7 +2222,6 @@ func (s SecretStoreResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "location", s.Location)
 	populate(objectMap, "name", s.Name)
 	populate(objectMap, "properties", s.Properties)
-	populate(objectMap, "systemData", s.SystemData)
 	populate(objectMap, "tags", s.Tags)
 	populate(objectMap, "type", s.Type)
 	return json.Marshal(objectMap)
@@ -2236,9 +2247,6 @@ func (s *SecretStoreResource) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "properties":
 				err = unpopulate(val, "Properties", &s.Properties)
-				delete(rawMsg, key)
-		case "systemData":
-				err = unpopulate(val, "SystemData", &s.SystemData)
 				delete(rawMsg, key)
 		case "tags":
 				err = unpopulate(val, "Tags", &s.Tags)
