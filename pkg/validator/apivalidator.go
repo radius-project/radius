@@ -28,6 +28,7 @@ const (
 
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.
 func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
+	fmt.Println("@@@@@@ APIValidator Validating RP request")
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			rID, err := resources.ParseByMethod(r.URL.Path, r.Method)
@@ -66,6 +67,7 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 
 // APIValidatorUCP is the middleware to validate incoming request for UCP with OpenAPI spec.
 func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
+	fmt.Println("@@@@@@ APIValidatorUCP Validating UCP request")
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			endpointType := UCPEndpointType

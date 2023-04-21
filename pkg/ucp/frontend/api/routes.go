@@ -64,6 +64,11 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 				HandlerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
 			},
 			{
+				ParentRouter:   router.Path("/openapi/v3").Subrouter(),
+				Method:         v1.OperationGet,
+				HandlerFactory: kubernetes_ctrl.NewOpenAPIv3Doc,
+			},
+			{
 				ParentRouter:   router.Path(baseURL).Subrouter(),
 				Method:         v1.OperationGet,
 				HandlerFactory: kubernetes_ctrl.NewDiscoveryDoc,
