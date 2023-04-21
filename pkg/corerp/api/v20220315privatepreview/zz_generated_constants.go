@@ -178,22 +178,6 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// TLSMinVersion - TLS minimum protocol version (defaults to 1.2).
-type TLSMinVersion string
-
-const (
-	TLSMinVersionOne2 TLSMinVersion = "1.2"
-	TLSMinVersionOne3 TLSMinVersion = "1.3"
-)
-
-// PossibleTLSMinVersionValues returns the possible values for the TLSMinVersion const type.
-func PossibleTLSMinVersionValues() []TLSMinVersion {
-	return []TLSMinVersion{	
-		TLSMinVersionOne2,
-		TLSMinVersionOne3,
-	}
-}
-
 // SecretStoreDataType - The type of secret store data
 type SecretStoreDataType string
 
@@ -207,6 +191,22 @@ func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
 	return []SecretStoreDataType{	
 		SecretStoreDataTypeGeneric,
 		SecretStoreDataTypeCertificate,
+	}
+}
+
+// TLSMinVersion - TLS minimum protocol version (defaults to 1.2).
+type TLSMinVersion string
+
+const (
+	TLSMinVersionOne2 TLSMinVersion = "1.2"
+	TLSMinVersionOne3 TLSMinVersion = "1.3"
+)
+
+// PossibleTLSMinVersionValues returns the possible values for the TLSMinVersion const type.
+func PossibleTLSMinVersionValues() []TLSMinVersion {
+	return []TLSMinVersion{	
+		TLSMinVersionOne2,
+		TLSMinVersionOne3,
 	}
 }
 
