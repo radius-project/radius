@@ -82,9 +82,9 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, appName)
+				hostname, status, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, appName)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s}", hostname)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
 
 				// Set up pod port-forwarding for contour-envoy
 				for i := 1; i <= retries; i++ {
