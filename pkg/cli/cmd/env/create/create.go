@@ -45,7 +45,6 @@ Applications deployed to an environment will inherit the container runtime, conf
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
-	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use dev recipes")
 
 	return cmd, runner
 }
@@ -62,7 +61,6 @@ type Runner struct {
 	ConfigFileInterface framework.ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	NamespaceInterface  namespace.Interface
-	SkipDevRecipes      bool
 }
 
 // NewRunner creates a new instance of the `rad env create` runner.
@@ -86,11 +84,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Workspace = workspace
 
 	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
-	if err != nil {
-		return err
-	}
-
-	r.SkipDevRecipes, err = cmd.Flags().GetBool("skip-dev-recipes")
 	if err != nil {
 		return err
 	}
@@ -155,7 +148,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	envProperties := &corerp.EnvironmentProperties{
-		UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		Compute: &corerp.KubernetesCompute{
 			Namespace: to.Ptr(r.Namespace),
 		},

@@ -200,7 +200,6 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 				Namespace:           "default",
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
-				SkipDevRecipes:      true,
 			}
 
 			err := runner.Run(context.Background())
@@ -242,7 +241,6 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 				Namespace:           "default",
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
-				SkipDevRecipes:      false,
 			}
 
 			err := runner.Run(context.Background())

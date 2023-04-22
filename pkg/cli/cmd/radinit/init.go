@@ -66,7 +66,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("dev", false, "Setup Radius for development")
-	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
 	return cmd, runner
 }
 
@@ -93,7 +92,6 @@ type Runner struct {
 	ScaffoldApplication     bool
 	ScaffoldApplicationName string
 	ServicePrincipal        *azure.ServicePrincipal
-	SkipDevRecipes          bool
 	Workspace               *workspaces.Workspace
 	Dev                     bool
 }
@@ -139,11 +137,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return &cli.FriendlyError{Message: err.Error()}
 		}
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
-	}
-
-	r.SkipDevRecipes, err = cmd.Flags().GetBool("skip-dev-recipes")
-	if err != nil {
-		return err
 	}
 
 	r.RadiusInstalled, err = r.HelmInterface.CheckRadiusInstall(r.KubeContext)
@@ -320,7 +313,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				case backNavigator:
-					break
 				default:
 					return &cli.FriendlyError{Message: "Unsupported Cloud Provider"}
 				}
@@ -413,12 +405,21 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
+		var recipes map[string]*corerp.EnvironmentRecipeProperties
+		if r.Dev {
+			// get dev recipes
+			recipes, err = getDevRecipes(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
 		envProperties := corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr(r.Namespace),
 			},
-			Providers:     &providers,
-			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
+			Providers: &providers,
+			Recipes:   recipes,
 		}
 
 		r.Output.LogInfo("Configuring Cloud providers")
