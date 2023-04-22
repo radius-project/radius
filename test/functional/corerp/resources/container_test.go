@@ -19,7 +19,7 @@ import (
 )
 
 func Test_Container(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
 	appNamespace := "corerp-resources-container-app"
