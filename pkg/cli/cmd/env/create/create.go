@@ -159,8 +159,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	hack := false
 	envProperties := &corerp.EnvironmentProperties{
-		UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
+		UseDevRecipes: to.Ptr(hack),
 		Compute: &corerp.KubernetesCompute{
 			Namespace: to.Ptr(r.Namespace),
 		},
