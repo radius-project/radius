@@ -14,7 +14,7 @@ import (
 )
 
 // SecretStoreModelToVersioned converts version agnostic SecretStore datamodel to versioned model.
-func SecretStoreModelToVersioned(model *datamodel.VolumeResource, version string) (v1.VersionedModelInterface, error) {
+func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.SecretStoreResource{}
