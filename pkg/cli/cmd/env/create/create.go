@@ -104,7 +104,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if r.Namespace == "" {
-		r.Namespace = r.EnvironmentName
+		r.Namespace = "default"
 	}
 
 	r.UCPResourceGroup, err = cmd.Flags().GetString("group")
