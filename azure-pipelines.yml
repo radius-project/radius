@@ -195,8 +195,14 @@ stages:
           --chart ${{ variables.RADIUS_CHART_LOCATION }} --tag ${{ variables.REL_VERSION }} \
           --appcore-image ${{ variables.DOCKER_REGISTRY }}/appcore-rp --appcore-tag ${{ variables.REL_VERSION }} \
           --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ variables.REL_VERSION }} \
-        dist/rad group create kind-radius 
-        dist/rad group switch kind-radius
+        echo "_________before____________"
+        echo "ENV:"
+        dist/rad env show -o json
+        echo "_______________________________"
+        dist/rad env create --group kind-radius
+        echo "_________env after______________"
+        dist/rad env show -o json
+        echo "_______________________________"
         dist/rad env update kind-radius --azure-subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} --azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME
         dist/rad env update kind-radius --aws-region $AWS_REGION --aws-account-id $AWS_ACCOUNT_ID
         dist/rad credential register azure --client-id $INTEGRATION_TEST_SP_APP_ID \
