@@ -199,7 +199,7 @@ stages:
         echo "ENV:"
         dist/rad env show -o json
         echo "_______________________________"
-        dist/rad env create --group kind-radius
+        dist/rad env create kind-radius --group kind-radius
         echo "_________env after______________"
         dist/rad env show -o json
         echo "_______________________________"
