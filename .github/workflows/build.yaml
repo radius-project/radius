@@ -148,6 +148,7 @@ jobs:
 
             * Your PR branch coverage: ${{ env.ut_coverage }} %
             * main branch coverage: ${{ env.main_coverage }} %
+            * diff coverage: ${{ env.diff_coverage }} %
 
             > The coverage result does not include the functional test coverage. 
       - name: Save coverage (only main push)
