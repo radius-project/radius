@@ -28,7 +28,7 @@ const (
 	testEnvID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
 )
 
-func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
+func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	opts := ctrl.Options{
@@ -82,7 +82,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := UpsertAppKubernetesNamespace(ctx, newResource, old, &opts)
+		resp, err := CreateAppScopedNamespace(ctx, newResource, old, &opts)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
@@ -130,7 +130,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := UpsertAppKubernetesNamespace(ctx, newResource, nil, &opts)
+		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
@@ -138,7 +138,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 	})
 }
 
-func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
+func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 	tCtx := testutil.NewTestContext(t)
 
 	opts := ctrl.Options{
@@ -175,7 +175,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := UpsertAppKubernetesNamespace(ctx, newResource, nil, &opts)
+		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
 		require.Equal(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.")
@@ -220,7 +220,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := UpsertAppKubernetesNamespace(ctx, newResource, nil, &opts)
+		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
 		require.NoError(t, err)
 		res := resp.(*rest.ConflictResponse)
 		require.Equal(t, res.Body.Error.Message, "Environment env0 with the same namespace (testns) already exists")
@@ -258,7 +258,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := UpsertAppKubernetesNamespace(ctx, newResource, nil, &opts)
+		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
 		require.NoError(t, err)
 		res := resp.(*rest.ConflictResponse)
 		require.Equal(t, res.Body.Error.Message, "Application /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/app0 with the same namespace (testns) already exists")
@@ -309,7 +309,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := UpsertAppKubernetesNamespace(ctx, newResource, old, &opts)
+		resp, err := CreateAppScopedNamespace(ctx, newResource, old, &opts)
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
 		require.Equal(t, res.Body.Error.Message, "Updating an application's Kubernetes namespace from 'default-app0' to 'differentname' requires the application to be deleted and redeployed. Please delete your application and try again.")

@@ -321,7 +321,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						ResponseConverter: converter.ApplicationDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Application]{
 							rp_frontend.PrepareRadiusResource[*datamodel.Application],
-							app_ctrl.UpsertAppKubernetesNamespace,
+							app_ctrl.CreateAppScopedNamespace,
 						},
 					},
 				)
@@ -338,7 +338,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						ResponseConverter: converter.ApplicationDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Application]{
 							rp_frontend.PrepareRadiusResource[*datamodel.Application],
-							app_ctrl.UpsertAppKubernetesNamespace,
+							app_ctrl.CreateAppScopedNamespace,
 						},
 					},
 				)

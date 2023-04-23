@@ -49,8 +49,8 @@ const (
 // | envNS           | appNS              | envNS                         | appNS                         |
 // +-----------------+--------------------+-------------------------------+-------------------------------+
 
-// UpsertAppKubernetesNamespace creates application-scoped namespace if it does not exist.
-func UpsertAppKubernetesNamespace(ctx context.Context, newResource, oldResource *datamodel.Application, opt *controller.Options) (rest.Response, error) {
+// CreateAppScopedNamespace creates application-scoped namespace if it does not exist.
+func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *datamodel.Application, opt *controller.Options) (rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
