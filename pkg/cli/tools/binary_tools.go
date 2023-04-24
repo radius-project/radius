@@ -18,6 +18,16 @@ import (
 	"github.com/project-radius/radius/pkg/version"
 )
 
+// validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
+var validPlatforms = map[string]string{
+	"windows-amd64": "windows-x64",
+	"linux-amd64":   "linux-x64",
+	"linux-arm":     "linux-arm",
+	"linux-arm64":   "linux-arm64",
+	"darwin-amd64":  "macos-x64",
+	"darwin-arm64":  "macos-arm64",
+}
+
 // GetLocalFilepath returns the local binary file path. It does not verify that the file
 // exists on disk.
 func GetLocalFilepath(overrideEnvVarName string, binaryName string) (string, error) {
@@ -79,23 +89,27 @@ func getOverridePath(overrideEnvVarName string, binaryName string) (string, erro
 	return override, nil
 }
 
+// GetValidPlatform returns the valid platform for the current OS and architecture.
+func GetValidPlatform(currentOS, currentArch string) (string, error) {
+	platform, ok := validPlatforms[currentOS+"-"+currentArch]
+	if !ok {
+		return "", fmt.Errorf("unsupported platform %s/%s", currentOS, currentArch)
+	}
+	return platform, nil
+}
+
 func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 	filename, err := getFilename(binaryName)
 	if err != nil {
 		return "", err
 	}
 
-	var platform string
-	switch runtime.GOOS {
-	case "linux", "windows":
-		platform = runtime.GOOS
-	case "darwin":
-		platform = "macos"
-	default:
-		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
+	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return "", err
 	}
 
-	return fmt.Sprintf(downloadURIFmt, version.Channel(), fmt.Sprint(platform, "-x64"), filename), nil
+	return fmt.Sprintf(downloadURIFmt, version.Channel(), platform, filename), nil
 }
 
 func DownloadToFolder(filepath string, resp *http.Response) error {
