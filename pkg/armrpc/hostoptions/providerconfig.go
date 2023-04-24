@@ -6,7 +6,8 @@
 package hostoptions
 
 import (
-	"github.com/project-radius/radius/pkg/metrics/provider"
+	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
+	profilerprovider "github.com/project-radius/radius/pkg/profiler/provider"
 	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/config"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -17,17 +18,18 @@ import (
 
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	Env             EnvironmentOptions                  `yaml:"environment"`
-	Identity        IdentityOptions                     `yaml:"identity"`
-	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
-	SecretProvider  sprovider.SecretProviderOptions     `yaml:"secretProvider"`
-	QueueProvider   qprovider.QueueProviderOptions      `yaml:"queueProvider"`
-	Server          *ServerOptions                      `yaml:"server,omitempty"`
-	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`
-	MetricsProvider provider.MetricsProviderOptions     `yaml:"metricsProvider"`
-	TracerProvider  trace.Options                       `yaml:"tracerProvider"`
-	UCP             config.UCPOptions                   `yaml:"ucp"`
-	Logging         ucplog.LoggingOptions               `yaml:"logging"`
+	Env              EnvironmentOptions                       `yaml:"environment"`
+	Identity         IdentityOptions                          `yaml:"identity"`
+	StorageProvider  dataprovider.StorageProviderOptions      `yaml:"storageProvider"`
+	SecretProvider   sprovider.SecretProviderOptions          `yaml:"secretProvider"`
+	QueueProvider    qprovider.QueueProviderOptions           `yaml:"queueProvider"`
+	Server           *ServerOptions                           `yaml:"server,omitempty"`
+	WorkerServer     *WorkerServerOptions                     `yaml:"workerServer,omitempty"`
+	MetricsProvider  metricsprovider.MetricsProviderOptions   `yaml:"metricsProvider"`
+	TracerProvider   trace.Options                            `yaml:"tracerProvider"`
+	ProfilerProvider profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
+	UCP              config.UCPOptions                        `yaml:"ucp"`
+	Logging          ucplog.LoggingOptions                    `yaml:"logging"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
