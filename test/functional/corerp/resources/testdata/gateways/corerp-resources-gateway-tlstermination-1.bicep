@@ -72,8 +72,11 @@ resource secret 'core/Secret@v1' = {
     name: 'tlstermination-secret'
     namespace: 'default-corerp-resources-gateway-tlstermination'
   }
-  stringData: {
-    key: key
-    cert: certificate
+  data: {
+    tls: {
+      key: key
+      cert: certificate
+    }
   }
+  type: 'kubernetes.io/tls'
 }
