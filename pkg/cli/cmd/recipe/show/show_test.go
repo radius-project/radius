@@ -117,27 +117,27 @@ func Test_Run(t *testing.T) {
 
 			// Test recipe output
 			recipeOutput := outputSink.Writes[0].(output.FormattedOutput)
-			recipe := recipeOutput.Obj.(EnvironmentRecipe)
-			require.Equal(t, "cosmosDB", recipe.RecipeName)
+			recipe := recipeOutput.Obj.(Recipe)
+			require.Equal(t, "cosmosDB", recipe.Name)
 			require.Equal(t, "Applications.Link/mongoDatabases", recipe.LinkType)
 			require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", recipe.TemplatePath)
 
 			// Test parameters output
-			paramOutput := outputSink.Writes[1].(output.FormattedOutput)
-			params := paramOutput.Obj.([]EnvironmentRecipe)
+			paramOutput := outputSink.Writes[2].(output.FormattedOutput)
+			params := paramOutput.Obj.([]RecipeParameter)
 			require.Equal(t, 2, len(params))
 
 			skuPresent := false
 			throughputPresent := false
 
 			for _, param := range params {
-				if param.ParameterName == "sku" {
-					require.Equal(t, "string", param.ParameterType)
+				if param.Name == "sku" {
+					require.Equal(t, "string", param.Type)
 					skuPresent = true
 				}
-				if param.ParameterName == "throughput" {
-					require.Equal(t, "float64", param.ParameterType)
-					require.Equal(t, "800", param.ParameterMaxValue)
+				if param.Name == "throughput" {
+					require.Equal(t, "float64", param.Type)
+					require.Equal(t, "800", param.MaxValue)
 					throughputPresent = true
 				}
 			}
