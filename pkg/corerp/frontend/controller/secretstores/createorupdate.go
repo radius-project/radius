@@ -7,24 +7,25 @@ package secretstores
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -53,70 +54,129 @@ func NewCreateOrUpdateSecretStore(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-func (a *CreateOrUpdateSecretStore) populateKubernetesNamespace(ctx context.Context, newResource, old *datamodel.SecretStore) (rest.Response, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
-	kubeNamespace := ""
-
-	// Check if another environment resource is using namespace
-	envID, err := resources.ParseResource(newResource.Properties.Environment)
-	if err != nil {
-		return rest.NewBadRequestResponse(fmt.Sprintf("Environment %s for application %s could not be found", envID.Name(), serviceCtx.ResourceID.Name())), nil
+func (a *CreateOrUpdateSecretStore) getNamespace(ctx context.Context, newResource *datamodel.SecretStore) (string, error) {
+	if newResource.Properties.Application != "" {
+		res, err := a.StorageClient().Get(ctx, newResource.Properties.Application)
+		if err != nil {
+			return "", err
+		}
+		app := &datamodel.Application{}
+		if err := res.As(app); err != nil {
+			return "", err
+		}
+		compute := app.Properties.Status.Compute
+		if compute != nil && compute.KubernetesCompute.Namespace != "" {
+			return compute.KubernetesCompute.Namespace, nil
+		}
 	}
 
-	result, err := util.FindResources(ctx, envID.RootScope(), envID.Type(), envNamespaceQuery, kubeNamespace, a.StorageClient())
+	if newResource.Properties.Environment != "" {
+		res, err := a.StorageClient().Get(ctx, newResource.Properties.Environment)
+		if err != nil {
+			return "", err
+		}
+		env := &datamodel.Environment{}
+		if err := res.As(env); err != nil {
+			return "", err
+		}
+		namespace := env.Properties.Compute.KubernetesCompute.Namespace
+		if namespace != "" {
+			return namespace, nil
+		}
+	}
+
+	return "", errors.New("no Kubernetes namespace")
+}
+
+func (a *CreateOrUpdateSecretStore) referenceExistingSecret(ctx context.Context, newResource, old *datamodel.SecretStore) (rest.Response, error) {
+	namespace, err := a.getNamespace(ctx, newResource)
 	if err != nil {
 		return nil, err
 	}
-	if len(result.Items) > 0 {
-		return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", envID.Name(), kubeNamespace)), nil
-	}
 
-	// Check if another application resource is using namespace
-	result, err = util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), appNamespaceQuery, kubeNamespace, a.StorageClient())
-	if err != nil {
-		return nil, err
-	}
-	if len(result.Items) > 0 {
-		app := &datamodel.SecretStore{}
-		if err := result.Items[0].As(app); err != nil {
+	secretName := newResource.Properties.Resource
+	// Kubernetes resource name scenario
+	res := strings.Split(newResource.Properties.Resource, "/")
+	if len(res) < 2 {
+		if len(res) == 2 {
+			namespace = res[0]
+			secretName = res[1]
+		}
+
+		if !kubernetes.IsValidObjectName(namespace) {
+			return rest.NewBadRequestResponse(fmt.Sprintf("%s includes an invalid namespace", newResource.Properties.Resource)), nil
+		}
+		if !kubernetes.IsValidObjectName(secretName) {
+			return rest.NewBadRequestResponse(fmt.Sprintf("%s includes an invalid secret name", res[1])), nil
+		}
+
+		secret := &corev1.Secret{}
+		err := a.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: secretName}, secret)
+		if apierrors.IsNotFound(err) {
+			return rest.NewBadRequestResponse(fmt.Sprintf("referenced secret %s in namespace %s does not exist", secretName, namespace)), nil
+		} else if err != nil {
 			return nil, err
 		}
 
-		// If a different resource has the same namespace, return a conflict
-		// Otherwise, continue and update the resource
-		if old == nil || app.ID != old.ID {
-			return rest.NewConflictResponse(fmt.Sprintf("Application %s with the same namespace (%s) already exists", app.ID, kubeNamespace)), nil
+		for k, s := range newResource.Properties.Data {
+			_, sOK := secret.StringData[k]
+			_, bOK := secret.Data[k]
+			if !sOK && !bOK {
+				return rest.NewBadRequestResponse(fmt.Sprintf("referenced secret %s in namespace %s does not contain key %s", secretName, namespace, k)), nil
+			}
+			s.ValueFrom.Name = k
 		}
+		return nil, nil
 	}
 
-	if !kubernetes.IsValidObjectName(kubeNamespace) {
-		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace)), nil
-	}
+	return rest.NewBadRequestResponse(fmt.Sprintf("invalid resource reference %s", newResource.Properties.Resource)), nil
+}
 
-	if old != nil {
-		c := old.Properties.Status.Compute
-		if c != nil && c.Kind == rpv1.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Updating an application's Kubernetes namespace from '%s' to '%s' requires the application to be deleted and redeployed. Please delete your application and try again.", c.KubernetesCompute.Namespace, kubeNamespace)), nil
-		}
-	}
-
-	// Populate kubernetes namespace to internal metadata property for query indexing.
-	newResource.Properties.Status.Compute = &rpv1.EnvironmentCompute{
-		Kind:              rpv1.KubernetesComputeKind,
-		KubernetesCompute: rpv1.KubernetesComputeProperties{Namespace: kubeNamespace},
-	}
-
-	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
-	err = a.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
-	if apierrors.IsAlreadyExists(err) {
-		logger.Info("Using existing namespace", "namespace", kubeNamespace)
-	} else if err != nil {
+func (a *CreateOrUpdateSecretStore) createKubernetesSecret(ctx context.Context, newResource, old *datamodel.SecretStore) (rest.Response, error) {
+	namespace, err := a.getNamespace(ctx, newResource)
+	if err != nil {
 		return nil, err
-	} else {
-		logger.Info("Created the namespace", "namespace", kubeNamespace)
+	}
+
+	app, _ := resources.ParseResource(newResource.Properties.Application)
+	secretName := kubernetes.NormalizeResourceName(newResource.Name)
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+			Labels:    kubernetes.MakeDescriptiveLabels(app.Name(), secretName, "Applications.Core/secretStores"),
+		},
+	}
+
+	newResource.Properties.Resource = fmt.Sprintf("%s/%s", namespace, secretName)
+	secretData := map[string][]byte{}
+
+	for k, s := range newResource.Properties.Data {
+		if to.String(s.Value) == "" {
+			return rest.NewBadRequestResponse(fmt.Sprintf("secret data %s is empty", k)), nil
+		}
+
+		_, err := base64.StdEncoding.DecodeString(*s.Value)
+		if err == nil {
+			secretData[k] = []byte(*s.Value)
+			continue
+		}
+		base64.StdEncoding.Encode(secretData[k], []byte(*s.Value))
+	}
+
+	secret.Data = secretData
+
+	switch newResource.Properties.Type {
+	case datamodel.SecretTypeCert:
+		secret.Type = corev1.SecretTypeTLS
+	case datamodel.SecretTypeGeneric:
+		secret.Type = corev1.SecretTypeOpaque
+	default:
+		return rest.NewBadRequestResponse(fmt.Sprintf("invalid secret type %s", newResource.Properties.Type)), nil
+	}
+
+	if err := a.KubeClient.Create(ctx, secret); err != nil {
+		return nil, err
 	}
 
 	return nil, nil
@@ -147,17 +207,7 @@ func (a *CreateOrUpdateSecretStore) Run(ctx context.Context, w http.ResponseWrit
 		return r, err
 	}
 
-	// support only kubernetes.
-
-	// 1. Create Kubernetes secret
-	//    Check if kuberentes secret exists or not
-	//    If doesn't exist, create secret
-	//    If exists, then check it is managed secret or not.
-	// 2. Refer Kubernetes secret
-	//    Ensure that secret exists
-	//
-
-	if r, err := a.populateKubernetesNamespace(ctx, newResource, old); r != nil || err != nil {
+	if r, err := a.referenceExistingSecret(ctx, newResource, old); r != nil || err != nil {
 		return r, err
 	}
 
