@@ -42,8 +42,8 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with fallback workspace",
-			Input:         []string{"--name", "test_recipe"},
-			ExpectedValid: false,
+			Input:         []string{"-e", "my-env", "--name", "test_recipe"},
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         radcli.LoadEmptyConfig(t),
