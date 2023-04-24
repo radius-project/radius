@@ -49,7 +49,7 @@ func TestSecretStoreConvertVersionedToDataModel(t *testing.T) {
 
 	t.Run("using valueFrom", func(t *testing.T) {
 		// arrange
-		rawPayload := testutil.ReadFixture("secretstore-request-resource.json")
+		rawPayload := testutil.ReadFixture("secretstore-versioned-resource.json")
 		r := &SecretStoreResource{}
 		err := json.Unmarshal(rawPayload, r)
 		require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestSecretStoreConvertDataModelToVersioned(t *testing.T) {
 
 func TestSecretStoreConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src v1.DataModelInterface
+		src v1.ResourceDataModel
 		err error
 	}{
 		{&fakeResource{}, v1.ErrInvalidModelConversion},
