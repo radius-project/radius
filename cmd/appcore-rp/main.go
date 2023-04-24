@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
+	profilerservice "github.com/project-radius/radius/pkg/profiler/service"
 	"github.com/project-radius/radius/pkg/trace"
 
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
@@ -78,6 +79,11 @@ func main() {
 	metricOptions.Config.ServiceName = serviceName
 	if metricOptions.Config.Prometheus.Enabled {
 		hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
+	}
+
+	profilerOptions := profilerservice.NewHostOptionsFromEnvironment(*options.Config)
+	if profilerOptions.Config.Enabled {
+		hostingSvc = append(hostingSvc, profilerservice.NewService(profilerOptions))
 	}
 
 	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)

@@ -14,11 +14,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/trace"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/hosting"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
