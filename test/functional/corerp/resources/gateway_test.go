@@ -324,9 +324,7 @@ func testGatewayAvailability(hostname, baseURL, path string, expectedStatusCode 
 		return err
 	}
 
-	if !isHttps {
-		req.Host = hostname
-	}
+	req.Host = hostname
 
 	client := newTestHTTPClient(isHttps, hostname)
 	res, err := client.Do(req)
