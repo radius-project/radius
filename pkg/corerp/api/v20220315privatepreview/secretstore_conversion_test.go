@@ -21,7 +21,7 @@ import (
 func TestSecretStoreConvertVersionedToDataModel(t *testing.T) {
 	t.Run("only values", func(t *testing.T) {
 		// arrange
-		rawPayload := testutil.ReadFixture("secretstore-request.json")
+		rawPayload := testutil.ReadFixture("secretstore-versioned.json")
 		r := &SecretStoreResource{}
 		err := json.Unmarshal(rawPayload, r)
 		require.NoError(t, err)
@@ -36,6 +36,7 @@ func TestSecretStoreConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "secret0", ct.Name)
 		require.Equal(t, "global", ct.Location)
 		require.Equal(t, "Applications.Core/secretStores", ct.Type)
+		require.Equal(t, "dev", ct.Tags["env"])
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", ct.Properties.Application)
 		require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 		require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
@@ -90,6 +91,7 @@ func TestSecretStoreConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "secret0", r.Name)
 		require.Equal(t, "global", r.Location)
 		require.Equal(t, "Applications.Core/secretStores", r.Type)
+		require.Equal(t, "dev", r.Tags["env"])
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", r.Properties.Application)
 		require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
 		require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])

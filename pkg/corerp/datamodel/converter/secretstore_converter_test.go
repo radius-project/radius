@@ -62,7 +62,7 @@ func TestSecretStoreModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore-request.json",
+			"../../api/v20220315privatepreview/testdata/secretstore-versioned.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},

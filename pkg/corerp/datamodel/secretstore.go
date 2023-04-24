@@ -35,7 +35,6 @@ const (
 // SecretStore represents Application environment resource.
 type SecretStore struct {
 	v1.BaseResource
-	LinkMetadata
 
 	// Properties is the properties of the resource.
 	Properties *SecretStoreProperties `json:"properties"`
@@ -49,8 +48,6 @@ func (e *SecretStore) ResourceTypeName() string {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (h *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	h.Properties.Status.OutputResources = do.DeployedOutputResources
-	h.ComputedValues = do.ComputedValues
-	h.SecretValues = do.SecretValues
 	return nil
 }
 
@@ -80,9 +77,6 @@ type SecretStoreProperties struct {
 
 // SecretStoreDataValue represents the value of the secret store data.
 type SecretStoreDataValue struct {
-	// Encoding is the encoding of the value. This is used for internal purpose.
-	Encoding SecretValueEncoding
-
 	// Value is the value of the secret store data.
 	Value *string `json:"value,omitempty"`
 	// ValueFrom is the value from of the secret store data.
