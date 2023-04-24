@@ -55,6 +55,7 @@ rad run app.bicep --parameters @myfile.json --parameters version=latest
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	cmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")

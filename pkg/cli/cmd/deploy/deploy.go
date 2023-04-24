@@ -61,6 +61,11 @@ rad deploy myapp.json
 # deploy to a specific workspace
 rad deploy myapp.bicep --workspace production
 
+# deploy using a specific environment
+rad deploy myapp.bicep --environment production
+
+# deploy using a specific environment and resource group
+rad deploy myapp.bicep --environment production --group mygroup
 
 # specify a string parameter
 rad deploy myapp.bicep --parameters version=latest
@@ -82,6 +87,7 @@ rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
@@ -124,11 +130,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: support fallback workspace
-	if !workspace.IsNamedWorkspace() {
-		return workspaces.ErrNamedWorkspaceRequired
-	}
 	r.Workspace = workspace
+
+	// Allow --group to override the scope
+	scope, err := cli.RequireScope(cmd, *workspace)
+	if err != nil {
+		return err
+	}
+
+	// We don't need to explicitly validate the existence of the scope, because we'll validate the existence
+	// of the environment later. That will give an appropriate error message for the case where the group
+	// does not exist.
+	workspace.Scope = scope
 
 	r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
 	if err != nil {

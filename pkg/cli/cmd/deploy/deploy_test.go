@@ -130,8 +130,23 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad deploy - fallback workspace invalid",
-			Input:         []string{"app.bicep"},
+			Name:          "rad deploy - fallback workspace",
+			Input:         []string{"app.bicep", "--group", "my-group", "--environment", "prod"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvDetails(gomock.Any(), "prod").
+					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad deploy - fallback workspace requires resource group",
+			Input:         []string{"app.bicep", "--environment", "prod"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
