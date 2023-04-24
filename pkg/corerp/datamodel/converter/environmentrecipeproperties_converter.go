@@ -6,6 +6,8 @@
 package converter
 
 import (
+	"encoding/json"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -20,6 +22,24 @@ func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.Environmen
 			return nil, err
 		}
 		return versioned, nil
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+func RecipeNameLinkTypeDatamodelFromVersioned(content []byte, version string) (*datamodel.RecipeNameAndLinkType, error) {
+	switch version {
+	case v20220315privatepreview.Version:
+		am := &v20220315privatepreview.RecipeNameAndLinkType{}
+		if err := json.Unmarshal(content, am); err != nil {
+			return nil, err
+		}
+		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
+		return dm.(*datamodel.RecipeNameAndLinkType), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

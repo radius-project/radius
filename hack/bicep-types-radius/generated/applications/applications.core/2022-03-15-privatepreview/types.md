@@ -296,7 +296,7 @@
 * **extensions**: [EnvironmentExtension](#environmentextension)[]: Extensions spec of the resource
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
+* **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Specifies Recipes linked to the Environment.
 * **useDevRecipes**: bool: Flag to use radius owned recipes.
 
 ## EnvironmentExtension
@@ -336,11 +336,15 @@
 ## EnvironmentPropertiesRecipes
 ### Properties
 ### Additional Properties
+* **Additional Properties Type**: [DictionaryOfEnvironmentRecipeProperties](#dictionaryofenvironmentrecipeproperties)
+
+## DictionaryOfEnvironmentRecipeProperties
+### Properties
+### Additional Properties
 * **Additional Properties Type**: [EnvironmentRecipeProperties](#environmentrecipeproperties)
 
 ## EnvironmentRecipeProperties
 ### Properties
-* **linkType**: string (Required): Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 * **parameters**: any: Any object
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 

@@ -78,10 +78,11 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				UseDevRecipes: to.Ptr(true),
-				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-					"cosmosDB": {
-						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					linkrp.MongoDatabasesResourceType: {
+						"cosmosDB": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
 					},
 				},
 				Compute: &v20220315privatepreview.KubernetesCompute{
@@ -122,10 +123,11 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				UseDevRecipes: to.Ptr(true),
-				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-					"cosmosDB": {
-						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					linkrp.MongoDatabasesResourceType: {
+						"cosmosDB": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
 					},
 				},
 			}
@@ -168,10 +170,11 @@ func Test_Run(t *testing.T) {
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					UseDevRecipes: to.Ptr(true),
-					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-						"cosmosDB": {
-							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+						linkrp.MongoDatabasesResourceType: {
+							"cosmosDB": {
+								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							},
 						},
 					},
 				},

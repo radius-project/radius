@@ -37,6 +37,19 @@ type EnvironmentRecipeProperties struct {
 	Parameters   map[string]any `json:"parameters,omitempty"`
 }
 
+// RecipeNameAndLinkType - Recipe Name and LinkType
+type RecipeNameAndLinkType struct {
+	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	LinkType string `json:"linkType,omitempty"`
+
+	// Name of the recipe registered to the environment.
+	RecipeName string `json:"recipeName,omitempty"`
+}
+
+func (e *RecipeNameAndLinkType) ResourceTypeName() string {
+	return "Applications.Core/environments"
+}
+
 func (e *EnvironmentRecipeProperties) ResourceTypeName() string {
 	return "Applications.Core/environments"
 }

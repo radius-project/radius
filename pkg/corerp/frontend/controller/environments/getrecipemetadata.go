@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -43,11 +42,14 @@ func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
-	// Request route for getrecipemetadata has name of the recipe as a part of the url.
-	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Core/environments/<environment_name>/<recipe_name>/recipemetadata
-	recipeSuffix := strings.Split(serviceCtx.OrignalURL.Path, "/environments/")[1]
-	recipeName := strings.Split(recipeSuffix, "/")[1]
+	content, err := ctrl.ReadJSONBody(req)
+	if err != nil {
+		return nil, err
+	}
+	reqObj, err := converter.RecipeNameLinkTypeDatamodelFromVersioned(content, serviceCtx.APIVersion)
+	if err != nil {
+		return nil, err
+	}
 	resource, _, err := r.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
@@ -57,19 +59,18 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	recipe, exists := resource.Properties.Recipes[recipeName]
+	recipe, exists := resource.Properties.Recipes[reqObj.LinkType]
 	if !exists {
-		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Recipe with name %q not found on environment with id %q", recipeName, serviceCtx.ResourceID)), nil
+		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Recipe with name %q not found on environment with id %q", reqObj.RecipeName, serviceCtx.ResourceID)), nil
 	}
 
-	recipeParams, err := getRecipeMetadataFromRegistry(ctx, recipe.TemplatePath, recipeName)
+	recipeParams, err := getRecipeMetadataFromRegistry(ctx, recipe[reqObj.RecipeName].TemplatePath, reqObj.RecipeName)
 	if err != nil {
 		return nil, err
 	}
 
 	ret := datamodel.EnvironmentRecipeProperties{
-		LinkType:     recipe.LinkType,
-		TemplatePath: recipe.TemplatePath,
+		TemplatePath: recipe[reqObj.RecipeName].TemplatePath,
 		Parameters:   recipeParams,
 	}
 

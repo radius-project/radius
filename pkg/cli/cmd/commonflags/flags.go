@@ -65,6 +65,10 @@ func AddRecipeFlag(cmd *cobra.Command) {
 	cmd.Flags().String("name", "", "The recipe name")
 }
 
+func AddLinkTypeFlag(cmd *cobra.Command) {
+	cmd.Flags().String("link-type", "", "Specify the type of the link this recipe can be consumed by")
+}
+
 func AddAzureScopeFlags(cmd *cobra.Command) {
 	AddAzureSubscriptionFlag(cmd)
 	AddAzureResourceGroupFlag(cmd)

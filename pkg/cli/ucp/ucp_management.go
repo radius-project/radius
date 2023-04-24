@@ -559,7 +559,7 @@ func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 	return resourceGroupResources, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName string) (corerpv20220315.EnvironmentRecipeProperties, error) {
+func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.RecipeNameAndLinkType) (corerpv20220315.EnvironmentRecipeProperties, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return corerpv20220315.EnvironmentRecipeProperties{}, err
@@ -570,5 +570,5 @@ func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, envi
 		return corerpv20220315.EnvironmentRecipeProperties{}, err
 	}
 
-	return corerpv20220315.EnvironmentRecipeProperties(resp.RecipeMetadata), nil
+	return corerpv20220315.EnvironmentRecipeProperties(resp.EnvironmentRecipeProperties), nil
 }

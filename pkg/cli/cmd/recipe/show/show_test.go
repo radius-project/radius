@@ -84,7 +84,6 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envRecipes := v20220315privatepreview.EnvironmentRecipeProperties{
-				LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
 				TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				Parameters: map[string]any{
 					"throughput": map[string]any{

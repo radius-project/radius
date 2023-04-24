@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +26,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "show --name [recipe-name]",
+		Use:   "show --name [recipe-name] --link-type [link-type]",
 		Short: "Show recipe details",
 		Long: `Show recipe details
 
@@ -52,7 +53,9 @@ rad recipe show --name redis-dev --group dev --environment dev`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddRecipeFlag(cmd)
+	commonflags.AddLinkTypeFlag(cmd)
 	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("link-type")
 
 	return cmd, runner
 }
@@ -64,6 +67,7 @@ type Runner struct {
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	RecipeName        string
+	LinkType          string
 	Format            string
 }
 
@@ -101,6 +105,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.RecipeName = recipeName
 
+	linkType, err := cli.RequireLinkType(cmd)
+	if err != nil {
+		return err
+	}
+	r.LinkType = linkType
+
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
@@ -120,7 +130,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, r.RecipeName)
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.RecipeNameAndLinkType{RecipeName: &r.RecipeName, LinkType: &r.LinkType})
 	if err != nil {
 		return err
 	}
@@ -147,7 +157,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			if paramDetailIndex == 0 && paramDetailValueIndex == 0 {
 				recipe = EnvironmentRecipe{
 					RecipeName:           r.RecipeName,
-					LinkType:             *recipeDetails.LinkType,
+					LinkType:             r.LinkType,
 					TemplatePath:         *recipeDetails.TemplatePath,
 					ParameterName:        paramName,
 					ParameterDetailName:  paramDetailName,

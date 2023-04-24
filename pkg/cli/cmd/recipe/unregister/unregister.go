@@ -25,10 +25,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "unregister",
+		Use:     "unregister --name [recipe-name] --link-type [link-type]",
 		Short:   "Unregister a recipe from an environment",
 		Long:    `Unregister a recipe from an environment`,
-		Example: `rad recipe unregister --name cosmosdb`,
+		Example: `rad recipe unregister --name cosmosdb --link-type Applications.Link/mongoDatabases"`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
 	}
@@ -38,7 +38,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddRecipeFlag(cmd)
+	commonflags.AddLinkTypeFlag(cmd)
 	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("link-type")
 
 	return cmd, runner
 }
@@ -50,6 +52,7 @@ type Runner struct {
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	RecipeName        string
+	LinkType          string
 }
 
 // NewRunner creates a new instance of the `rad recipe unregister` runner.
@@ -86,6 +89,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.RecipeName = recipeName
+
+	linkType, err := cli.RequireLinkType(cmd)
+	if err != nil {
+		return err
+	}
+	r.LinkType = linkType
+
 	return nil
 }
 
@@ -100,8 +110,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	delete(recipeProperties, r.RecipeName)
+	if val, ok := recipeProperties[r.LinkType]; ok {
+		delete(val, r.RecipeName)
+		if len(val) == 0 {
+			delete(recipeProperties, r.LinkType)
+		}
+	}
 	envResource.Properties.Recipes = recipeProperties
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
 	if err != nil || !isEnvCreated {

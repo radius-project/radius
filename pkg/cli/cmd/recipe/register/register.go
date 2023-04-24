@@ -7,7 +7,6 @@ package register
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -111,13 +110,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.TemplatePath = templatePath
 
-	linkType, err := requireLinkType(cmd)
+	linkType, err := cli.RequireLinkType(cmd)
 	if err != nil {
 		return err
 	}
 	r.LinkType = linkType
 
-	recipeName, err := requireRecipeName(cmd)
+	recipeName, err := cli.RequireRecipeName(cmd)
 	if err != nil {
 		return err
 	}
@@ -149,19 +148,20 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	recipeProperties := envResource.Properties.Recipes
 	if recipeProperties == nil {
-		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}
+		recipeProperties = map[string]map[string]*corerpapps.EnvironmentRecipeProperties{}
 	}
 
-	if recipeProperties[r.RecipeName] != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
-	}
-
-	recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
-		LinkType:     &r.LinkType,
+	properties := &corerpapps.EnvironmentRecipeProperties{
 		TemplatePath: &r.TemplatePath,
 		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 	}
-
+	if val, ok := recipeProperties[r.LinkType]; ok {
+		val[r.RecipeName] = properties
+	} else {
+		recipeProperties[r.LinkType] = map[string]*corerpapps.EnvironmentRecipeProperties{
+			r.RecipeName: properties,
+		}
+	}
 	envResource.Properties.Recipes = recipeProperties
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
@@ -180,23 +180,4 @@ func requireTemplatePath(cmd *cobra.Command) (string, error) {
 	}
 	return templatePath, nil
 
-}
-
-func requireLinkType(cmd *cobra.Command) (string, error) {
-	linkType, err := cmd.Flags().GetString("link-type")
-	if err != nil {
-		return linkType, err
-	}
-	return linkType, nil
-}
-
-func requireRecipeName(cmd *cobra.Command) (string, error) {
-	recipeName, err := cmd.Flags().GetString("name")
-	if recipeName == "" {
-		return "", errors.New("recipe name cannot be empty")
-	}
-	if err != nil {
-		return recipeName, err
-	}
-	return recipeName, nil
 }

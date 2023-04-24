@@ -28,3 +28,12 @@ func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) e
 	dst.Parameters = recipe.Parameters
 	return nil
 }
+
+// ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
+func (src *RecipeNameAndLinkType) ConvertTo() (v1.DataModelInterface, error) {
+	converted := &datamodel.RecipeNameAndLinkType{
+		RecipeName: to.String(src.RecipeName),
+		LinkType:   to.String(src.LinkType),
+	}
+	return converted, nil
+}
