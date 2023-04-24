@@ -17,10 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/pkg/version"
-
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -65,15 +61,15 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 
-	handlerFunc := otelhttp.NewHandler(
-		middleware.LowercaseURLPath(r),
-		options.ProviderNamespace,
-		otelhttp.WithMeterProvider(global.MeterProvider()),
-		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
+	// handlerFunc := otelhttp.NewHandler(
+	// 	middleware.LowercaseURLPath(r),
+	// 	options.ProviderNamespace,
+	// 	otelhttp.WithMeterProvider(global.MeterProvider()),
+	// 	otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	server := &http.Server{
 		Addr:    options.Address,
-		Handler: handlerFunc,
+		Handler: middleware.LowercaseURLPath(r),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},
