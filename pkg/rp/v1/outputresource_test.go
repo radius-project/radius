@@ -130,6 +130,10 @@ func TestGetGCOutputResources_Same(t *testing.T) {
 			Type:     resourcekinds.AzureRoleAssignment,
 			Provider: resourcemodel.ProviderAzure,
 		},
+		Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRoleAssignment,
+			Provider: resourcemodel.ProviderAzure,
+		}, "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi", "2020-01-01"),
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
@@ -155,6 +159,38 @@ func TestGetGCOutputResources_Same(t *testing.T) {
 	diff := GetGCOutputResources(after, before)
 
 	require.Equal(t, []OutputResource{}, diff)
+}
+
+func TestGetGCOutputResources_ResourceDiffersByID(t *testing.T) {
+	after := []OutputResource{
+		{
+			LocalID: LocalIDRoleAssignmentKVKeys,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: resourcemodel.ProviderAzure,
+			}, "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/after", "2020-01-01"),
+		},
+	}
+	before := []OutputResource{
+		{
+			LocalID: LocalIDRoleAssignmentKVKeys,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: resourcemodel.ProviderAzure,
+			}, "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/before", "2020-01-01"),
+		},
+	}
+
+	diff := GetGCOutputResources(after, before)
+	require.Equal(t, before, diff)
 }
 
 func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {

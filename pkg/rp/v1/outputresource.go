@@ -140,13 +140,15 @@ func GetGCOutputResources(after []OutputResource, before []OutputResource) []Out
 			continue
 		}
 
-		// Otherwise we have to check each resource for their equivalence on ResourceType.Type
-		// and ResourceType.Provider properties. If there is no match, we have to delete that
-		// resource. Meaning that new outputResources doesn't have that resource in the old array.
+		// Otherwise we have to check each resource for their equivalence on the type and ID.
+		//
+		// If there is no match, we have to delete that resource. Meaning that new outputResources
+		// doesn't have that resource in the old array.
 		found := false
 		for _, innerOutputResource := range afterMap[id] {
 			if outputResource.ResourceType.Type == innerOutputResource.ResourceType.Type &&
-				outputResource.ResourceType.Provider == innerOutputResource.ResourceType.Provider {
+				outputResource.ResourceType.Provider == innerOutputResource.ResourceType.Provider &&
+				outputResource.Identity.GetID() == innerOutputResource.Identity.GetID() {
 				found = true
 				break
 			}

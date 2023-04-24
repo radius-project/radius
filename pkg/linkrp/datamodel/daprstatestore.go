@@ -48,6 +48,10 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 	return linkrp.DaprStateStoresResourceType
 }
 
+func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
+	return &r.Properties.Recipe
+}
+
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.
 type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
