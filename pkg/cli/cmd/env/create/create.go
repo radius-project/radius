@@ -98,6 +98,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Namespace, err = cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err
+	} else if r.Namespace == "" {
+		r.Namespace = r.EnvironmentName
 	}
 
 	r.UCPResourceGroup, err = cmd.Flags().GetString("group")

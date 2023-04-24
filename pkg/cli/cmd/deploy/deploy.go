@@ -168,7 +168,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	} else if err != nil {
 		return err
 	}
-	if env.Properties != nil {
+	if env.Properties != nil && env.Properties.Providers != nil {
 		r.Providers = env.Properties.Providers
 	}
 

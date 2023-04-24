@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ucp_v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
@@ -43,7 +42,7 @@ type DeploymentOptions struct {
 	Parameters DeploymentParameters
 
 	// Proivders are the cloud providers configured on the environment for deployment.
-	Providers *v20220315privatepreview.Providers
+	Providers *corerp.Providers
 
 	// ProgressChan is a channel used to signal progress of the deployment operation.
 	// The deployment client MUST close the channel if it was provided.
