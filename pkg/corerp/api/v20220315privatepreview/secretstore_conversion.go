@@ -50,7 +50,7 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.ID = to.Ptr(ss.ID)
 	dst.Name = to.Ptr(ss.Name)
 	dst.Type = to.Ptr(ss.Type)
-	//dst.SystemData = fromSystemDataModel(route.SystemData)
+	dst.SystemData = fromSystemDataModel(ss.SystemData)
 	dst.Location = to.Ptr(ss.Location)
 	dst.Tags = *to.StringMapPtr(ss.Tags)
 	dst.Properties = &SecretStoreProperties{
