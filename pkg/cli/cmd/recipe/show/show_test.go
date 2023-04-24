@@ -14,9 +14,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -96,6 +98,27 @@ func Test_Run(t *testing.T) {
 					},
 				},
 			}
+			recipe := Recipe{
+				Name:         "cosmosDB",
+				LinkType:     linkrp.MongoDatabasesResourceType,
+				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			}
+			recipeParams := []RecipeParameter{
+				{
+					Name:         "throughput",
+					Type:         "float64",
+					MaxValue:     "800",
+					MinValue:     "-",
+					DefaultValue: "-",
+				},
+				{
+					Name:         "sku",
+					Type:         "string",
+					MaxValue:     "-",
+					MinValue:     "-",
+					DefaultValue: "-",
+				},
+			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
@@ -115,35 +138,23 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			// Test recipe output
-			recipeOutput := outputSink.Writes[0].(output.FormattedOutput)
-			recipe := recipeOutput.Obj.(Recipe)
-			require.Equal(t, "cosmosDB", recipe.Name)
-			require.Equal(t, "Applications.Link/mongoDatabases", recipe.LinkType)
-			require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", recipe.TemplatePath)
-
-			// Test parameters output
-			paramOutput := outputSink.Writes[2].(output.FormattedOutput)
-			params := paramOutput.Obj.([]RecipeParameter)
-			require.Equal(t, 2, len(params))
-
-			skuPresent := false
-			throughputPresent := false
-
-			for _, param := range params {
-				if param.Name == "sku" {
-					require.Equal(t, "string", param.Type)
-					skuPresent = true
-				}
-				if param.Name == "throughput" {
-					require.Equal(t, "float64", param.Type)
-					require.Equal(t, "800", param.MaxValue)
-					throughputPresent = true
-				}
+			expected := []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     recipe,
+					Options: objectformats.GetRecipeTableFormat(),
+				},
+				output.LogOutput{
+					Format: "",
+				},
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     recipeParams,
+					Options: objectformats.GetRecipeParamsTableFormat(),
+				},
 			}
+			require.Equal(t, expected, outputSink.Writes)
 
-			require.True(t, skuPresent)
-			require.True(t, throughputPresent)
 		})
 	})
 }
