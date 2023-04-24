@@ -121,8 +121,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	recipe := EnvironmentRecipe{
-		RecipeName:   r.RecipeName,
+	recipe := Recipe{
+		Name:         r.RecipeName,
 		LinkType:     *recipeDetails.LinkType,
 		TemplatePath: *recipeDetails.TemplatePath,
 	}
@@ -132,18 +132,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Println("")
+	r.Output.LogInfo("")
 
-	var recipeParams []EnvironmentRecipe
+	var recipeParams []RecipeParameter
 
 	for parameter := range recipeDetails.Parameters {
 		values := recipeDetails.Parameters[parameter].(map[string]any)
 
-		var paramItem EnvironmentRecipe
-		paramItem.ParameterName = parameter
-		paramItem.ParameterDefaultValue = "-"
-		paramItem.ParameterMaxValue = "-"
-		paramItem.ParameterMinValue = "-"
+		var paramItem RecipeParameter
+		paramItem.Name = parameter
+		paramItem.DefaultValue = "-"
+		paramItem.MaxValue = "-"
+		paramItem.MinValue = "-"
 		for paramDetailName, paramDetailValue := range values {
 			if paramDetailValue == nil {
 				continue
@@ -151,13 +151,13 @@ func (r *Runner) Run(ctx context.Context) error {
 
 			switch paramDetailName {
 			case "type":
-				paramItem.ParameterType = paramDetailValue.(string)
+				paramItem.Type = paramDetailValue.(string)
 			case "defaultValue":
-				paramItem.ParameterDefaultValue = paramDetailValue
+				paramItem.DefaultValue = paramDetailValue
 			case "maxValue":
-				paramItem.ParameterMaxValue = fmt.Sprintf("%v", paramDetailValue.(float64))
+				paramItem.MaxValue = fmt.Sprintf("%v", paramDetailValue.(float64))
 			case "minValue":
-				paramItem.ParameterMinValue = fmt.Sprintf("%v", paramDetailValue.(float64))
+				paramItem.MinValue = fmt.Sprintf("%v", paramDetailValue.(float64))
 			}
 		}
 
@@ -170,19 +170,22 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if len(recipeParams) == 0 {
-		fmt.Println("(No parameters available)")
+		r.Output.LogInfo("(No parameters available)")
 	}
 
 	return nil
 }
 
-type EnvironmentRecipe struct {
-	RecipeName            string      `json:"recipeName,omitempty"`
-	LinkType              string      `json:"linkType,omitempty"`
-	TemplatePath          string      `json:"templatePath,omitempty"`
-	ParameterName         string      `json:"parameterName,omitempty"`
-	ParameterDefaultValue interface{} `json:"parameterDefaultValue,omitempty"`
-	ParameterType         string      `json:"parameterType,omitempty"`
-	ParameterMaxValue     string      `json:"parameterMaxValue,omitempty"`
-	ParameterMinValue     string      `json:"parameterMinValue,omitempty"`
+type RecipeParameter struct {
+	Name         string      `json:"name,omitempty"`
+	DefaultValue interface{} `json:"defaultValue,omitempty"`
+	Type         string      `json:"type,omitempty"`
+	MaxValue     string      `json:"maxValue,omitempty"`
+	MinValue     string      `json:"minValue,omitempty"`
+}
+
+type Recipe struct {
+	Name         string `json:"name,omitempty"`
+	LinkType     string `json:"linkType,omitempty"`
+	TemplatePath string `json:"templatePath,omitempty"`
 }

@@ -229,7 +229,7 @@ func GetRecipeTableFormat() output.FormatterOptions {
 		Columns: []output.Column{
 			{
 				Heading:  "RECIPE NAME",
-				JSONPath: "{ .RecipeName }",
+				JSONPath: "{ .Name }",
 			},
 			{
 				Heading:  "TYPE",
@@ -248,23 +248,23 @@ func GetRecipeParamsTableFormat() output.FormatterOptions {
 		Columns: []output.Column{
 			{
 				Heading:  "PARAMETER NAME",
-				JSONPath: "{ .ParameterName }",
+				JSONPath: "{ .Name }",
 			},
 			{
 				Heading:  "TYPE",
-				JSONPath: "{ .ParameterType }",
+				JSONPath: "{ .Type }",
 			},
 			{
 				Heading:  "DEFAULT VALUE",
-				JSONPath: "{ .ParameterDefaultValue }",
+				JSONPath: "{ .DefaultValue }",
 			},
 			{
 				Heading:  "MIN",
-				JSONPath: "{ .ParameterMinValue }",
+				JSONPath: "{ .MinValue }",
 			},
 			{
 				Heading:  "MAX",
-				JSONPath: "{ .ParameterMaxValue }",
+				JSONPath: "{ .MaxValue }",
 			},
 		},
 	}
