@@ -315,7 +315,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewDefaultAsyncPut(opt,
+				return defaultoperation.NewDefaultSyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Application]{
 						RequestConverter:  converter.ApplicationDataModelFromVersioned,
 						ResponseConverter: converter.ApplicationDataModelToVersioned,
@@ -332,7 +332,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewDefaultAsyncPut(opt,
+				return defaultoperation.NewDefaultSyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Application]{
 						RequestConverter:  converter.ApplicationDataModelFromVersioned,
 						ResponseConverter: converter.ApplicationDataModelToVersioned,
