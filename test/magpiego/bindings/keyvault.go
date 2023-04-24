@@ -40,7 +40,7 @@ func KeyVaultBinding(envParams map[string]string) BindingStatus {
 	// Get the secret
 	_, err = client.GetSecret(context.TODO(), "TestSecret", resp.ID.Version(), nil)
 	if err != nil {
-		log.Fatalf("failed to get the secret: %v", err)
+		log.Printf("failed to get the secret: %v\n", err)
 		return BindingStatus{false, "failed to get the secret"}
 	}
 

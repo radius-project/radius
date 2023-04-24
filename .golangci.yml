@@ -1,0 +1,15 @@
+# see https://golangci-lint.run/usage/configuration/ for documentation
+linters:
+  enable:
+  - forbidigo
+linters-settings:
+  forbidigo:
+    # Forbid the following identifiers (list of regexp)
+    #
+    # Add a comment to the offending line with '//nolint:forbidigo' to suppress the rule if
+    # you're working inside the main() function.
+    forbid:
+      # These APIs exit the process. These are OK to use in the main() function,
+      # and not ANYWHERE else.
+      - 'os\.Exit(# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct.)?'
+      - 'log\.Fatal(f|ln)?(# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct.)?'
