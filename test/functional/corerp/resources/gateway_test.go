@@ -91,7 +91,7 @@ func Test_Gateway(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
-				// Get hostname from root HTTPProxy in 'default' namespace
+				// Get hostname from root HTTPProxy in application namespace
 				hostname, status, err, _ := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
