@@ -170,7 +170,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if len(recipeParams) == 0 {
-		r.Output.LogInfo("(No parameters available)")
+		r.Output.LogInfo("No parameters available")
 	}
 
 	return nil
