@@ -18,17 +18,17 @@ func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.Gatewa
 	if newResource.Properties.TLS != nil {
 		// If SSL Passthrough and TLS termination are both configured, then report an error
 		if newResource.Properties.TLS.SSLPassthrough && newResource.Properties.TLS.CertificateFrom != "" {
-			return rest.NewBadRequestResponse("Only one of tls.certificateFrom and tls.sslPassthrough can be specified at a time."), nil
+			return rest.NewBadRequestResponse("Only one of $.properties.tls.certificateFrom and $.properties.tls.sslPassthrough can be specified at a time."), nil
 		}
 
 		// If TLS protocol version is set, then certificateFrom must be set
 		if newResource.Properties.TLS.MinimumProtocolVersion != "" && newResource.Properties.TLS.CertificateFrom == "" {
-			return rest.NewBadRequestResponse("Field tls.certificateFrom is required when tls.minimumProtocolVersion is set."), nil
+			return rest.NewBadRequestResponse("Field $.properties.tls.certificateFrom is required when $.properties.tls.minimumProtocolVersion is set."), nil
 		}
 
 		// TLS protocol version defaults to 1.2
 		if newResource.Properties.TLS.MinimumProtocolVersion == "" {
-			newResource.Properties.TLS.MinimumProtocolVersion = "1.2"
+			newResource.Properties.TLS.MinimumProtocolVersion = datamodel.MinimumProtocolVersion12
 		}
 	}
 

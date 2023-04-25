@@ -81,16 +81,16 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
-				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, status, err, _ := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, appName)
+				// Get hostname from root HTTPProxy in application namespace
+				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, appName)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
 				// Set up pod port-forwarding for contour-envoy
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
 					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort)
+					err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, remotePort)
 					if err != nil {
 						t.Logf("Failed to test Gateway via portforward with error: %s", err)
 					} else {

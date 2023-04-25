@@ -71,36 +71,42 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - Declare TLS information for the Gateway.
 type GatewayPropertiesTLS struct {
-	SSLPassthrough         bool          `json:"sslPassthrough,omitempty"`
-	Hostname               string        `json:"hostname,omitempty"`
-	MinimumProtocolVersion TLSMinVersion `json:"minimumProtocolVersion,omitempty"`
-	CertificateFrom        string        `json:"certificateFrom,omitempty"`
+	SSLPassthrough         bool                      `json:"sslPassthrough,omitempty"`
+	Hostname               string                    `json:"hostname,omitempty"`
+	MinimumProtocolVersion MinimumTLSProtocolVersion `json:"minimumProtocolVersion,omitempty"`
+	CertificateFrom        string                    `json:"certificateFrom,omitempty"`
 }
 
-func (k TLSMinVersion) IsValid() bool {
-	s := TLSMinVersions()
+// IsValid returns whether or not the supplied MinimumTLSProtocolVersion is supported.
+func (m MinimumTLSProtocolVersion) IsValid() bool {
+	s := ValidMinimumTLSProtocolVersions()
 	for _, v := range s {
-		if v == k {
+		if v == m {
 			return true
 		}
 	}
 	return false
 }
 
-func (t TLSMinVersion) IsTLSVersion(tlsMinVersion TLSMinVersion) bool {
-	return t == tlsMinVersion
+// IsEqualTo returns whether or not two MinimumTLSProtocolVersions are equal.
+func (m MinimumTLSProtocolVersion) IsEqualTo(minumumTLSProtocolVersion MinimumTLSProtocolVersion) bool {
+	return m == minumumTLSProtocolVersion
 }
 
-type TLSMinVersion string
+// MinimumTLSProtocolVersion represents the minimum TLS protocol version supported by the Gateway.
+type MinimumTLSProtocolVersion string
 
 const (
-	TLSMinVersion12 TLSMinVersion = "1.2"
-	TLSMinVersion13 TLSMinVersion = "1.3"
+	// TLS 1.2
+	MinimumProtocolVersion12 MinimumTLSProtocolVersion = "1.2"
+	// TLS 1.3
+	MinimumProtocolVersion13 MinimumTLSProtocolVersion = "1.3"
 )
 
-func TLSMinVersions() []TLSMinVersion {
-	return []TLSMinVersion{
-		TLSMinVersion12,
-		TLSMinVersion13,
+// ValidMinimumTLSProtocolVersions returns a list of valid MinimumTLSProtocolVersions.
+func ValidMinimumTLSProtocolVersions() []MinimumTLSProtocolVersion {
+	return []MinimumTLSProtocolVersion{
+		MinimumProtocolVersion12,
+		MinimumProtocolVersion13,
 	}
 }

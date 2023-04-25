@@ -139,26 +139,27 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toTLSMinVersionDataModel(tlsMinVersion *TLSMinVersion) datamodel.TLSMinVersion {
+func toTLSMinVersionDataModel(tlsMinVersion *TLSMinVersion) datamodel.MinimumTLSProtocolVersion {
 	switch *tlsMinVersion {
 	case TLSMinVersionOne2:
-		return datamodel.TLSMinVersion12
+		return datamodel.MinimumProtocolVersion12
 	case TLSMinVersionOne3:
-		return datamodel.TLSMinVersion13
+		return datamodel.MinimumProtocolVersion13
 	default:
-		return datamodel.TLSMinVersion12
+		return datamodel.MinimumProtocolVersion12
 	}
 }
 
-func fromTLSMinVersionDataModel(tlsMinVersion datamodel.TLSMinVersion) *TLSMinVersion {
+func fromTLSMinVersionDataModel(tlsMinVersion datamodel.MinimumTLSProtocolVersion) *TLSMinVersion {
 	var t TLSMinVersion
 	switch tlsMinVersion {
-	case datamodel.TLSMinVersion12:
+	case datamodel.MinimumProtocolVersion12:
 		t = TLSMinVersionOne2
-	case datamodel.TLSMinVersion13:
+	case datamodel.MinimumProtocolVersion13:
 		t = TLSMinVersionOne3
 	default:
 		t = TLSMinVersionOne2
 	}
+
 	return &t
 }

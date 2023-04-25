@@ -92,14 +92,14 @@ func Test_Gateway(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				hostname, status, err, _ := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
 
-				err = testGatewayWithPortForward(t, ctx, ct, hostname, httpRemotePort, false, []GatewayTestConfig{
+				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
 					// /healthz is exposed on frontend container
 					{
 						Path:               "healthz",
@@ -174,13 +174,13 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				hostname, status, err, _ := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
-				err = testGatewayWithPortForward(t, ctx, ct, hostname, httpsRemotePort, true, []GatewayTestConfig{
+				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpsRemotePort, true, []GatewayTestConfig{
 					// /healthz is exposed on frontend container
 					{
 						Path:               "healthz",
@@ -260,14 +260,13 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				hostname, status, err, s := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
-				t.Logf("HTTPPROXYSTATUS: %v", *s)
+				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", hostname, status)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
-				err = testGatewayWithPortForward(t, ctx, ct, hostname, httpsRemotePort, true, []GatewayTestConfig{
+				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpsRemotePort, true, []GatewayTestConfig{
 					// /healthz is exposed on frontend container
 					{
 						Path:               "healthz",
