@@ -68,7 +68,7 @@ func (mr *MockStatusManagerMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomo
 }
 
 // QueueAsyncOperation mocks base method.
-func (m *MockStatusManager) QueueAsyncOperation(arg0 context.Context, arg1 *v1.ARMRequestContext, arg2 time.Duration) error {
+func (m *MockStatusManager) QueueAsyncOperation(arg0 context.Context, arg1 *v1.ARMRequestContext, arg2 QueueOperationOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueueAsyncOperation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

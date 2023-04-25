@@ -2222,6 +2222,7 @@ func (s SecretStoreResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "location", s.Location)
 	populate(objectMap, "name", s.Name)
 	populate(objectMap, "properties", s.Properties)
+	populate(objectMap, "systemData", s.SystemData)
 	populate(objectMap, "tags", s.Tags)
 	populate(objectMap, "type", s.Type)
 	return json.Marshal(objectMap)
@@ -2247,6 +2248,9 @@ func (s *SecretStoreResource) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "properties":
 				err = unpopulate(val, "Properties", &s.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, "SystemData", &s.SystemData)
 				delete(rawMsg, key)
 		case "tags":
 				err = unpopulate(val, "Tags", &s.Tags)
