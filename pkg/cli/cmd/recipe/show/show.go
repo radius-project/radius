@@ -139,11 +139,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	for parameter := range recipeDetails.Parameters {
 		values := recipeDetails.Parameters[parameter].(map[string]any)
 
-		var paramItem RecipeParameter
-		paramItem.Name = parameter
-		paramItem.DefaultValue = "-"
-		paramItem.MaxValue = "-"
-		paramItem.MinValue = "-"
+		paramItem := RecipeParameter{
+			Name:         parameter,
+			DefaultValue: "-",
+			MaxValue:     "-",
+			MinValue:     "-",
+		}
+
 		for paramDetailName, paramDetailValue := range values {
 			if paramDetailValue == nil {
 				continue
