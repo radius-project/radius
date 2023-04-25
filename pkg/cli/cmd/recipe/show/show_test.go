@@ -41,7 +41,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with incorrect fallback workspace",
+			Name:          "Show Command with incorrect fallback workspace",
 			Input:         []string{"-e", "my-env", "-g", "my-env", "recipeName"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -50,8 +50,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with just recipe name",
-			Input:         []string{"recipeName"},
+			Name:          "Show Command with too many positional args",
+			Input:         []string{"recipeName", "arg2"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -59,7 +59,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with fallback workspace",
+			Name:          "Show Command with fallback workspace",
 			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
