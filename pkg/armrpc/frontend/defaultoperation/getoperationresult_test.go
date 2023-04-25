@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -105,6 +106,7 @@ func TestGetOperationResultRun(t *testing.T) {
 			ctx := testutil.ARMTestContextFromRequest(req)
 
 			osDataModel.Status = tt.provisioningState
+			osDataModel.RetryAfter = time.Second * 5
 
 			mStorageClient.
 				EXPECT().
@@ -131,7 +133,7 @@ func TestGetOperationResultRun(t *testing.T) {
 				require.Equal(t, req.URL.String(), w.Header().Get("Location"))
 
 				require.NotNil(t, w.Header().Get("Retry-After"))
-				require.Equal(t, v1.DefaultRetryAfter, w.Header().Get("Retry-After"))
+				require.Equal(t, "5", w.Header().Get("Retry-After"))
 			}
 		})
 	}

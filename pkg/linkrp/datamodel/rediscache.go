@@ -72,6 +72,10 @@ func (redis *RedisCache) ResourceTypeName() string {
 	return linkrp.RedisCachesResourceType
 }
 
+func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
+	return &redis.Properties.Recipe
+}
+
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
 }

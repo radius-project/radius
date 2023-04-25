@@ -178,6 +178,22 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// SecretStoreDataType - The type of secret store data
+type SecretStoreDataType string
+
+const (
+	SecretStoreDataTypeGeneric SecretStoreDataType = "generic"
+	SecretStoreDataTypeCertificate SecretStoreDataType = "certificate"
+)
+
+// PossibleSecretStoreDataTypeValues returns the possible values for the SecretStoreDataType const type.
+func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
+	return []SecretStoreDataType{	
+		SecretStoreDataTypeGeneric,
+		SecretStoreDataTypeCertificate,
+	}
+}
+
 // VolumePermission - Container read/write access to the volume
 type VolumePermission string
 

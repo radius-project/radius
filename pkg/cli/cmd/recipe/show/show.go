@@ -147,10 +147,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		for paramDetailName, paramDetailValue := range values {
-			if paramDetailValue == nil {
-				continue
-			}
-
 			switch paramDetailName {
 			case "type":
 				paramItem.Type = paramDetailValue.(string)
@@ -172,7 +168,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if len(recipeParams) == 0 {
-		r.Output.LogInfo("(No parameters available)")
+		r.Output.LogInfo("No parameters available")
 	}
 
 	return nil

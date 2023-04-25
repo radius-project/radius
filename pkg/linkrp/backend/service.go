@@ -71,11 +71,11 @@ func (s *Service) Run(ctx context.Context) error {
 		// Register controllers
 		err = s.Controllers.Register(ctx, rt, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		err = s.Controllers.Register(ctx, rt, v1.OperationPut, backend_ctrl.NewCreateOrUpdateResource, opts)
+		err = s.Controllers.Register(ctx, rt, v1.OperationPut, backend_ctrl.NewLegacyCreateOrUpdateResource, opts)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
 	workerOpts := worker.Options{}

@@ -163,7 +163,15 @@ func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource
 		return nil, err
 	}
 
-	if err := c.StatusManager().QueueAsyncOperation(ctx, serviceCtx, asyncTimeout); err != nil {
+	options := sm.QueueOperationOptions{
+		OperationTimeout: asyncTimeout,
+		RetryAfter:       v1.DefaultRetryAfterDuration,
+	}
+	if c.resourceOptions.AsyncOperationRetryAfter != 0 {
+		options.RetryAfter = c.resourceOptions.AsyncOperationRetryAfter
+	}
+
+	if err := c.StatusManager().QueueAsyncOperation(ctx, serviceCtx, options); err != nil {
 		P(newResource).SetProvisioningState(v1.ProvisioningStateFailed)
 		_, rbErr := c.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, *etag)
 		if rbErr != nil {
@@ -201,7 +209,11 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 		respCode = http.StatusCreated
 	}
 
-	return rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion, "", ""), nil
+	response := rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion, "", "")
+	if c.resourceOptions.AsyncOperationRetryAfter != 0 {
+		response.RetryAfter = c.resourceOptions.AsyncOperationRetryAfter
+	}
+	return response, nil
 }
 
 // RequestConverter returns the request converter function for this controller.

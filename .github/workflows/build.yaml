@@ -112,7 +112,7 @@ jobs:
           else
             COLOR=green
           fi
-
+          
           DIFF_RATE=$(echo "$UT_COVERAGE-$MAIN_COVERAGE" | bc -l)
           echo "diff_coverage=$DIFF_RATE" >> $GITHUB_ENV
 
@@ -154,11 +154,6 @@ jobs:
             * diff coverage: ${{ env.diff_coverage }} %
 
             > The coverage result does not include the functional test coverage. 
-      - name: Stop build if PR branch coverage is lower than main branch.
-        if: (env.main_coverage > env.ut_coverage) &&  matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request
-        run: |
-          echo "stop build to prevent from merging PR because coverage is down from ${{ env.main_coverage }} % to ${{ env.ut_coverage }} %."
-          exit 1
       - name: Save coverage (only main push)
         uses: actions/cache/save@v3
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'

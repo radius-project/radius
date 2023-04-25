@@ -337,6 +337,5 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			return err
 		}
 	}
-
 	return nil
 }

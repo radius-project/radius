@@ -21,6 +21,9 @@ const (
 	// LogFieldResourceID represents the Radius Resource ID.
 	LogFieldResourceID string = "resourceId"
 
+	// LogFieldTargetResourceID represents the resource ID of a non-Radius resource. eg: an output resource.
+	LogFieldTargetResourceID string = "targetResourceID"
+
 	// LogFieldCorrelationID represents the X-Correlation-ID that may be present in the incoming request.
 	LogFieldCorrelationID string = "correlationId"
 

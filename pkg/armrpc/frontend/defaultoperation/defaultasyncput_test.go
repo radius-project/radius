@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -75,6 +77,11 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			ctx := testutil.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
+			// These values don't affect the test since we're using mocks. Just choosing non-default values
+			// to verify that they're being passed through.
+			var asyncOperationTimeout = 1*time.Second + 1*time.Millisecond
+			var asyncOperationRetryAfter = 2*time.Second + 2*time.Millisecond
+
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{}, tt.getErr).
 				Times(1)
@@ -85,7 +92,11 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 					Times(1)
 
 				if tt.saveErr == nil {
-					msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+					expectedOptions := statusmanager.QueueOperationOptions{
+						OperationTimeout: asyncOperationTimeout,
+						RetryAfter:       asyncOperationRetryAfter,
+					}
+					msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), expectedOptions).
 						Return(tt.qErr).
 						Times(1)
 
@@ -108,6 +119,8 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 				UpdateFilters: []ctrl.UpdateFilter[TestResourceDataModel]{
 					testValidateRequest,
 				},
+				AsyncOperationTimeout:    asyncOperationTimeout,
+				AsyncOperationRetryAfter: asyncOperationRetryAfter,
 			}
 
 			ctl, err := NewDefaultAsyncPut(opts, resourceOpts)
@@ -130,6 +143,10 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 				azureAsyncOpHeader := getAsyncLocationPath(sCtx, reqDataModel.TrackedResource.Location, "operationStatuses", req)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
+
+				expectedRetryAfterHeader := "2"
+				require.NotNil(t, w.Header().Get("Retry-After"))
+				require.Equal(t, expectedRetryAfterHeader, w.Header().Get("Retry-After"))
 			}
 		})
 	}

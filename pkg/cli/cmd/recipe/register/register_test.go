@@ -51,8 +51,8 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command with fallback workspace",
-			Input:         []string{"test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
-			ExpectedValid: false,
+			Input:         []string{"-e", "myenvironment", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         radcli.LoadEmptyConfig(t),

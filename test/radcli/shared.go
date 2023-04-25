@@ -68,6 +68,7 @@ func SharedCommandValidation(t *testing.T, factory func(framework framework.Fact
 }
 
 func SharedValidateValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner), testcases []ValidateInput) {
+	t.Helper()
 	for _, testcase := range testcases {
 		t.Run(testcase.Name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)

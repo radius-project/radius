@@ -8,96 +8,124 @@ package controller
 import (
 	"context"
 	"errors"
-	"net/http"
+	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/engine"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateResource)(nil)
-
 // CreateOrUpdateResource is the async operation controller to create or update Applications.Link resources.
-type CreateOrUpdateResource struct {
+type CreateOrUpdateResource[P interface {
+	*T
+	rpv1.RadiusResourceModel
+}, T any] struct {
 	ctrl.BaseController
+	processor processors.ResourceProcessor[P, T]
+	engine       engine.Engine
+	client    processors.ResourceClient
 }
 
 // NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
-func NewCreateOrUpdateResource(opts ctrl.Options) (ctrl.Controller, error) {
-	return &CreateOrUpdateResource{ctrl.NewBaseAsyncController(opts)}, nil
+//
+// The processor function will be called to process updates to the resource.
+func NewCreateOrUpdateResource[P interface {
+	*T
+	rpv1.RadiusResourceModel
+}, T any](processor processors.ResourceProcessor[P, T], eng engine.Engine, client processors.ResourceClient, opts ctrl.Options) (ctrl.Controller, error) {
+	return &CreateOrUpdateResource[P, T]{ctrl.NewBaseAsyncController(opts), processor, eng, client}, nil
 }
 
-func (c *CreateOrUpdateResource) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
+func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
-		return ctrl.Result{}, err
-	}
-
-	isNewResource := false
 	if errors.Is(&store.ErrNotFound{}, err) {
-		isNewResource = true
-	}
-
-	opType, _ := v1.ParseOperationType(req.OperationType)
-	if opType.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
+		return ctrl.Result{}, err
+	} else if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
-	id, err := resources.Parse(req.ResourceID)
+	data := P(new(T))
+	if err = obj.As(data); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Clone existing output resources so we can diff them later.
+	previousOutputResources := c.copyOutputResources(data)
+
+	// Now we're ready to process recipes (if needed).
+	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	dataModel, err := getDataModel(id)
+	// Now we're ready to process the resource. This will handle the updates to any user-visible state.
+	err = c.processor.Process(ctx, data, recipeOutput)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err = obj.As(dataModel); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
-	if !ok {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), err
-	}
-
-	rendererOutput, err := c.LinkDeploymentProcessor().Render(ctx, id, dataModel)
+	// Now we need to clean up any obsolete output resources.
+	diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
+	err = c.garbageCollectResources(ctx, req.ResourceID, diff)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	deploymentOutput, err := c.LinkDeploymentProcessor().Deploy(ctx, id, rendererOutput)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	oldOutputResources := deploymentDataModel.OutputResources()
-	err = deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if !isNewResource {
-		diff := rpv1.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
-		err = c.LinkDeploymentProcessor().Delete(ctx, id, diff)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	nr := &store.Object{
+	update := &store.Object{
 		Metadata: store.Metadata{
 			ID: req.ResourceID,
 		},
-		Data: deploymentDataModel,
+		Data: data,
 	}
-	err = c.StorageClient().Save(ctx, nr, store.WithETag(obj.ETag))
+	err = c.StorageClient().Save(ctx, update, store.WithETag(obj.ETag))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, err
+}
+
+func (c *CreateOrUpdateResource[P, T]) copyOutputResources(data P) []rpv1.OutputResource {
+	previousOutputResources := make([]rpv1.OutputResource, len(data.OutputResources()))
+	copy(previousOutputResources, data.OutputResources())
+	return previousOutputResources
+}
+
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P) (*recipes.RecipeOutput, error) {
+	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
+	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
+	if !supportsRecipes {
+		return nil, nil
+	}
+
+	input := recipeDataModel.Recipe()
+	request := recipes.Metadata{
+		Name:          input.Name,
+		Parameters:    input.Parameters,
+		EnvironmentID: data.ResourceMetadata().Environment,
+		ApplicationID: data.ResourceMetadata().Application,
+		ResourceID:    data.GetBaseResource().ID,
+	}
+
+	return c.engine.Execute(ctx, request)
+}
+
+func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Context, id string, diff []rpv1.OutputResource) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	for _, resource := range diff {
+		id := resource.Identity.GetID()
+		logger.Info(fmt.Sprintf("Deleting output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+		err := c.client.Delete(ctx, id)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+	}
+
+	return nil
 }

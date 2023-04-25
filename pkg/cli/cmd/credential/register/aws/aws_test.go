@@ -50,7 +50,7 @@ func Test_Validate(t *testing.T) {
 				"--access-key-id", testAccessKeyId,
 				"--secret-access-key", testSecretAccessKey,
 			},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
 		},
 		{
