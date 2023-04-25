@@ -22,6 +22,7 @@ import (
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,11 +31,6 @@ import (
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateSecretStore)(nil)
-
-const (
-	envNamespaceQuery = "properties.compute.kubernetes.namespace"
-	appNamespaceQuery = "properties.status.compute.kubernetes.namespace"
-)
 
 // CreateOrUpdateSecretStore is the controller implementation to create or update application resource.
 type CreateOrUpdateSecretStore struct {
@@ -55,13 +51,10 @@ func NewCreateOrUpdateSecretStore(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (a *CreateOrUpdateSecretStore) getNamespace(ctx context.Context, newResource *datamodel.SecretStore) (string, error) {
-	if newResource.Properties.Application != "" {
-		res, err := a.StorageClient().Get(ctx, newResource.Properties.Application)
+	newProp := newResource.Properties
+	if newProp.Application != "" {
+		app, err := store.GetResource[datamodel.Application](ctx, a.StorageClient(), newProp.Application)
 		if err != nil {
-			return "", err
-		}
-		app := &datamodel.Application{}
-		if err := res.As(app); err != nil {
 			return "", err
 		}
 		compute := app.Properties.Status.Compute
@@ -70,13 +63,9 @@ func (a *CreateOrUpdateSecretStore) getNamespace(ctx context.Context, newResourc
 		}
 	}
 
-	if newResource.Properties.Environment != "" {
-		res, err := a.StorageClient().Get(ctx, newResource.Properties.Environment)
+	if newProp.Environment != "" {
+		env, err := store.GetResource[datamodel.Environment](ctx, a.StorageClient(), newProp.Environment)
 		if err != nil {
-			return "", err
-		}
-		env := &datamodel.Environment{}
-		if err := res.As(env); err != nil {
 			return "", err
 		}
 		namespace := env.Properties.Compute.KubernetesCompute.Namespace
@@ -119,13 +108,12 @@ func (a *CreateOrUpdateSecretStore) referenceExistingSecret(ctx context.Context,
 		}
 
 		for k, s := range newResource.Properties.Data {
-			_, sOK := secret.StringData[k]
-			_, bOK := secret.Data[k]
-			if !sOK && !bOK {
+			if _, ok := secret.Data[k]; !ok {
 				return rest.NewBadRequestResponse(fmt.Sprintf("referenced secret %s in namespace %s does not contain key %s", secretName, namespace, k)), nil
 			}
 			s.ValueFrom.Name = k
 		}
+
 		return nil, nil
 	}
 
