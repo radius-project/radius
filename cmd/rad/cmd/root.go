@@ -29,6 +29,7 @@ import (
 	app_list "github.com/project-radius/radius/pkg/cli/cmd/app/list"
 	app_show "github.com/project-radius/radius/pkg/cli/cmd/app/show"
 	app_status "github.com/project-radius/radius/pkg/cli/cmd/app/status"
+	bicep_publish "github.com/project-radius/radius/pkg/cli/cmd/bicep/publish"
 	credential "github.com/project-radius/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
@@ -263,6 +264,9 @@ func initSubCommands() {
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
 	envCmd.AddCommand(envSwitchCmd)
+
+	bicepPublishCmd, _ := bicep_publish.NewCommand(framework)
+	bicepCmd.AddCommand(bicepPublishCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
