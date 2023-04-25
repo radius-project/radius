@@ -23,9 +23,9 @@ func TestGetDownloadURI(t *testing.T) {
 
 	switch runtime.GOOS {
 	case "darwin":
-		want = fmt.Sprint(version.Channel(), "/macos-x64/test-bin")
+		want = fmt.Sprintf("%s/%s-%s/test-bin", version.Channel(), "macos", runtime.GOARCH)
 	case "linux", "windows":
-		want = fmt.Sprintf("%s/%s-x64/test-bin", version.Channel(), runtime.GOOS)
+		want = fmt.Sprintf("%s/%s-%s/test-bin", version.Channel(), runtime.GOOS, runtime.GOARCH)
 	default:
 		wantErr = true
 	}
