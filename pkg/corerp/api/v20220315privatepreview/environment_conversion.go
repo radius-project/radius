@@ -50,18 +50,16 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	if src.Properties.Recipes != nil {
 		recipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipe := range src.Properties.Recipes {
-			if recipe != nil {
-				for recipeName, recipeDetails := range recipe {
-					if recipeDetails != nil {
-						recipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{
-							recipeName: datamodel.EnvironmentRecipeProperties{
-								TemplatePath: to.String(recipeDetails.TemplatePath),
-								Parameters:   recipeDetails.Parameters,
-							},
-						}
+			recipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
+			for recipeName, recipeDetails := range recipe {
+				if recipeDetails != nil {
+					recipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
+						TemplatePath: to.String(recipeDetails.TemplatePath),
+						Parameters:   recipeDetails.Parameters,
 					}
 				}
 			}
+
 		}
 		converted.Properties.Recipes = recipes
 	}
@@ -116,12 +114,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	if env.Properties.Recipes != nil {
 		recipes := make(map[string]map[string]*EnvironmentRecipeProperties)
 		for resourceType, recipe := range env.Properties.Recipes {
+			recipes[resourceType] = map[string]*EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipe {
-				recipes[resourceType] = map[string]*EnvironmentRecipeProperties{
-					recipeName: &EnvironmentRecipeProperties{
-						TemplatePath: to.Ptr(recipeDetails.TemplatePath),
-						Parameters:   recipeDetails.Parameters,
-					},
+				recipes[resourceType][recipeName] = &EnvironmentRecipeProperties{
+					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
+					Parameters:   recipeDetails.Parameters,
 				}
 			}
 		}

@@ -21,13 +21,15 @@
             }
         },
         "recipes": {
-            "mongo-azure": {
-                "linkType": "Applications.Link/mongoDatabases",
-                "templatePath": "radiusdev.azurecr.io/mongo:1.0"
+            "Applications.Link/mongoDatabases":{
+                "mongo-azure": {
+                    "templatePath": "radiusdev.azurecr.io/mongo:1.0"
+                }
             },
-            "redis-kubernetes": {
-                "linkType": "Applications.Link/redisCaches",
-                "templatePath": "radiusdev.azurecr.io/recipes/rediscaches/kubernetes:1.0"
+            "Applications.Link/redisCaches":{
+                "redis-kubernetes": {                 
+                    "templatePath": "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"
+                }
             }
         },
         "useDevRecipes": false,

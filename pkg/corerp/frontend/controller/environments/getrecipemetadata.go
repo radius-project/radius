@@ -42,6 +42,13 @@ func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	resource, _, err := r.GetResource(ctx, serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+	if resource == nil {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+	}
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
@@ -50,27 +57,22 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 	if err != nil {
 		return nil, err
 	}
-	resource, _, err := r.GetResource(ctx, serviceCtx.ResourceID)
-	if err != nil {
-		return nil, err
-	}
-
-	if resource == nil {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
-	}
-
+	var recipeProperties datamodel.EnvironmentRecipeProperties
 	recipe, exists := resource.Properties.Recipes[reqObj.LinkType]
+	if exists {
+		recipeProperties, exists = recipe[reqObj.RecipeName]
+	}
 	if !exists {
 		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Recipe with name %q not found on environment with id %q", reqObj.RecipeName, serviceCtx.ResourceID)), nil
 	}
 
-	recipeParams, err := getRecipeMetadataFromRegistry(ctx, recipe[reqObj.RecipeName].TemplatePath, reqObj.RecipeName)
+	recipeParams, err := getRecipeMetadataFromRegistry(ctx, recipeProperties.TemplatePath, reqObj.RecipeName)
 	if err != nil {
 		return nil, err
 	}
 
 	ret := datamodel.EnvironmentRecipeProperties{
-		TemplatePath: recipe[reqObj.RecipeName].TemplatePath,
+		TemplatePath: recipeProperties.TemplatePath,
 		Parameters:   recipeParams,
 	}
 

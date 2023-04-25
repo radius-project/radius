@@ -8,11 +8,12 @@
         },
         "useDevRecipes": false,
         "recipes": {
-            "mongo-azure": {
-                "linkType": "Applications.Link/mongoDatabases",
-                "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
-                "parameters": {
-                    "throughput": 400
+            "Applications.Link/mongoDatabases":{
+                "mongo-azure": {
+                    "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+                    "parameters": {
+                        "throughput": 400
+                    }
                 }
             }
         },

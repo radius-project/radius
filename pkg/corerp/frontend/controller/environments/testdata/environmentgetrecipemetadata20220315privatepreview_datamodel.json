@@ -22,13 +22,15 @@
         },
         "useDevRecipes": false,
         "recipes": {
-            "mongo-parameters": {
-              "linkType": "Applications.Link/mongoDatabases",
-              "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+            "Applications.Link/mongoDatabases":{
+                "mongo-parameters": {                    
+                    "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+                  }
             },
-            "redis": {
-              "linkType": "Applications.Link/redisCache",
-              "templatePath": "radiusdev.azurecr.io/redis:1.0"
+            "Applications.Link/redisCache":{
+                "redis": {
+                    "templatePath": "radiusdev.azurecr.io/redis:1.0"
+                  }
             }
         },
         "providers": {

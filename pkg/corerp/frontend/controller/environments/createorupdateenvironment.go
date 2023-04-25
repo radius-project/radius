@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -70,26 +69,26 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		if err != nil {
 			return nil, err
 		}
-		if newResource.Properties.Recipes != nil {
+		newResourceRecipes := newResource.Properties.Recipes
+		if newResourceRecipes != nil {
 			errorPrefix := "recipe name(s) reserved for devRecipes for: "
 			var errorRecipes string
-			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
-			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
-			// for k, v := range newResource.Properties.Recipes {
-			// 	if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
-			// 		if errorRecipes != "" {
-			// 			errorRecipes += ", "
-			// 		}
-			// 		errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
-			// 	}
-			// }
-			for resourceType, recipe := range newResource.Properties.Recipes {
-				for recipeName, recipeDetails := range recipe {
-					if val, ok := devRecipes[resourceType][recipeName]; ok && val.TemplatePath != recipeDetails.TemplatePath {
-						if errorRecipes != "" {
-							errorRecipes += ", "
+
+			for resourceType, recipe := range devRecipes {
+				if devRecipes[resourceType] != nil {
+					for recipeName, recipeDetails := range recipe {
+						if newResourceRecipes[resourceType] != nil {
+							if val, ok := newResourceRecipes[resourceType][recipeName]; ok && val.TemplatePath != recipeDetails.TemplatePath {
+								if errorRecipes != "" {
+									errorRecipes += ", "
+								}
+								errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", recipeName, resourceType, val.TemplatePath)
+							} else {
+								newResourceRecipes[resourceType][recipeName] = recipeDetails
+							}
+						} else {
+							newResourceRecipes[resourceType] = recipe
 						}
-						errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", recipeName, resourceType, recipeDetails.TemplatePath)
 					}
 				}
 			}
@@ -97,9 +96,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 				return nil, fmt.Errorf(errorPrefix + errorRecipes)
 			}
 		} else {
-			newResource.Properties.Recipes = map[string]map[string]datamodel.EnvironmentRecipeProperties{}
+			newResource.Properties.Recipes = devRecipes
 		}
-		maps.Copy(newResource.Properties.Recipes, devRecipes)
 	}
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
@@ -127,8 +125,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	if err != nil {
 		return nil, err
 	}
-
-	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
+	z, err := e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
+	return z, err
 }
 
 var getDevRecipes = func(ctx context.Context) (map[string]map[string]datamodel.EnvironmentRecipeProperties, error) {

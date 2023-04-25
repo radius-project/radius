@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,16 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Valid Show Command",
+			Name:          "ValidShow Command",
+			Input:         []string{"--name", "recipeName", "--link-type", "link-type"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command with no arguments.",
 			Input:         []string{},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -39,7 +49,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with incorrect fallback workspace",
+			Name:          "Show Command with incorrect fallback workspace",
 			Input:         []string{"-e", "my-env", "-g", "my-env", "--name", "recipeName"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -48,7 +58,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with just recipe name",
+			Name:          "Show Command with just recipe name",
 			Input:         []string{"recipeName"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -57,8 +67,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with fallback workspace",
-			Input:         []string{"-e", "my-env", "-w", "test-workspace", "--name", "recipeName"},
+			Name:          "Show Command with fallback workspace",
+			Input:         []string{"-e", "my-env", "-w", "test-workspace", "--name", "recipeName", "--link-type", "link-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -66,8 +76,17 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with fallback workspace and name without flag",
+			Name:          "Show Command with fallback workspace and name without flag",
 			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command without LinkType",
+			Input:         []string{"--name", "recipeName"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -109,6 +128,7 @@ func Test_Run(t *testing.T) {
 				Workspace:         &workspaces.Workspace{},
 				Format:            "table",
 				RecipeName:        "cosmosDB",
+				LinkType:          linkrp.MongoDatabasesResourceType,
 			}
 
 			err := runner.Run(context.Background())

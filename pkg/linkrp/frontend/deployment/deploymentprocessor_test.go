@@ -1388,9 +1388,9 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 
-		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName, "Applications.Link/MongoDatabases")
+		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName, "Applications.Link/mongoDatabases")
 		require.NoError(t, err)
-		require.Equal(t, "Applications.Link/MongoDatabases", envMetadata.RecipeLinkType)
+		require.Equal(t, "Applications.Link/mongoDatabases", envMetadata.RecipeLinkType)
 		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", envMetadata.RecipeTemplatePath)
 
 	})

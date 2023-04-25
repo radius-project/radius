@@ -59,7 +59,7 @@ func GetNamespace(envResource corerp.EnvironmentResource) string {
 	return ""
 }
 
-func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagementClient, environmentName string, recipeName string) (corerp.EnvironmentResource, map[string]map[string]*corerp.EnvironmentRecipeProperties, error) {
+func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagementClient, environmentName string, recipeName string, linktype string) (corerp.EnvironmentResource, map[string]map[string]*corerp.EnvironmentRecipeProperties, error) {
 	envResource, err := client.GetEnvDetails(ctx, environmentName)
 	if err != nil {
 		return corerp.EnvironmentResource{}, nil, err
@@ -67,7 +67,7 @@ func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagem
 
 	recipeProperties := envResource.Properties.Recipes
 
-	if recipeProperties[recipeName] == nil {
+	if recipeProperties[linktype] == nil || recipeProperties[linktype][recipeName] == nil {
 		return corerp.EnvironmentResource{}, nil, &cli.FriendlyError{Message: fmt.Sprintf("recipe %q is not part of the environment %q ", recipeName, environmentName)}
 	}
 

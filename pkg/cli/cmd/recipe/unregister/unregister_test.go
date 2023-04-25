@@ -33,7 +33,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Unregister Command",
-			Input:         []string{"--name", "test_recipe"},
+			Input:         []string{"--name", "test_recipe", "--link-type", "link-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -42,7 +42,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with fallback workspace",
-			Input:         []string{"--name", "test_recipe"},
+			Input:         []string{"--name", "test_recipe", "--link-type", "link-type"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -60,7 +60,16 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with too many args",
-			Input:         []string{"--name", "foo", "bar", "foo1"},
+			Input:         []string{"--name", "foo", "--link-type", "link-type", "bar", "foo1"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Unregister Command without link type",
+			Input:         []string{"--name", "foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -113,6 +122,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
+				LinkType:          "Applications.Link/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -155,6 +165,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
+				LinkType:          "Applications.Link/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -192,6 +203,45 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB1",
+				LinkType:          "Applications.Link/mongoDatabases",
+			}
+
+			err := runner.Run(context.Background())
+			require.Error(t, err)
+		})
+		t.Run("Unregister recipe with linkType doesn't exist in the environment", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     to.Ptr("kind-kind"),
+				Type:     to.Ptr("applications.core/environments"),
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseDevRecipes: to.Ptr(true),
+					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+						linkrp.RedisCachesResourceType: {
+							"cosmosDB": {
+								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							},
+						},
+					},
+				},
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+				RecipeName:        "cosmosDB",
+				LinkType:          "Applications.Link/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -222,6 +272,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
+				LinkType:          "Applications.Link/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())

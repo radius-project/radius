@@ -106,7 +106,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	envResource, recipeProperties, err := cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName)
+	envResource, recipeProperties, err := cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName, r.LinkType)
 	if err != nil {
 		return err
 	}
