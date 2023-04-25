@@ -17,24 +17,14 @@ import (
 )
 
 func TestGetDownloadURI(t *testing.T) {
-	got, gotErr := GetDownloadURI("%s/%s/%s", "test-bin")
-	var want string
-	var wantErr bool
+	got, err := GetDownloadURI("%s/%s/%s", "test-bin")
+	require.NoError(t, err)
 
-	switch runtime.GOOS {
-	case "darwin":
-		want = fmt.Sprint(version.Channel(), "/macos-x64/test-bin")
-	case "linux", "windows":
-		want = fmt.Sprintf("%s/%s-x64/test-bin", version.Channel(), runtime.GOOS)
-	default:
-		wantErr = true
-	}
+	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
+	require.NoError(t, err, "GetValidPlatform() error = %v", err)
+	want := fmt.Sprintf("%s/%s/test-bin", version.Channel(), platform)
 
-	if wantErr {
-		wantErr := fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
-		require.ErrorIs(t, wantErr, gotErr, "GetDownloadURI() error = %v, wantErr %v", gotErr, wantErr)
-	}
-	require.Equal(t, want, got, "GetDownloadURI() got = %v, wantErr %v", got, want)
+	require.Equal(t, want, got, "GetDownloadURI() got = %v, want %v", got, want)
 }
 
 func TestGetValidPlatform(t *testing.T) {
