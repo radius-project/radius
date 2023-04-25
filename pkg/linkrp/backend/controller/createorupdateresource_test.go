@@ -321,12 +321,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 			if tt.getErr == nil && !tt.conversionFailure && tt.recipeErr == nil && tt.processorErr == nil && tt.resourceClientErr != nil {
 				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID).
+					Delete(gomock.Any(), oldOutputResourceResourceID, resourcemodel.APIVersionUnknown).
 					Return(tt.resourceClientErr).
 					Times(1)
 			} else if tt.getErr == nil && !tt.conversionFailure && tt.recipeErr == nil && tt.processorErr == nil {
 				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID).
+					Delete(gomock.Any(), oldOutputResourceResourceID, resourcemodel.APIVersionUnknown).
 					Return(nil).
 					Times(1)
 			}

@@ -62,16 +62,6 @@ func NewValidator(connectionValues *map[string]any, connectionSecrets *map[strin
 	}
 }
 
-// ValidationError represents a user-facing validation message.
-type ValidationError struct {
-	Message string
-}
-
-// Error gets the string representation of the error.
-func (e *ValidationError) Error() string {
-	return e.Message
-}
-
 // AddResourceField registers a field containing a resource ID with the validator.
 func (v *Validator) AddResourceField(ref *string) {
 	v.resourceField = ref

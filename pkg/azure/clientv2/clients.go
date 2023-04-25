@@ -78,8 +78,21 @@ func NewSubscriptionsClient(options *Options) (*armsubscriptions.Client, error) 
 }
 
 // NewGenericResourceClient creates a new generic client to handle resources.
-func NewGenericResourceClient(subscriptionID string, options *Options) (*armresources.Client, error) {
-	return armresources.NewClient(subscriptionID, options.Cred, defaultClientOptions)
+func NewGenericResourceClient(subscriptionID string, options *Options, clientOptions *arm.ClientOptions) (*armresources.Client, error) {
+	// Allow setting client options for testing.
+	if clientOptions == nil {
+		clientOptions = defaultClientOptions
+	}
+	return armresources.NewClient(subscriptionID, options.Cred, clientOptions)
+}
+
+// NewProvidersClient creates a new client that can be used to look up resource providers and API versions.
+func NewProvidersClient(subcriptionID string, options *Options, clientOptions *arm.ClientOptions) (*armresources.ProvidersClient, error) {
+	// Allow setting client options for testing.
+	if clientOptions == nil {
+		clientOptions = defaultClientOptions
+	}
+	return armresources.NewProvidersClient(subcriptionID, options.Cred, clientOptions)
 }
 
 // NewAccountsClient creates a new accounts client to handle storage accounts.
