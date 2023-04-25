@@ -208,14 +208,23 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 	appNamespace := "default-corerp-resources-gateway-tlstermination"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		// Deploy the Kubernetes namespace
 		{
 			Executor:                               step.NewDeployExecutor(fmt.Sprintf(template, 1)),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
 		},
+		// Deploy the Kubernetes TLS secret
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 2), functional.GetMagpieImage()),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(template, 2)),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+		// Deploy everything else
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 3), functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
