@@ -60,7 +60,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						},
 					},
 					Recipes: map[string]map[string]datamodel.EnvironmentRecipeProperties{
-						linkrp.MongoDatabasesResourceType: map[string]datamodel.EnvironmentRecipeProperties{
+						linkrp.MongoDatabasesResourceType: {
 							"cosmos-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 							},
@@ -103,7 +103,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						},
 					},
 					Recipes: map[string]map[string]datamodel.EnvironmentRecipeProperties{
-						linkrp.MongoDatabasesResourceType: map[string]datamodel.EnvironmentRecipeProperties{
+						linkrp.MongoDatabasesResourceType: {
 							"cosmos-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
 								Parameters: map[string]any{
@@ -147,7 +147,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						},
 					},
 					Recipes: map[string]map[string]datamodel.EnvironmentRecipeProperties{
-						linkrp.MongoDatabasesResourceType: map[string]datamodel.EnvironmentRecipeProperties{
+						linkrp.MongoDatabasesResourceType: {
 							"cosmos-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 							},
@@ -188,7 +188,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						},
 					},
 					Recipes: map[string]map[string]datamodel.EnvironmentRecipeProperties{
-						linkrp.MongoDatabasesResourceType: map[string]datamodel.EnvironmentRecipeProperties{
+						linkrp.MongoDatabasesResourceType: {
 							"cosmos-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 							},
@@ -206,6 +206,10 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-invalid-namespace.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+		},
+		{
+			filename: "environmentresource-invalid-linktype.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid link type: \"Applications.Link/pubsub\""},
 		},
 	}
 

@@ -125,8 +125,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	if err != nil {
 		return nil, err
 	}
-	z, err := e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
-	return z, err
+
+	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
 var getDevRecipes = func(ctx context.Context) (map[string]map[string]datamodel.EnvironmentRecipeProperties, error) {

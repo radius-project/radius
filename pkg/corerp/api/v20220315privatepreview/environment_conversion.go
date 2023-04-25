@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -50,6 +52,9 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	if src.Properties.Recipes != nil {
 		recipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipe := range src.Properties.Recipes {
+			if !isValidLinkType(resourceType) {
+				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid link type: %q", resourceType))
+			}
 			recipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipe {
 				if recipeDetails != nil {
