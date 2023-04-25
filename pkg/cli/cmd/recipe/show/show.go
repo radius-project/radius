@@ -8,6 +8,7 @@ package show
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -161,6 +162,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		recipeParams = append(recipeParams, paramItem)
 	}
+
+	// Sort parameters so that results are deterministic.
+	sort.Slice(recipeParams, func(i, j int) bool {
+		return recipeParams[i].Name > recipeParams[j].Name
+	})
 
 	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormat())
 	if err != nil {
