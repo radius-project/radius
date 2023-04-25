@@ -26,6 +26,7 @@ import (
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateway"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
+	secret_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/secretstores"
 	vol_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/volumes"
 )
 
@@ -76,6 +77,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	// Adds volume resource type routes
 	volRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/volumes").Subrouter()
 	volResourceRouter := volRTSubrouter.Path("/{volumeName}").Subrouter()
+
+	// Adds volume resource type routes
+	secretRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/secretstores").Subrouter()
+	secretResourceRouter := secretRTSubrouter.Path("/{secretStoreName}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.
@@ -371,6 +376,49 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					},
 				)
 			},
+		},
+		// Secret Store resource handler registration.
+		{
+			ParentRouter: secretRTSubrouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter:   secretResourceRouter,
+			ResourceType:   secret_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: secret_ctrl.NewCreateOrUpdateSecretStore,
+		},
+		{
+			ParentRouter:   secretResourceRouter,
+			ResourceType:   secret_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: secret_ctrl.NewCreateOrUpdateSecretStore,
+		},
+		{
+			ParentRouter:   secretResourceRouter,
+			ResourceType:   secret_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: secret_ctrl.NewDeleteSecretStore,
 		},
 	}
 	for _, h := range handlerOptions {
