@@ -5,13 +5,13 @@
 
 param (
     [string]$Version,
-    [string]$RadiusRoot = "c:\radius"
+    [string]$RadiusRoot = "$env:LOCALAPPDATA\radius"
 )
 
 Write-Output ""
 $ErrorActionPreference = 'stop'
 
-#Escape space of RadiusRoot path
+# Escape space of RadiusRoot path
 $RadiusRoot = $RadiusRoot -replace ' ', '` '
 
 # Constants
@@ -95,7 +95,7 @@ $UserPathEnvironmentVar = (Get-Item -Path HKCU:\Environment).GetValue(
 Write-Output "Adding $RadiusRoot to User Path..."  
 if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
     # [Environment]::SetEnvironmentVariable sets the value kind as REG_SZ, use the function below to set a value of kind REG_EXPAND_SZ
-    Set-ItemProperty HKCU:\Environment "PATH" "$UserPathEnvironmentVar$RadiusRoot" -Type ExpandString
+    Set-ItemProperty HKCU:\Environment "PATH" "$UserPathEnvironmentVar;$RadiusRoot" -Type ExpandString
     # Also add the path to the current session
     $env:PATH += ";$RadiusRoot"
 }

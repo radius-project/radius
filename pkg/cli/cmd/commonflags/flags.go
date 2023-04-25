@@ -61,10 +61,6 @@ func AddParameterFlag(cmd *cobra.Command) {
 	cmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 }
 
-func AddRecipeFlag(cmd *cobra.Command) {
-	cmd.Flags().String("name", "", "The recipe name")
-}
-
 func AddLinkTypeFlag(cmd *cobra.Command) {
 	cmd.Flags().String("link-type", "", "Specify the type of the link this recipe can be consumed by")
 }

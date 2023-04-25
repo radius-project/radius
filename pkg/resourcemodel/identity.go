@@ -133,6 +133,10 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 
 // GetID constructs a UCP resource ID from the ResourceIdentity.
 func (r ResourceIdentity) GetID() string {
+	if r.ResourceType == nil {
+		return "" // For a default-initialized identity we can't do anything smart.
+	}
+
 	switch r.ResourceType.Provider {
 	case ProviderAzure:
 		id, _, _ := r.RequireARM()
@@ -291,6 +295,11 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 
 	r.ResourceType = data.ResourceType
 
+	// Make sure not to crash for a default-initialized identity.
+	if r.ResourceType == nil {
+		return nil
+	}
+
 	switch r.ResourceType.Provider {
 	case ProviderAzure:
 		identity := ARMIdentity{}
@@ -341,6 +350,11 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 	}
 
 	r.ResourceType = data.ResourceType
+
+	// Make sure not to crash for a default-initialized identity.
+	if r.ResourceType == nil {
+		return nil
+	}
 
 	switch r.ResourceType.Provider {
 	case ProviderAzure:

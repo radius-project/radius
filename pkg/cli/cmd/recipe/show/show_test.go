@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -31,8 +32,8 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "ValidShow Command",
-			Input:         []string{"--name", "recipeName", "--link-type", "link-type"},
+			Name:          "Valid Show Command",
+			Input:         []string{"recipeName", "--link-type", "link-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -40,17 +41,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Show Command with no arguments.",
-			Input:         []string{},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
-		{
 			Name:          "Show Command with incorrect fallback workspace",
-			Input:         []string{"-e", "my-env", "-g", "my-env", "--name", "recipeName"},
+			Input:         []string{"-e", "my-env", "-g", "my-env", "recipeName", "--link-type", "link-type"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -58,8 +50,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Show Command with just recipe name",
-			Input:         []string{"recipeName"},
+			Name:          "Show Command with too many positional args",
+			Input:         []string{"recipeName", "arg2", "--link-type", "link-type"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -68,7 +60,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with fallback workspace",
-			Input:         []string{"-e", "my-env", "-w", "test-workspace", "--name", "recipeName", "--link-type", "link-type"},
+			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName", "--link-type", "link-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -76,17 +68,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Show Command with fallback workspace and name without flag",
-			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
-		{
 			Name:          "Show Command without LinkType",
-			Input:         []string{"--name", "recipeName"},
+			Input:         []string{"recipeName"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -102,23 +85,44 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			envRecipes := v20220315privatepreview.EnvironmentRecipeProperties{
+			envRecipe := v20220315privatepreview.EnvironmentRecipeProperties{
 				TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				Parameters: map[string]any{
 					"throughput": map[string]any{
-						"type": "float64",
-						"max":  float64(800),
+						"type":     "float64",
+						"maxValue": float64(800),
 					},
 					"sku": map[string]any{
 						"type": "string",
 					},
 				},
 			}
+			recipe := Recipe{
+				Name:         "cosmosDB",
+				LinkType:     linkrp.MongoDatabasesResourceType,
+				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			}
+			recipeParams := []RecipeParameter{
+				{
+					Name:         "throughput",
+					Type:         "float64",
+					MaxValue:     "800",
+					MinValue:     "-",
+					DefaultValue: "-",
+				},
+				{
+					Name:         "sku",
+					Type:         "string",
+					MaxValue:     "-",
+					MinValue:     "-",
+					DefaultValue: "-",
+				},
+			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(envRecipes, nil).Times(1)
+				Return(envRecipe, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -133,52 +137,24 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-			output := outputSink.Writes[0].(output.FormattedOutput)
-			skuType := false
-			throughputType := false
-			throughputMax := false
-			outputParams := output.Obj.([]EnvironmentRecipe)
-			require.Equal(t, 3, len(outputParams))
-			for i, envRecipeObj := range output.Obj.([]EnvironmentRecipe) {
-				if i == 0 {
-					require.Equal(t, "cosmosDB", envRecipeObj.RecipeName)
-					require.Equal(t, "Applications.Link/mongoDatabases", envRecipeObj.LinkType)
-					require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", envRecipeObj.TemplatePath)
-				} else {
-					require.Equal(t, "", envRecipeObj.RecipeName)
-					require.Equal(t, "", envRecipeObj.LinkType)
-					require.Equal(t, "", envRecipeObj.TemplatePath)
-				}
-				if envRecipeObj.ParameterName == "sku" && envRecipeObj.ParameterDetailName == "type" {
-					require.Equal(t, "string", envRecipeObj.ParameterDetailValue)
-					skuType = true
-				}
 
-				if envRecipeObj.ParameterName == "throughput" {
-					if envRecipeObj.ParameterDetailName == "type" {
-						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
-						throughputType = true
-					}
-					if envRecipeObj.ParameterDetailName == "max" {
-						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
-						throughputMax = true
-					}
-				}
-
-				if envRecipeObj.ParameterName == "" {
-					if envRecipeObj.ParameterDetailName == "type" && !throughputType {
-						require.Equal(t, "float64", envRecipeObj.ParameterDetailValue)
-						throughputType = true
-					}
-					if envRecipeObj.ParameterDetailName == "max" && !throughputMax {
-						require.Equal(t, float64(800), envRecipeObj.ParameterDetailValue)
-						throughputMax = true
-					}
-				}
+			expected := []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     recipe,
+					Options: objectformats.GetRecipeTableFormat(),
+				},
+				output.LogOutput{
+					Format: "",
+				},
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     recipeParams,
+					Options: objectformats.GetRecipeParamsTableFormat(),
+				},
 			}
-			require.True(t, skuType)
-			require.True(t, throughputType)
-			require.True(t, throughputMax)
+			require.Equal(t, expected, outputSink.Writes)
+
 		})
 	})
 }

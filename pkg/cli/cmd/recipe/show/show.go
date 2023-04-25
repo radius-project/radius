@@ -8,7 +8,6 @@ package show
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -26,7 +25,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "show --name [recipe-name] --link-type [link-type]",
+		Use:   "show [recipe-name]",
 		Short: "Show recipe details",
 		Long: `Show recipe details
 
@@ -37,24 +36,22 @@ By default, the command is scoped to the resource group and environment defined 
 By default, the command outputs a human-readable table. You can customize the output format with the output flag.`,
 		Example: `
 # show the details of a recipe
-rad recipe show --name redis-prod
+rad recipe show redis-prod
 
 # show the details of a recipe, with a JSON output
-rad recipe show --name redis-prod --output json
+rad recipe show redis-prod --output json
 	
 # show the details of a recipe, with a specified environment and group
-rad recipe show --name redis-dev --group dev --environment dev`,
+rad recipe show redis-dev --group dev --environment dev`,
 		RunE: framework.RunCommand(runner),
-		Args: cobra.ExactArgs(0),
+		Args: cobra.ExactArgs(1),
 	}
 
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	commonflags.AddRecipeFlag(cmd)
 	commonflags.AddLinkTypeFlag(cmd)
-	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("link-type")
 
 	return cmd, runner
@@ -99,7 +96,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environment
 
-	recipeName, err := cli.RequireRecipeName(cmd)
+	recipeName, err := cli.RequireRecipeNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -134,66 +131,69 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	var recipeParams []EnvironmentRecipe
-	keys := make([]string, 0, len(recipeDetails.Parameters))
-
-	for k := range recipeDetails.Parameters {
-		keys = append(keys, k)
+	recipe := Recipe{
+		Name:         r.RecipeName,
+		LinkType:     r.LinkType,
+		TemplatePath: *recipeDetails.TemplatePath,
 	}
 
-	// to keep order of parameters consistent - sort.
-	sort.Strings(keys)
-	var paramDetailIndex = 0
-	for _, paramName := range keys {
-		paramDetails, ok := recipeDetails.Parameters[paramName].(map[string]any)
-		if !ok {
-			return fmt.Errorf("parameter details for parameter %s are formatted incorrectly", paramName)
+	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetRecipeTableFormat())
+	if err != nil {
+		return err
+	}
+
+	r.Output.LogInfo("")
+
+	var recipeParams []RecipeParameter
+
+	for parameter := range recipeDetails.Parameters {
+		values := recipeDetails.Parameters[parameter].(map[string]any)
+
+		paramItem := RecipeParameter{
+			Name:         parameter,
+			DefaultValue: "-",
+			MaxValue:     "-",
+			MinValue:     "-",
 		}
 
-		var paramDetailValueIndex = 0
-		for paramDetailName, paramDetailValue := range paramDetails {
-			var recipe EnvironmentRecipe
-			if paramDetailIndex == 0 && paramDetailValueIndex == 0 {
-				recipe = EnvironmentRecipe{
-					RecipeName:           r.RecipeName,
-					LinkType:             r.LinkType,
-					TemplatePath:         *recipeDetails.TemplatePath,
-					ParameterName:        paramName,
-					ParameterDetailName:  paramDetailName,
-					ParameterDetailValue: paramDetailValue,
-				}
-			} else if paramDetailValueIndex == 0 {
-				recipe = EnvironmentRecipe{
-					ParameterName:        paramName,
-					ParameterDetailName:  paramDetailName,
-					ParameterDetailValue: paramDetailValue,
-				}
-			} else {
-				recipe = EnvironmentRecipe{
-					ParameterDetailName:  paramDetailName,
-					ParameterDetailValue: paramDetailValue,
-				}
+		for paramDetailName, paramDetailValue := range values {
+			switch paramDetailName {
+			case "type":
+				paramItem.Type = paramDetailValue.(string)
+			case "defaultValue":
+				paramItem.DefaultValue = paramDetailValue
+			case "maxValue":
+				paramItem.MaxValue = fmt.Sprintf("%v", paramDetailValue.(float64))
+			case "minValue":
+				paramItem.MinValue = fmt.Sprintf("%v", paramDetailValue.(float64))
 			}
-
-			recipeParams = append(recipeParams, recipe)
-			paramDetailValueIndex += 1
 		}
-		paramDetailIndex += 1
+
+		recipeParams = append(recipeParams, paramItem)
 	}
+
 	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormat())
 	if err != nil {
 		return err
 	}
 
+	if len(recipeParams) == 0 {
+		r.Output.LogInfo("No parameters available")
+	}
+
 	return nil
 }
 
-type EnvironmentRecipe struct {
-	RecipeName           string      `json:"recipeName,omitempty"`
-	LinkType             string      `json:"linkType,omitempty"`
-	TemplatePath         string      `json:"templatePath,omitempty"`
-	ParameterName        string      `json:"parameterName,omitempty"`
-	ParameterDetailName  string      `json:"parameterDetailName,omitempty"`
-	ParameterDetailValue interface{} `json:"parameterDetailValue,omitempty"`
+type RecipeParameter struct {
+	Name         string      `json:"name,omitempty"`
+	DefaultValue interface{} `json:"defaultValue,omitempty"`
+	Type         string      `json:"type,omitempty"`
+	MaxValue     string      `json:"maxValue,omitempty"`
+	MinValue     string      `json:"minValue,omitempty"`
+}
+
+type Recipe struct {
+	Name         string `json:"name,omitempty"`
+	LinkType     string `json:"linkType,omitempty"`
+	TemplatePath string `json:"templatePath,omitempty"`
 }

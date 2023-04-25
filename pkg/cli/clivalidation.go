@@ -425,15 +425,11 @@ func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, e
 	}
 }
 
-func RequireRecipeName(cmd *cobra.Command) (string, error) {
-	recipeName, err := cmd.Flags().GetString("name")
-	if recipeName == "" {
-		return "", errors.New("recipe name cannot be empty")
+func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) < 1 {
+		return "", errors.New("no recipe name provided")
 	}
-	if err != nil {
-		return recipeName, err
-	}
-	return recipeName, nil
+	return args[0], nil
 }
 
 func RequireLinkType(cmd *cobra.Command) (string, error) {

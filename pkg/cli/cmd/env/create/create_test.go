@@ -32,7 +32,9 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	testResourceGroup := v20220901privatepreview.ResourceGroupResource{}
+	testResourceGroup := v20220901privatepreview.ResourceGroupResource{
+		Name: to.Ptr("test-resource-group"),
+	}
 
 	testcases := []radcli.ValidateInput{
 		{
@@ -76,6 +78,19 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create command with fallback workspace",
+			Input:         []string{"testingenv", "--group", *testResourceGroup.Name},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Valid create command
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+		},
+		{
+			Name:          "Create command with fallback workspace - requires resource group",
 			Input:         []string{"testingenv"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{

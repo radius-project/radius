@@ -19,6 +19,9 @@ storageProvider:
     masterKey: set-me-in-a-different-way
 queueProvider:
   provider: inmemory
+profilerProvider:
+  enabled: true
+  port: 6060
 secretProvider:
   provider: etcd
   etcd:

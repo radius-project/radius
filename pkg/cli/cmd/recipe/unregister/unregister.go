@@ -25,11 +25,11 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "unregister --name [recipe-name] --link-type [link-type]",
+		Use:     "unregister [recipe-name]",
 		Short:   "Unregister a recipe from an environment",
 		Long:    `Unregister a recipe from an environment`,
-		Example: `rad recipe unregister --name cosmosdb --link-type Applications.Link/mongoDatabases"`,
-		Args:    cobra.ExactArgs(0),
+		Example: `rad recipe unregister cosmosdb`,
+		Args:    cobra.ExactArgs(1),
 		RunE:    framework.RunCommand(runner),
 	}
 
@@ -37,9 +37,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	commonflags.AddRecipeFlag(cmd)
 	commonflags.AddLinkTypeFlag(cmd)
-	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("link-type")
 
 	return cmd, runner
@@ -73,18 +71,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// TODO: support fallback workspace
-	if !r.Workspace.IsNamedWorkspace() {
-		return workspaces.ErrNamedWorkspaceRequired
-	}
-
 	environment, err := cli.RequireEnvironmentName(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 	r.Workspace.Environment = environment
 
-	recipeName, err := cli.RequireRecipeName(cmd)
+	recipeName, err := cli.RequireRecipeNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}

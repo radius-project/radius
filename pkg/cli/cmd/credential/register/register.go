@@ -7,13 +7,13 @@ package register
 
 import (
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
-	credential_register_azure "github.com/project-radius/radius/pkg/cli/cmd/credential/register/azure"
 	credential_register_aws "github.com/project-radius/radius/pkg/cli/cmd/credential/register/aws"
+	credential_register_azure "github.com/project-radius/radius/pkg/cli/cmd/credential/register/azure"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command for the `rad provider create` command.
+// NewCommand creates an instance of the command for the `rad credential create` command.
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
 	cmd := &cobra.Command{

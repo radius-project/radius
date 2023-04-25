@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -52,6 +54,11 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			ctx := testutil.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := loadTestResurce()
 
+			// These values don't affect the test since we're using mocks. Just choosing non-default values
+			// to verify that they're being passed through.
+			var asyncOperationTimeout = 1*time.Second + 1*time.Millisecond
+			var asyncOperationRetryAfter = 2*time.Second + 2*time.Millisecond
+
 			appDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			mds.EXPECT().
@@ -63,7 +70,11 @@ func TestDefaultAsyncDelete(t *testing.T) {
 				Times(1)
 
 			if tt.getErr == nil && !tt.rejectedByFilter && appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() {
-				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+				expectedOptions := statusmanager.QueueOperationOptions{
+					OperationTimeout: asyncOperationTimeout,
+					RetryAfter:       asyncOperationRetryAfter,
+				}
+				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), expectedOptions).
 					Return(tt.qErr).
 					Times(1)
 
@@ -78,8 +89,10 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			}
 
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{
-				RequestConverter:  testResourceDataModelFromVersioned,
-				ResponseConverter: testResourceDataModelToVersioned,
+				RequestConverter:         testResourceDataModelFromVersioned,
+				ResponseConverter:        testResourceDataModelToVersioned,
+				AsyncOperationTimeout:    asyncOperationTimeout,
+				AsyncOperationRetryAfter: asyncOperationRetryAfter,
 			}
 
 			if tt.rejectedByFilter {
@@ -106,6 +119,10 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			if tt.code == http.StatusAccepted {
 				actualOutput := &TestResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+
+				expectedRetryAfterHeader := "2"
+				require.NotNil(t, w.Header().Get("Retry-After"))
+				require.Equal(t, expectedRetryAfterHeader, w.Header().Get("Retry-After"))
 			}
 		})
 	}

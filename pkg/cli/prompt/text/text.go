@@ -35,7 +35,7 @@ func NewTextModel(promptMsg string, placeHolder string) Model {
 	ti := textinput.New()
 	ti.Placeholder = placeHolder
 	ti.Focus()
-	ti.Width = 20
+	ti.Width = 40
 
 	return Model{
 		textInput:    ti,
