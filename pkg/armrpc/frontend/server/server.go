@@ -12,7 +12,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
 
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
@@ -67,8 +66,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	handlerFunc := otelhttp.NewHandler(
 		middleware.LowercaseURLPath(r),
 		options.ProviderNamespace,
-		otelhttp.WithMeterProvider(global.MeterProvider()),
-		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
+		otelhttp.WithMeterProvider(global.MeterProvider()))
 
 	server := &http.Server{
 		Addr:    options.Address,
