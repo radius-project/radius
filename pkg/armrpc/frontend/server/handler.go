@@ -50,7 +50,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 	fn := func(w http.ResponseWriter, req *http.Request) {
 		hctx := req.Context()
-		addRequestAttributes(hctx, req)
+		// addRequestAttributes(hctx, req)
 
 		response, err := ctrl.Run(hctx, w, req)
 		if err != nil {
