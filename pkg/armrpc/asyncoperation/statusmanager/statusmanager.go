@@ -30,6 +30,14 @@ type statusManager struct {
 	location     string
 }
 
+// QueueOperationOptions is the options type provided when queueing an async operation.
+type QueueOperationOptions struct {
+	// OperationTimeout specifies the timeout duration for the async operation.
+	OperationTimeout time.Duration
+	// RetryAfter specifies the value of the Retry-After header that will be used for async operations.
+	RetryAfter time.Duration
+}
+
 //go:generate mockgen -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
 
 // StatusManager is an interface to manage async operation status.
@@ -37,7 +45,7 @@ type StatusManager interface {
 	// Get gets an async operation status object.
 	Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error)
 	// QueueAsyncOperation creates an async operation status object and queue async operation.
-	QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, operationTimeout time.Duration) error
+	QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, options QueueOperationOptions) error
 	// Update updates an async operation status.
 	Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error
 	// Delete deletes an async operation status.
@@ -59,7 +67,7 @@ func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID
 	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", id.PlaneScope(), aom.providerName, aom.location, operationID)
 }
 
-func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, operationTimeout time.Duration) error {
+func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, options QueueOperationOptions) error {
 	ctx, span := trace.StartProducerSpan(ctx, "statusmanager.QueueAsyncOperation publish", trace.FrontendTracerName)
 	defer span.End()
 
@@ -81,6 +89,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		},
 		LinkedResourceID: sCtx.ResourceID.String(),
 		Location:         aom.location,
+		RetryAfter:       options.RetryAfter,
 		HomeTenantID:     sCtx.HomeTenantID,
 		ClientObjectID:   sCtx.ClientObjectID,
 	}
@@ -94,7 +103,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		return err
 	}
 
-	if err = aom.queueRequestMessage(ctx, sCtx, aos, operationTimeout); err != nil {
+	if err = aom.queueRequestMessage(ctx, sCtx, aos, options.OperationTimeout); err != nil {
 		delErr := aom.storeClient.Delete(ctx, opID)
 		if delErr != nil {
 			return delErr

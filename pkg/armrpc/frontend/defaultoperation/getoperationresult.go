@@ -8,7 +8,9 @@ package defaultoperation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -49,7 +51,7 @@ func (e *GetOperationResult) Run(ctx context.Context, w http.ResponseWriter, req
 	if !os.Status.IsTerminal() {
 		headers := map[string]string{
 			"Location":    req.URL.String(),
-			"Retry-After": v1.DefaultRetryAfter,
+			"Retry-After": fmt.Sprintf("%v", os.RetryAfter.Truncate(time.Second).Seconds()),
 		}
 		return rest.NewAsyncOperationResultResponse(headers), nil
 	}

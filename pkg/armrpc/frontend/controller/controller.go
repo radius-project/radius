@@ -58,6 +58,11 @@ type ResourceOptions[T any] struct {
 
 	// AsyncOperationTimeout is the default timeout duration of async put operation.
 	AsyncOperationTimeout time.Duration
+
+	// AsyncOperationRetryAfter is the value of the Retry-After header that will be used for async operations.
+	// If this is 0 then the default value of v1.DefaultRetryAfter will be used. Consider setting this to a smaller
+	// value like 5 seconds if your operations will complete quickly.
+	AsyncOperationRetryAfter time.Duration
 }
 
 // TODO: Remove Controller when all controller uses Operation

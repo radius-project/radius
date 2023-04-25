@@ -27,13 +27,14 @@ type asyncOperationsManagerTest struct {
 }
 
 const (
-	operationTimeoutDuration = time.Hour * 2
-	azureEnvResourceID       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
-	ucpEnvResourceID         = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
-	saveErr                  = "save error"
-	enqueueErr               = "enqueue error"
-	deleteErr                = "delete error"
-	getErr                   = "get error"
+	operationTimeoutDuration      = time.Hour * 2
+	opererationRetryAfterDuration = time.Second * 10
+	azureEnvResourceID            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
+	ucpEnvResourceID              = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
+	saveErr                       = "save error"
+	enqueueErr                    = "enqueue error"
+	deleteErr                     = "delete error"
+	getErr                        = "get error"
 )
 
 func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
@@ -64,6 +65,7 @@ var testAos = &Status{
 	},
 	LinkedResourceID: uuid.New().String(),
 	Location:         "test-location",
+	RetryAfter:       opererationRetryAfterDuration,
 	HomeTenantID:     "test-home-tenant-id",
 	ClientObjectID:   "test-client-object-id",
 }
@@ -147,7 +149,11 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 				aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 			}
 
-			err := aomTest.manager.QueueAsyncOperation(context.TODO(), reqCtx, operationTimeoutDuration)
+			options := QueueOperationOptions{
+				OperationTimeout: operationTimeoutDuration,
+				RetryAfter:       opererationRetryAfterDuration,
+			}
+			err := aomTest.manager.QueueAsyncOperation(context.TODO(), reqCtx, options)
 
 			if tt.SaveErr == nil && tt.EnqueueErr == nil && tt.DeleteErr == nil {
 				require.NoError(t, err)

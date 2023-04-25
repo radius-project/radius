@@ -425,11 +425,9 @@ func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, e
 	}
 }
 
-func RequireRecipeName(cmd *cobra.Command) (string, error) {
-	recipeName, err := cmd.Flags().GetString("name")
-	if err != nil {
-		return "", err
+func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) < 1 {
+		return "", errors.New("no recipe name provided")
 	}
-
-	return recipeName, nil
+	return args[0], nil
 }

@@ -33,7 +33,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Register Command with parameters",
-			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "a=b"},
+			Input:         []string{"test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "a=b"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -42,7 +42,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Valid Register Command with parameters passed as file",
-			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json"},
+			Input:         []string{"test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -51,7 +51,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command with fallback workspace",
-			Input:         []string{"-e", "myenvironment", "--name", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
+			Input:         []string{"-e", "myenvironment", "test_recipe", "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -69,7 +69,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command without template path",
-			Input:         []string{"--name", "test_recipe", "--link-type", linkrp.MongoDatabasesResourceType},
+			Input:         []string{"test_recipe", "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -78,7 +78,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command without link-type",
-			Input:         []string{"--name", "test_recipe", "--template-path", "test_template"},
+			Input:         []string{"test_recipe", "--template-path", "test_template"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -86,7 +86,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with too many args",
+			Name:          "Register Command with too many args",
 			Input:         []string{"foo", "bar"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{

@@ -7,7 +7,6 @@ package register
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -27,7 +26,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "register",
+		Use:   "register [recipe-name]",
 		Short: "Add a recipe to an environment.",
 		Long: `Add a recipe to an environment.
 You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
@@ -37,15 +36,15 @@ You can specify parameters using the '--parameter' flag ('-p' for short). Parame
 		`,
 		Example: `
 # Add a recipe to an environment
-rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
+rad recipe register cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
 		
 # Specify a parameter
-rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+rad recipe register cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
 		
 # specify multiple parameters using a JSON parameter file
-rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+rad recipe register cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
 		`,
-		Args: cobra.ExactArgs(0),
+		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -57,8 +56,6 @@ rad recipe register --name cosmosdb -e env_name -w workspace --template-path tem
 	_ = cmd.MarkFlagRequired("template-path")
 	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
 	_ = cmd.MarkFlagRequired("link-type")
-	cmd.Flags().String("name", "", "specify the name of the recipe")
-	_ = cmd.MarkFlagRequired("name")
 	commonflags.AddParameterFlag(cmd)
 
 	return cmd, runner
@@ -112,7 +109,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.LinkType = linkType
 
-	recipeName, err := requireRecipeName(cmd)
+	recipeName, err := cli.RequireRecipeNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -183,15 +180,4 @@ func requireLinkType(cmd *cobra.Command) (string, error) {
 		return linkType, err
 	}
 	return linkType, nil
-}
-
-func requireRecipeName(cmd *cobra.Command) (string, error) {
-	recipeName, err := cmd.Flags().GetString("name")
-	if recipeName == "" {
-		return "", errors.New("recipe name cannot be empty")
-	}
-	if err != nil {
-		return recipeName, err
-	}
-	return recipeName, nil
 }
