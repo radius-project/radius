@@ -21,6 +21,9 @@ type Status struct {
 	// Location represents the location of operationstatus.
 	Location string `json:"location"`
 
+	// RetryAfter is the value of the Retry-After header that will be used for async operations.
+	RetryAfter time.Duration `json:"retryAfter"`
+
 	// HomeTenantID is async operation caller's tenant id such as the value from x-ms-home-tenant-id header.
 	HomeTenantID string `json:"clientTenantID,omitempty"`
 
