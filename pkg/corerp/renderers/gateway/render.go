@@ -68,7 +68,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	} else if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	} else {
-		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port)
+		isHttps := gateway.Properties.TLS != nil && (gateway.Properties.TLS.SSLPassthrough || gateway.Properties.TLS.CertificateFrom != "")
+		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port, isHttps)
 	}
 
 	gatewayObject, err := MakeGateway(ctx, options, gateway, gateway.Name, applicationName, hostname)
@@ -110,12 +111,8 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 		sslPassthrough = gateway.Properties.TLS.SSLPassthrough
 
 		if gateway.Properties.TLS.CertificateFrom != "" {
-			// Get the Kubernetes secret name from the certificateFrom property,
-			// and prepend the namespace to it
-			secretName := fmt.Sprintf("%s/%s", options.Environment.Namespace, gateway.Properties.TLS.CertificateFrom)
-
 			contourTLSConfig = &contourv1.TLS{
-				SecretName:             secretName,
+				SecretName:             gateway.Properties.TLS.CertificateFrom,
 				MinimumProtocolVersion: string(gateway.Properties.TLS.MinimumProtocolVersion),
 			}
 		}
@@ -371,12 +368,17 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 	return baseHostname, nil
 }
 
-// getPublicEndpoint adds http:// and the port (if it exists) to the given hostname
-func getPublicEndpoint(hostname string, port string) string {
+// getPublicEndpoint adds http:// or https:// and the port (if it exists) to the given hostname
+func getPublicEndpoint(hostname string, port string, isHttps bool) string {
 	authority := hostname
 	if port != "" {
 		authority = net.JoinHostPort(hostname, port)
 	}
 
-	return fmt.Sprintf("http://%s", authority)
+	scheme := "http"
+	if isHttps {
+		scheme = "https"
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, authority)
 }
