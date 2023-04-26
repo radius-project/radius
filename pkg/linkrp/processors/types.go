@@ -7,6 +7,7 @@ package processors
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -28,9 +29,34 @@ type ResourceProcessor[P interface {
 
 // ResourceClient is a client used by resource processors for interacting with UCP resources.
 type ResourceClient interface {
-	// Get retrieves a resource by id. Populate the 'obj' parameter with a reference to the desired type.
-	Get(ctx context.Context, id string, obj any) error
-
 	// Delete deletes a resource by id.
-	Delete(ctx context.Context, id string) error
+	//
+	// If the API version is omitted, then an attempt will be made to look up the API version.
+	Delete(ctx context.Context, id string, apiVersion string) error
+}
+
+// ResourceError represents an error that occured while processing a resource.
+type ResourceError struct {
+	ID    string
+	Inner error
+}
+
+// Error formats the error as a string.
+func (e *ResourceError) Error() string {
+	return fmt.Sprintf("failed to delete resource %q: %v", e.ID, e.Inner)
+}
+
+// Unwrap gets the wrapper error of this ResourceDeletionErr.
+func (e *ResourceError) Unwrap() error {
+	return e.Inner
+}
+
+// ValidationError represents a user-facing validation message reported by the processor.
+type ValidationError struct {
+	Message string
+}
+
+// Error gets the string representation of the error.
+func (e *ValidationError) Error() string {
+	return e.Message
 }

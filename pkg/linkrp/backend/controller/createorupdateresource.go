@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/engine"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -27,7 +28,7 @@ type CreateOrUpdateResource[P interface {
 }, T any] struct {
 	ctrl.BaseController
 	processor processors.ResourceProcessor[P, T]
-	engine       engine.Engine
+	engine    engine.Engine
 	client    processors.ResourceClient
 }
 
@@ -120,7 +121,7 @@ func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Conte
 	for _, resource := range diff {
 		id := resource.Identity.GetID()
 		logger.Info(fmt.Sprintf("Deleting output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
-		err := c.client.Delete(ctx, id)
+		err := c.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
 		if err != nil {
 			return err
 		}

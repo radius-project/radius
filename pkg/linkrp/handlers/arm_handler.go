@@ -68,7 +68,7 @@ func (handler *armHandler) Delete(ctx context.Context, resource *rpv1.OutputReso
 		return err
 	}
 
-	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), &handler.arm.ClientOptions)
+	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), &handler.arm.ClientOptions, nil)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func getByID(ctx context.Context, options *clientv2.Options, id, apiVersion stri
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Fetching arm resource by id")
 
-	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), options)
+	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), options, nil)
 	if err != nil {
 		return nil, err
 	}
