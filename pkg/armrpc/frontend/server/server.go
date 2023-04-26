@@ -11,6 +11,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/metric/global"
 
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
@@ -61,15 +63,14 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 
-	// handlerFunc := otelhttp.NewHandler(
-	// 	middleware.LowercaseURLPath(r),
-	// 	options.ProviderNamespace,
-	// 	otelhttp.WithMeterProvider(global.MeterProvider()),
-	// 	otelhttp.WithTracerProvider(otel.GetTracerProvider()))
+	handlerFunc := otelhttp.NewHandler(
+		middleware.LowercaseURLPath(r),
+		options.ProviderNamespace,
+		otelhttp.WithMeterProvider(global.MeterProvider()))
 
 	server := &http.Server{
 		Addr:    options.Address,
-		Handler: middleware.LowercaseURLPath(r),
+		Handler: handlerFunc,
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},
