@@ -148,7 +148,6 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 	})
-
 	t.Run("Register recipe with parameters", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
@@ -236,6 +235,45 @@ func Test_Run(t *testing.T) {
 			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			LinkType:          linkrp.MongoDatabasesResourceType,
 			RecipeName:        "cosmosDB_no_namespace",
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+	})
+	t.Run("Register the first recipe", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+			Compute: &v20220315privatepreview.KubernetesCompute{
+				Namespace: to.Ptr("default"),
+			},
+		}
+
+		envResource := v20220315privatepreview.EnvironmentResource{
+			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:       to.Ptr("kind-kind"),
+			Type:       to.Ptr("applications.core/environments"),
+			Location:   to.Ptr(v1.LocationGlobal),
+			Properties: testEnvProperties,
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvDetails(gomock.Any(), gomock.Any()).
+			Return(envResource, nil).Times(1)
+		appManagementClient.EXPECT().
+			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+			Return(true, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
+			LinkType:          linkrp.RedisCachesResourceType,
+			RecipeName:        "redis",
 		}
 
 		err := runner.Run(context.Background())

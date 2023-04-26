@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -50,5 +51,24 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.TemplatePath))
 		require.Equal(t, expectedOutput, versioned.Parameters)
+	})
+}
+
+func TestRecipeConvertVersionedToDataModel(t *testing.T) {
+	t.Run("Convert to Data Model", func(t *testing.T) {
+		filename := "reciperesource.json"
+		expected := &datamodel.RecipeNameAndLinkType{
+			LinkType:   linkrp.MongoDatabasesResourceType,
+			RecipeName: "mongo-azure",
+		}
+		rawPayload := testutil.ReadFixture(filename)
+		r := &RecipeNameAndLinkType{}
+		err := json.Unmarshal(rawPayload, r)
+		require.NoError(t, err)
+		// act
+		dm, err := r.ConvertTo()
+		require.NoError(t, err)
+		ct := dm.(*datamodel.RecipeNameAndLinkType)
+		require.Equal(t, expected, ct)
 	})
 }
