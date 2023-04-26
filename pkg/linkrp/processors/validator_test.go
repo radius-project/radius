@@ -68,7 +68,7 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		require.Empty(t, outputResources)
 	})
-	t.Run("resource field is empty", func(t *testing.T) {
+	t.Run("resource field is nil", func(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
@@ -77,6 +77,21 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		v := NewValidator(&values, &secrets, &outputResources)
 		v.AddResourceField(resource)
+
+		err := v.SetAndValidate(nil)
+		require.NoError(t, err)
+
+		require.Empty(t, outputResources)
+	})
+	t.Run("resource field is empty", func(t *testing.T) {
+		outputResources := []rpv1.OutputResource{}
+		values := map[string]any{}
+		secrets := map[string]rpv1.SecretValueReference{}
+
+		resource := ""
+
+		v := NewValidator(&values, &secrets, &outputResources)
+		v.AddResourceField(&resource)
 
 		err := v.SetAndValidate(nil)
 		require.NoError(t, err)

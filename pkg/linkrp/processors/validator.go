@@ -127,7 +127,7 @@ func (v *Validator) SetAndValidate(output *recipes.RecipeOutput) error {
 		*v.OutputResources = append(*v.OutputResources, recipeResources...)
 	}
 
-	if v.resourceField != nil {
+	if v.resourceField != nil && *v.resourceField != "" {
 		outputResource, err := GetOutputResourceFromResourceID(*v.resourceField)
 		if err != nil {
 			return err
