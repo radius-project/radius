@@ -56,6 +56,10 @@ func (a *DeleteSecretStore) Run(ctx context.Context, w http.ResponseWriter, req 
 		return r, err
 	}
 
+	if r, err := DeleteRadiusSecret(ctx, nil, old, a.Options()); r != nil || err != nil {
+		return r, err
+	}
+
 	if err := a.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
