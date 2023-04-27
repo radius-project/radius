@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -195,9 +196,9 @@ func Test_Run(t *testing.T) {
 			Name: "kind-kind",
 		}
 
-		providers := &v20220315privatepreview.Providers{
-			Azure: &v20220315privatepreview.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
+		providers := &datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "/subscriptions/test-subId/resourceGroups/test-rg",
 			},
 		}
 
@@ -270,9 +271,9 @@ func Test_Run(t *testing.T) {
 			Name: "kind-kind",
 		}
 
-		providers := &v20220315privatepreview.Providers{
-			Aws: &v20220315privatepreview.ProvidersAws{
-				Scope: to.Ptr("/accounts/test-accountId/regions/test-region"),
+		providers := &datamodel.Providers{
+			AWS: datamodel.ProvidersAWS{
+				Scope: "/accounts/test-accountId/regions/test-region",
 			},
 		}
 
