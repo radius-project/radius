@@ -78,6 +78,10 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 }
 
 func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
+	if r == nil {
+		return linkrp.LinkRecipe{}
+	}
+
 	recipe := linkrp.LinkRecipe{
 		Name: to.String(r.Name),
 	}
@@ -93,4 +97,26 @@ func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
 		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,
 	}
+}
+
+func toResourcesDataModel(r []*SupportingResources) []linkrp.SupportingResources {
+	var supportingResources []linkrp.SupportingResources
+	for _, resource := range r {
+		supportingResource := linkrp.SupportingResources{
+			ResourceID: to.String(resource.ID),
+		}
+		supportingResources = append(supportingResources, supportingResource)
+	}
+	return supportingResources
+}
+
+func fromResourcesDataModel(r []linkrp.SupportingResources) []*SupportingResources {
+	var supportingResources []*SupportingResources
+	for _, resource := range r {
+		supportingResource := &SupportingResources{
+			ID: to.Ptr(resource.ResourceID),
+		}
+		supportingResources = append(supportingResources, supportingResource)
+	}
+	return supportingResources
 }

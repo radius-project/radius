@@ -10,6 +10,8 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 )
@@ -110,5 +112,49 @@ func TestFromSystemDataModel(t *testing.T) {
 			tt.LastModifiedAt = "0001-01-01T00:00:00Z"
 		}
 		require.Equal(t, tt.LastModifiedAt, string(c))
+	}
+}
+
+func TestToResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []linkrp.SupportingResources
+		VersionedResources []*SupportingResources
+	}{
+		{
+			DMResources:        []linkrp.SupportingResources{{ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*SupportingResources{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []linkrp.SupportingResources(nil),
+			VersionedResources: []*SupportingResources{},
+		},
+	}
+
+	for _, tt := range testset {
+		dm := toResourcesDataModel(tt.VersionedResources)
+		require.Equal(t, tt.DMResources, dm)
+
+	}
+}
+
+func TestFromResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []linkrp.SupportingResources
+		VersionedResources []*SupportingResources
+	}{
+		{
+			DMResources:        []linkrp.SupportingResources{{ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*SupportingResources{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []linkrp.SupportingResources{},
+			VersionedResources: []*SupportingResources(nil),
+		},
+	}
+
+	for _, tt := range testset {
+		versioned := fromResourcesDataModel(tt.DMResources)
+		require.Equal(t, tt.VersionedResources, versioned)
+
 	}
 }

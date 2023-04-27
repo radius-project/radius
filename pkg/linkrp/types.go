@@ -65,6 +65,12 @@ type Kubernetes struct {
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }
 
+// SupportingResources is a list of the resource IDs that support the current Link resource
+type SupportingResources struct {
+	// Resource ID of the supporting resources
+	ResourceID string `json:"id,omitempty"`
+}
+
 const (
 	DaprInvokeHttpRoutesResourceType  = "Applications.Link/daprInvokeHttpRoutes"
 	DaprPubSubBrokersResourceType     = "Applications.Link/daprPubSubBrokers"
