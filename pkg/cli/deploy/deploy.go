@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
-// Licsed under the MIT License.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 package deploy
