@@ -403,22 +403,55 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   secretResourceRouter,
-			ResourceType:   secret_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: secret_ctrl.NewCreateOrUpdateSecretStore,
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						RequestConverter:  converter.SecretStoreModelFromVersioned,
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SecretStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.SecretStore],
+							secret_ctrl.ValidateRequest,
+							secret_ctrl.UpsertSecret,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   secretResourceRouter,
-			ResourceType:   secret_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: secret_ctrl.NewCreateOrUpdateSecretStore,
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						RequestConverter:  converter.SecretStoreModelFromVersioned,
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SecretStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.SecretStore],
+							secret_ctrl.ValidateRequest,
+							secret_ctrl.UpsertSecret,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   secretResourceRouter,
-			ResourceType:   secret_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: secret_ctrl.NewDeleteSecretStore,
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+						DeleteFilters: []frontend_ctrl.DeleteFilter[datamodel.SecretStore]{
+							secret_ctrl.DeleteRadiusSecret,
+						},
+					},
+				)
+			},
 		},
 	}
 	for _, h := range handlerOptions {

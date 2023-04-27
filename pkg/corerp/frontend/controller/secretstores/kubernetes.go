@@ -45,9 +45,8 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, ol
 			}
 		}
 	} else {
-		res := strings.Split(newResource.Properties.Resource, "/")
-		if len(res) > 2 {
-			return rest.NewBadRequestResponse(fmt.Sprintf("invalid resource id %s", newResource.Properties.Resource)), nil
+		if _, _, err := fromResourceID(refResourceID); err != nil {
+			return nil, err
 		}
 	}
 
@@ -81,45 +80,57 @@ func getNamespace(ctx context.Context, newResource *datamodel.SecretStore, optio
 	return "", errors.New("no Kubernetes namespace")
 }
 
-func parseKubernetesResource(id string) (ns string, name string, err error) {
+func toResourceID(ns, name string) string {
+	if ns == "" {
+		return name
+	}
+	return fmt.Sprintf("%s/%s", ns, name)
+}
+
+func fromResourceID(id string) (ns string, name string, err error) {
 	res := strings.Split(id, "/")
 	if len(res) == 2 {
 		ns, name = res[0], res[1]
 	} else if len(res) == 1 {
 		ns, name = "", res[0]
 	} else {
-		err = errors.New("invalid resource id")
+		err = errors.New("invalid resource ID")
 	}
 
 	if !kubernetes.IsValidObjectName(name) {
-		err = errors.New("invalid resource name")
+		err = fmt.Errorf("%s is the invalid resource name. This must be at most 63 alphanumeric characters or '-'", name)
 	}
+
 	if !kubernetes.IsValidObjectName(ns) {
-		err = errors.New("invalid namespace name")
+		err = fmt.Errorf("%s is the invalid namespace. This must be at most 63 alphanumeric characters or '-'", ns)
 	}
 
 	return
 }
 
-func upsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	if old == nil && newResource.Properties.Resource == "" {
-		namespace, err := getNamespace(ctx, newResource, options)
-		if err != nil {
-			return nil, err
+// UpsertSecret upserts secret store data to backing secret store.
+func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
+	if newResource.Properties.Resource == "" {
+		if old == nil {
+			namespace, err := getNamespace(ctx, newResource, options)
+			if err != nil {
+				return nil, err
+			}
+			newResource.Properties.Resource = toResourceID(namespace, newResource.Name)
+		} else {
+			newResource.Properties.Resource = old.Properties.Resource
 		}
-		newResource.Properties.Resource = fmt.Sprintf("%s/%s", namespace, newResource.Name)
 	}
 
-	namespace, secertName, err := parseKubernetesResource(newResource.Properties.Resource)
+	namespace, secretName, err := fromResourceID(newResource.Properties.Resource)
 	if err != nil {
 		return nil, err
 	}
 
 	ksecret := &corev1.Secret{}
-	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: secertName}, ksecret)
+	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: secretName}, ksecret)
 	if apierrors.IsNotFound(err) {
 		app, _ := resources.ParseResource(newResource.Properties.Application)
-		secretName := kubernetes.NormalizeResourceName(newResource.Name)
 		ksecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -134,26 +145,26 @@ func upsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 
 	for k, secret := range newResource.Properties.Data {
 		val := to.String(secret.Value)
-		if val == "" {
-			_, err := base64.StdEncoding.DecodeString(val)
-			if err == nil {
+		if val != "" {
+			if newResource.Properties.Type == datamodel.SecretTypeCert || secret.Encoding == datamodel.SecretValueEncodingBase64 {
 				ksecret.Data[k] = []byte(val)
-				continue
-			}
-			base64.StdEncoding.Encode(ksecret.Data[k], []byte(val))
-		} else if secret.ValueFrom != nil {
-			key := secret.ValueFrom.Name
-			if !kubernetes.IsValidObjectName(key) {
-				return rest.NewBadRequestResponse(fmt.Sprintf("%s includes an invalid object name %s", newResource.Properties.Resource, key)), nil
+			} else {
+				base64.StdEncoding.Encode(ksecret.Data[k], []byte(val))
 			}
 
-			if k != key {
-				return rest.NewBadRequestResponse(fmt.Sprintf("%s includes an invalid key %s", newResource.Properties.Resource, key)), nil
+			// Remove secret from metadata.
+			secret.Value = nil
+		} else {
+			if secret.ValueFrom != nil {
+				key := secret.ValueFrom.Name
+				if k != key {
+					return rest.NewBadRequestResponse(fmt.Sprintf("%s key name must be same as valueFrom.name %s", k, key)), nil
+				}
 			}
 
-			_, ok := ksecret.Data[key]
+			_, ok := ksecret.Data[k]
 			if !ok {
-				return rest.NewBadRequestResponse(fmt.Sprintf("%s does not have key %s", newResource.Properties.Resource, key)), nil
+				return rest.NewBadRequestResponse(fmt.Sprintf("%s does not have key %s", newResource.Properties.Resource, k)), nil
 			}
 		}
 	}
@@ -167,7 +178,13 @@ func upsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		return rest.NewBadRequestResponse(fmt.Sprintf("invalid secret type %s", newResource.Properties.Type)), nil
 	}
 
-	if err := options.KubeClient.Create(ctx, ksecret); err != nil {
+	if ksecret.ResourceVersion == "" {
+		err = options.KubeClient.Create(ctx, ksecret)
+	} else {
+		err = options.KubeClient.Update(ctx, ksecret)
+	}
+
+	if err != nil {
 		return nil, err
 	}
 
@@ -175,11 +192,12 @@ func upsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 }
 
 // DeleteRadiusSecret deletes a secret if the secret is managed by Radius.
-func DeleteRadiusSecret(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	namespace, secertName, err := parseKubernetesResource(newResource.Properties.Resource)
+func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
+	namespace, secertName, err := fromResourceID(oldResource.Properties.Resource)
 	if err != nil {
 		return nil, err
 	}
+
 	ksecret := &corev1.Secret{}
 	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: secertName}, ksecret)
 	if err != nil {
