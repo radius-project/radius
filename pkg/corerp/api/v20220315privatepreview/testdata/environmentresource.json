@@ -24,6 +24,11 @@
             "throughput": 400
           }
         }
+      },
+      "Applications.Link/redisCaches":{
+        "redis-recipe": {
+          "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscaches"
+        }
       }
     },
     "extensions": [

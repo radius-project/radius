@@ -301,9 +301,9 @@
             "name": "RecipeParameter",
             "in": "body",
             "required": true,
-            "description": "Resource create parameters.",
+            "description": "Recipe parameters.",
             "schema": {
-              "$ref": "#/definitions/RecipeNameAndLinkType"
+              "$ref": "#/definitions/Recipe"
             }
           }
         ],
@@ -497,8 +497,8 @@
         "templatePath"
       ]
     },
-    "RecipeNameAndLinkType":{
-      "description": "Recipe Name and LinkType",
+    "Recipe":{
+      "description": "Recipe properties.",
       "properties": {
         "linkType": {
           "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",

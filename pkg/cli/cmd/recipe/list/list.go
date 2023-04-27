@@ -92,8 +92,8 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	var envRecipes []EnvironmentRecipe
-	for link, recipe := range envResource.Properties.Recipes {
-		for recipeName, recipeDetails := range recipe {
+	for link, recipes := range envResource.Properties.Recipes {
+		for recipeName, recipeDetails := range recipes {
 			envRecipes = append(envRecipes, EnvironmentRecipe{
 				Name:         recipeName,
 				LinkType:     link,

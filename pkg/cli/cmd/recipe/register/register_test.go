@@ -188,9 +188,9 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			LinkType:          linkrp.MongoDatabasesResourceType,
-			RecipeName:        "cosmosDB_new",
+			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
+			LinkType:          linkrp.RedisCachesResourceType,
+			RecipeName:        "redis",
 			Parameters:        map[string]map[string]any{},
 		}
 

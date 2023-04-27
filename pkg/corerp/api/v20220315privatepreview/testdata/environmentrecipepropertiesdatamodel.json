@@ -1,5 +1,4 @@
 {
-  "linkType": "Applications.Link/mongoDatabases",
   "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
   "parameters": {
     "throughput": {

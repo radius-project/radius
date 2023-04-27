@@ -57,18 +57,18 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 func TestRecipeConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
 		filename := "reciperesource.json"
-		expected := &datamodel.RecipeNameAndLinkType{
+		expected := &datamodel.Recipe{
 			LinkType:   linkrp.MongoDatabasesResourceType,
 			RecipeName: "mongo-azure",
 		}
 		rawPayload := testutil.ReadFixture(filename)
-		r := &RecipeNameAndLinkType{}
+		r := &Recipe{}
 		err := json.Unmarshal(rawPayload, r)
 		require.NoError(t, err)
 		// act
 		dm, err := r.ConvertTo()
 		require.NoError(t, err)
-		ct := dm.(*datamodel.RecipeNameAndLinkType)
+		ct := dm.(*datamodel.Recipe)
 		require.Equal(t, expected, ct)
 	})
 }

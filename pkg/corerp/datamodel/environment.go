@@ -37,8 +37,8 @@ type EnvironmentRecipeProperties struct {
 	Parameters   map[string]any `json:"parameters,omitempty"`
 }
 
-// RecipeNameAndLinkType - Recipe Name and LinkType
-type RecipeNameAndLinkType struct {
+// Recipe represents input properties for recipe getMetadata api.
+type Recipe struct {
 	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 	LinkType string `json:"linkType,omitempty"`
 
@@ -46,7 +46,7 @@ type RecipeNameAndLinkType struct {
 	RecipeName string `json:"recipeName,omitempty"`
 }
 
-func (e *RecipeNameAndLinkType) ResourceTypeName() string {
+func (e *Recipe) ResourceTypeName() string {
 	return "Applications.Core/environments"
 }
 

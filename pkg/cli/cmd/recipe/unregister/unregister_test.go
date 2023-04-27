@@ -211,7 +211,6 @@ func Test_Run(t *testing.T) {
 		})
 		t.Run("Unregister recipe with linkType doesn't exist in the environment", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-
 			envResource := v20220315privatepreview.EnvironmentResource{
 				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 				Name:     to.Ptr("kind-kind"),
@@ -220,8 +219,8 @@ func Test_Run(t *testing.T) {
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-						linkrp.RedisCachesResourceType: {
-							"cosmosDB": {
+						linkrp.MongoDatabasesResourceType: {
+							"testResource": {
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 							},
 						},
@@ -240,8 +239,8 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				RecipeName:        "testResource",
+				LinkType:          "Applications.Link/redisCaches",
 			}
 
 			err := runner.Run(context.Background())
@@ -277,6 +276,57 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
+		})
+		t.Run("Unregister recipe with same name for different resource types.", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+				UseDevRecipes: to.Ptr(true),
+				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					linkrp.MongoDatabasesResourceType: {
+						"testResource": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
+					},
+					linkrp.RedisCachesResourceType: {
+						"testResource": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1"),
+						},
+					},
+				},
+				Compute: &v20220315privatepreview.KubernetesCompute{
+					Namespace: to.Ptr("default"),
+				},
+			}
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       to.Ptr("kind-kind"),
+				Type:       to.Ptr("applications.core/environments"),
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: testEnvProperties,
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+			appManagementClient.EXPECT().
+				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+				Return(true, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+				RecipeName:        "testResource",
+				LinkType:          "Applications.Link/mongoDatabases",
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
 		})
 	})
 }

@@ -107,9 +107,9 @@ func getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepre
 	return envExistingDataModel, envInput
 }
 
-func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.RecipeNameAndLinkType, *datamodel.Environment, *v20220315privatepreview.EnvironmentRecipeProperties) {
+func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.Recipe, *datamodel.Environment, *v20220315privatepreview.EnvironmentRecipeProperties) {
 	rawInput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_input.json")
-	envInput := &v20220315privatepreview.RecipeNameAndLinkType{}
+	envInput := &v20220315privatepreview.Recipe{}
 	_ = json.Unmarshal(rawInput, envInput)
 
 	rawExistingDataModel := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_datamodel.json")
@@ -123,9 +123,9 @@ func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepr
 	return envInput, envExistingDataModel, expectedOutput
 }
 
-func getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview() (*v20220315privatepreview.RecipeNameAndLinkType, *datamodel.Environment) {
+func getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview() (*v20220315privatepreview.Recipe, *datamodel.Environment) {
 	rawInput := testutil.ReadFixture("environmentgetmetadatanonexistingrecipe20220315privatepreview_input.json")
-	envInput := &v20220315privatepreview.RecipeNameAndLinkType{}
+	envInput := &v20220315privatepreview.Recipe{}
 	_ = json.Unmarshal(rawInput, envInput)
 
 	rawExistingDataModel := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_datamodel.json")

@@ -74,9 +74,9 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 			errorPrefix := "recipe name(s) reserved for devRecipes for: "
 			var errorRecipes string
 
-			for resourceType, recipe := range devRecipes {
+			for resourceType, recipes := range devRecipes {
 				if devRecipes[resourceType] != nil {
-					for recipeName, recipeDetails := range recipe {
+					for recipeName, recipeDetails := range recipes {
 						if newResourceRecipes[resourceType] != nil {
 							if val, ok := newResourceRecipes[resourceType][recipeName]; ok && val.TemplatePath != recipeDetails.TemplatePath {
 								if errorRecipes != "" {
@@ -87,7 +87,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 								newResourceRecipes[resourceType][recipeName] = recipeDetails
 							}
 						} else {
-							newResourceRecipes[resourceType] = recipe
+							newResourceRecipes[resourceType] = recipes
 						}
 					}
 				}

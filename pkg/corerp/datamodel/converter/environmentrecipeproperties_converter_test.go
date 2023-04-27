@@ -56,7 +56,7 @@ func TestEnvironmentRecipePropertiesDataModelToVersioned(t *testing.T) {
 	}
 }
 
-func TestRecipeNameLinkTypeDatamodelFromVersioned(t *testing.T) {
+func TestRecipeDatamodelFromVersioned(t *testing.T) {
 	testset := []struct {
 		versionedModelFile string
 		apiVersion         string
@@ -78,7 +78,7 @@ func TestRecipeNameLinkTypeDatamodelFromVersioned(t *testing.T) {
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
 			c := loadTestData(tc.versionedModelFile)
-			_, err := RecipeNameLinkTypeDatamodelFromVersioned(c, tc.apiVersion)
+			_, err := RecipeDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {

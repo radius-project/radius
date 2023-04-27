@@ -1977,16 +1977,16 @@ func (p *ProvidersAzure) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RecipeNameAndLinkType.
-func (r RecipeNameAndLinkType) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type Recipe.
+func (r Recipe) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "linkType", r.LinkType)
 	populate(objectMap, "recipeName", r.RecipeName)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeNameAndLinkType.
-func (r *RecipeNameAndLinkType) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type Recipe.
+func (r *Recipe) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)

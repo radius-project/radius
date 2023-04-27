@@ -28,13 +28,16 @@
                 }
               },
               "recipes": {
-                "cosmos-recipe": {
-                  "linkType": "Applications.Link/mongoDatabases",
-                  "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                "Applications.Link/mongoDatabases":{
+                  "cosmos-recipe": {
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                  }
                 },
-                "redis-recipe": {
-                  "linkType": "Applications.Link/redisCaches",
-                  "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscache"
+                "Applications.Link/redisCaches":{
+                  "redis-recipe": {
+                    "linkType": "Applications.Link/redisCaches",
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscache"
+                  }
                 }
               },
               "extensions": [
@@ -95,9 +98,10 @@
                 }
               },
               "recipes": {
-                "cosmos-recipe": {
-                  "linkType": "Applications.Link/mongoDatabases",
-                  "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                "Applications.Link/mongoDatabases":{
+                  "cosmos-recipe": {
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                  } 
                 }
               }
             }

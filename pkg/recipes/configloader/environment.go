@@ -94,18 +94,18 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metad
 	if environment.Properties.Recipes == nil {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
-	parsedLink, err := resources.ParseResource(recipe.ResourceID)
+	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resourceID: %q while building the recipe context parameter %w", recipe.ResourceID, err)
 	}
-	found, ok := environment.Properties.Recipes[parsedLink.Type()][recipe.Name]
+	found, ok := environment.Properties.Recipes[resource.Type()][recipe.Name]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
 
 	return &recipes.Definition{
 		Driver:       recipes.DriverBicep,
-		ResourceType: parsedLink.Type(),
+		ResourceType: resource.Type(),
 		Parameters:   found.Parameters,
 		TemplatePath: *found.TemplatePath,
 	}, nil

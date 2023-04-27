@@ -22,7 +22,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     recipes: {
       'Applications.Link/daprStateStores':{
-        daprstatestores: {
+        daprstatestore: {
           templatePath: 'radiusdev.azurecr.io/recipes/daprstatestores/azure:1.0' 
         }
       }
@@ -81,7 +81,7 @@ resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview
     environment: env.id
     mode: 'recipe'
     recipe: {
-      name: 'daprstatestores'
+      name: 'daprstatestore'
     }
   }
 }

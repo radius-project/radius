@@ -127,7 +127,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.RecipeNameAndLinkType{RecipeName: &r.RecipeName, LinkType: &r.LinkType})
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.Recipe{RecipeName: &r.RecipeName, LinkType: &r.LinkType})
 	if err != nil {
 		return err
 	}

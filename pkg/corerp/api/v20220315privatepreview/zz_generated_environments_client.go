@@ -196,10 +196,10 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // environmentName - The name of the environment
-// recipeParameter - Resource create parameters.
+// recipeParameter - Recipe parameters.
 // options - EnvironmentsClientGetRecipeMetadataOptions contains the optional parameters for the EnvironmentsClient.GetRecipeMetadata
 // method.
-func (client *EnvironmentsClient) GetRecipeMetadata(ctx context.Context, environmentName string, recipeParameter RecipeNameAndLinkType, options *EnvironmentsClientGetRecipeMetadataOptions) (EnvironmentsClientGetRecipeMetadataResponse, error) {
+func (client *EnvironmentsClient) GetRecipeMetadata(ctx context.Context, environmentName string, recipeParameter Recipe, options *EnvironmentsClientGetRecipeMetadataOptions) (EnvironmentsClientGetRecipeMetadataResponse, error) {
 	req, err := client.getRecipeMetadataCreateRequest(ctx, environmentName, recipeParameter, options)
 	if err != nil {
 		return EnvironmentsClientGetRecipeMetadataResponse{}, err
@@ -215,7 +215,7 @@ func (client *EnvironmentsClient) GetRecipeMetadata(ctx context.Context, environ
 }
 
 // getRecipeMetadataCreateRequest creates the GetRecipeMetadata request.
-func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Context, environmentName string, recipeParameter RecipeNameAndLinkType, options *EnvironmentsClientGetRecipeMetadataOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Context, environmentName string, recipeParameter Recipe, options *EnvironmentsClientGetRecipeMetadataOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getmetadata"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {

@@ -28,10 +28,11 @@ func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.Environmen
 	}
 }
 
-func RecipeNameLinkTypeDatamodelFromVersioned(content []byte, version string) (*datamodel.RecipeNameAndLinkType, error) {
+// RecipeDataModelFromVersioned converts versioned recipe model to datamodel.
+func RecipeDataModelFromVersioned(content []byte, version string) (*datamodel.Recipe, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.RecipeNameAndLinkType{}
+		am := &v20220315privatepreview.Recipe{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}
@@ -39,7 +40,7 @@ func RecipeNameLinkTypeDatamodelFromVersioned(content []byte, version string) (*
 		if err != nil {
 			return nil, err
 		}
-		return dm.(*datamodel.RecipeNameAndLinkType), nil
+		return dm.(*datamodel.Recipe), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

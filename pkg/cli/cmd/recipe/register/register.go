@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerpapps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -139,23 +139,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeProperties := envResource.Properties.Recipes
-	if recipeProperties == nil {
-		recipeProperties = map[string]map[string]*corerpapps.EnvironmentRecipeProperties{}
+	envRecipes := envResource.Properties.Recipes
+	if envRecipes == nil {
+		envRecipes = map[string]map[string]*corerp.EnvironmentRecipeProperties{}
 	}
 
-	properties := &corerpapps.EnvironmentRecipeProperties{
+	properties := &corerp.EnvironmentRecipeProperties{
 		TemplatePath: &r.TemplatePath,
 		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 	}
-	if val, ok := recipeProperties[r.LinkType]; ok {
+	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
 	} else {
-		recipeProperties[r.LinkType] = map[string]*corerpapps.EnvironmentRecipeProperties{
+		envRecipes[r.LinkType] = map[string]*corerp.EnvironmentRecipeProperties{
 			r.RecipeName: properties,
 		}
 	}
-	envResource.Properties.Recipes = recipeProperties
+	envResource.Properties.Recipes = envRecipes
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
 	if err != nil || !isEnvCreated {

@@ -1122,8 +1122,8 @@ type ProvidersAzure struct {
 	Scope *string `json:"scope,omitempty"`
 }
 
-// RecipeNameAndLinkType - Recipe Name and LinkType
-type RecipeNameAndLinkType struct {
+// Recipe properties.
+type Recipe struct {
 	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 	LinkType *string `json:"linkType,omitempty"`
 

@@ -111,6 +111,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								},
 							},
 						},
+						linkrp.RedisCachesResourceType: {
+							"redis-recipe": datamodel.EnvironmentRecipeProperties{
+								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/rediscaches",
+							},
+						},
 					},
 					Extensions: getTestKubernetesMetadataExtensions(t),
 				},
