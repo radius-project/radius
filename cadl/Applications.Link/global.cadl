@@ -56,3 +56,9 @@ model Recipe{
 }
 @doc("Key/value parameters to pass into the recipe at deployment")
 model Parameters{}
+
+@doc("The resource ID that support the current Link resource")
+model SupportingResources{
+  @doc("The resource ID of the supporting resource")
+	id: string;
+}

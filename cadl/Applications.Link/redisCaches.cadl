@@ -55,42 +55,16 @@ model RedisCacheSecrets {
   password?: string;
 }
 
-@doc("RedisCache Properties for Mode Resource")
-model ResourceRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "resource";
-
-  @doc("Fully qualified resource ID of a supported resource with Redis API to use for this link")
-  resource: string;
-
-  @doc("The host name of the target Redis cache")
-  host?: string;
-
-  @doc("The port value of the target Redis cache")
-  port?: int32;
-
-  @doc("The username for Redis cache")
+@doc("RedisCache link properties")
+model RedisCacheProperties extends BasicResourceProperties {
+  @doc("Provisioning state of the redis cache link at the time the operation was called")
   @visibility("read")
-  username?: string;
-}
-@doc("RedisCache Properties for Mode Values")
-model ValuesRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
+  provisioningState?: ProvisioningState;
 
-  @doc("The host name of the target Redis cache")
-  host: string;
+  @doc("Secrets provided by resource")
+  secrets?: RedisCacheSecrets;
 
-  @doc("The port value of the target Redis cache")
-  port: int32;
-
-  @doc("The username for Redis cache")
-  @visibility("read")
-  username?: string;
-}
-@doc("RedisCache Properties for Mode Recipe")
-model RecipeRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+    @doc("How to build the RabbitMQMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "recipe";
 
   @doc("The host name of the target Redis cache")
@@ -105,17 +79,12 @@ model RecipeRedisCacheProperties extends RedisCacheProperties {
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the rediscaches link")
   recipe: Recipe;
-}
 
-@discriminator("mode")
-@doc("RedisCache link properties")
-model RedisCacheProperties extends BasicResourceProperties {
-  @doc("Provisioning state of the redis cache link at the time the operation was called")
-  @visibility("read")
-  provisioningState?: ProvisioningState;
+  @doc("list of the resource IDs that support the PubSub resource")
+  resources?: SupportingResources[];
 
-  @doc("Secrets provided by resource")
-  secrets?: RedisCacheSecrets;
+  @doc("Whether or not to disable the use of a recipe")
+  disableRecipe?: boolean;
 }
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
 @doc("Lists secrets values for the specified RedisCache resource")

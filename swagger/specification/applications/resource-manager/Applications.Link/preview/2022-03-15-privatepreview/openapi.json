@@ -2405,39 +2405,6 @@
       ],
       "x-ms-discriminator-value": "recipe"
     },
-    "RecipeRedisCacheProperties": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": "string",
-          "description": "The host name of the target Redis cache"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port value of the target Redis cache"
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscaches link"
-        }
-      },
-      "description": "RedisCache Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RedisCacheProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
     "RecipeSqlDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2482,10 +2449,6 @@
     "RedisCacheProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for RedisCacheProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the redis cache link at the time the operation was called",
@@ -2494,12 +2457,52 @@
         "secrets": {
           "$ref": "#/definitions/RedisCacheSecrets",
           "description": "Secrets provided by resource"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "recipe"
+          ],
+          "x-ms-enum": {
+            "modelAsString": false
+          },
+          "description": "How to build the RabbitMQMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require."
+        },
+        "host": {
+          "type": "string",
+          "description": "The host name of the target Redis cache"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port value of the target Redis cache"
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for Redis cache",
+          "readOnly": true
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscaches link"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SupportingResources"
+          },
+          "x-cadl-name": "SupportingResources[]",
+          "description": "list of the resource IDs that support the PubSub resource"
+        },
+        "disableRecipe": {
+          "type": "boolean",
+          "description": "Whether or not to disable the use of a recipe"
         }
       },
       "description": "RedisCache link properties",
-      "discriminator": "mode",
       "required": [
-        "mode"
+        "mode",
+        "recipe"
       ],
       "allOf": [
         {
@@ -2659,39 +2662,6 @@
       ],
       "x-ms-discriminator-value": "resource"
     },
-    "ResourceRedisCacheProperties": {
-      "type": "object",
-      "properties": {
-        "resource": {
-          "type": "string",
-          "description": "Fully qualified resource ID of a supported resource with Redis API to use for this link"
-        },
-        "host": {
-          "type": "string",
-          "description": "The host name of the target Redis cache"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port value of the target Redis cache"
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
-        }
-      },
-      "description": "RedisCache Properties for Mode Resource",
-      "required": [
-        "resource"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RedisCacheProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "resource"
-    },
     "ResourceSqlDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2799,6 +2769,19 @@
       "description": "The response of a SqlDatabaseResource list operation.",
       "required": [
         "value"
+      ]
+    },
+    "SupportingResources": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The resource ID of the supporting resource"
+        }
+      },
+      "description": "The resource ID that support the current Link resource",
+      "required": [
+        "id"
       ]
     },
     "ValuesDaprPubSubProperties": {
@@ -2933,36 +2916,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/RabbitMQMessageQueueProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesRedisCacheProperties": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": "string",
-          "description": "The host name of the target Redis cache"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port value of the target Redis cache"
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
-        }
-      },
-      "description": "RedisCache Properties for Mode Values",
-      "required": [
-        "host",
-        "port"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RedisCacheProperties"
         }
       ],
       "x-ms-discriminator-value": "values"
