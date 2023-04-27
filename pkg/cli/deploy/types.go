@@ -11,7 +11,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 // Interface is the interface for executing Bicep deployments in the CLI.
@@ -42,7 +42,7 @@ type Options struct {
 	Workspace workspaces.Workspace
 
 	// Providers are the cloud providers configured on the env for deployment
-	Providers *v20220315privatepreview.Providers
+	Providers *datamodel.Providers
 
 	// ProgressText is a message displayed on the console when deployment begins.
 	ProgressText string

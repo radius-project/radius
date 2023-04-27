@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/spf13/cobra"
 )
@@ -110,7 +111,7 @@ type Runner struct {
 	FilePath        string
 	Parameters      map[string]map[string]any
 	Workspace       *workspaces.Workspace
-	Providers       *v20220315privatepreview.Providers
+	Providers       *datamodel.Providers
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -169,7 +170,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if env.Properties != nil && env.Properties.Providers != nil {
-		r.Providers = env.Properties.Providers
+		r.Providers = &datamodel.Providers{}
+		if env.Properties.Providers.Aws != nil {
+			r.Providers.AWS.Scope = *env.Properties.Providers.Aws.Scope
+		}
+		if env.Properties.Providers.Azure != nil {
+			r.Providers.Azure.Scope = *env.Properties.Providers.Azure.Scope
+		}
 	}
 
 	if r.ApplicationName != "" {
