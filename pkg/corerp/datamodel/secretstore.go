@@ -10,16 +10,13 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// SecretValueEncoding is the encoding type.
-type SecretValueEncoding string
-
 const (
-	// SecretNoneEnconding is the undefined encoding type of value.
-	SecretValueEncodingNone SecretValueEncoding = ""
 	// SecretValueEncodingRaw is the raw encoding type of value.
-	SecretValueEncodingRaw SecretValueEncoding = "raw"
+	SecretValueEncodingNone string = ""
+	// SecretValueEncodingRaw is the raw encoding type of value.
+	SecretValueEncodingRaw = "raw"
 	// SecretValueEncodingBase64 is the base64 encoding type of value.
-	SecretValueEncodingBase64 SecretValueEncoding = "base64"
+	SecretValueEncodingBase64 = "base64"
 )
 
 // SecretType represents the type of a secret.
@@ -77,6 +74,8 @@ type SecretStoreProperties struct {
 
 // SecretStoreDataValue represents the value of the secret store data.
 type SecretStoreDataValue struct {
+	// Encoding is the encoding type of Value.
+	Encoding string `json:"encoding,omitempty"`
 	// Value is the value of the secret store data.
 	Value *string `json:"value,omitempty"`
 	// ValueFrom is the value from of the secret store data.
