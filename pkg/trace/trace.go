@@ -19,7 +19,7 @@ import (
 // InitTracer initializes a new and configured TracerProvider.
 func InitTracer(opts Options) (func(context.Context) error, error) {
 	tp := sdktrace.NewTracerProvider(
-		trace.WithSampler(trace.TraceIDRatioBased(0.5)),
+		trace.WithSampler(trace.TraceIDRatioBased(0.05)),
 		// sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
