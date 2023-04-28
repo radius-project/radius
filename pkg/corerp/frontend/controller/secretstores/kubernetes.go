@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package secretstores
 
 import (
@@ -56,10 +61,10 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, ol
 	return nil, nil
 }
 
-func getNamespace(ctx context.Context, newResource *datamodel.SecretStore, options *controller.Options) (string, error) {
-	newProp := newResource.Properties
-	if newProp.Application != "" {
-		app, err := store.GetResource[datamodel.Application](ctx, options.StorageClient, newProp.Application)
+func getNamespace(ctx context.Context, res *datamodel.SecretStore, options *controller.Options) (string, error) {
+	prop := res.Properties
+	if prop.Application != "" {
+		app, err := store.GetResource[datamodel.Application](ctx, options.StorageClient, prop.Application)
 		if err != nil {
 			return "", err
 		}
@@ -69,8 +74,8 @@ func getNamespace(ctx context.Context, newResource *datamodel.SecretStore, optio
 		}
 	}
 
-	if newProp.Environment != "" {
-		env, err := store.GetResource[datamodel.Environment](ctx, options.StorageClient, newProp.Environment)
+	if prop.Environment != "" {
+		env, err := store.GetResource[datamodel.Environment](ctx, options.StorageClient, prop.Environment)
 		if err != nil {
 			return "", err
 		}
@@ -97,15 +102,18 @@ func fromResourceID(id string) (ns string, name string, err error) {
 	} else if len(res) == 1 {
 		ns, name = "", res[0]
 	} else {
-		err = errors.New("invalid resource ID")
+		err = fmt.Errorf("'%s' is the invalid resource id", id)
+		return
 	}
 
 	if !kubernetes.IsValidObjectName(name) {
-		err = fmt.Errorf("%s is the invalid resource name. This must be at most 63 alphanumeric characters or '-'", name)
+		err = fmt.Errorf("'%s' is the invalid resource name. This must be at most 63 alphanumeric characters or '-'", name)
+		return
 	}
 
-	if !kubernetes.IsValidObjectName(ns) {
-		err = fmt.Errorf("%s is the invalid namespace. This must be at most 63 alphanumeric characters or '-'", ns)
+	if ns != "" && !kubernetes.IsValidObjectName(ns) {
+		err = fmt.Errorf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'", ns)
+		return
 	}
 
 	return
