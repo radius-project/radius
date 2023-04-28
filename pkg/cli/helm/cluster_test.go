@@ -16,28 +16,11 @@ func Test_CanSetCLIOptions(t *testing.T) {
 	cliOptions := CLIClusterOptions{
 		Radius: RadiusOptions{
 			ChartPath: "chartpath",
-			Image:     "image",
-			Tag:       "tag",
 		},
 	}
 	clusterOptions := PopulateDefaultClusterOptions(cliOptions)
 
 	require.Equal(t, "chartpath", clusterOptions.Radius.ChartPath)
-	require.Equal(t, "image", clusterOptions.Radius.Image)
-	require.Equal(t, "tag", clusterOptions.Radius.Tag)
-}
-
-func Test_DefaultTags(t *testing.T) {
-	clusterOptions := NewDefaultClusterOptions()
-	tag := version.Channel()
-	if version.IsEdgeChannel() {
-		tag = "latest"
-	}
-
-	require.Equal(t, tag, clusterOptions.Radius.Tag)
-	require.Equal(t, tag, clusterOptions.Radius.AppCoreTag)
-	require.Equal(t, tag, clusterOptions.Radius.UCPTag)
-	require.Equal(t, tag, clusterOptions.Radius.DETag)
 
 }
 

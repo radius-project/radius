@@ -519,9 +519,7 @@ func (r *Runner) getAWSCredential() ucp.AWSCredentialResource {
 func installRadius(ctx context.Context, r *Runner) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
-			Reinstall:     r.Reinstall,
-			AzureProvider: r.AzureCloudProvider,
-			AWSProvider:   r.AwsCloudProvider,
+			Reinstall: r.Reinstall,
 		},
 	}
 
