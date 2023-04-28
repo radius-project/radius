@@ -1950,21 +1950,41 @@
     "DaprStateStoreProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for DaprStateStoreProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the DaprStateStore link at the time the operation was called",
           "readOnly": true
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "metadata": {
+          "$ref": "#/definitions/object",
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          },
+          "x-cadl-name": "ResourceReference[]",
+          "description": "A collection of references to resources associated with the state store"
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
         }
       },
       "description": "DaprStateStore link properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicDaprResourceProperties"
@@ -2318,37 +2338,6 @@
       ],
       "x-ms-discriminator-value": "recipe"
     },
-    "RecipeDaprStateStoreProperties": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link"
-        }
-      },
-      "description": "DaprStateStore Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
     "RecipeMongoDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2584,37 +2573,6 @@
       ],
       "x-ms-discriminator-value": "resource"
     },
-    "ResourceDaprStateStoreProperties": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "resource": {
-          "type": "string",
-          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to."
-        }
-      },
-      "description": "DaprStateStore Properties for Mode Resource",
-      "required": [
-        "resource"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "resource"
-    },
     "ResourceMongoDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2836,35 +2794,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/DaprSecretStoreProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesDaprStateStoreProperties": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        }
-      },
-      "description": "DaprStateStore Properties for Mode Values",
-      "required": [
-        "metadata",
-        "type",
-        "version"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreProperties"
         }
       ],
       "x-ms-discriminator-value": "values"

@@ -230,37 +230,22 @@
 * **Additional Properties Type**: string
 
 ## DaprStateStoreProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the state store
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeDaprStateStoreProperties
-#### Properties
-* **metadata**: any: Any object
-* **mode**: 'recipe' (Required): Discriminator property for DaprStateStoreProperties.
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
 
-### ResourceDaprStateStoreProperties
-#### Properties
-* **metadata**: any: Any object
-* **mode**: 'resource' (Required): Discriminator property for DaprStateStoreProperties.
-* **resource**: string (Required): The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
-* **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
-* **version**: string: Dapr component version
-
-### ValuesDaprStateStoreProperties
-#### Properties
-* **metadata**: any (Required): Any object
-* **mode**: 'values' (Required): Discriminator property for DaprStateStoreProperties.
-* **type**: string (Required): Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
-* **version**: string (Required): Dapr component version
-
+## ResourceReference
+### Properties
+* **id**: string (Required): Resource id of an existing resource
 
 ## TrackedResourceTags
 ### Properties
@@ -374,10 +359,6 @@
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **username**: string (ReadOnly): The username for Redis cache
-
-## ResourceReference
-### Properties
-* **id**: string (Required): Resource id of an existing resource
 
 ## RedisCacheSecrets
 ### Properties

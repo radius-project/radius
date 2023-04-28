@@ -59,7 +59,11 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 	return linkrp.DaprStateStoresResourceType
 }
 
+// Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
 func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
+	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
 	return &r.Properties.Recipe
 }
 
@@ -67,10 +71,11 @@ func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
 type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Mode     LinkMode          `json:"mode,omitempty"`
-	Metadata map[string]any    `json:"metadata,omitempty"`
-	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
-	Resource string            `json:"resource,omitempty"`
-	Type     string            `json:"type,omitempty"`
-	Version  string            `json:"version,omitempty"`
+	// Specifies how the underlying service/resource is provisioned and managed
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Metadata             map[string]any              `json:"metadata,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Type                 string                      `json:"type,omitempty"`
+	Version              string                      `json:"version,omitempty"`
 }

@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/daprstatestores"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
@@ -77,25 +76,12 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 			},
 		},
 		{
-			ResourceType: linkrp.DaprStateStoresResourceType,
-			Renderer: &daprstatestores.Renderer{
-				StateStores: daprstatestores.SupportedStateStoreModes,
-			},
-		},
-		{
 			ResourceType: linkrp.ExtendersResourceType,
 			Renderer:     &extenders.Renderer{},
 		},
 	}
 
 	outputResourceModel := []OutputResourceModel{
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreAzureStorage,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprComponent,
@@ -152,13 +138,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreAzureStorage,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{

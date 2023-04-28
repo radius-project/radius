@@ -538,7 +538,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
 		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.Mode == datamodel.LinkModeRecipe {
+		if obj.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}

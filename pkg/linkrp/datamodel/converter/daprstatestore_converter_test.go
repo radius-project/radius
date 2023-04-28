@@ -18,7 +18,6 @@ package converter
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -84,24 +83,24 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoresqlserverresource.json",
+			"../../api/v20220315privatepreview/testdata/daprstatestore_invalidrecipe_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: v1.CodeInvalid, Message: "multiple errors were found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)"},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprstatestore_invalidvalues_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprstatestore_recipe_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoreazuretablestorageresource.json",
+			"../../api/v20220315privatepreview/testdata/daprstatestore_values_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
-		},
-		{
-			"../../api/v20220315privatepreview/testdata/daprstatestogenericreresource.json",
-			"2022-03-15-privatepreview",
-			nil,
-		},
-		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoreresource-invalid.json",
-			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field DaprStateStoreProperties.properties.resource of type string"),
 		},
 		{
 			"",
@@ -115,7 +114,7 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 			c := loadTestData(tc.versionedModelFile)
 			dm, err := DaprStateStoreDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
-				require.ErrorAs(t, tc.err, &err)
+				require.Equal(t, tc.err, err)
 			} else {
 				require.NoError(t, err)
 				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)

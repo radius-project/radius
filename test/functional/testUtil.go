@@ -40,18 +40,18 @@ const (
 )
 
 func GetMagpieImage() string {
-	defaultDockerReg, imageTag := setDefault()
+	defaultDockerReg, imageTag := SetDefault()
 	magpieImage := "magpieimage=" + defaultDockerReg + "/magpiego:" + imageTag
 	return magpieImage
 }
 
 func GetMagpieTag() string {
-	_, imageTag := setDefault()
+	_, imageTag := SetDefault()
 	magpietag := "magpietag=" + imageTag
 	return magpietag
 }
 
-func setDefault() (string, string) {
+func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
 	if defaultDockerReg == "" {
