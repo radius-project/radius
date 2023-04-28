@@ -10,7 +10,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/metric/global"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -39,7 +38,7 @@ func NewPrometheusExporter(options *MetricsProviderOptions) (*PrometheusExporter
 			semconv.ServiceNameKey.String(options.ServiceName),
 		)))
 
-	global.SetMeterProvider(mp)
+	// global.SetMeterProvider(mp)
 
 	return &PrometheusExporter{
 		MeterProvider: mp,

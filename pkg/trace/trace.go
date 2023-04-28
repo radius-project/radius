@@ -33,7 +33,7 @@ func InitTracer(opts Options) (func(context.Context) error, error) {
 		tp.RegisterSpanProcessor(batcher)
 
 	}
-	otel.SetTracerProvider(tp)
+	// otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}))
 	return tp.Shutdown, nil
 }
