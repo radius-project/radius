@@ -11,6 +11,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -188,26 +191,48 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		return nil, err
 	}
 
+	newResource.Properties.Status.OutputResources = []rpv1.OutputResource{
+		{
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     resourcekinds.Secret,
+					Provider: resourcemodel.ProviderKubernetes,
+				},
+				Data: resourcemodel.KubernetesIdentity{
+					Kind:       resourcekinds.Secret,
+					APIVersion: "v1",
+					Name:       secretName,
+					Namespace:  namespace,
+				},
+			},
+		},
+	}
+
 	return nil, nil
 }
 
 // DeleteRadiusSecret deletes a secret if the secret is managed by Radius.
 func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	namespace, secertName, err := fromResourceID(oldResource.Properties.Resource)
-	if err != nil {
-		return nil, err
+	or := oldResource.Properties.Status.OutputResources
+	ki := resourcemodel.KubernetesIdentity{}
+	if len(or) > 0 {
+		if err := store.DecodeMap(or[0].Identity.Data, &ki); err != nil {
+			return nil, nil
+		}
 	}
 
-	ksecret := &corev1.Secret{}
-	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: secertName}, ksecret)
-	if err != nil {
-		return nil, err
-	}
-
-	// Delete only Radius managed resource.
-	if _, ok := ksecret.Labels[kubernetes.LabelRadiusResourceType]; ok {
-		if err := options.KubeClient.Delete(ctx, ksecret); err != nil {
+	if ki.Kind == resourcekinds.Secret {
+		ksecret := &corev1.Secret{}
+		err := options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ki.Namespace, Name: ki.Name}, ksecret)
+		if err != nil {
 			return nil, err
+		}
+
+		// Delete only Radius managed resource.
+		if _, ok := ksecret.Labels[kubernetes.LabelRadiusResourceType]; ok {
+			if err := options.KubeClient.Delete(ctx, ksecret); err != nil {
+				return nil, err
+			}
 		}
 	}
 
