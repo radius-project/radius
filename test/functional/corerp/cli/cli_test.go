@@ -543,7 +543,8 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
+		{
+			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, functional.GetMagpieTag()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
