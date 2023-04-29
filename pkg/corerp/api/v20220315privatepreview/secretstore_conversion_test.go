@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
@@ -95,8 +96,8 @@ func TestSecretStoreConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Core/secretStores", r.Type)
 		require.Equal(t, "dev", r.Tags["env"])
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", r.Properties.Application)
-		require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-		require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+		identity := versioned.Properties.Status.OutputResources[0]["Identity"].(resourcemodel.KubernetesIdentity)
+		require.Equal(t, "Secret", identity.Kind)
 		require.Equal(t, "certificate", string(*versioned.Properties.Type))
 		require.Nil(t, versioned.Properties.Data["tls.crt"].Encoding)
 		require.Equal(t, "", to.String(versioned.Properties.Data["tls.crt"].Value))
