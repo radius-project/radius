@@ -17,11 +17,21 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
+// MustGetTestData reads testdata and unmarshals it to the given type.
+func MustGetTestData[T any](file string) *T {
+	var data T
+	err := json.Unmarshal(ReadFixture(file), &data)
+	if err != nil {
+		panic(err)
+	}
+	return &data
+}
+
 // ReadFixture reads testdata fixtures.
 func ReadFixture(filename string) []byte {
 	raw, err := os.ReadFile("./testdata/" + filename)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	return raw
 }
