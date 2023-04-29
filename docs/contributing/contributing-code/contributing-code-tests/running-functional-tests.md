@@ -9,6 +9,9 @@ These tests verify whether:
 
 These run on Azure Radius environments (also called Radius test clusters) that are managed dynamically as part of the test process.
 
+Note that these tests require the Radius environment to be associated with "default" kubernetes namespace. 
+Since an environment "env-name"'s default namespace is "env-name", we should explicitly supply  --namespace "default" flag during the test Radius environment creation.
+
 ## Running via GitHub workflow
 
 These tests automatically run for every PR in the `azure-pipelines.yml` github workflow.

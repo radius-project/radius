@@ -25,6 +25,16 @@ type ResourceProcessor[P interface {
 	Process(ctx context.Context, resource P, output *recipes.RecipeOutput) error
 }
 
+// ValidationError represents a user-facing validation message reported by the processor.
+type ValidationError struct {
+	Message string
+}
+
+// Error gets the string representation of the error.
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
 //go:generate mockgen -destination=./mock_resourceclient.go -package=processors -self_package github.com/project-radius/radius/pkg/linkrp/processors github.com/project-radius/radius/pkg/linkrp/processors ResourceClient
 
 // ResourceClient is a client used by resource processors for interacting with UCP resources.
@@ -49,14 +59,4 @@ func (e *ResourceError) Error() string {
 // Unwrap gets the wrapper error of this ResourceDeletionErr.
 func (e *ResourceError) Unwrap() error {
 	return e.Inner
-}
-
-// ValidationError represents a user-facing validation message reported by the processor.
-type ValidationError struct {
-	Message string
-}
-
-// Error gets the string representation of the error.
-func (e *ValidationError) Error() string {
-	return e.Message
 }

@@ -8,7 +8,8 @@ package deployment
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
 )
@@ -16,9 +17,9 @@ import (
 func Test_GetProviderConfigs(t *testing.T) {
 	resourceDeploymentClient := ResourceDeploymentClient{
 		RadiusResourceGroup: "testrg",
-		Client:              &sdkclients.ResourceDeploymentsClient{},
-		OperationsClient:    &sdkclients.ResourceDeploymentOperationsClient{},
-		AzProvider:          &workspaces.AzureProvider{},
+	}
+	options := clients.DeploymentOptions{
+		Providers: &datamodel.Providers{},
 	}
 
 	var expectedConfig sdkclients.ProviderConfig
@@ -36,7 +37,7 @@ func Test_GetProviderConfigs(t *testing.T) {
 		},
 	}
 
-	providerConfig := resourceDeploymentClient.GetProviderConfigs()
+	providerConfig := resourceDeploymentClient.GetProviderConfigs(options)
 	require.Equal(t, providerConfig, expectedConfig)
 }
 
@@ -45,9 +46,13 @@ func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 		RadiusResourceGroup: "testrg",
 		Client:              &sdkclients.ResourceDeploymentsClient{},
 		OperationsClient:    &sdkclients.ResourceDeploymentOperationsClient{},
-		AzProvider: &workspaces.AzureProvider{
-			SubscriptionID: "dummy",
-			ResourceGroup:  "azrg",
+	}
+
+	options := clients.DeploymentOptions{
+		Providers: &datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "/subscriptions/dummy/resourceGroups/azrg",
+			},
 		},
 	}
 
@@ -73,6 +78,6 @@ func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 		},
 	}
 
-	providerConfig := resourceDeploymentClient.GetProviderConfigs()
+	providerConfig := resourceDeploymentClient.GetProviderConfigs(options)
 	require.Equal(t, providerConfig, expectedConfig)
 }
