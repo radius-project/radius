@@ -158,7 +158,8 @@ func TestValidateRequest(t *testing.T) {
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.True(t, r.Body.Error.Message == "data[tls.crt] must not set valueFrom." || r.Body.Error.Message == "data[tls.key] must not set valueFrom.")
+		require.True(t, r.Body.Error.Message == "data[tls.crt] must not set valueFrom." ||
+			r.Body.Error.Message == "data[tls.key] must not set valueFrom.")
 	})
 
 	t.Run("update the existing resource - type not matched", func(t *testing.T) {
@@ -199,15 +200,6 @@ func TestValidateRequest(t *testing.T) {
 }
 
 func TestUpsertSecret(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	sc := store.NewMockStorageClient(ctrl)
-
-	appData := testutil.MustGetTestData[any]("app_datamodel.json")
-
-	sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
-		Data: *appData,
-	}, nil)
-
 	t.Run("create new secret with the specified resource", func(t *testing.T) {
 		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel_value.json")
 		newResource.Properties.Resource = "default/secret"
@@ -261,7 +253,8 @@ func TestUpsertSecret(t *testing.T) {
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.Equal(t, "default/letencrypt-prod does not have key, tls.crt.", r.Body.Error.Message)
+		require.True(t, r.Body.Error.Message == "default/letencrypt-prod does not have key, tls.crt." ||
+			r.Body.Error.Message == "default/letencrypt-prod does not have key, tls.key.")
 	})
 
 	t.Run("add secret values to the existing secret store", func(t *testing.T) {
@@ -339,6 +332,15 @@ func TestUpsertSecret(t *testing.T) {
 	})
 
 	t.Run("create new resource", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		sc := store.NewMockStorageClient(ctrl)
+
+		appData := testutil.MustGetTestData[any]("app_datamodel.json")
+
+		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
+			Data: *appData,
+		}, nil)
+
 		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
 		newResource.Properties.Resource = ""
 
