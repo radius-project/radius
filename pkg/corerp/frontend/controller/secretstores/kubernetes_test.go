@@ -404,5 +404,4 @@ func TestDeleteSecret(t *testing.T) {
 		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "letencrypt-prod"}, ksecret)
 		require.False(t, apierrors.IsNotFound(err))
 	})
-
 }
