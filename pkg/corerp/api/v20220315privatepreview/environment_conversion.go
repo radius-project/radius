@@ -59,6 +59,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
+						TemplateKind: to.String(recipeDetails.TemplateKind),
 						TemplatePath: to.String(recipeDetails.TemplatePath),
 						Parameters:   recipeDetails.Parameters,
 					}
@@ -122,6 +123,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 			recipes[resourceType] = map[string]*EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipe {
 				recipes[resourceType][recipeName] = &EnvironmentRecipeProperties{
+					TemplateKind: to.Ptr(recipeDetails.TemplateKind),
 					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
 					Parameters:   recipeDetails.Parameters,
 				}

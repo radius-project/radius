@@ -363,7 +363,8 @@
 ## EnvironmentRecipeProperties
 ### Properties
 * **parameters**: any: Any object
-* **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+* **templateKind**: string: Format of the template provided by the recipe. Currenlty only Bicep and Terraform templates are supported.
+* **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported for Bicep and public Terraform registries are supported for Terraform.
 
 ## TrackedResourceTags
 ### Properties
