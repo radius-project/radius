@@ -30,6 +30,12 @@ model ResourceStatus {
   outputResources?: OutputResource[];
 }
 
+@doc("Describes a reference to an existing resource")
+model ResourceReference {
+  @doc("Resouce id of an existing resource")
+  id: string
+}
+
 @doc("Properties of an output resource.")
 model OutputResource {}
 

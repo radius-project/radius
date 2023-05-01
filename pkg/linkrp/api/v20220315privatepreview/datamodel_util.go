@@ -81,6 +81,9 @@ func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
 	if r == nil {
 		return linkrp.LinkRecipe{}
 	}
+	if r == nil {
+		return linkrp.LinkRecipe{}
+	}
 
 	recipe := linkrp.LinkRecipe{
 		Name: to.String(r.Name),
@@ -99,24 +102,28 @@ func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
 	}
 }
 
-func toResourcesDataModel(r []*SupportingResources) []linkrp.SupportingResources {
-	var supportingResources []linkrp.SupportingResources
-	for _, resource := range r {
-		supportingResource := linkrp.SupportingResources{
-			ResourceID: to.String(resource.ID),
-		}
-		supportingResources = append(supportingResources, supportingResource)
+func toResourcesDataModel(r []*ResourceReference) []*linkrp.ResourceReference {
+	if r == nil {
+		return nil
 	}
-	return supportingResources
+	resources := make([]*linkrp.ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &linkrp.ResourceReference{
+			ID: to.String(resource.ID),
+		}
+	}
+	return resources
 }
 
-func fromResourcesDataModel(r []linkrp.SupportingResources) []*SupportingResources {
-	var supportingResources []*SupportingResources
-	for _, resource := range r {
-		supportingResource := &SupportingResources{
-			ID: to.Ptr(resource.ResourceID),
-		}
-		supportingResources = append(supportingResources, supportingResource)
+func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference {
+	if r == nil {
+		return nil
 	}
-	return supportingResources
+	resources := make([]*ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &ResourceReference{
+			ID: to.Ptr(resource.ID),
+		}
+	}
+	return resources
 }
