@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -103,7 +104,7 @@ func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource
 }
 
 func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context, properties map[string]string, cs string, resource *rpv1.OutputResource) error {
-	err := handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
+	err := kubeutil.PatchNamespace(ctx, handler.k8s, properties[KubernetesNamespaceKey])
 	if err != nil {
 		return err
 	}
