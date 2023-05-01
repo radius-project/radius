@@ -183,7 +183,7 @@ func TestValidateRequest(t *testing.T) {
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.Equal(t, "'default/letsencrypt-prod' of $.properties.resource must must be same as 'default/notmatch'.", r.Body.Error.Message)
+		require.Equal(t, "'default/letsencrypt-prod' of $.properties.resource must be same as 'default/notmatch'.", r.Body.Error.Message)
 	})
 
 	t.Run("inherit resource id from existing resource", func(t *testing.T) {
