@@ -22,7 +22,16 @@ type ResourceProcessor[P interface {
 }, T any] interface {
 	// Process is called to process the results of recipe execution or any other changes to the resource
 	// data model. Process should modify the datamodel in place to perform updates.
-	Process(ctx context.Context, resource P, output *recipes.RecipeOutput) error
+	Process(ctx context.Context, resource P, options Options) error
+}
+
+// Options defines the options passed to the resource processor.
+type Options struct {
+	// RuntimeConfiguration represents the configuration of the target runtime.
+	RuntimeConfiguration recipes.RuntimeConfiguration
+
+	// RecipeOutput represents the output of executing a recipe (may be nil).
+	RecipeOutput *recipes.RecipeOutput
 }
 
 // ValidationError represents a user-facing validation message reported by the processor.

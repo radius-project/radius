@@ -542,8 +542,17 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	name := "kubernetes-cli-params"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 
+	// corerp-kubernetes-cli-parameters.parameters.json uses radiusdev.azurecr.io as a registry parameter.
+	// Use the specified tag only if the test uses radiusdev.azurecr.io registry. Otherwise, use latest tag.
+	magpieTag := "magpietag=latest"
+	image := functional.GetMagpieImage()
+	if !strings.HasPrefix(image, "magpieimage=radiusdev.azurecr.io") {
+		magpieTag = functional.GetMagpieTag()
+	}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
+		{
+			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, magpieTag),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

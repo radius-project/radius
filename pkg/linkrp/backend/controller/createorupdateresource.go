@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -27,9 +28,10 @@ type CreateOrUpdateResource[P interface {
 	rpv1.RadiusResourceModel
 }, T any] struct {
 	ctrl.BaseController
-	processor processors.ResourceProcessor[P, T]
-	engine    engine.Engine
-	client    processors.ResourceClient
+	processor           processors.ResourceProcessor[P, T]
+	engine              engine.Engine
+	client              processors.ResourceClient
+	configurationLoader configloader.ConfigurationLoader
 }
 
 // NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
@@ -38,8 +40,8 @@ type CreateOrUpdateResource[P interface {
 func NewCreateOrUpdateResource[P interface {
 	*T
 	rpv1.RadiusResourceModel
-}, T any](processor processors.ResourceProcessor[P, T], eng engine.Engine, client processors.ResourceClient, opts ctrl.Options) (ctrl.Controller, error) {
-	return &CreateOrUpdateResource[P, T]{ctrl.NewBaseAsyncController(opts), processor, eng, client}, nil
+}, T any](processor processors.ResourceProcessor[P, T], eng engine.Engine, client processors.ResourceClient, configurationLoader configloader.ConfigurationLoader, opts ctrl.Options) (ctrl.Controller, error) {
+	return &CreateOrUpdateResource[P, T]{ctrl.NewBaseAsyncController(opts), processor, eng, client, configurationLoader}, nil
 }
 
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
@@ -64,8 +66,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	// Load details about the runtime for the processor to access.
+	runtimeConfiguration, err := c.loadRuntimeConfiguration(ctx, data.ResourceMetadata().Environment, data.ResourceMetadata().Application, data.GetBaseResource().ID)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// Now we're ready to process the resource. This will handle the updates to any user-visible state.
-	err = c.processor.Process(ctx, data, recipeOutput)
+	err = c.processor.Process(ctx, data, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: *runtimeConfiguration})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -105,6 +113,9 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	}
 
 	input := recipeDataModel.Recipe()
+	if input == nil {
+		return nil, nil
+	}
 	request := recipes.Metadata{
 		Name:          input.Name,
 		Parameters:    input.Parameters,
@@ -114,6 +125,16 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	}
 
 	return c.engine.Execute(ctx, request)
+}
+
+func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {
+	metadata := recipes.Metadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
+	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config.Runtime, nil
 }
 
 func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Context, id string, diff []rpv1.OutputResource) error {

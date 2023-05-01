@@ -23,6 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
@@ -156,7 +157,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 			err := apiextv1.AddToScheme(crdScheme)
 			require.NoError(t, err)
 
-			kubeClient := testutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+			kubeClient := k8sutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "apiextensions.k8s.io/v1",
 					Kind:       "CustomResourceDefinition",
@@ -166,7 +167,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				},
 			})
 			if testcase.daprMissing {
-				kubeClient = testutil.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
+				kubeClient = k8sutil.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
 			}
 
 			opts := frontend_ctrl.Options{
@@ -261,7 +262,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 			err := apiextv1.AddToScheme(crdScheme)
 			require.NoError(t, err)
 
-			kubeClient := testutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+			kubeClient := k8sutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "apiextensions.k8s.io/v1",
 					Kind:       "CustomResourceDefinition",
@@ -271,7 +272,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				},
 			})
 			if testcase.daprMissing {
-				kubeClient = testutil.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
+				kubeClient = k8sutil.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
 			}
 
 			opts := frontend_ctrl.Options{
