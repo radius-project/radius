@@ -69,15 +69,15 @@ stages:
       inputs:
         command: login
         containerRegistry: radiusdev-acr  # Service connection of radiusdev ACR: https://dev.azure.com/azure-octo/Incubations/_settings/adminservices?resourceId=09d4666f-2486-4dbf-a599-f95622e1ad29
-    - displayName: publish container - $(REL_VERSION)
-      script: |
+    - script: |
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
-    - displayName: publish test container images - latest
-      continueOnError: 'true' # ignore error if the image is being written.
-      script: |
+      displayName: publish container - $(REL_VERSION)
+    - script: |
         export DOCKER_TAG_VERSION=latest
         make docker-test-image-build && make docker-test-image-push
+      continueOnError: 'true' # ignore error if the image is being written.
+      displayName: publish test container images - latest
 - stage: FunctionalTests
   dependsOn: ImageBuild
   jobs:
