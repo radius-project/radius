@@ -25,11 +25,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	azScopeLength  = 5
-	awsScopeLength = 8
-)
-
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
