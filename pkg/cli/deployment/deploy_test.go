@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ func Test_GetProviderConfigs(t *testing.T) {
 		RadiusResourceGroup: "testrg",
 	}
 	options := clients.DeploymentOptions{
-		Providers: &datamodel.Providers{},
+		Providers: &workspaces.ProviderConfig{},
 	}
 
 	var expectedConfig sdkclients.ProviderConfig
@@ -49,9 +49,10 @@ func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 	}
 
 	options := clients.DeploymentOptions{
-		Providers: &datamodel.Providers{
-			Azure: datamodel.ProvidersAzure{
-				Scope: "/subscriptions/dummy/resourceGroups/azrg",
+		Providers: &workspaces.ProviderConfig{
+			Azure: &workspaces.AzureProvider{
+				SubscriptionID: "dummy",
+				ResourceGroup:  "azrg",
 			},
 		},
 	}

@@ -129,20 +129,22 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.Deploymen
 		return providerConfig
 	}
 
-	if options.Providers.Azure.Scope != "" {
+	if options.Providers.Azure != nil && options.Providers.Azure.ResourceGroup != "" && options.Providers.Azure.SubscriptionID != "" {
+		scope := "/subscriptions/" + options.Providers.Azure.SubscriptionID + "/resourceGroups/" + options.Providers.Azure.ResourceGroup
 		providerConfig.Az = &sdkclients.Az{
 			Type: sdkclients.ProviderTypeAzure,
 			Value: sdkclients.Value{
-				Scope: options.Providers.Azure.Scope,
+				Scope: scope,
 			},
 		}
 	}
 
-	if options.Providers.AWS.Scope != "" {
+	if options.Providers.AWS != nil && options.Providers.AWS.AccountId != "" && options.Providers.AWS.Region != "" {
+		scope := "/planes/aws/aws/accounts/" + options.Providers.AWS.AccountId + "/regions/" + options.Providers.AWS.Region
 		providerConfig.AWS = &sdkclients.AWS{
 			Type: sdkclients.ProviderTypeAWS,
 			Value: sdkclients.Value{
-				Scope: options.Providers.AWS.Scope,
+				Scope: scope,
 			},
 		}
 	}

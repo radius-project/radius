@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -193,13 +192,13 @@ func Test_Run(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name: "kind-kind",
-		}
-
-		providers := &datamodel.Providers{
-			Azure: datamodel.ProvidersAzure{
-				Scope: "/subscriptions/test-subId/resourceGroups/test-rg",
+			ProviderConfig: workspaces.ProviderConfig{
+				Azure: &workspaces.AzureProvider{
+					SubscriptionID: "test-subId",
+					ResourceGroup:  "test-rg",
+				},
 			},
+			Name: "kind-kind",
 		}
 
 		filePath := "app.bicep"
@@ -208,7 +207,6 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentName, workspace.Name)
 
 		options := deploy.Options{
-			Providers:      providers,
 			EnvironmentID:  fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			Workspace:      *workspace,
 			Parameters:     map[string]map[string]any{},
@@ -238,7 +236,6 @@ func Test_Run(t *testing.T) {
 			EnvironmentName: radcli.TestEnvironmentName,
 			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
-			Providers:       providers,
 		}
 
 		err := runner.Run(context.Background())
@@ -268,13 +265,13 @@ func Test_Run(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name: "kind-kind",
-		}
-
-		providers := &datamodel.Providers{
-			AWS: datamodel.ProvidersAWS{
-				Scope: "/accounts/test-accountId/regions/test-region",
+			ProviderConfig: workspaces.ProviderConfig{
+				AWS: &workspaces.AWSProvider{
+					AccountId: "test-accountId",
+					Region:    "test-region",
+				},
 			},
+			Name: "kind-kind",
 		}
 
 		filePath := "app.bicep"
@@ -283,7 +280,6 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentName, workspace.Name)
 
 		options := deploy.Options{
-			Providers:      providers,
 			EnvironmentID:  fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			Workspace:      *workspace,
 			Parameters:     map[string]map[string]any{},
@@ -313,7 +309,6 @@ func Test_Run(t *testing.T) {
 			EnvironmentName: radcli.TestEnvironmentName,
 			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
-			Providers:       providers,
 		}
 
 		err := runner.Run(context.Background())
