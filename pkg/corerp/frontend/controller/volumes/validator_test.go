@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/k8sutil"
 
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -44,7 +44,7 @@ func TestValidateRequest(t *testing.T) {
 	err := apiextv1.AddToScheme(crdScheme)
 	require.NoError(t, err)
 
-	crdFakeClient := testutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+	crdFakeClient := k8sutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apiextensions.k8s.io/v1",
 			Kind:       "CustomResourceDefinition",
@@ -55,7 +55,7 @@ func TestValidateRequest(t *testing.T) {
 	})
 
 	// Create default Kubernetes fake client.
-	defaultFakeClient := testutil.NewFakeKubeClient(crdScheme)
+	defaultFakeClient := k8sutil.NewFakeKubeClient(crdScheme)
 
 	type args struct {
 		ctx         context.Context

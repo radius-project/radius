@@ -21,6 +21,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
@@ -96,7 +97,7 @@ func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testin
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    testutil.NewFakeKubeClient(nil),
+				KubeClient:    k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -182,7 +183,7 @@ func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    testutil.NewFakeKubeClient(nil),
+				KubeClient:    k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -249,7 +250,7 @@ func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t 
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    testutil.NewFakeKubeClient(nil),
+				KubeClient:    k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -322,7 +323,7 @@ func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *te
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    testutil.NewFakeKubeClient(nil),
+				KubeClient:    k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -426,7 +427,7 @@ func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *t
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
 				DataProvider:  tCtx.MockSP,
-				KubeClient:    testutil.NewFakeKubeClient(nil),
+				KubeClient:    k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -446,7 +447,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
 		DataProvider:  tCtx.MockSP,
-		KubeClient:    testutil.NewFakeKubeClient(nil),
+		KubeClient:    k8sutil.NewFakeKubeClient(nil),
 	}
 
 	ctl, err := NewCreateOrUpdateApplication(opts)
@@ -560,7 +561,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
 		DataProvider:  tCtx.MockSP,
-		KubeClient:    testutil.NewFakeKubeClient(nil),
+		KubeClient:    k8sutil.NewFakeKubeClient(nil),
 	}
 
 	ctl, err := NewCreateOrUpdateApplication(opts)
