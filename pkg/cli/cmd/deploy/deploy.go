@@ -25,6 +25,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	azScopeLength  = 5
+	awsScopeLength = 8
+)
+
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
@@ -264,13 +269,18 @@ func GetAccountAndRegion(scope string) (string, string) {
 	// scope is in the format /planes/aws/aws/accounts/accountId/regions/regionName
 	// We need to extract the account and region from the scope
 	scopeParts := strings.Split(scope, "/")
-	return scopeParts[4], scopeParts[6]
+	if len(scopeParts) != awsScopeLength {
+		return "", ""
+	}
+	return scopeParts[5], scopeParts[7]
 }
 
 func GetSubscriptionAndResourceGroup(scope string) (string, string) {
 	// scope is in the format /subscriptions/subscriptionID/resourceGroups/rgName
 	// We need to extract the subscription id and resourcegroup name from the scope
-
 	scopeParts := strings.Split(scope, "/")
-	return scopeParts[1], scopeParts[3]
+	if len(scopeParts) != azScopeLength {
+		return "", ""
+	}
+	return scopeParts[2], scopeParts[4]
 }

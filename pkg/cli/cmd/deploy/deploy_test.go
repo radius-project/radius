@@ -386,3 +386,27 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 }
+
+func Test_GetAccountAndRegion(t *testing.T) {
+	validScope := "/planes/aws/aws/accounts/accountId/regions/regionName"
+	accountId, region := GetAccountAndRegion(validScope)
+	require.Equal(t, "accountId", accountId)
+	require.Equal(t, "regionName", region)
+
+	invalidScope := "/planes/aws/aws/regions/regionName"
+	accountId, region = GetAccountAndRegion(invalidScope)
+	require.Equal(t, "", accountId)
+	require.Equal(t, "", region)
+}
+
+func Test_GetSubscriptionAndResourceGroup(t *testing.T) {
+	validScope := "/subscriptions/subscriptionId/resourceGroups/resourceGroupName"
+	subscriptionId, resourceGroupName := GetSubscriptionAndResourceGroup(validScope)
+	require.Equal(t, "subscriptionId", subscriptionId)
+	require.Equal(t, "resourceGroupName", resourceGroupName)
+
+	invalidScope := "/planes/azure/azure/ssubscriptions/subscriptionId/resourceGroups/resourceGroupName"
+	subscriptionId, resourceGroupName = GetSubscriptionAndResourceGroup(invalidScope)
+	require.Equal(t, "", subscriptionId)
+	require.Equal(t, "", resourceGroupName)
+}
