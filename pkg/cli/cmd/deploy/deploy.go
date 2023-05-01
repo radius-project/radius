@@ -8,7 +8,6 @@ package deploy
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
@@ -22,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -176,17 +176,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if env.Properties != nil && env.Properties.Providers != nil {
 		r.Workspace.ProviderConfig = workspaces.ProviderConfig{}
 		if env.Properties.Providers.Aws != nil {
-			accountId, region := GetAccountAndRegion(*env.Properties.Providers.Aws.Scope)
+			scope, err := resources.ParseScope(*env.Properties.Providers.Aws.Scope)
+			if err != nil {
+				return err
+			}
 			r.Workspace.ProviderConfig.AWS = &workspaces.AWSProvider{
-				AccountId: accountId,
-				Region:    region,
+				AccountId: scope.FindScope(resources.RegionsSegment),
+				Region:    scope.FindScope(resources.AccountsSegment),
 			}
 		}
 		if env.Properties.Providers.Azure != nil {
-			subscriptionId, resourceGroup := GetSubscriptionAndResourceGroup(*env.Properties.Providers.Azure.Scope)
+			scope, err := resources.ParseScope(*env.Properties.Providers.Azure.Scope)
+			if err != nil {
+				return err
+			}
 			r.Workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
-				SubscriptionID: subscriptionId,
-				ResourceGroup:  resourceGroup,
+				SubscriptionID: scope.FindScope(resources.SubscriptionsSegment),
+				ResourceGroup:  scope.FindScope(resources.ResourceGroupsSegment),
 			}
 		}
 	}
@@ -263,24 +269,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func GetAccountAndRegion(scope string) (string, string) {
-	// scope is in the format /planes/aws/aws/accounts/accountId/regions/regionName
-	// We need to extract the account and region from the scope
-	scopeParts := strings.Split(scope, "/")
-	if len(scopeParts) != awsScopeLength {
-		return "", ""
-	}
-	return scopeParts[5], scopeParts[7]
-}
-
-func GetSubscriptionAndResourceGroup(scope string) (string, string) {
-	// scope is in the format /subscriptions/subscriptionID/resourceGroups/rgName
-	// We need to extract the subscription id and resourcegroup name from the scope
-	scopeParts := strings.Split(scope, "/")
-	if len(scopeParts) != azScopeLength {
-		return "", ""
-	}
-	return scopeParts[2], scopeParts[4]
 }
