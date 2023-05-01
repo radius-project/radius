@@ -14,7 +14,7 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
+	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"

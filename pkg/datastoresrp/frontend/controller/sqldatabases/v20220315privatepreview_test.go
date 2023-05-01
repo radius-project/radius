@@ -8,8 +8,8 @@ package sqldatabases
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/test/testutil"
 )
 

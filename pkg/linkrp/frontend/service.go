@@ -69,6 +69,10 @@ func (s *Service) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+			err = handler.AddDatastoresRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts, deploymentProcessor)
+			if err != nil {
+				return err
+			}
 			return nil
 		}},
 	)

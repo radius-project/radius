@@ -15,7 +15,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
+	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"

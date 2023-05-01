@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	ProviderNamespaceName = "Applications.Link"
+	ProviderNamespaceName      = "Applications.Link"
+	DatastoreProviderNamespace = "Applications.Datastores"
 )
 
 func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {

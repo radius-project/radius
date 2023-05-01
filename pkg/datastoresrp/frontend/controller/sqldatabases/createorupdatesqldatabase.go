@@ -14,7 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
+	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
