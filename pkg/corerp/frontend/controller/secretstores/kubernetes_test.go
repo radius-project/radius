@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -205,7 +206,7 @@ func TestUpsertSecret(t *testing.T) {
 		newResource.Properties.Resource = "default/secret"
 
 		opt := &controller.Options{
-			KubeClient: testutil.NewFakeKubeClient(nil),
+			KubeClient: k8sutil.NewFakeKubeClient(nil),
 		}
 
 		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
@@ -245,7 +246,7 @@ func TestUpsertSecret(t *testing.T) {
 			Data: map[string][]byte{},
 		}
 		opt := &controller.Options{
-			KubeClient: testutil.NewFakeKubeClient(nil, ksecret),
+			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
 		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
@@ -271,7 +272,7 @@ func TestUpsertSecret(t *testing.T) {
 			},
 		}
 		opt := &controller.Options{
-			KubeClient: testutil.NewFakeKubeClient(nil, ksecret),
+			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
 		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
@@ -304,7 +305,7 @@ func TestUpsertSecret(t *testing.T) {
 			},
 		}
 		opt := &controller.Options{
-			KubeClient: testutil.NewFakeKubeClient(nil, ksecret),
+			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
 		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
@@ -321,7 +322,7 @@ func TestUpsertSecret(t *testing.T) {
 		newResource.Properties.Resource = ""
 
 		opt := &controller.Options{
-			KubeClient: testutil.NewFakeKubeClient(nil),
+			KubeClient: k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
@@ -346,7 +347,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		opt := &controller.Options{
 			StorageClient: sc,
-			KubeClient:    testutil.NewFakeKubeClient(nil),
+			KubeClient:    k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := UpsertSecret(context.TODO(), newResource, nil, opt)
@@ -372,7 +373,7 @@ func TestDeleteSecret(t *testing.T) {
 			Data: map[string][]byte{},
 		}
 		opt := &controller.Options{
-			KubeClient: testutil.NewFakeKubeClient(nil, ksecret),
+			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
 		resp, err := DeleteRadiusSecret(context.TODO(), res, opt)
@@ -394,7 +395,7 @@ func TestDeleteSecret(t *testing.T) {
 			Data: map[string][]byte{},
 		}
 		opt := &controller.Options{
-			KubeClient: testutil.NewFakeKubeClient(nil, ksecret),
+			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
 		resp, err := DeleteRadiusSecret(context.TODO(), res, opt)
