@@ -45,6 +45,7 @@ import (
 	"github.com/gorilla/mux"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
+	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -182,6 +183,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),
 		"ucp",
+		otelhttp.WithMeterProvider(global.MeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	server := &http.Server{
