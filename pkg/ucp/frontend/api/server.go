@@ -36,6 +36,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -180,7 +181,8 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),
-		"ucp")
+		"ucp",
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	server := &http.Server{
 		Addr: s.options.Address,
