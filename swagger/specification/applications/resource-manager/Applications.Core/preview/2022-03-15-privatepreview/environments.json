@@ -504,7 +504,7 @@
           "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",
           "type": "string"
         },
-        "recipeName":{
+        "name":{
           "description": "Name of the recipe registered to the environment.",
           "type": "string"
         }

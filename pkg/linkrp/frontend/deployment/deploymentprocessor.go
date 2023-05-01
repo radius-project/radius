@@ -564,7 +564,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 }
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the link and linked resources ```
-func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string, linkType string) (envMetadata EnvironmentMetadata, err error) {
+func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID, recipeName, linkType string) (envMetadata EnvironmentMetadata, err error) {
 	env := &coreDatamodel.Environment{}
 	if err = rp_util.FetchScopeResource(ctx, dp.sp, environmentID, env); err != nil {
 		return

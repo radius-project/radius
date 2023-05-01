@@ -1,4 +1,4 @@
 {
-    "recipeName":"mongo-parameters",
+    "name":"mongo-parameters",
     "linkType":"Applications.Link/mongoDatabases"
 }

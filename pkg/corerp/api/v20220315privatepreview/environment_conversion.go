@@ -50,15 +50,15 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.Properties.Compute = *envCompute
 
 	if src.Properties.Recipes != nil {
-		recipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
-		for resourceType, recipe := range src.Properties.Recipes {
+		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
+		for resourceType, recipes := range src.Properties.Recipes {
 			if !isValidLinkType(resourceType) {
 				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid link type: %q", resourceType))
 			}
-			recipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
-			for recipeName, recipeDetails := range recipe {
+			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
+			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
-					recipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
+					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
 						TemplatePath: to.String(recipeDetails.TemplatePath),
 						Parameters:   recipeDetails.Parameters,
 					}
@@ -66,7 +66,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			}
 
 		}
-		converted.Properties.Recipes = recipes
+		converted.Properties.Recipes = envRecipes
 	}
 
 	if src.Properties.Providers != nil {

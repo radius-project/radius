@@ -1981,7 +1981,7 @@ func (p *ProvidersAzure) UnmarshalJSON(data []byte) error {
 func (r Recipe) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "linkType", r.LinkType)
-	populate(objectMap, "recipeName", r.RecipeName)
+	populate(objectMap, "name", r.Name)
 	return json.Marshal(objectMap)
 }
 
@@ -1997,8 +1997,8 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 		case "linkType":
 				err = unpopulate(val, "LinkType", &r.LinkType)
 				delete(rawMsg, key)
-		case "recipeName":
-				err = unpopulate(val, "RecipeName", &r.RecipeName)
+		case "name":
+				err = unpopulate(val, "Name", &r.Name)
 				delete(rawMsg, key)
 		}
 		if err != nil {

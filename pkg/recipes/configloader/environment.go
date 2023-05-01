@@ -96,7 +96,7 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metad
 	}
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse resourceID: %q while building the recipe context parameter %w", recipe.ResourceID, err)
+		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
 	}
 	found, ok := environment.Properties.Recipes[resource.Type()][recipe.Name]
 	if !ok {

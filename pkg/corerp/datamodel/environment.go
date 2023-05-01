@@ -43,7 +43,7 @@ type Recipe struct {
 	LinkType string `json:"linkType,omitempty"`
 
 	// Name of the recipe registered to the environment.
-	RecipeName string `json:"recipeName,omitempty"`
+	Name string `json:"recipeName,omitempty"`
 }
 
 func (e *Recipe) ResourceTypeName() string {

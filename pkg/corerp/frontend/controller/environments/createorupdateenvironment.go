@@ -73,7 +73,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		if newResourceRecipes != nil {
 			errorPrefix := "recipe name(s) reserved for devRecipes for: "
 			var errorRecipes string
-
+			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
+			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
 			for resourceType, recipes := range devRecipes {
 				if devRecipes[resourceType] != nil {
 					for recipeName, recipeDetails := range recipes {

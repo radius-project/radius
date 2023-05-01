@@ -53,7 +53,7 @@ rad recipe show redis-dev --group dev --environment dev`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddLinkTypeFlag(cmd)
-	_ = cmd.MarkFlagRequired("link-type")
+	_ = cmd.MarkFlagRequired(cli.LinkTypeFlag)
 
 	return cmd, runner
 }
@@ -128,7 +128,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.Recipe{RecipeName: &r.RecipeName, LinkType: &r.LinkType})
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.Recipe{Name: &r.RecipeName, LinkType: &r.LinkType})
 	if err != nil {
 		return err
 	}

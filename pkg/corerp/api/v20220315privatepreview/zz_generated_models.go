@@ -1128,7 +1128,7 @@ type Recipe struct {
 	LinkType *string `json:"linkType,omitempty"`
 
 	// Name of the recipe registered to the environment.
-	RecipeName *string `json:"recipeName,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

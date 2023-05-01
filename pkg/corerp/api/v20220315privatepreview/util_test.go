@@ -118,7 +118,7 @@ func TestValidLinkType(t *testing.T) {
 	require.Equal(t, true, isValid)
 }
 
-func TestInValidLinkType(t *testing.T) {
+func TestInvalidLinkType(t *testing.T) {
 	isValid := isValidLinkType("Applications.Link/pubSubBroker")
 	require.Equal(t, false, isValid)
 }

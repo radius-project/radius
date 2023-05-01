@@ -68,7 +68,7 @@ func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagem
 	recipeProperties := envResource.Properties.Recipes
 
 	if recipeProperties[resourceType] == nil || recipeProperties[resourceType][recipeName] == nil {
-		return corerp.EnvironmentResource{}, nil, &cli.FriendlyError{Message: fmt.Sprintf("recipe %q is not part of the environment %q ", recipeName, environmentName)}
+		return corerp.EnvironmentResource{}, nil, &cli.FriendlyError{Message: fmt.Sprintf("resource type %q or recipe %q is not part of the environment %q ", resourceType, recipeName, environmentName)}
 	}
 
 	return envResource, recipeProperties, nil

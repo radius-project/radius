@@ -31,12 +31,18 @@
                 "Applications.Link/mongoDatabases":{
                   "cosmos-recipe": {
                     "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                  },
+                  "default":{
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongo"
                   }
                 },
                 "Applications.Link/redisCaches":{
                   "redis-recipe": {
                     "linkType": "Applications.Link/redisCaches",
                     "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscache"
+                  },
+                  "default":{
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/redis"
                   }
                 }
               },

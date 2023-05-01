@@ -1,4 +1,4 @@
 {
-    "recipeName":"mongodb",
+    "name":"mongodb",
     "linkType":"Applications.Link/mongoDatabases"
 }

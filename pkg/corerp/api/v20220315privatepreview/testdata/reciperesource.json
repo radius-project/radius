@@ -1,4 +1,4 @@
 {
     "linkType":"Applications.Link/mongoDatabases",
-    "recipeName":"mongo-azure"
+    "name":"mongo-azure"
 }

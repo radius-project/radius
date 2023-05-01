@@ -38,7 +38,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddLinkTypeFlag(cmd)
-	_ = cmd.MarkFlagRequired("link-type")
+	_ = cmd.MarkFlagRequired(cli.LinkTypeFlag)
 
 	return cmd, runner
 }
