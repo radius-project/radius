@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/recipes"
 )
 
 const (
@@ -23,10 +22,12 @@ const (
 	RedisSSLPort = 6380
 )
 
+// Processor is a processor for RedisCache resources.
 type Processor struct {
 }
 
-func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache, output *recipes.RecipeOutput) error {
+// Process implements the processors.Processor interface for RedisCache resources.
+func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 	validator.AddResourceField(&resource.Properties.Resource)
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
@@ -37,7 +38,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 		return p.computeConnectionString(resource), nil
 	})
 
-	err := validator.SetAndValidate(output)
+	err := validator.SetAndValidate(options.RecipeOutput)
 	if err != nil {
 		return err
 	}

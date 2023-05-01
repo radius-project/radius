@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -74,7 +75,7 @@ type TestResourceProperties struct {
 type SuccessProcessor struct {
 }
 
-func (p *SuccessProcessor) Process(ctx context.Context, data *TestResource, output *recipes.RecipeOutput) error {
+func (p *SuccessProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	// Simulate setting a computed value and adding an output resource.
 	data.Properties.IsProcessed = true
 	data.Properties.Status.OutputResources = []rpv1.OutputResource{
@@ -88,12 +89,13 @@ var successProcessorReference = processors.ResourceProcessor[*TestResource, Test
 type ErrorProcessor struct {
 }
 
-func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, output *recipes.RecipeOutput) error {
+func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	return processorErr
 }
 
 var errorProcessorReference = processors.ResourceProcessor[*TestResource, TestResource](&ErrorProcessor{})
-var processorErr = errors.New("OH NO!")
+var processorErr = errors.New("processor error")
+var configurationErr = errors.New("configuration error")
 
 var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1"
 var oldOutputResource = rpv1.OutputResource{
@@ -112,33 +114,36 @@ var newOutputResource = rpv1.OutputResource{
 }
 
 func TestCreateOrUpdateResource_Run(t *testing.T) {
-	setupTest := func(tb testing.TB) (*store.MockStorageClient, *engine.MockEngine, *processors.MockResourceClient) {
+	setupTest := func(tb testing.TB) (*store.MockStorageClient, *engine.MockEngine, *processors.MockResourceClient, *configloader.MockConfigurationLoader) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
 		eng := engine.NewMockEngine(mctrl)
+		cfg := configloader.NewMockConfigurationLoader(mctrl)
 		client := processors.NewMockResourceClient(mctrl)
-		return msc, eng, client
+		return msc, eng, client, cfg
 	}
 
 	cases := []struct {
-		description       string
-		factory           func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error)
-		getErr            error
-		conversionFailure bool
-		recipeErr         error
-		processorErr      error
-		resourceClientErr error
-		saveErr           error
-		expectedErr       error
+		description             string
+		factory                 func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error)
+		getErr                  error
+		conversionFailure       bool
+		recipeErr               error
+		runtimeConfigurationErr error
+		processorErr            error
+		resourceClientErr       error
+		saveErr                 error
+		expectedErr             error
 	}{
 		{
 			"get-not-found",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, options)
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
 			},
 			&store.ErrNotFound{},
 			false,
+			nil,
 			nil,
 			nil,
 			nil,
@@ -147,11 +152,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"get-error",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, options)
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
 			},
 			&store.ErrInvalid{},
 			false,
+			nil,
 			nil,
 			nil,
 			nil,
@@ -160,11 +166,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"conversion-failure",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, options)
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
 			},
 			nil,
 			true,
+			nil,
 			nil,
 			nil,
 			nil,
@@ -173,24 +180,40 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"recipe-err",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, options)
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
 			},
 			nil,
 			false,
 			&recipes.ErrRecipeNotFound{},
+			nil,
 			nil,
 			nil,
 			nil,
 			&recipes.ErrRecipeNotFound{},
 		},
 		{
-			"processor-err",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, options)
+			"runtime-configuration-err",
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
 			},
 			nil,
 			false,
+			nil,
+			configurationErr,
+			nil,
+			nil,
+			nil,
+			configurationErr,
+		},
+		{
+			"processor-err",
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
+			},
+			nil,
+			false,
+			nil,
 			nil,
 			processorErr,
 			nil,
@@ -199,11 +222,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"resourceclient-err",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, options)
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(successProcessorReference, eng, client, cfg, options)
 			},
 			nil,
 			false,
+			nil,
 			nil,
 			nil,
 			errors.New("resource client failed"),
@@ -212,11 +236,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"save-err",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, options)
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(successProcessorReference, eng, client, cfg, options)
 			},
 			nil,
 			false,
+			nil,
 			nil,
 			nil,
 			nil,
@@ -225,11 +250,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"success",
-			func(eng engine.Engine, client processors.ResourceClient, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, options)
+			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(successProcessorReference, eng, client, cfg, options)
 			},
 			nil,
 			false,
+			nil,
 			nil,
 			nil,
 			nil,
@@ -240,7 +266,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.description, func(t *testing.T) {
-			msc, eng, client := setupTest(t)
+			msc, eng, client, cfg := setupTest(t)
 
 			req := &ctrl.Request{
 				OperationID:      uuid.New(),
@@ -281,20 +307,31 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 					},
 				},
 			}
-			if tt.conversionFailure {
-				data["type"] = 3 // This won't convert to our data model.
-			}
 
-			if tt.getErr != nil {
+			// Note: this test walks through the mock setup in same order as the controller
+			// performs these steps. That makes it easier to reason about what to configure
+			// for the desired test case.
+			//
+			// This flag is used to track whether the "current" test will reach the current
+			// control flow.
+			stillPassing := true
+
+			if stillPassing && tt.getErr != nil {
+				stillPassing = false
 				msc.EXPECT().
 					Get(gomock.Any(), TestResourceID).
 					Return(&store.Object{Data: nil}, tt.getErr).
 					Times(1)
-			} else {
+			} else if stillPassing {
 				msc.EXPECT().
 					Get(gomock.Any(), TestResourceID).
 					Return(&store.Object{Data: data}, nil).
 					Times(1)
+			}
+
+			if tt.conversionFailure {
+				stillPassing = false
+				data["type"] = 3 // This won't convert to our data model.
 			}
 
 			recipeMetadata := recipes.Metadata{
@@ -307,36 +344,73 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				},
 			}
 
-			if tt.getErr == nil && !tt.conversionFailure && tt.recipeErr != nil {
+			if stillPassing && tt.recipeErr != nil {
+				stillPassing = false
 				eng.EXPECT().
 					Execute(gomock.Any(), recipeMetadata).
 					Return(&recipes.RecipeOutput{}, tt.recipeErr).
 					Times(1)
-			} else if tt.getErr == nil && !tt.conversionFailure {
+			} else if stillPassing {
 				eng.EXPECT().
 					Execute(gomock.Any(), recipeMetadata).
 					Return(&recipes.RecipeOutput{}, nil).
 					Times(1)
 			}
 
-			if tt.getErr == nil && !tt.conversionFailure && tt.recipeErr == nil && tt.processorErr == nil && tt.resourceClientErr != nil {
+			if stillPassing && tt.runtimeConfigurationErr != nil {
+				stillPassing = false
+				cfg.EXPECT().
+					LoadConfiguration(gomock.Any(), recipes.Metadata{
+						EnvironmentID: TestEnvironmentID,
+						ApplicationID: TestApplicationID,
+						ResourceID:    TestResourceID,
+					}).
+					Return(nil, tt.runtimeConfigurationErr).
+					Times(1)
+			} else if stillPassing {
+				configuration := &recipes.Configuration{
+					Runtime: recipes.RuntimeConfiguration{
+						Kubernetes: &recipes.KubernetesRuntime{
+							Namespace:            "test-namespace",
+							EnvironmentNamespace: "test-env-namespace",
+						},
+					},
+				}
+				cfg.EXPECT().
+					LoadConfiguration(gomock.Any(), recipes.Metadata{
+						EnvironmentID: TestEnvironmentID,
+						ApplicationID: TestApplicationID,
+						ResourceID:    TestResourceID,
+					}).
+					Return(configuration, nil).
+					Times(1)
+			}
+
+			// No mock for the processor...
+			if stillPassing && tt.processorErr != nil {
+				stillPassing = false
+			}
+
+			if stillPassing && tt.resourceClientErr != nil {
+				stillPassing = false
 				client.EXPECT().
 					Delete(gomock.Any(), oldOutputResourceResourceID, resourcemodel.APIVersionUnknown).
 					Return(tt.resourceClientErr).
 					Times(1)
-			} else if tt.getErr == nil && !tt.conversionFailure && tt.recipeErr == nil && tt.processorErr == nil {
+			} else if stillPassing {
 				client.EXPECT().
 					Delete(gomock.Any(), oldOutputResourceResourceID, resourcemodel.APIVersionUnknown).
 					Return(nil).
 					Times(1)
 			}
 
-			if tt.getErr == nil && !tt.conversionFailure && tt.recipeErr == nil && tt.processorErr == nil && tt.resourceClientErr == nil && tt.saveErr != nil {
+			if stillPassing && tt.saveErr != nil {
+				stillPassing = false
 				msc.EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.saveErr).
 					Times(1)
-			} else if tt.getErr == nil && !tt.conversionFailure && tt.recipeErr == nil && tt.processorErr == nil && tt.resourceClientErr == nil {
+			} else if stillPassing && tt.resourceClientErr == nil {
 				msc.EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).
@@ -347,14 +421,16 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				StorageClient: msc,
 			}
 
-			genCtrl, err := tt.factory(eng, client, opts)
+			genCtrl, err := tt.factory(eng, client, cfg, opts)
 			require.NoError(t, err)
 
 			res, err := genCtrl.Run(context.Background(), req)
 			if tt.expectedErr != nil {
+				require.False(t, stillPassing)
 				require.Error(t, err)
 				require.Equal(t, tt.expectedErr, err)
 			} else {
+				require.True(t, stillPassing)
 				require.NoError(t, err)
 				require.Equal(t, ctrl.Result{}, res)
 			}
