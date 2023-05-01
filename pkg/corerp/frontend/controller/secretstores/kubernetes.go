@@ -42,7 +42,7 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, ol
 		if newResource.Properties.Resource == "" {
 			newResource.Properties.Resource = oldResource.Properties.Resource
 		} else if oldResource.Properties.Resource != newResource.Properties.Resource {
-			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' of $.properties.resource must correspond to '%s'.", newResource.Properties.Resource, oldResource.Properties.Resource)), nil
+			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' of $.properties.resource must be same as '%s'.", newResource.Properties.Resource, oldResource.Properties.Resource)), nil
 		}
 	}
 
