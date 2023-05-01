@@ -821,7 +821,7 @@ type RabbitMqMessageQueuesClientListSecretsOptions struct {
 
 // Recipe - The recipe used to automatically deploy underlying infrastructure for a link
 type Recipe struct {
-	// REQUIRED; The name of the recipe within the environment to use
+	// The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 
 	// Key/value parameters to pass into the recipe at deployment
@@ -1106,15 +1106,6 @@ type RedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// CONSTANT; How to build the RabbitMQMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or
-// build manually via 'values'. Selection determines which set of fields to additionally
-// require.
-// Field has constant value "recipe", any specified value is ignored.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rediscaches link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -1124,8 +1115,16 @@ type RedisCacheProperties struct {
 	// The host name of the target Redis cache
 	Host *string `json:"host,omitempty"`
 
+	// How to build the RabbitMQMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally
+// require.
+	Mode *string `json:"mode,omitempty"`
+
 	// The port value of the target Redis cache
 	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rediscaches link
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// list of the resource IDs that support the PubSub resource
 	Resources []*SupportingResources `json:"resources,omitempty"`
