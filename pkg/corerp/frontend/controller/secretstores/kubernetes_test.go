@@ -183,7 +183,7 @@ func TestValidateRequest(t *testing.T) {
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.Equal(t, "'default/letencrypt-prod' of $.properties.resource must correspond to 'default/notmatch'.", r.Body.Error.Message)
+		require.Equal(t, "'default/letsencrypt-prod' of $.properties.resource must correspond to 'default/notmatch'.", r.Body.Error.Message)
 	})
 
 	t.Run("inherit resource id from existing resource", func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letencrypt-prod",
+				Name:      "letsencrypt-prod",
 				Namespace: "default",
 			},
 			Data: map[string][]byte{},
@@ -253,8 +253,8 @@ func TestUpsertSecret(t *testing.T) {
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.True(t, r.Body.Error.Message == "default/letencrypt-prod does not have key, tls.crt." ||
-			r.Body.Error.Message == "default/letencrypt-prod does not have key, tls.key.")
+		require.True(t, r.Body.Error.Message == "default/letsencrypt-prod does not have key, tls.crt." ||
+			r.Body.Error.Message == "default/letsencrypt-prod does not have key, tls.key.")
 	})
 
 	t.Run("add secret values to the existing secret store", func(t *testing.T) {
@@ -295,7 +295,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letencrypt-prod",
+				Name:      "letsencrypt-prod",
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
@@ -363,7 +363,7 @@ func TestDeleteSecret(t *testing.T) {
 
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letencrypt-prod",
+				Name:      "letsencrypt-prod",
 				Namespace: "default",
 				Labels: map[string]string{
 					kubernetes.LabelRadiusResourceType: "test",
@@ -379,7 +379,7 @@ func TestDeleteSecret(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "letencrypt-prod"}, ksecret)
+		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "letsencrypt-prod"}, ksecret)
 		require.True(t, apierrors.IsNotFound(err))
 	})
 
@@ -388,7 +388,7 @@ func TestDeleteSecret(t *testing.T) {
 
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letencrypt-prod",
+				Name:      "letsencrypt-prod",
 				Namespace: "default",
 			},
 			Data: map[string][]byte{},
@@ -401,7 +401,7 @@ func TestDeleteSecret(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "letencrypt-prod"}, ksecret)
+		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "letsencrypt-prod"}, ksecret)
 		require.False(t, apierrors.IsNotFound(err))
 	})
 }

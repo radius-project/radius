@@ -78,7 +78,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	volRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/volumes").Subrouter()
 	volResourceRouter := volRTSubrouter.Path("/{volumeName}").Subrouter()
 
-	// Adds volume resource type routes
+	// Adds secretstore resource type routes
 	secretRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/secretstores").Subrouter()
 	secretResourceRouter := secretRTSubrouter.Path("/{secretStoreName}").Subrouter()
 

@@ -100,6 +100,10 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/secretstores?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/secretstores/secret0?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
