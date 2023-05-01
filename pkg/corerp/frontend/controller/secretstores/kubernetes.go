@@ -48,7 +48,7 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, ol
 
 	refResourceID := newResource.Properties.Resource
 	if refResourceID == "" {
-		// Radius creates new secret.
+		// In this case, Radius creates and manages new Kubernetes secret.
 		for k, secret := range newResource.Properties.Data {
 			if secret.ValueFrom != nil {
 				return rest.NewBadRequestResponse(fmt.Sprintf("data[%s] must not set valueFrom.", k)), nil
