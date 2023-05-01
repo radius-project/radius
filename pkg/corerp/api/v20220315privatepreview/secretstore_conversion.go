@@ -103,6 +103,16 @@ func toSecretValuePropertiesDataModel(src map[string]*SecretValueProperties) map
 		if to.String(v.Value) != "" {
 			dst[k].Value = v.Value
 		}
+
+		if v.Encoding != nil {
+			switch *v.Encoding {
+			case SecretValueEncodingRaw:
+				dst[k].Encoding = datamodel.SecretValueEncodingRaw
+			case SecretValueEncodingBase64:
+				dst[k].Encoding = datamodel.SecretValueEncodingBase64
+			}
+		}
+
 		if v.ValueFrom != nil {
 			dst[k].ValueFrom = &datamodel.SecretStoreDataValueFrom{
 				Name:    to.String(v.ValueFrom.Name),
@@ -121,8 +131,12 @@ func fromSecretValuePropertiesDataModel(src map[string]*datamodel.SecretStoreDat
 	dst := map[string]*SecretValueProperties{}
 	for k, v := range src {
 		dst[k] = &SecretValueProperties{}
-		if v.Value != nil {
-			dst[k].Value = v.Value
+
+		switch v.Encoding {
+		case datamodel.SecretValueEncodingRaw:
+			dst[k].Encoding = to.Ptr(SecretValueEncodingRaw)
+		case datamodel.SecretValueEncodingBase64:
+			dst[k].Encoding = to.Ptr(SecretValueEncodingBase64)
 		}
 
 		if v.ValueFrom != nil {

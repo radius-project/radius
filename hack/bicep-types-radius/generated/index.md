@@ -15,6 +15,9 @@
 ### applications.core/httproutes
 * [2022-03-15-privatepreview](applications/applications.core/2022-03-15-privatepreview/types.md#resource-applicationscorehttproutes2022-03-15-privatepreview)
 
+### applications.core/secretstores
+* [2022-03-15-privatepreview](applications/applications.core/2022-03-15-privatepreview/types.md#resource-applicationscoresecretstores2022-03-15-privatepreview)
+
 ### applications.core/volumes
 * [2022-03-15-privatepreview](applications/applications.core/2022-03-15-privatepreview/types.md#resource-applicationscorevolumes2022-03-15-privatepreview)
 

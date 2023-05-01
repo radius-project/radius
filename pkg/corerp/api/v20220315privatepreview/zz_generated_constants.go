@@ -194,6 +194,22 @@ func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
 	}
 }
 
+// SecretValueEncoding - The encoding of value
+type SecretValueEncoding string
+
+const (
+	SecretValueEncodingRaw SecretValueEncoding = "raw"
+	SecretValueEncodingBase64 SecretValueEncoding = "base64"
+)
+
+// PossibleSecretValueEncodingValues returns the possible values for the SecretValueEncoding const type.
+func PossibleSecretValueEncodingValues() []SecretValueEncoding {
+	return []SecretValueEncoding{	
+		SecretValueEncodingRaw,
+		SecretValueEncodingBase64,
+	}
+}
+
 // VolumePermission - Container read/write access to the volume
 type VolumePermission string
 
