@@ -72,11 +72,7 @@ stages:
     - script: |
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
-      displayName: publish container $(REL_VERSION)
-    - script: |
-        export DOCKER_TAG_VERSION=latest
-        make docker-build && make docker-push
-      displayName: publish container (latest tag)
+      displayName: publish container
 
 - stage: FunctionalTests
   dependsOn: ImageBuild
