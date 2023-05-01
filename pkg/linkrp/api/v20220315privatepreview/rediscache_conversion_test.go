@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO: clean up uneccessary data files
+
 func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []struct {
 		filename         string
