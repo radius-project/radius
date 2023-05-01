@@ -47,8 +47,8 @@ type Workspace struct {
 	// DefaultApplication represents the default application used for deployments and management commands. This field is optional.
 	DefaultApplication string `json:"defaultApplication,omitempty" mapstructure:"defaultApplication" yaml:"defaultApplication,omitempty"`
 
-	// ProviderConfig represents the configuration for IAC providers used during deployment. This field is optional.
-	ProviderConfig ProviderConfig `json:"providerConfig,omitempty" mapstructure:"providerConfig" yaml:"providerConfig,omitempty" validate:"dive"`
+	// ProviderConfig represents the configuration for IAC providers used during deployment. This field is optional and not written to disk.
+	ProviderConfig ProviderConfig
 }
 
 // IsNamedWorkspace returns true for workspaces stored in per-user configuration. These workspaces have names that can
