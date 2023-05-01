@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -118,12 +119,16 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		expectedOutputResource, err := processors.GetOutputResourceFromResourceID(azureRedisResourceID1)
+		expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*linkrp.ResourceReference{
+			{
+				ID: azureRedisResourceID1,
+			},
+		})
 		require.NoError(t, err)
 
 		require.Equal(t, expectedValues, resource.ComputedValues)
 		require.Equal(t, expectedSecrets, resource.SecretValues)
-		require.Equal(t, []rpv1.OutputResource{expectedOutputResource}, resource.Properties.Status.OutputResources)
+		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
 	})
 
 	t.Run("success - recipe with value overrides", func(t *testing.T) {
@@ -191,9 +196,13 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 		expectedOutputResources = append(expectedOutputResources, recipeOutputResources...)
 
-		resourceFieldOutputResource, err := processors.GetOutputResourceFromResourceID(azureRedisResourceID1)
+		resourceFieldOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*linkrp.ResourceReference{
+			{
+				ID: azureRedisResourceID1,
+			},
+		})
 		require.NoError(t, err)
-		expectedOutputResources = append(expectedOutputResources, resourceFieldOutputResource)
+		expectedOutputResources = append(expectedOutputResources, resourceFieldOutputResources...)
 
 		require.Equal(t, expectedValues, resource.ComputedValues)
 		require.Equal(t, expectedSecrets, resource.SecretValues)
