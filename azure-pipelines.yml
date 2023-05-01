@@ -73,11 +73,11 @@ stages:
       script: |
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
-    - displayName: publish container - latest
+    - displayName: publish test container images - latest
       continueOnError: 'true' # ignore error if the image is being written.
       script: |
         export DOCKER_TAG_VERSION=latest
-        make docker-build && make docker-push
+        make docker-test-image-build && make docker-test-image-push
 - stage: FunctionalTests
   dependsOn: ImageBuild
   jobs:
