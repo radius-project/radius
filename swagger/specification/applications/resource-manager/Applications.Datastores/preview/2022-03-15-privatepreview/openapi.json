@@ -1,0 +1,1378 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Datastores Management APIs",
+    "version": "2022-03-15-privatepreview",
+    "description": "REST APIs for Applications.Datastores/redisCaches",
+    "x-cadl-generated": [
+      {
+        "emitter": "@azure-tools/cadl-autorest"
+      }
+    ]
+  },
+  "schemes": [
+    "https"
+  ],
+  "host": "management.azure.com",
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "flow": "implicit",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "MongoDatabases"
+    },
+    {
+      "name": "Operations"
+    },
+    {
+      "name": "SqlDatabases"
+    },
+    {
+      "name": "RedisCaches"
+    }
+  ],
+  "paths": {
+    "/{rootScope}/providers/Applications.Datastores/mongoDatabases": {
+      "get": {
+        "tags": [
+          "MongoDatabases"
+        ],
+        "operationId": "MongoDatabases_ListByRootScope",
+        "description": "Lists information about all MongoDatabaseResources in the given root scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}": {
+      "get": {
+        "tags": [
+          "MongoDatabases"
+        ],
+        "operationId": "MongoDatabases_Get",
+        "description": "Retrieves information about a MongoDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "mongoDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the MongoDatabase portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MongoDatabases"
+        ],
+        "operationId": "MongoDatabases_CreateOrUpdate",
+        "description": "Creates or updates a MongoDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "mongoDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the MongoDatabase portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MongoDatabases"
+        ],
+        "operationId": "MongoDatabases_Delete",
+        "description": "Deletes an existing MongoDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "mongoDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the MongoDatabase portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}/listSecrets": {
+      "post": {
+        "operationId": "MongoDatabases_ListSecrets",
+        "description": "Lists secrets values for the specified MongoDatabase resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "mongoDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the MongoDatabase portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Datastores/redisCaches": {
+      "get": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_ListByRootScope",
+        "description": "Lists information about all RedisCacheResources in the given root scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}": {
+      "get": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_Get",
+        "description": "Retrieves information about a RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_CreateOrUpdate",
+        "description": "Creates or updates a RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_Delete",
+        "description": "Deletes an existing RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets": {
+      "post": {
+        "operationId": "RedisCaches_ListSecrets",
+        "description": "Lists secrets values for the specified RedisCache resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Datastores/sqlDatabases": {
+      "get": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_ListByRootScope",
+        "description": "Lists information about all SqlDatabaseResources in the given root scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}": {
+      "get": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_Get",
+        "description": "Retrieves information about a SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_CreateOrUpdate",
+        "description": "Creates or updates a SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_Delete",
+        "description": "Deletes an existing SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase portable resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Applications.Datastores/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "Operations_List",
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Application": {
+      "type": "string",
+      "description": "Fully qualified resource ID for the application that the link is consumed by"
+    },
+    "BasicDaprResourceProperties": {
+      "type": "object",
+      "properties": {
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        }
+      },
+      "description": "Basic properties of a Dapr component object.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ]
+    },
+    "BasicResourceProperties": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the link is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the link is consumed by"
+        }
+      },
+      "description": "Basic properties of a Radius resource.",
+      "required": [
+        "environment"
+      ]
+    },
+    "MongoDatabaseListSecretsResult": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Mongo database"
+        },
+        "password": {
+          "type": "string",
+          "description": "Password to use when connecting to the target Mongo database"
+        },
+        "connectionString": {
+          "type": "string",
+          "description": "Connection string used to connect to the target Mongo database"
+        }
+      },
+      "description": "The secret values for the given MongoDatabase resource"
+    },
+    "MongoDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Discriminator property for MongoDatabaseProperties."
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "Provisioning state of the mongo database portable resource at the time the operation was called",
+          "readOnly": true
+        },
+        "secrets": {
+          "$ref": "#/definitions/MongoDatabaseSecrets",
+          "description": "Secrets values provided for the resource"
+        }
+      },
+      "description": "MongoDatabase portable resource properties",
+      "discriminator": "mode",
+      "required": [
+        "mode"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ]
+    },
+    "MongoDatabaseResource": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/MongoDatabaseProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "description": "MongoDatabase portable resource",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "MongoDatabaseResourceListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MongoDatabaseResource"
+          },
+          "x-cadl-name": "MongoDatabaseResource[]",
+          "description": "The MongoDatabaseResource items on this page"
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation"
+        }
+      },
+      "description": "The response of a MongoDatabaseResource list operation.",
+      "required": [
+        "value"
+      ]
+    },
+    "MongoDatabaseSecrets": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Mongo database"
+        },
+        "password": {
+          "type": "string",
+          "description": "Password to use when connecting to the target Mongo database"
+        },
+        "connectionString": {
+          "type": "string",
+          "description": "Connection string used to connect to the target Mongo database"
+        }
+      },
+      "description": "The secret values for the given MongoDatabase resource"
+    },
+    "OutputResource": {
+      "type": "object",
+      "properties": {},
+      "description": "Properties of an output resource."
+    },
+    "Parameters": {
+      "type": "object",
+      "properties": {},
+      "description": "Key/value parameters to pass into the recipe at deployment"
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "description": "Provisioning state of the link at the time the operation was called",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Provisioning",
+        "Updating",
+        "Deleting",
+        "Accepted"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true
+      }
+    },
+    "Recipe": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "$ref": "#/definitions/Parameters",
+          "description": "Key/value parameters to pass into the recipe at deployment"
+        }
+      },
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "required": [
+        "name"
+      ]
+    },
+    "RecipeMongoDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Host name of the target Mongo database"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Mongo database"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name of the target Mongo database",
+          "readOnly": true
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabases portable resource"
+        }
+      },
+      "description": "MongoDatabase Properties for Mode Recipe",
+      "required": [
+        "recipe"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/MongoDatabaseProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "recipe"
+    },
+    "RecipeRedisCacheProperties": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host name of the target Redis cache"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port value of the target Redis cache"
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for Redis cache",
+          "readOnly": true
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscaches portable resource"
+        }
+      },
+      "description": "RedisCache Properties for Mode Recipe",
+      "required": [
+        "recipe"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/RedisCacheProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "recipe"
+    },
+    "RecipeSqlDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases portable resource"
+        },
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        }
+      },
+      "description": "SqlDatabase Properties for Mode Recipe",
+      "required": [
+        "recipe"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/SqlDatabaseProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "recipe"
+    },
+    "RedisCacheListSecretsResult": {
+      "type": "object",
+      "properties": {
+        "connectionString": {
+          "type": "string",
+          "description": "The connection string used to connect to the Redis cache"
+        },
+        "password": {
+          "type": "string",
+          "description": "The password for this Redis cache instance"
+        }
+      },
+      "description": "The secret values for the given RedisCache resource"
+    },
+    "RedisCacheProperties": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Discriminator property for RedisCacheProperties."
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "Provisioning state of the redis cache portable resource at the time the operation was called",
+          "readOnly": true
+        },
+        "secrets": {
+          "$ref": "#/definitions/RedisCacheSecrets",
+          "description": "Secrets provided by resource"
+        }
+      },
+      "description": "RedisCache portable resource properties",
+      "discriminator": "mode",
+      "required": [
+        "mode"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ]
+    },
+    "RedisCacheResource": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RedisCacheProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "description": "RedisCache portable resource",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "RedisCacheResourceListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RedisCacheResource"
+          },
+          "x-cadl-name": "RedisCacheResource[]",
+          "description": "The RedisCacheResource items on this page"
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation"
+        }
+      },
+      "description": "The response of a RedisCacheResource list operation.",
+      "required": [
+        "value"
+      ]
+    },
+    "RedisCacheSecrets": {
+      "type": "object",
+      "properties": {
+        "connectionString": {
+          "type": "string",
+          "description": "The connection string used to connect to the Redis cache"
+        },
+        "password": {
+          "type": "string",
+          "description": "The password for this Redis cache instance"
+        }
+      },
+      "description": "The secret values for the given RedisCache resource"
+    },
+    "ResourceMongoDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this portable resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host name of the target Mongo database"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Mongo database"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name of the target Mongo database",
+          "readOnly": true
+        }
+      },
+      "description": "MongoDatabase Properties for Mode Resource",
+      "required": [
+        "resource"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/MongoDatabaseProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "resource"
+    },
+    "ResourceRedisCacheProperties": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "Fully qualified resource ID of a supported resource with Redis API to use for this portable resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "The host name of the target Redis cache"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port value of the target Redis cache"
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for Redis cache",
+          "readOnly": true
+        }
+      },
+      "description": "RedisCache Properties for Mode Resource",
+      "required": [
+        "resource"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/RedisCacheProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "resource"
+    },
+    "ResourceSqlDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "Fully qualified resource ID of a supported resource with Sql API to use for this portable resource"
+        },
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        }
+      },
+      "description": "SqlDatabase Properties for Mode Resource",
+      "required": [
+        "resource"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/SqlDatabaseProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "resource"
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "properties": {
+        "outputResources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "x-ms-identifiers": [],
+          "x-cadl-name": "OutputResource[]",
+          "description": "Properties of an output resource"
+        }
+      },
+      "description": "Status of a resource."
+    },
+    "SqlDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Discriminator property for SqlDatabaseProperties."
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "Provisioning state of the Sql database portable resource at the time the operation was called",
+          "readOnly": true
+        }
+      },
+      "description": "SqlDatabase properties",
+      "discriminator": "mode",
+      "required": [
+        "mode"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ]
+    },
+    "SqlDatabaseResource": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/SqlDatabaseProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "description": "SqlDatabase portable resource",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "SqlDatabaseResourceListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SqlDatabaseResource"
+          },
+          "x-cadl-name": "SqlDatabaseResource[]",
+          "description": "The SqlDatabaseResource items on this page"
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation"
+        }
+      },
+      "description": "The response of a SqlDatabaseResource list operation.",
+      "required": [
+        "value"
+      ]
+    },
+    "ValuesMongoDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Host name of the target Mongo database"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Mongo database"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name of the target Mongo database",
+          "readOnly": true
+        }
+      },
+      "description": "MongoDatabase Properties for Mode Values",
+      "required": [
+        "host",
+        "port"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/MongoDatabaseProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "values"
+    },
+    "ValuesRedisCacheProperties": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host name of the target Redis cache"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port value of the target Redis cache"
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for Redis cache",
+          "readOnly": true
+        }
+      },
+      "description": "RedisCache Properties for Mode Values",
+      "required": [
+        "host",
+        "port"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/RedisCacheProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "values"
+    },
+    "ValuesSqlDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        }
+      },
+      "description": "SqlDatabase Properties for Mode Values",
+      "required": [
+        "database",
+        "server"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/SqlDatabaseProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "values"
+    }
+  },
+  "parameters": {
+    "RootScopeParam": {
+      "name": "rootScope",
+      "in": "path",
+      "required": true,
+      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "minLength": 1,
+      "x-ms-parameter-location": "client",
+      "x-ms-skip-url-encoding": true,
+      "type": "string"
+    }
+  }
+}

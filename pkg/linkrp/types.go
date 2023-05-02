@@ -83,4 +83,12 @@ const (
 	RabbitMQMessageQueuesResourceType = "Applications.Link/rabbitMQMessageQueues"
 	RedisCachesResourceType           = "Applications.Link/redisCaches"
 	SqlDatabasesResourceType          = "Applications.Link/sqlDatabases"
+
+	N_DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
+	N_DaprSecretStoresResourceType  = "Applications.Dapr/secretStores"
+	N_DaprStateStoresResourceType   = "Applications.Dapr/stateStores"
+	N_RabbitMQQueuesResourceType    = "Applications.Messaging/rabbitMQQueues"
+	N_MongoDatabasesResourceType    = "Applications.Datastores/mongoDatabases"
+	N_RedisCachesResourceType       = "Applications.Datastores/redisCaches"
+	N_SqlDatabasesResourceType      = "Applications.Datastores/sqlDatabases"
 )
