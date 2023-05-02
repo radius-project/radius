@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
@@ -28,7 +29,7 @@ const (
 // - Extract connection values and connection secrets from the recipe output
 // - Apply values and secrets from the recipe output to the resource data model.
 type Validator struct {
-	resourceField  *string
+	resourcesField *[]*linkrp.ResourceReference
 	fields         []func(output *recipes.RecipeOutput) string
 	computedFields []func(output *recipes.RecipeOutput) string
 
@@ -45,15 +46,10 @@ type Validator struct {
 // NewValidator creates a new Validator. Use the parameters to pass in pointers to the corresponding fields on the resource
 // data model.
 func NewValidator(connectionValues *map[string]any, connectionSecrets *map[string]rpv1.SecretValueReference, outputResources *[]rpv1.OutputResource) *Validator {
-	if *connectionValues == nil {
-		*connectionValues = map[string]any{}
-	}
-	if *connectionSecrets == nil {
-		*connectionSecrets = map[string]rpv1.SecretValueReference{}
-	}
-	if *outputResources == nil {
-		*outputResources = []rpv1.OutputResource{}
-	}
+	// Empty the computed data structures. This ensures that we don't accumulate data from previous validations.
+	*connectionValues = map[string]any{}
+	*connectionSecrets = map[string]rpv1.SecretValueReference{}
+	*outputResources = []rpv1.OutputResource{}
 
 	return &Validator{
 		ConnectionValues:  *connectionValues,
@@ -63,8 +59,8 @@ func NewValidator(connectionValues *map[string]any, connectionSecrets *map[strin
 }
 
 // AddResourceField registers a field containing a resource ID with the validator.
-func (v *Validator) AddResourceField(ref *string) {
-	v.resourceField = ref
+func (v *Validator) AddResourcesField(ref *[]*linkrp.ResourceReference) {
+	v.resourcesField = ref
 }
 
 // AddRequiredInt32Field registers a field containing a required int32 connection value. The zero value will be treated as an "unset" value.
@@ -99,6 +95,17 @@ func (v *Validator) AddOptionalSecretField(name string, ref *string) {
 	v.fields = append(v.fields, bind(v, name, ref, false, true, "string", convertToString, nil))
 }
 
+// AddComputedStringField registers a field containing a computed string connection value. The empty string will be treated as an "unset" value.
+//
+// The compute function will be called if the value is not already set or provided by the recipe. Inside the compute function
+// it is safe to assume that other non-computed fields have been populated already.
+//
+// The compute function will not be called if a validation error has previously occurred.
+func (v *Validator) AddComputedStringField(name string, ref *string, compute func() (string, *ValidationError)) {
+	// Note: secrets are always strings
+	v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "string", convertToString, compute))
+}
+
 // AddComputedSecretField registers a field containing a computed string connection secret. The empty string will be treated as an "unset" value.
 //
 // The compute function will be called if the secret is not already set or provided by the recipe. Inside the compute function
@@ -127,13 +134,13 @@ func (v *Validator) SetAndValidate(output *recipes.RecipeOutput) error {
 		*v.OutputResources = append(*v.OutputResources, recipeResources...)
 	}
 
-	if v.resourceField != nil && *v.resourceField != "" {
-		outputResource, err := GetOutputResourceFromResourceID(*v.resourceField)
+	if v.resourcesField != nil {
+		userResources, err := GetOutputResourcesFromResourcesField(*v.resourcesField)
 		if err != nil {
 			return err
 		}
 
-		*v.OutputResources = append(*v.OutputResources, outputResource)
+		*v.OutputResources = append(*v.OutputResources, userResources...)
 	}
 
 	for _, field := range v.fields {
