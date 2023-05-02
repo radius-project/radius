@@ -1126,8 +1126,8 @@ type RedisCacheProperties struct {
 	// The recipe used to automatically deploy underlying infrastructure for the rediscaches link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
-	// list of the resource IDs that support the PubSub resource
-	Resources []*SupportingResources `json:"resources,omitempty"`
+	// list of the resource IDs that support the redis resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
@@ -1365,6 +1365,12 @@ func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDat
 	}
 }
 
+// ResourceReference - Describes a reference to an existing resource
+type ResourceReference struct {
+	// REQUIRED; Resouce id of an existing resource
+	ID *string `json:"id,omitempty"`
+}
+
 // ResourceSQLDatabaseProperties - SqlDatabase Properties for Mode Resource
 type ResourceSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
@@ -1490,12 +1496,6 @@ type SQLDatabasesClientGetOptions struct {
 // SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
 type SQLDatabasesClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
-}
-
-// SupportingResources - The resource ID that support the current Link resource
-type SupportingResources struct {
-	// REQUIRED; The resource ID of the supporting resource
-	ID *string `json:"id,omitempty"`
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

@@ -82,14 +82,13 @@ func Test_Process(t *testing.T) {
 	t.Run("success - values", func(t *testing.T) {
 		resource := &datamodel.RedisCache{
 			Properties: datamodel.RedisCacheProperties{
-				RedisResourceProperties: datamodel.RedisResourceProperties{
-					Resource: azureRedisResourceID1,
-				},
-				RedisValuesProperties: datamodel.RedisValuesProperties{
-					Host:     host,
-					Port:     RedisSSLPort,
-					Username: username,
-				},
+
+				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+
+				Host:     host,
+				Port:     RedisSSLPort,
+				Username: username,
+
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
@@ -134,14 +133,11 @@ func Test_Process(t *testing.T) {
 	t.Run("success - recipe with value overrides", func(t *testing.T) {
 		resource := &datamodel.RedisCache{
 			Properties: datamodel.RedisCacheProperties{
-				RedisResourceProperties: datamodel.RedisResourceProperties{
-					Resource: azureRedisResourceID1,
-				},
-				RedisValuesProperties: datamodel.RedisValuesProperties{
-					Host:     host,
-					Port:     RedisSSLPort,
-					Username: username,
-				},
+				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+				Host:      host,
+				Port:      RedisSSLPort,
+				Username:  username,
+
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,

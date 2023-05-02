@@ -30,7 +30,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		port             int
 		connectionString string
 		password         string
-		resources        []linkrp.SupportingResources
+		resources        []linkrp.ResourceReference
 	}{
 		{
 			// Default recipe
@@ -53,7 +53,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		{
 			// Opt-out with resources
 			filename:         "rediscacheresource.json",
-			resources:        []linkrp.SupportingResources{{ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
+			resources:        []linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
 			host:             "myrediscache.redis.cache.windows.net",
 			port:             10255,
 			connectionString: "test-connection-string",
@@ -63,7 +63,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		{
 			// Opt-out without resources
 			filename:      "rediscacheresource2.json",
-			resources:     []linkrp.SupportingResources{{ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			resources:     []linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
 			host:          "myrediscache.redis.cache.windows.net",
 			port:          10255,
 			disableRecipe: true,
@@ -117,7 +117,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		port             int32
 		connectionString string
 		password         string
-		resources        []linkrp.SupportingResources
+		resources        []linkrp.ResourceReference
 	}{
 		{
 			// Opt-out without resources
@@ -144,7 +144,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			disableRecipe: true,
 			host:          "myrediscache.redis.cache.windows.net",
 			port:          10255,
-			resources:     []linkrp.SupportingResources{{ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			resources:     []linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
 		},
 	}
 
