@@ -16,6 +16,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
@@ -34,7 +35,7 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
 		DataProvider:  tCtx.MockSP,
-		KubeClient:    testutil.NewFakeKubeClient(nil),
+		KubeClient:    k8sutil.NewFakeKubeClient(nil),
 	}
 
 	t.Run("override namespace", func(t *testing.T) {
@@ -144,7 +145,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
 		DataProvider:  tCtx.MockSP,
-		KubeClient:    testutil.NewFakeKubeClient(nil),
+		KubeClient:    k8sutil.NewFakeKubeClient(nil),
 	}
 
 	t.Run("invalid namespace", func(t *testing.T) {
