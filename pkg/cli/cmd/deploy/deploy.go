@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/spf13/cobra"
 )
@@ -110,6 +111,7 @@ type Runner struct {
 	FilePath        string
 	Parameters      map[string]map[string]any
 	Workspace       *workspaces.Workspace
+	Providers       *datamodel.Providers
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -161,11 +163,20 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
+	env, err := client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
 	if clients.Is404Error(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("environment %q does not exist in scope %q. Run `rad env create` try again \n", r.EnvironmentName, r.Workspace.Scope)}
 	} else if err != nil {
 		return err
+	}
+	if env.Properties != nil && env.Properties.Providers != nil {
+		r.Providers = &datamodel.Providers{}
+		if env.Properties.Providers.Aws != nil {
+			r.Providers.AWS.Scope = *env.Properties.Providers.Aws.Scope
+		}
+		if env.Properties.Providers.Azure != nil {
+			r.Providers.Azure.Scope = *env.Properties.Providers.Azure.Scope
+		}
 	}
 
 	if r.ApplicationName != "" {
@@ -234,6 +245,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		Parameters:        r.Parameters,
 		ProgressText:      progressText,
 		CompletionText:    "Deployment Complete",
+		Providers:         r.Providers,
 	})
 	if err != nil {
 		return err

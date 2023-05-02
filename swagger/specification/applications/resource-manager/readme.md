@@ -50,6 +50,7 @@ input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/gateways.json
   - Applications.Core/preview/2022-03-15-privatepreview/containers.json
   - Applications.Core/preview/2022-03-15-privatepreview/volumes.json
+  - Applications.Core/preview/2022-03-15-privatepreview/secretstores.json
 ```
 
 ### Tag: package-link-2022-03-15-privatepreview

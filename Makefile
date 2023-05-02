@@ -6,4 +6,4 @@
 ARROW := \033[34;1m=>\033[0m
 
 # order matters for these
-include build/help.mk build/version.mk build/build.mk build/util.mk build/generate.mk build/test.mk build/controller.mk build/docker.mk build/install.mk
+include build/help.mk build/version.mk build/build.mk build/util.mk build/generate.mk build/test.mk build/controller.mk build/docker.mk build/install.mk build/debug.mk

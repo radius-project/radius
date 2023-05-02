@@ -3,9 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package testutil
+package k8sutil
 
 import (
+	"context"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -22,7 +25,7 @@ func NewFakeKubeClient(scheme *runtime.Scheme, initObjs ...client.Object) client
 	if scheme != nil {
 		builder = builder.WithScheme(scheme)
 	}
-	return builder.WithObjects(initObjs...).Build()
+	return &testClient{builder.WithObjects(initObjs...).Build()}
 }
 
 // PrependPatchReactor prepends patch reactor to fake client. This is workaround because clientset
@@ -57,4 +60,28 @@ func PrependPatchReactor(f *k8sfake.Clientset, resource string, objFunc func(cli
 			return false, nil, nil
 		},
 	)
+}
+
+// testClient is a fake client that implements the Patch method.
+type testClient struct {
+	client.WithWatch
+}
+
+// Patch implements client.Patch for apply patches.
+func (c *testClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	if patch.Type() != client.Apply.Type() {
+		return c.WithWatch.Patch(ctx, obj, patch, opts...)
+	}
+
+	// This is not exactly the same as the real implementation, but it's good enough for our tests.
+	existing := &unstructured.Unstructured{}
+	existing.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
+	err := c.WithWatch.Get(ctx, client.ObjectKey{Name: obj.GetName(), Namespace: obj.GetNamespace()}, existing)
+	if client.IgnoreNotFound(err) != nil {
+		return err
+	} else if err != nil {
+		return c.WithWatch.Create(ctx, obj)
+	} else {
+		return c.WithWatch.Update(ctx, obj)
+	}
 }

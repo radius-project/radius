@@ -32,6 +32,14 @@ type LinkRecipe struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
+// ResourceReference represents a reference to a resource that was deployed by the user
+// and specified as part of a link resource.
+//
+// This type should be used in datamodels for the '.properties.resources' field.
+type ResourceReference struct {
+	ID string `json:"id"`
+}
+
 // RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
 // generate name and properties that are unique for the Link calling the recipe.
 type RecipeContext struct {

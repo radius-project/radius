@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
@@ -41,8 +42,10 @@ func TestSecretStoreConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 		require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 		require.Equal(t, "certificate", string(ct.Properties.Type))
+		require.Equal(t, datamodel.SecretValueEncodingBase64, ct.Properties.Data["tls.crt"].Encoding)
 		require.Equal(t, "-----BEGIN CERT---- ...", to.String(ct.Properties.Data["tls.crt"].Value))
 		require.Nil(t, ct.Properties.Data["tls.crt"].ValueFrom)
+		require.Equal(t, datamodel.SecretValueEncodingNone, ct.Properties.Data["tls.key"].Encoding)
 		require.Equal(t, "-----BEGIN KEY---- ...", to.String(ct.Properties.Data["tls.key"].Value))
 		require.Nil(t, ct.Properties.Data["tls.key"].ValueFrom)
 	})
@@ -93,12 +96,14 @@ func TestSecretStoreConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Core/secretStores", r.Type)
 		require.Equal(t, "dev", r.Tags["env"])
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", r.Properties.Application)
-		require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-		require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+		identity := versioned.Properties.Status.OutputResources[0]["Identity"].(resourcemodel.KubernetesIdentity)
+		require.Equal(t, "Secret", identity.Kind)
 		require.Equal(t, "certificate", string(*versioned.Properties.Type))
-		require.Equal(t, "-----BEGIN CERT---- ...", to.String(versioned.Properties.Data["tls.crt"].Value))
+		require.Nil(t, versioned.Properties.Data["tls.crt"].Encoding)
+		require.Equal(t, "", to.String(versioned.Properties.Data["tls.crt"].Value))
 		require.Nil(t, versioned.Properties.Data["tls.crt"].ValueFrom)
-		require.Equal(t, "-----BEGIN KEY---- ...", to.String(versioned.Properties.Data["tls.key"].Value))
+		require.Equal(t, SecretValueEncodingBase64, *versioned.Properties.Data["tls.key"].Encoding)
+		require.Equal(t, "", to.String(versioned.Properties.Data["tls.key"].Value))
 		require.Nil(t, versioned.Properties.Data["tls.key"].ValueFrom)
 	})
 

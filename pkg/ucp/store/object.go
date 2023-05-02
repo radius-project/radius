@@ -5,6 +5,10 @@
 
 package store
 
+import (
+	"context"
+)
+
 type ETag = string
 
 type Metadata struct {
@@ -31,4 +35,20 @@ type ObjectQueryResult struct {
 
 func (o *Object) As(out any) error {
 	return DecodeMap(o.Data, out)
+}
+
+// GetResource gets the resource data from StorageClient for id.
+func GetResource[T any](ctx context.Context, client StorageClient, id string) (*T, error) {
+	var out T
+
+	obj, err := client.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = obj.As(&out); err != nil {
+		return nil, err
+	}
+
+	return &out, nil
 }

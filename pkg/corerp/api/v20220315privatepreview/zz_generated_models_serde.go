@@ -2280,6 +2280,7 @@ func (s *SecretStoreResourceList) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type SecretValueProperties.
 func (s SecretValueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "encoding", s.Encoding)
 	populate(objectMap, "value", s.Value)
 	populate(objectMap, "valueFrom", s.ValueFrom)
 	return json.Marshal(objectMap)
@@ -2294,6 +2295,9 @@ func (s *SecretValueProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "encoding":
+				err = unpopulate(val, "Encoding", &s.Encoding)
+				delete(rawMsg, key)
 		case "value":
 				err = unpopulate(val, "Value", &s.Value)
 				delete(rawMsg, key)

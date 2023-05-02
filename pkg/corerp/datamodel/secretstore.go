@@ -14,7 +14,7 @@ import (
 type SecretValueEncoding string
 
 const (
-	// SecretNoneEnconding is the undefined encoding type of value.
+	// SecretValueEncodingRaw is the raw encoding type of value.
 	SecretValueEncodingNone SecretValueEncoding = ""
 	// SecretValueEncodingRaw is the raw encoding type of value.
 	SecretValueEncodingRaw SecretValueEncoding = "raw"
@@ -77,6 +77,8 @@ type SecretStoreProperties struct {
 
 // SecretStoreDataValue represents the value of the secret store data.
 type SecretStoreDataValue struct {
+	// Encoding is the encoding type of Value.
+	Encoding SecretValueEncoding `json:"encoding,omitempty"`
 	// Value is the value of the secret store data.
 	Value *string `json:"value,omitempty"`
 	// ValueFrom is the value from of the secret store data.

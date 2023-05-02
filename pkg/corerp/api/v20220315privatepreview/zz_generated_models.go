@@ -1260,6 +1260,9 @@ type SecretStoresClientUpdateOptions struct {
 }
 
 type SecretValueProperties struct {
+	// The encoding of value
+	Encoding *SecretValueEncoding `json:"encoding,omitempty"`
+
 	// The value of secret.
 	Value *string `json:"value,omitempty"`
 

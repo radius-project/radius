@@ -7,10 +7,10 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -35,7 +35,7 @@ func (handler *daprComponentHandler) Put(ctx context.Context, resource *rpv1.Out
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = handler.PatchNamespace(ctx, item.GetNamespace())
+	err = kubeutil.PatchNamespace(ctx, handler.k8s, item.GetNamespace())
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -75,28 +75,6 @@ func (handler *daprComponentHandler) Put(ctx context.Context, resource *rpv1.Out
 	}
 
 	return resourcemodel.ResourceIdentity{}, properties, err
-}
-
-func (handler *daprComponentHandler) PatchNamespace(ctx context.Context, namespace string) error {
-	ns := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": "v1",
-			"kind":       "Namespace",
-			"metadata": map[string]any{
-				"name": namespace,
-				"labels": map[string]any{
-					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-				},
-			},
-		},
-	}
-
-	err := handler.k8s.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
-	if err != nil {
-		return fmt.Errorf("error applying namespace: %w", err)
-	}
-
-	return nil
 }
 
 func (handler *daprComponentHandler) Delete(ctx context.Context, resource *rpv1.OutputResource) error {
