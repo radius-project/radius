@@ -48,7 +48,7 @@ type Workspace struct {
 	DefaultApplication string `json:"defaultApplication,omitempty" mapstructure:"defaultApplication" yaml:"defaultApplication,omitempty"`
 
 	// ProviderConfig represents the configuration for IAC providers used during deployment. This field is optional and not written to disk.
-	ProviderConfig ProviderConfig
+	ProviderConfig ProviderConfig `json:"-"  yaml:"-"`
 }
 
 // IsNamedWorkspace returns true for workspaces stored in per-user configuration. These workspaces have names that can
@@ -80,18 +80,18 @@ const (
 // ProviderConfig represents the configuration for IAC providers used during deployment.
 type ProviderConfig struct {
 	// Azure represents the configuration for the Azure IAC provider used during deployment. This field is optional.
-	Azure *AzureProvider `json:"azure,omitempty" mapstructure:"azure" yaml:"azure,omitempty"`
-	AWS   *AWSProvider   `json:"aws,omitempty" mapstructure:"aws" yaml:"aws,omitempty"`
+	Azure *AzureProvider
+	AWS   *AWSProvider
 }
 
 type AzureProvider struct {
-	SubscriptionID string `json:"subscriptionId,omitempty" mapstructure:"subscriptionId" yaml:"subscriptionId,omitempty"`
-	ResourceGroup  string `json:"resourceGroup,omitempty" mapstructure:"resourceGroup" yaml:"resourceGroup,omitempty"`
+	SubscriptionID string
+	ResourceGroup  string
 }
 
 type AWSProvider struct {
-	Region    string `json:"region,omitempty" mapstructure:"region" yaml:"region,omitempty"`
-	AccountId string `json:"accountId,omitempty" mapstructure:"accountId" yaml:"accountId,omitempty"`
+	Region    string
+	AccountId string
 }
 
 // Registry represent the configuration for a container registry.

@@ -449,7 +449,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, []interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
+	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
 	if err != nil {
 		return err
 	}

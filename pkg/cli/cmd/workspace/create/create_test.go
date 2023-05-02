@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 
 		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), gomock.Any(), workspace, gomock.Any()).
+			EditWorkspaces(context.Background(), gomock.Any(), workspace).
 			Return(nil).Times(1)
 
 		runner := &Runner{

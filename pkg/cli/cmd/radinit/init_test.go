@@ -478,7 +478,7 @@ func Test_Run_InstallAndCreateEnvironment_WithAzureProvider_WithRecipes(t *testi
 		Return(nil).Times(1)
 
 	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(1)
 
 	outputSink := &output.MockOutput{}
@@ -554,7 +554,7 @@ func Test_Run_InstallAndCreateEnvironment_WithAWSProvider(t *testing.T) {
 		Return(nil).Times(1)
 
 	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(1)
 
 	outputSink := &output.MockOutput{}
@@ -618,7 +618,7 @@ func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider_WithSkipRecipes(t
 		Return(true, nil).Times(1)
 
 	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(1)
 
 	outputSink := &output.MockOutput{}
@@ -654,7 +654,7 @@ func Test_Run_InstalledRadiusExistingEnvironment(t *testing.T) {
 		Return(nil).Times(1)
 
 	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(1)
 
 	outputSink := &output.MockOutput{}
@@ -683,7 +683,7 @@ func Test_Run_InstalledRadiusExistingEnvironment_CreateApplication(t *testing.T)
 		Return(nil).Times(1)
 
 	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(1)
 
 	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
