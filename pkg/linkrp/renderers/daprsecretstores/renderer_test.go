@@ -122,8 +122,8 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"spec": map[string]any{
 				"type":    linkrp.DaprSecretStoresResourceType,
 				"version": "v1",
-				"metadata": []map[string]any{
-					{
+				"metadata": []any{
+					map[string]any{
 						"name":  "foo",
 						"value": "bar",
 					},
