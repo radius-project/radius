@@ -16,11 +16,13 @@ func Test_CanSetCLIOptions(t *testing.T) {
 	cliOptions := CLIClusterOptions{
 		Radius: RadiusOptions{
 			ChartPath: "chartpath",
+			Reinstall: true,
 		},
 	}
 	clusterOptions := PopulateDefaultClusterOptions(cliOptions)
 
 	require.Equal(t, "chartpath", clusterOptions.Radius.ChartPath)
+	require.Equal(t, true, clusterOptions.Radius.Reinstall)
 
 }
 
