@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// GetOutputResourcesFromResourcesField is a utility function that converts a resource ID sprovided by a user into an
+// GetOutputResourcesFromResourcesField is a utility function that converts a resource ID provided by a user into an
 // OutputResource. This should be used for processing the '.properties.resources' field of a resource.
 func GetOutputResourcesFromResourcesField(field []*linkrp.ResourceReference) ([]rpv1.OutputResource, error) {
 	results := []rpv1.OutputResource{}

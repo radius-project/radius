@@ -35,10 +35,14 @@ func (daprGeneric DaprGeneric) Validate() error {
 	return nil
 }
 
-func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName string, namespace string, resourceType string) (unstructured.Unstructured, error) {
+// ConstructDaprGeneric constructs a Dapr component.
+//
+// The component name and resource name may be different. The component name is the name of the Dapr
+// Kubernetes Component object to be created. Resource name is the name of the Radius resource.
+func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentName string, applicationName string, resourceName string, resourceType string) (unstructured.Unstructured, error) {
 	// Convert the metadata map to a yaml list with keys name and value as per
 	// Dapr specs: https://docs.dapr.io/reference/components-reference/
-	yamlListItems := []map[string]any{}
+	yamlListItems := []any{} // K8s fake client requires this ..... :(
 	for k, v := range daprGeneric.Metadata {
 		yamlItem := map[string]any{
 			"name":  k,
@@ -54,8 +58,8 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName 
 			"kind":       "Component",
 			"metadata": map[string]any{
 				"namespace": namespace,
-				"name":      kubernetes.NormalizeDaprResourceName(resourceName),
-				"labels":    kubernetes.MakeDescriptiveDaprLabels(appName, resourceName, resourceType),
+				"name":      kubernetes.NormalizeDaprResourceName(componentName),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationName, resourceName, resourceType),
 			},
 			"spec": map[string]any{
 				"type":     *daprGeneric.Type,

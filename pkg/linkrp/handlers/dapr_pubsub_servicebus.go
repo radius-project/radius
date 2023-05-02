@@ -79,7 +79,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *r
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeDaprResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprPubSubBrokersResourceType)
+	err = CheckDaprResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeDaprResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], properties[ResourceName], linkrp.DaprPubSubBrokersResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}

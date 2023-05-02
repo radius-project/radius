@@ -51,7 +51,7 @@ func (handler *daprComponentHandler) Put(ctx context.Context, resource *rpv1.Out
 		return resourcemodel.ResourceIdentity{}, properties, nil
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, properties[ResourceName], properties[KubernetesNamespaceKey], serviceCtx.ResourceID.Type())
+	err = CheckDaprResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeDaprResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], properties[ResourceName], serviceCtx.ResourceID.Type())
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
