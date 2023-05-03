@@ -75,7 +75,7 @@ func Test_RedisRecipe(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-value-backed-recipe-env",
+						Name: "corerp-resources-environment-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
