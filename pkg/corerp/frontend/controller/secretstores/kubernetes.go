@@ -204,9 +204,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 		err = options.KubeClient.Create(ctx, ksecret)
 	} else if updateRequired {
-		if updateRequired {
-			err = options.KubeClient.Update(ctx, ksecret)
-		}
+		err = options.KubeClient.Update(ctx, ksecret)
 	}
 
 	if err != nil {
