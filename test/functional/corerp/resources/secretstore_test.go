@@ -14,8 +14,8 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_SecretStores_CreateSecret(t *testing.T) {
-	template := "testdata/corerp-resources-secretstores-value.bicep"
+func Test_SecretStore_CreateSecret(t *testing.T) {
+	template := "testdata/corerp-resources-secretstore-value.bicep"
 	name := "corerp-resources-secret-app"
 	appNamespace := "corerp-resources-secret-app"
 
@@ -48,8 +48,8 @@ func Test_SecretStores_CreateSecret(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_SecretStores_ReferenceSecret(t *testing.T) {
-	template := "testdata/corerp-resources-secretstores-valuefrom.bicep"
+func Test_SecretStore_ReferenceSecret(t *testing.T) {
+	template := "testdata/corerp-resources-secretstore-valuefrom.bicep"
 	name := "corerp-resources-secret-app"
 	appNamespace := "corerp-resources-secret-app"
 
