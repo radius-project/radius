@@ -119,7 +119,7 @@ func K8sSecretResource(namespace, name string, kv ...any) unstructured.Unstructu
 		data[key] = val
 	}
 
-	sec := unstructured.Unstructured{
+	return unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "v1",
 			"kind":       "Secret",
@@ -130,8 +130,6 @@ func K8sSecretResource(namespace, name string, kv ...any) unstructured.Unstructu
 			"data": data,
 		},
 	}
-
-	return sec
 }
 
 func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
