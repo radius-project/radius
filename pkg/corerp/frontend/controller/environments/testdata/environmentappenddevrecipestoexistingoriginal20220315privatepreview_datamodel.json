@@ -21,9 +21,10 @@
             }
         },
         "recipes": {
-            "sql": {
-                "linkType": "Applications.Link/sqlDatabases",
-                "templatePath": "radiusdev.azurecr.io/sql:1.0"
+            "Applications.Link/sqlDatabases":{
+                "sql": {
+                    "templatePath": "radiusdev.azurecr.io/sql:1.0"
+                }
             }
         },
         "useDevRecipes": false,

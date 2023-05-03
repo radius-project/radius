@@ -17,9 +17,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      rediscache: {
-          linkType: 'Applications.Link/redisCaches' 
+      'Applications.Link/redisCaches':{
+        rediscache: {
           templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/valuebacked/rediscaches/azure:1.0' 
+        }
       }
     }
   }

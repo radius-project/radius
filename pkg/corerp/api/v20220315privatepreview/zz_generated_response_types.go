@@ -71,7 +71,7 @@ type EnvironmentsClientDeleteResponse struct {
 
 // EnvironmentsClientGetRecipeMetadataResponse contains the response from method EnvironmentsClient.GetRecipeMetadata.
 type EnvironmentsClientGetRecipeMetadataResponse struct {
-	RecipeMetadata
+	EnvironmentRecipeProperties
 }
 
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.

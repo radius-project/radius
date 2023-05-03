@@ -7,6 +7,7 @@ package configloader
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -14,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/rp/util"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 //go:generate mockgen -destination=./mock_config_loader.go -package=configloader -self_package github.com/project-radius/radius/pkg/recipes/configloader github.com/project-radius/radius/pkg/recipes/configloader ConfigurationLoader
@@ -92,15 +94,18 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metad
 	if environment.Properties.Recipes == nil {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
-
-	found, ok := environment.Properties.Recipes[recipe.Name]
+	resource, err := resources.ParseResource(recipe.ResourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
+	}
+	found, ok := environment.Properties.Recipes[resource.Type()][recipe.Name]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
 
 	return &recipes.Definition{
 		Driver:       recipes.DriverBicep,
-		ResourceType: *found.LinkType,
+		ResourceType: resource.Type(),
 		Parameters:   found.Parameters,
 		TemplatePath: *found.TemplatePath,
 	}, nil

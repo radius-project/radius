@@ -92,13 +92,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	var envRecipes []EnvironmentRecipe
-	for recipeName, recipeProperties := range envResource.Properties.Recipes {
-		recipe := EnvironmentRecipe{
-			Name:         recipeName,
-			LinkType:     *recipeProperties.LinkType,
-			TemplatePath: *recipeProperties.TemplatePath,
+	for link, recipes := range envResource.Properties.Recipes {
+		for recipeName, recipeDetails := range recipes {
+			envRecipes = append(envRecipes, EnvironmentRecipe{
+				Name:         recipeName,
+				LinkType:     link,
+				TemplatePath: *recipeDetails.TemplatePath,
+			})
 		}
-		envRecipes = append(envRecipes, recipe)
 	}
 	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {

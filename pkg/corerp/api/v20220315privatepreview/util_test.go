@@ -112,3 +112,13 @@ func TestFromSystemDataModel(t *testing.T) {
 		require.Equal(t, tt.LastModifiedAt, string(c))
 	}
 }
+
+func TestValidLinkType(t *testing.T) {
+	isValid := isValidLinkType("Applications.Link/mongoDatabases")
+	require.Equal(t, true, isValid)
+}
+
+func TestInvalidLinkType(t *testing.T) {
+	isValid := isValidLinkType("Applications.Link/pubSubBroker")
+	require.Equal(t, false, isValid)
+}

@@ -280,21 +280,23 @@ func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templat
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName string) (string, error) {
+func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName, linkType string) (string, error) {
 	args := []string{
 		"recipe",
 		"unregister",
 		recipeName,
+		"--link-type", linkType,
 		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string) (string, error) {
+func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, linkType string) (string, error) {
 	args := []string{
 		"recipe",
 		"show",
 		recipeName,
+		"--link-type", linkType,
 		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)

@@ -7,9 +7,10 @@
             "namespace": "default"
         },
         "recipes": {
-            "redis": {
-                "linkType": "Applications.Link/redisCache",
-                "templatePath": "radiusdev.azurecr.io/redis:1.0"
+            "Applications.Link/redisCaches":{
+                "redis": {
+                    "templatePath": "radiusdev.azurecr.io/redis:1.0"
+                }
             }
         },
         "useDevRecipes": true,

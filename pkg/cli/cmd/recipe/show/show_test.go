@@ -33,8 +33,8 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Show Command",
-			Input:         []string{},
-			ExpectedValid: false,
+			Input:         []string{"recipeName", "--link-type", "link-type"},
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
@@ -42,7 +42,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with incorrect fallback workspace",
-			Input:         []string{"-e", "my-env", "-g", "my-env", "recipeName"},
+			Input:         []string{"-e", "my-env", "-g", "my-env", "recipeName", "--link-type", "link-type"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -51,7 +51,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with too many positional args",
-			Input:         []string{"recipeName", "arg2"},
+			Input:         []string{"recipeName", "arg2", "--link-type", "link-type"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -60,8 +60,17 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with fallback workspace",
-			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName"},
+			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName", "--link-type", "link-type"},
 			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command without LinkType",
+			Input:         []string{"recipeName"},
+			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
@@ -77,7 +86,6 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envRecipe := v20220315privatepreview.EnvironmentRecipeProperties{
-				LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
 				TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				Parameters: map[string]any{
 					"throughput": map[string]any{
@@ -124,6 +132,7 @@ func Test_Run(t *testing.T) {
 				Workspace:         &workspaces.Workspace{},
 				Format:            "table",
 				RecipeName:        "cosmosDB",
+				LinkType:          linkrp.MongoDatabasesResourceType,
 			}
 
 			err := runner.Run(context.Background())

@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -70,26 +69,36 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		if err != nil {
 			return nil, err
 		}
-		if newResource.Properties.Recipes != nil {
+		newResourceRecipes := newResource.Properties.Recipes
+		if newResourceRecipes != nil {
 			errorPrefix := "recipe name(s) reserved for devRecipes for: "
 			var errorRecipes string
 			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
 			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
-			for k, v := range newResource.Properties.Recipes {
-				if val, ok := devRecipes[k]; ok && val.TemplatePath != v.TemplatePath {
-					if errorRecipes != "" {
-						errorRecipes += ", "
+			for resourceType, recipes := range devRecipes {
+				if devRecipes[resourceType] != nil {
+					for recipeName, recipeDetails := range recipes {
+						if newResourceRecipes[resourceType] != nil {
+							if val, ok := newResourceRecipes[resourceType][recipeName]; ok && val.TemplatePath != recipeDetails.TemplatePath {
+								if errorRecipes != "" {
+									errorRecipes += ", "
+								}
+								errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", recipeName, resourceType, val.TemplatePath)
+							} else {
+								newResourceRecipes[resourceType][recipeName] = recipeDetails
+							}
+						} else {
+							newResourceRecipes[resourceType] = recipes
+						}
 					}
-					errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
 				}
 			}
 			if errorRecipes != "" {
 				return nil, fmt.Errorf(errorPrefix + errorRecipes)
 			}
 		} else {
-			newResource.Properties.Recipes = map[string]datamodel.EnvironmentRecipeProperties{}
+			newResource.Properties.Recipes = devRecipes
 		}
-		maps.Copy(newResource.Properties.Recipes, devRecipes)
 	}
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
@@ -121,8 +130,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-var getDevRecipes = func(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
-	recipes := map[string]datamodel.EnvironmentRecipeProperties{}
+var getDevRecipes = func(ctx context.Context) (map[string]map[string]datamodel.EnvironmentRecipeProperties, error) {
+	recipes := map[string]map[string]datamodel.EnvironmentRecipeProperties{}
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
@@ -163,9 +172,10 @@ var getDevRecipes = func(ctx context.Context) (map[string]datamodel.EnvironmentR
 						if err != nil {
 							return fmt.Errorf("error occurred while finding highest version for repo %s - %s", repoPath, err.Error())
 						}
-						recipes[name] = datamodel.EnvironmentRecipeProperties{
-							LinkType:     linkType,
-							TemplatePath: repoPath + ":" + fmt.Sprintf("%.1f", version),
+						recipes[linkType] = map[string]datamodel.EnvironmentRecipeProperties{
+							name: datamodel.EnvironmentRecipeProperties{
+								TemplatePath: repoPath + ":" + fmt.Sprintf("%.1f", version),
+							},
 						}
 						return nil
 					})

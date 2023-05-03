@@ -16,6 +16,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -397,16 +398,18 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 }
 
-var mockgetDevRecipes = func(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
+var mockgetDevRecipes = func(ctx context.Context) (map[string]map[string]datamodel.EnvironmentRecipeProperties, error) {
 
-	recipes := map[string]datamodel.EnvironmentRecipeProperties{
-		"redis-kubernetes": {
-			LinkType:     "Applications.Link/redisCaches",
-			TemplatePath: "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0",
+	recipes := map[string]map[string]datamodel.EnvironmentRecipeProperties{
+		linkrp.RedisCachesResourceType: {
+			"redis-kubernetes": {
+				TemplatePath: "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0",
+			},
 		},
-		"mongo-azure": {
-			LinkType:     "Applications.Link/mongoDatabases",
-			TemplatePath: "radius.azurecr.io/recipes/mongodatabases/azure:1.0",
+		linkrp.MongoDatabasesResourceType: {
+			"mongo-azure": {
+				TemplatePath: "radius.azurecr.io/recipes/mongodatabases/azure:1.0",
+			},
 		},
 	}
 	return recipes, nil
@@ -603,18 +606,19 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 						Scope: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"),
 					},
 				},
-				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-					"redis": {
-						LinkType:     to.Ptr("Applications.Link/redisCache"),
-						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:1.0"),
+				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					linkrp.RedisCachesResourceType: {
+						"redis": {
+							TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:1.0"),
+						},
+						"redis-kubernetes": {
+							TemplatePath: to.Ptr("radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"),
+						},
 					},
-					"mongo-azure": {
-						LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
-						TemplatePath: to.Ptr("radius.azurecr.io/recipes/mongodatabases/azure:1.0"),
-					},
-					"redis-kubernetes": {
-						LinkType:     to.Ptr("Applications.Link/redisCaches"),
-						TemplatePath: to.Ptr("radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"),
+					linkrp.MongoDatabasesResourceType: {
+						"mongo-azure": {
+							TemplatePath: to.Ptr("radius.azurecr.io/recipes/mongodatabases/azure:1.0"),
+						},
 					},
 				},
 			},

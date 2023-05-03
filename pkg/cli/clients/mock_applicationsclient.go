@@ -321,7 +321,7 @@ func (mr *MockApplicationsManagementClientMockRecorder) ShowApplication(arg0, ar
 }
 
 // ShowRecipe mocks base method.
-func (m *MockApplicationsManagementClient) ShowRecipe(arg0 context.Context, arg1, arg2 string) (v20220315privatepreview.EnvironmentRecipeProperties, error) {
+func (m *MockApplicationsManagementClient) ShowRecipe(arg0 context.Context, arg1 string, arg2 v20220315privatepreview.Recipe) (v20220315privatepreview.EnvironmentRecipeProperties, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowRecipe", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v20220315privatepreview.EnvironmentRecipeProperties)

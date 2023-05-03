@@ -1,0 +1,4 @@
+{
+    "linkType":"Applications.Link/mongoDatabases",
+    "name":"mongo-azure"
+}
