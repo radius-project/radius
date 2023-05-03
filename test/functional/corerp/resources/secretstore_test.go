@@ -8,7 +8,6 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
@@ -21,7 +20,7 @@ func Test_SecretStore_CreateSecret(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, "@testdata/test-tls-cert.parameters.json", functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, "@testdata/test-tls-cert.parameters.json"),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -55,7 +54,7 @@ func Test_SecretStore_ReferenceSecret(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
