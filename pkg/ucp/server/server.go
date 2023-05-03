@@ -16,6 +16,7 @@ import (
 	hostOpts "github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/kubeutil"
 	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
+	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
 	profilerprovider "github.com/project-radius/radius/pkg/profiler/provider"
 	profilerservice "github.com/project-radius/radius/pkg/profiler/service"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -158,13 +159,13 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: options.StorageProviderOptions.ETCD.Client}))
 	}
 
-	// options.MetricsProviderOptions.ServiceName = ServiceName
-	// if options.MetricsProviderOptions.Prometheus.Enabled {
-	// 	metricOptions := metricsservice.HostOptions{
-	// 		Config: &options.MetricsProviderOptions,
-	// 	}
-	// 	hostingServices = append(hostingServices, metricsservice.NewService(metricOptions))
-	// }
+	options.MetricsProviderOptions.ServiceName = ServiceName
+	if options.MetricsProviderOptions.Prometheus.Enabled {
+		metricOptions := metricsservice.HostOptions{
+			Config: &options.MetricsProviderOptions,
+		}
+		hostingServices = append(hostingServices, metricsservice.NewService(metricOptions))
+	}
 
 	if options.ProfilerProviderOptions.Enabled {
 		profilerOptions := profilerservice.HostOptions{
