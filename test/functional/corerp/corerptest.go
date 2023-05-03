@@ -112,11 +112,14 @@ func K8sSecretResource(namespace, name string, kv ...any) unstructured.Unstructu
 		if !ok {
 			panic("key must be string")
 		}
-		val, ok := kv[i+1].([]byte)
-		if !ok {
+		switch v := kv[i+1].(type) {
+		case string:
+			data[key] = []byte(v)
+		case []byte:
+			data[key] = v
+		default:
 			panic("value must be string or byte array")
 		}
-		data[key] = val
 	}
 
 	return unstructured.Unstructured{
