@@ -161,6 +161,8 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		return nil, err
 	}
 
+	updateRequired := false
+
 	for k, secret := range newResource.Properties.Data {
 		val := to.String(secret.Value)
 		if val != "" {
@@ -169,6 +171,8 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 			} else {
 				base64.StdEncoding.Encode(ksecret.Data[k], []byte(val))
 			}
+
+			updateRequired = true
 
 			// Remove secret from metadata.
 			secret.Value = nil
@@ -187,18 +191,17 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 	}
 
-	switch newResource.Properties.Type {
-	case datamodel.SecretTypeCert:
-		ksecret.Type = corev1.SecretTypeTLS
-	case datamodel.SecretTypeGeneric:
-		ksecret.Type = corev1.SecretTypeOpaque
-	default:
-		return rest.NewBadRequestResponse(fmt.Sprintf("%s is invalid secret type.", newResource.Properties.Type)), nil
-	}
-
 	if ksecret.ResourceVersion == "" {
+		switch newResource.Properties.Type {
+		case datamodel.SecretTypeCert:
+			ksecret.Type = corev1.SecretTypeTLS
+		case datamodel.SecretTypeGeneric:
+			ksecret.Type = corev1.SecretTypeOpaque
+		default:
+			return rest.NewBadRequestResponse(fmt.Sprintf("%s is invalid secret type.", newResource.Properties.Type)), nil
+		}
 		err = options.KubeClient.Create(ctx, ksecret)
-	} else {
+	} else if updateRequired {
 		err = options.KubeClient.Update(ctx, ksecret)
 	}
 
