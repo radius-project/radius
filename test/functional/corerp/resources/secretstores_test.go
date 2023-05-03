@@ -69,7 +69,6 @@ func Test_SecretStores_ReferenceSecret(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	}, corerp.K8sSecretResource(appNamespace, "secret-app-existing-secret", "tls.crt", "fakecertval", "tls.key", "fakekeyval"))
 

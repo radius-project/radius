@@ -42,17 +42,3 @@ resource appCert 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
     }
   }
 }
-
-// Reference the existing `secret-app-existing-secret` secret.
-resource existingAppCert 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
-  name: 'existing-appcert'
-  properties:{
-    application: app.id
-    type: 'certificate'
-    data: {
-      'tls.crt': {}
-      'tls.key': {}
-    }
-    resource: 'secret-app-existing-secret'
-  }
-}
