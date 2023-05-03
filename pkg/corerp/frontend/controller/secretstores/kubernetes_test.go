@@ -175,19 +175,6 @@ func TestValidateRequest(t *testing.T) {
 		require.Equal(t, "type cannot be changed.", r.Body.Error.Message)
 	})
 
-	t.Run("resourceID is not same", func(t *testing.T) {
-		t.Skip()
-		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
-		oldResource.Properties.Resource = "default/notmatch"
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
-		resp, err := ValidateRequest(context.TODO(), newResource, oldResource, nil)
-		require.NoError(t, err)
-
-		// assert
-		r := resp.(*rest.BadRequestResponse)
-		require.Equal(t, "'default/letsencrypt-prod' of $.properties.resource must be same as 'default/notmatch'.", r.Body.Error.Message)
-	})
-
 	t.Run("inherit resource id from existing resource", func(t *testing.T) {
 		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
 		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
@@ -357,6 +344,62 @@ func TestUpsertSecret(t *testing.T) {
 		// assert
 		require.Equal(t, "app0-ns/secret0", newResource.Properties.Resource)
 	})
+
+	t.Run("create new resource when namepsace is missing", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		sc := store.NewMockStorageClient(ctrl)
+
+		appData := testutil.MustGetTestData[any]("app_datamodel.json")
+
+		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
+			Data: *appData,
+		}, nil)
+
+		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		oldResource.Properties.Resource = "app0-ns/secret0"
+		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource.Properties.Resource = "secret0"
+
+		opt := &controller.Options{
+			StorageClient: sc,
+			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+		}
+
+		_, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
+		require.NoError(t, err)
+
+		// assert
+		require.Equal(t, "app0-ns/secret0", newResource.Properties.Resource)
+	})
+
+	t.Run("unmatched resource when namespace is missing in new resource", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		sc := store.NewMockStorageClient(ctrl)
+
+		appData := testutil.MustGetTestData[any]("app_datamodel.json")
+
+		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
+			Data: *appData,
+		}, nil)
+
+		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		oldResource.Properties.Resource = "app0-ns/secret0"
+		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource.Properties.Resource = "secret1"
+
+		opt := &controller.Options{
+			StorageClient: sc,
+			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+		}
+
+		resp, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
+		require.NoError(t, err)
+
+		// assert
+		r := resp.(*rest.BadRequestResponse)
+		require.Equal(t, "'app0-ns/secret1' of $.properties.resource must be same as 'app0-ns/secret0'.", r.Body.Error.Message)
+	})
+
 }
 
 func TestDeleteSecret(t *testing.T) {
