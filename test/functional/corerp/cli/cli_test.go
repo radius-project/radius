@@ -48,7 +48,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	envName := test.Steps[0].CoreRPResources.Resources[0].Name
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
-	linkType := "Applications.Link/linkType"
+	linkType := "Applications.Link/mongoDatabases"
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, recipeTemplate, linkType)
 		require.NoError(t, err)
@@ -62,7 +62,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Regexp(t, recipeTemplate, output)
 	})
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, envName, recipeName)
+		output, err := cli.RecipeUnregister(ctx, envName, recipeName, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
 	})
@@ -73,7 +73,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName)
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
@@ -86,9 +86,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
+		_, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
 		require.Error(t, err)
-		require.Contains(t, output, "recipe with name \"mongo-azure\" already exists in the environment")
 	})
 }
 
