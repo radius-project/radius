@@ -15,9 +15,9 @@ import (
 )
 
 func Test_RedisDisableRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-redis-disableRecipe.bicep"
-	name := "corerp-resources-redis-disableRecipe"
-	appNamespace := "default-corerp-resources-redis-disableRecipe"
+	template := "testdata/corerp-resources-redis-disable-recipe.bicep"
+	name := "corerp-resources-redis-disable-recipe"
+	appNamespace := "default-corerp-resources-redis-disable-recipe"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
