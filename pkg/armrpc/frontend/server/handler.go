@@ -81,7 +81,6 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 
 	if resourceID.IsResource() || resourceID.IsResourceCollection() {
 		labeler.Add(attribute.String("resource_type", strings.ToLower(resourceID.Type())))
-		labeler.Add(attribute.String("ucp_plane", strings.ToLower(resourceID.PlaneNamespace())))
 	}
 }
 
