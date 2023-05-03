@@ -13,9 +13,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: 'corerp-resources-recipe-env'
     }
     recipes: {
-      recipe1: {
-          linkType: 'Applications.Link/mongoDatabases' 
+      'Applications.Link/mongoDatabases':{
+        recipe1: {
           templatePath: 'testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1' 
+        }
       }
     }
     useDevRecipes: true
