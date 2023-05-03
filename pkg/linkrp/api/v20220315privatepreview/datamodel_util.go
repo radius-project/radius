@@ -81,9 +81,6 @@ func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
 	if r == nil {
 		return linkrp.LinkRecipe{}
 	}
-	if r == nil {
-		return linkrp.LinkRecipe{}
-	}
 
 	recipe := linkrp.LinkRecipe{
 		Name: to.String(r.Name),

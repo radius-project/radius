@@ -161,23 +161,38 @@
 * **Additional Properties Type**: string
 
 ## DaprPubSubBrokerProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resource**: [SupportingResources](#supportingresources)[]: list of the resource IDs that support the PubSub resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **topic**: string: Topic name of the Azure ServiceBus resource
+### RecipeDaprPubSubProperties
+#### Properties
+* **metadata**: any: Any object
+* **mode**: 'recipe' (Required): Discriminator property for DaprPubSubBrokerProperties.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string: Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
 
-## SupportingResources
-### Properties
-* **id**: string (Required): The resource ID of the supporting resource
+### ResourceDaprPubSubProperties
+#### Properties
+* **metadata**: any: Any object
+* **mode**: 'resource' (Required): Discriminator property for DaprPubSubBrokerProperties.
+* **resource**: string (Required): PubSub resource
+* **type**: string: Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string: Dapr component version
+
+### ValuesDaprPubSubProperties
+#### Properties
+* **metadata**: any (Required): Any object
+* **mode**: 'values' (Required): Discriminator property for DaprPubSubBrokerProperties.
+* **type**: string (Required): Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string (Required): Dapr component version
+
 
 ## TrackedResourceTags
 ### Properties
@@ -190,15 +205,24 @@
 ### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resource**: [SupportingResources](#supportingresources)[]: list of the resource IDs that support the PubSub resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeDaprSecretStoreProperties
+#### Properties
+* **metadata**: any: Any object
+* **mode**: 'recipe' (Required): Discriminator property for DaprSecretStoreProperties.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string: Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string: Dapr component version
+
+### ValuesDaprSecretStoreProperties
+#### Properties
+* **metadata**: any (Required): Any object
+* **mode**: 'values' (Required): Discriminator property for DaprSecretStoreProperties.
+* **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+* **version**: string (Required): Dapr component version
+
 
 ## TrackedResourceTags
 ### Properties
@@ -206,18 +230,37 @@
 * **Additional Properties Type**: string
 
 ## DaprStateStoreProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resources**: [SupportingResources](#supportingresources)[]: list of the resource IDs that support the PubSub resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeDaprStateStoreProperties
+#### Properties
+* **metadata**: any: Any object
+* **mode**: 'recipe' (Required): Discriminator property for DaprStateStoreProperties.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
+
+### ResourceDaprStateStoreProperties
+#### Properties
+* **metadata**: any: Any object
+* **mode**: 'resource' (Required): Discriminator property for DaprStateStoreProperties.
+* **resource**: string (Required): The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
+* **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string: Dapr component version
+
+### ValuesDaprStateStoreProperties
+#### Properties
+* **metadata**: any (Required): Any object
+* **mode**: 'values' (Required): Discriminator property for DaprStateStoreProperties.
+* **type**: string (Required): Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string (Required): Dapr component version
+
 
 ## TrackedResourceTags
 ### Properties
@@ -245,18 +288,37 @@
 * **Additional Properties Type**: string
 
 ## MongoDatabaseProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **database**: string (ReadOnly): Database name of the target Mongo database
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **host**: string: Host name of the target Mongo database
-* **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resources**: [SupportingResources](#supportingresources)[]: list of the resource IDs that support the PubSub resource
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
+* **mode**: 'recipe' (Required): Discriminator property for MongoDatabaseProperties.
+* **port**: int: Port value of the target Mongo database
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+
+### ResourceMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
+* **mode**: 'resource' (Required): Discriminator property for MongoDatabaseProperties.
+* **port**: int: Port value of the target Mongo database
+* **resource**: string (Required): Fully qualified resource ID of a supported resource with Mongo API to use for this link
+
+### ValuesMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string (Required): Host name of the target Mongo database
+* **mode**: 'values' (Required): Discriminator property for MongoDatabaseProperties.
+* **port**: int (Required): Port value of the target Mongo database
+
 
 ## MongoDatabaseSecrets
 ### Properties
@@ -270,16 +332,25 @@
 * **Additional Properties Type**: string
 
 ## RabbitMQMessageQueueProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **queue**: string: The name of the queue
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resources**: [SupportingResources](#supportingresources)[]: list of the resource IDs that support the PubSub resource
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeRabbitMQMessageQueueProperties
+#### Properties
+* **mode**: 'recipe' (Required): Discriminator property for RabbitMQMessageQueueProperties.
+* **queue**: string: The name of the queue
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+
+### ValuesRabbitMQMessageQueueProperties
+#### Properties
+* **mode**: 'values' (Required): Discriminator property for RabbitMQMessageQueueProperties.
+* **queue**: string (Required): The name of the queue
+
 
 ## RabbitMQSecrets
 ### Properties
@@ -298,11 +369,15 @@
 * **host**: string: The host name of the target Redis cache
 * **port**: int: The port value of the target Redis cache
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **resources**: [SupportingResources](#supportingresources)[]: list of the resource IDs that support the PubSub resource
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the redis resource
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **username**: string (ReadOnly): The username for Redis cache
+
+## ResourceReference
+### Properties
+* **id**: string (Required): Resource id of an existing resource
 
 ## RedisCacheSecrets
 ### Properties
@@ -315,16 +390,33 @@
 * **Additional Properties Type**: string
 
 ## SqlDatabaseProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **database**: string: The name of the Sql database.
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **resources**: [SupportingResources](#supportingresources)[]: list of the resource IDs that support the PubSub resource
-* **server**: string: The fully qualified domain name of the Sql database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeSqlDatabaseProperties
+#### Properties
+* **database**: string: The name of the Sql database.
+* **mode**: 'recipe' (Required): Discriminator property for SqlDatabaseProperties.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+* **server**: string: The fully qualified domain name of the Sql database.
+
+### ResourceSqlDatabaseProperties
+#### Properties
+* **database**: string: The name of the Sql database.
+* **mode**: 'resource' (Required): Discriminator property for SqlDatabaseProperties.
+* **resource**: string (Required): Fully qualified resource ID of a supported resource with Sql API to use for this link
+* **server**: string: The fully qualified domain name of the Sql database.
+
+### ValuesSqlDatabaseProperties
+#### Properties
+* **database**: string (Required): The name of the Sql database.
+* **mode**: 'values' (Required): Discriminator property for SqlDatabaseProperties.
+* **server**: string (Required): The fully qualified domain name of the Sql database.
+
 
 ## TrackedResourceTags
 ### Properties

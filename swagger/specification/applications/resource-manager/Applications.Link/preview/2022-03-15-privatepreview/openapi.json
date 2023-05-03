@@ -2251,7 +2251,10 @@
           "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link"
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "required": [
+        "name"
+      ]
     },
     "RecipeDaprPubSubProperties": {
       "type": "object",
@@ -2455,16 +2458,6 @@
           "$ref": "#/definitions/RedisCacheSecrets",
           "description": "Secrets provided by resource"
         },
-        "mode": {
-          "type": "string",
-          "enum": [
-            "recipe"
-          ],
-          "x-ms-enum": {
-            "modelAsString": false
-          },
-          "description": "How to build the RabbitMQMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require."
-        },
         "host": {
           "type": "string",
           "description": "The host name of the target Redis cache"
@@ -2489,7 +2482,7 @@
             "$ref": "#/definitions/ResourceReference"
           },
           "x-cadl-name": "ResourceReference[]",
-          "description": "list of the resource IDs that support the redis resource"
+          "description": "List of the resource IDs that support the redis resource"
         },
         "disableRecipe": {
           "type": "boolean",
@@ -2660,7 +2653,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Resouce id of an existing resource"
+          "description": "Resource id of an existing resource"
         }
       },
       "description": "Describes a reference to an existing resource",

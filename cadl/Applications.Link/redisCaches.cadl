@@ -64,9 +64,6 @@ model RedisCacheProperties extends BasicResourceProperties {
   @doc("Secrets provided by resource")
   secrets?: RedisCacheSecrets;
 
-  @doc("How to build the RabbitMQMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode?: "recipe";
-
   @doc("The host name of the target Redis cache")
   host?: string;
 
@@ -80,7 +77,7 @@ model RedisCacheProperties extends BasicResourceProperties {
   @doc("The recipe used to automatically deploy underlying infrastructure for the rediscaches link")
   recipe?: Recipe;
 
-  @doc("list of the resource IDs that support the redis resource")
+  @doc("List of the resource IDs that support the redis resource")
   resources?: ResourceReference[];
 
   @doc("Whether or not to disable the use of a recipe")

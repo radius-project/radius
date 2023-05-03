@@ -32,7 +32,7 @@ model ResourceStatus {
 
 @doc("Describes a reference to an existing resource")
 model ResourceReference {
-  @doc("Resouce id of an existing resource")
+  @doc("Resource id of an existing resource")
   id: string
 }
 
@@ -56,7 +56,7 @@ enum ProvisioningState {
 @doc("The recipe used to automatically deploy underlying infrastructure for a link")
 model Recipe{
   @doc("The name of the recipe within the environment to use")
-  name?: string;
+  name: string;
   @doc("Key/value parameters to pass into the recipe at deployment")
   parameters?: Parameters;
 }

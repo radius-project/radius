@@ -821,7 +821,7 @@ type RabbitMqMessageQueuesClientListSecretsOptions struct {
 
 // Recipe - The recipe used to automatically deploy underlying infrastructure for a link
 type Recipe struct {
-	// The name of the recipe within the environment to use
+	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 
 	// Key/value parameters to pass into the recipe at deployment
@@ -1115,18 +1115,13 @@ type RedisCacheProperties struct {
 	// The host name of the target Redis cache
 	Host *string `json:"host,omitempty"`
 
-	// How to build the RabbitMQMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually
-// via 'values'. Selection determines which set of fields to additionally
-// require.
-	Mode *string `json:"mode,omitempty"`
-
 	// The port value of the target Redis cache
 	Port *int32 `json:"port,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the rediscaches link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
-	// list of the resource IDs that support the redis resource
+	// List of the resource IDs that support the redis resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secrets provided by resource
@@ -1367,7 +1362,7 @@ func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDat
 
 // ResourceReference - Describes a reference to an existing resource
 type ResourceReference struct {
-	// REQUIRED; Resouce id of an existing resource
+	// REQUIRED; Resource id of an existing resource
 	ID *string `json:"id,omitempty"`
 }
 

@@ -14,10 +14,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_RedisOptOut(t *testing.T) {
-	template := "testdata/corerp-resources-redis-opt-out.bicep"
-	name := "corerp-resources-redis-opt-out"
-	appNamespace := "default-corerp-resources-redis-opt-out"
+func Test_RedisDisableRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-redis-disableRecipe.bicep"
+	name := "corerp-resources-redis-disableRecipe"
+	appNamespace := "default-corerp-resources-redis-disableRecipe"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{

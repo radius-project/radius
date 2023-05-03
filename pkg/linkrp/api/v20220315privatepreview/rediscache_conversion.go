@@ -38,7 +38,6 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	v := src.Properties
 	converted.Properties.DisableRecipe = to.Bool(v.DisableRecipe)
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
-	converted.Properties.Mode = "recipe"
 	converted.Properties.Resources = toResourcesDataModel(v.Resources)
 	converted.Properties.Host = to.String(v.Host)
 	converted.Properties.Port = to.Int32(v.Port)
@@ -66,11 +65,9 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Location = to.Ptr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 
-	mode := "recipe"
 	dst.Properties = &RedisCacheProperties{
 		Recipe:        fromRecipeDataModel(redis.Properties.Recipe),
 		DisableRecipe: to.Ptr(redis.Properties.DisableRecipe),
-		Mode:          &mode,
 		Resources:     fromResourcesDataModel(redis.Properties.Resources),
 		Host:          to.Ptr(redis.Properties.Host),
 		Port:          to.Ptr(redis.Properties.Port),

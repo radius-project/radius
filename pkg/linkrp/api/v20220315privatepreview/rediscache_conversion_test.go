@@ -18,8 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: clean up uneccessary data files
-
 func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []struct {
 		filename         string
@@ -140,7 +138,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		},
 		{
 			// Opt-out with resources
-			filename:      "rediscacheresourcedatamodel.json",
+			filename:      "rediscacheresourcedatamodel2.json",
 			disableRecipe: true,
 			host:          "myrediscache.redis.cache.windows.net",
 			port:          10255,
@@ -173,41 +171,13 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, Recipe{Name: to.Ptr(""), Parameters: nil}, *versionedResource.Properties.Recipe)
 			require.Equal(t, "myrediscache.redis.cache.windows.net", *versionedResource.Properties.Host)
 			require.Equal(t, payload.port, *versionedResource.Properties.Port)
-			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+			if versionedResource.Properties.Status.OutputResources != nil {
+				require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+				require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+			}
 		}
 	}
 }
-
-/*func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
-	testset := []string{"rediscacheresource-invalidmode.json", "rediscacheresource-invalidmode2.json", "rediscacheresource-invalidmode3.json", "rediscacheresource-invalidmode4.json"}
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		versionedResource := &RedisCacheResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
-		require.NoError(t, err)
-		var expectedErr v1.ErrClientRP
-		if payload == "rediscacheresource-invalidmode.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "Unsupported mode abc"
-		}
-		if payload == "rediscacheresource-invalidmode2.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "resource is a required property for mode \"resource\""
-		}
-		if payload == "rediscacheresource-invalidmode3.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "recipe is a required property for mode \"recipe\""
-		}
-		if payload == "rediscacheresource-invalidmode4.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "host and port are required properties for mode \"values\""
-		}
-		_, err = versionedResource.ConvertTo()
-		require.Equal(t, &expectedErr, err)
-	}
-}*/
 
 func TestRedisCache_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
