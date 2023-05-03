@@ -102,7 +102,7 @@ func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources
 }
 
 // K8sSecretResource creates the secret resource for Initial Resource in NewCoreRPTest().
-func K8sSecretResource(namespace, name string, kv ...any) unstructured.Unstructured {
+func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructured.Unstructured {
 	if len(kv)%2 != 0 {
 		panic("key value pairs must be even")
 	}
@@ -122,10 +122,15 @@ func K8sSecretResource(namespace, name string, kv ...any) unstructured.Unstructu
 		}
 	}
 
+	if secretType == "" {
+		secretType = "opaque"
+	}
+
 	return unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "v1",
 			"kind":       "Secret",
+			"type":       secretType,
 			"metadata": map[string]any{
 				"name":      name,
 				"namespace": namespace,

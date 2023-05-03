@@ -48,7 +48,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 				},
 			},
 		},
-	}, corerp.K8sSecretResource(appNamespace, "mysecret", "fakekey", "fakevalue"))
+	}, corerp.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
 	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)

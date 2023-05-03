@@ -41,8 +41,6 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, ol
 
 		if newResource.Properties.Resource == "" {
 			newResource.Properties.Resource = oldResource.Properties.Resource
-		} else if oldResource.Properties.Resource != newResource.Properties.Resource {
-			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' of $.properties.resource must be same as '%s'.", newResource.Properties.Resource, oldResource.Properties.Resource)), nil
 		}
 	}
 
@@ -145,6 +143,10 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 
 	newResource.Properties.Resource = toResourceID(ns, name)
 
+	if old != nil && old.Properties.Resource != newResource.Properties.Resource {
+		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' of $.properties.resource must be same as '%s'.", newResource.Properties.Resource, old.Properties.Resource)), nil
+	}
+
 	ksecret := &corev1.Secret{}
 	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
 	if apierrors.IsNotFound(err) {
@@ -202,7 +204,9 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 		err = options.KubeClient.Create(ctx, ksecret)
 	} else if updateRequired {
-		err = options.KubeClient.Update(ctx, ksecret)
+		if updateRequired {
+			err = options.KubeClient.Update(ctx, ksecret)
+		}
 	}
 
 	if err != nil {
