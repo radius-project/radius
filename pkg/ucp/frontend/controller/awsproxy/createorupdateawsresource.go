@@ -50,9 +50,24 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
+	region, err := readRegionFromRequest(req.URL.Path, p.basePath)
+	if err != nil {
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path",
+			},
+		}
+
+		response := armrpc_rest.NewBadRequestARMResponse(e)
+		err = response.Apply(ctx, w, req)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	body := map[string]any{}
-	err := decoder.Decode(&body)
+	err = decoder.Decode(&body)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -77,14 +92,16 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
+	cloudControlOpts := []func(*cloudcontrol.Options){CCWithRegion(region)}
+	cloudFormationOpts := []func(*cloudformation.Options){CFWithRegion(region)}
+
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
-
 	existing := true
 	getResponse, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-	})
+	}, cloudControlOpts...)
 	if awserror.IsAWSResourceNotFoundError(err) {
 		existing = false
 	} else if err != nil {
@@ -114,10 +131,11 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	if existing {
 		// Get resource type schema
+
 		describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 			Type:     types.RegistryTypeResource,
 			TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
-		})
+		}, cloudFormationOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +159,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(serviceCtx.ResourceID.Name()),
 				PatchDocument: aws.String(string(marshaled)),
-			})
+			}, cloudControlOpts...)
 			if err != nil {
 				return awserror.HandleAWSError(err)
 			}
@@ -168,7 +186,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		response, err := p.awsOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
-		})
+		}, cloudControlOpts...)
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}

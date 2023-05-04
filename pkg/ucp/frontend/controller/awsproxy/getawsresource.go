@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
@@ -26,6 +27,7 @@ var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
 type GetAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewGetAWSResource creates a new GetAWSResource.
@@ -35,16 +37,33 @@ func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) 
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, err := readRegionFromRequest(req.URL.Path, p.basePath)
+	if err != nil {
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path",
+			},
+		}
 
+		response := armrpc_rest.NewBadRequestARMResponse(e)
+		err = response.Apply(ctx, w, req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cloudControlOpts := []func(*cloudcontrol.Options){CCWithRegion(region)}
 	response, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-	})
+	}, cloudControlOpts...)
 	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {

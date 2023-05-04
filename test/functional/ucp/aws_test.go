@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -143,10 +144,13 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
 
+	cloudControlOpts := []func(*cloudcontrol.Options){}
+	cloudControlOpts = append(cloudControlOpts, awsproxy.CCWithRegion("us-west-2"))
+
 	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 		TypeName:     &awsS3BucketResourceType,
 		DesiredState: awsgo.String(string(desiredStateBytes)),
-	})
+	}, cloudControlOpts...)
 	require.NoError(t, err)
 	waitForSuccess(t, ctx, awsClient, response.ProgressEvent.RequestToken)
 
@@ -156,7 +160,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsS3BucketResourceType,
-		})
+		}, cloudControlOpts...)
 		if aws.IsAWSResourceNotFoundError(err) {
 			return
 		}
@@ -164,7 +168,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsS3BucketResourceType,
-		})
+		}, cloudControlOpts...)
 		require.NoError(t, err)
 
 		// Ignoring status of delete since AWS command fails if the resource does not already exist

@@ -43,11 +43,27 @@ func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, erro
 
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, err := readRegionFromRequest(req.URL.Path, p.basePath)
+	if err != nil {
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path",
+			},
+		}
 
+		response := armrpc_rest.NewBadRequestARMResponse(e)
+		err = response.Apply(ctx, w, req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cloudControlOpts := []func(*cloudcontrol.Options){CCWithRegion(region)}
 	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-	})
+	}, cloudControlOpts...)
 	if err != nil {
 		if awsclient.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil

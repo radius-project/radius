@@ -48,6 +48,24 @@ func NewDeleteAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controll
 func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, err := readRegionFromRequest(req.URL.Path, p.basePath)
+	if err != nil {
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path",
+			},
+		}
+
+		response := armrpc_rest.NewBadRequestARMResponse(e)
+		err = response.Apply(ctx, w, req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cloudControlOpts := []func(*cloudcontrol.Options){}
+	cloudControlOpts = append(cloudControlOpts, CCWithRegion(region))
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -60,10 +78,11 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
+	cloudFormationOpts := []func(*cloudformation.Options){CFWithRegion(region)}
 	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
-	})
+	}, cloudFormationOpts...)
 	if err != nil {
 		return awserror.HandleAWSError(err)
 	}
@@ -76,7 +95,6 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 				Message: err.Error(),
 			},
 		}
-
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
@@ -84,7 +102,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(awsResourceIdentifier),
-	})
+	}, cloudControlOpts...)
 	if err != nil {
 		if awsclient.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil

@@ -34,7 +34,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.DeleteResourceOutput{
@@ -92,7 +92,7 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
@@ -163,12 +163,12 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   aws.String(testResource.AWSResourceType),
 		Identifier: aws.String("abc|xyz"),
-	}).Return(
+	}, gomock.Any()).Return(
 		&cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,

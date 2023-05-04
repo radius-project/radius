@@ -99,3 +99,17 @@ func computeResourceID(id resources.ID, resourceID string) string {
 	computedID := strings.Split(id.String(), "/:")[0] + resources.SegmentSeparator + resourceID
 	return computedID
 }
+
+// Extract Region from  a URI like /apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-west-2/providers/...
+func readRegionFromRequest(path string, basePath string) (string, error) {
+	path = strings.TrimPrefix(path, basePath)
+	resourceID, err := resources.Parse(path)
+	if err != nil {
+		return "", err
+	}
+	region := resourceID.FindScope("Regions")
+	if region == "" {
+		return "", fmt.Errorf("region not found in AWS request")
+	}
+	return region, nil
+}
