@@ -103,9 +103,7 @@ type Runner struct {
 	Deploy            deploy.Interface
 	Output            output.Interface
 
-	ApplicationID   string
 	ApplicationName string
-	EnvironmentID   string
 	EnvironmentName string
 	FilePath        string
 	Parameters      map[string]map[string]any
@@ -155,9 +153,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Compute the environment ID for deployment and then validate that the environment exists.
+	// Validate that the environment exists.
 	// Right now we assume that every deployment uses a Radius environment.
-	r.EnvironmentID = r.Workspace.Scope + "/providers/applications.core/environments/" + r.EnvironmentName
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err
@@ -168,8 +165,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	} else if err != nil {
 		return err
 	}
+	r.Providers = &clients.Providers{}
+	r.Providers.Radius = &clients.RadiusProvider{}
+	r.Providers.Radius.EnvironmentID = r.Workspace.Scope + "/providers/applications.core/environments/" + r.EnvironmentName
+	if r.ApplicationName != "" {
+		r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
+	}
 	if env.Properties != nil && env.Properties.Providers != nil {
-		r.Providers = &clients.Providers{}
+
 		if env.Properties.Providers.Aws != nil {
 			r.Providers.AWS = &clients.AWSProvider{
 				Scope: *env.Properties.Providers.Aws.Scope,
@@ -180,10 +183,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 				Scope: *env.Properties.Providers.Azure.Scope,
 			}
 		}
-	}
-
-	if r.ApplicationName != "" {
-		r.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
 	}
 
 	r.FilePath = args[0]
@@ -241,8 +240,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{
 		ConnectionFactory: r.ConnectionFactory,
-		ApplicationID:     r.ApplicationID,
-		EnvironmentID:     r.EnvironmentID,
 		Workspace:         *r.Workspace,
 		Template:          template,
 		Parameters:        r.Parameters,

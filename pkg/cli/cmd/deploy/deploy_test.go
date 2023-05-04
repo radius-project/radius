@@ -200,6 +200,9 @@ func Test_Run(t *testing.T) {
 				Azure: &clients.AzureProvider{
 					Scope: "test-scope",
 				},
+				Radius: &clients.RadiusProvider{
+					EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+				},
 			}
 
 		filePath := "app.bicep"
@@ -208,7 +211,6 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentName, workspace.Name)
 
 		options := deploy.Options{
-			EnvironmentID:  fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			Workspace:      *workspace,
 			Parameters:     map[string]map[string]any{},
 			CompletionText: "Deployment Complete",
@@ -229,12 +231,10 @@ func Test_Run(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:  bicep,
-			Deploy: deployMock,
-			Output: outputSink,
-
+			Bicep:           bicep,
+			Deploy:          deployMock,
+			Output:          outputSink,
 			FilePath:        filePath,
-			EnvironmentID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			EnvironmentName: radcli.TestEnvironmentName,
 			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
@@ -245,8 +245,8 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		// Deployment is scoped to env
-		require.Equal(t, "", options.ApplicationID)
-		require.Equal(t, runner.EnvironmentID, options.EnvironmentID)
+		require.Equal(t, "", options.Providers.Radius.ApplicationID)
+		require.Equal(t, runner.Providers.Radius.EnvironmentID, options.Providers.Radius.EnvironmentID)
 
 		// All of the output in this command is being done by functions that we mock for testing, so this
 		// is always empty.
@@ -274,6 +274,9 @@ func Test_Run(t *testing.T) {
 			AWS: &clients.AWSProvider{
 				Scope: "test-scope",
 			},
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			},
 		}
 
 		filePath := "app.bicep"
@@ -282,7 +285,6 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentName, workspace.Name)
 
 		options := deploy.Options{
-			EnvironmentID:  fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			Workspace:      *workspace,
 			Parameters:     map[string]map[string]any{},
 			CompletionText: "Deployment Complete",
@@ -308,7 +310,6 @@ func Test_Run(t *testing.T) {
 			Output:          outputSink,
 			Providers:       &ProviderConfig,
 			FilePath:        filePath,
-			EnvironmentID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			EnvironmentName: radcli.TestEnvironmentName,
 			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
@@ -318,8 +319,8 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		// Deployment is scoped to env
-		require.Equal(t, "", options.ApplicationID)
-		require.Equal(t, runner.EnvironmentID, options.EnvironmentID)
+		require.Equal(t, "", options.Providers.Radius.ApplicationID)
+		require.Equal(t, runner.Providers.Radius.EnvironmentID, options.Providers.Radius.EnvironmentID)
 
 		// All of the output in this command is being done by functions that we mock for testing, so this
 		// is always empty.
@@ -362,27 +363,32 @@ func Test_Run(t *testing.T) {
 			Name: "kind-kind",
 		}
 		outputSink := &output.MockOutput{}
+		providers := clients.Providers{
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+				ApplicationID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s/applications/test-application", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			},
+		}
+
 		runner := &Runner{
 			Bicep:             bicep,
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
 			Deploy:            deployMock,
 			Output:            outputSink,
-
-			FilePath:        "app.bicep",
-			ApplicationID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/applications/%s", radcli.TestEnvironmentName, "test-application"),
-			ApplicationName: "test-application",
-			EnvironmentID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
-			EnvironmentName: radcli.TestEnvironmentName,
-			Parameters:      map[string]map[string]any{},
-			Workspace:       workspace,
+			Providers:         &providers,
+			FilePath:          "app.bicep",
+			ApplicationName:   "test-application",
+			EnvironmentName:   radcli.TestEnvironmentName,
+			Parameters:        map[string]map[string]any{},
+			Workspace:         workspace,
 		}
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
 		// Deployment is scoped to app and env
-		require.Equal(t, runner.ApplicationID, options.ApplicationID)
-		require.Equal(t, runner.EnvironmentID, options.EnvironmentID)
+		require.Equal(t, runner.Providers.Radius.ApplicationID, options.Providers.Radius.ApplicationID)
+		require.Equal(t, runner.Providers.Radius.EnvironmentID, options.Providers.Radius.EnvironmentID)
 
 		// All of the output in this command is being done by functions that we mock for testing, so this
 		// is always empty.

@@ -31,16 +31,10 @@ type Options struct {
 	// Template should contain a parsed ARM-JSON template.
 	Template map[string]any
 
-	// ApplicationID is the resource ID of the application. If provided, will be used as configuration for the Radius provider.
-	ApplicationID string
-
-	// EnvironmentID is the resource ID of the environment. If provided, will be used as configuration for the Radius provider.
-	EnvironmentID string
-
 	// Workspace is the workspace to use for deployment.
 	Workspace workspaces.Workspace
 
-	// Providers are configured on the env for deployment
+	// Providers are cloud and radius providers configured on the env for deployment
 	Providers *clients.Providers
 
 	// ProgressText is a message displayed on the console when deployment begins.

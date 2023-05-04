@@ -7,8 +7,9 @@ package clients
 
 type Providers struct {
 	// Azure represents the configuration for the Azure IAC provider used during deployment. This field is optional.
-	Azure *AzureProvider
-	AWS   *AWSProvider
+	Azure  *AzureProvider
+	AWS    *AWSProvider
+	Radius *RadiusProvider
 }
 
 type AzureProvider struct {
@@ -17,4 +18,9 @@ type AzureProvider struct {
 
 type AWSProvider struct {
 	Scope string
+}
+
+type RadiusProvider struct {
+	EnvironmentID string
+	ApplicationID string
 }

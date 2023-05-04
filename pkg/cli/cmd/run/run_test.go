@@ -205,6 +205,12 @@ func Test_Run(t *testing.T) {
 		Name: "kind-kind",
 	}
 	outputSink := &output.MockOutput{}
+	providers := &clients.Providers{
+		Radius: &clients.RadiusProvider{
+			EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			ApplicationID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s/applications/test-application", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+		},
+	}
 	runner := &Runner{
 		Runner: deploycmd.Runner{
 			Bicep:  bicep,
@@ -215,12 +221,11 @@ func Test_Run(t *testing.T) {
 			},
 
 			FilePath:        "app.bicep",
-			ApplicationID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/applications/%s", radcli.TestEnvironmentName, "test-application"),
 			ApplicationName: "test-application",
-			EnvironmentID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			EnvironmentName: radcli.TestEnvironmentName,
 			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
+			Providers:       providers,
 		},
 		Logstream:   logstreamMock,
 		Portforward: portforwardMock,
@@ -238,8 +243,8 @@ func Test_Run(t *testing.T) {
 
 	deployOptions := <-deployOptionsChan
 	// Deployment is scoped to app and env
-	require.Equal(t, runner.ApplicationID, deployOptions.ApplicationID)
-	require.Equal(t, runner.EnvironmentID, deployOptions.EnvironmentID)
+	require.Equal(t, runner.Providers.Radius.ApplicationID, deployOptions.Providers.Radius.ApplicationID)
+	require.Equal(t, runner.Providers.Radius.EnvironmentID, deployOptions.Providers.Radius.EnvironmentID)
 
 	logStreamOptions := <-logstreamOptionsChan
 	// Logstream is scoped to application and namespace
