@@ -9,8 +9,10 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
+	"golang.org/x/exp/slices"
 )
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
@@ -106,4 +108,19 @@ func stringSlice(s []*string) []string {
 		r = append(r, *v)
 	}
 	return r
+}
+
+func isValidLinkType(link string) bool {
+	linkTypes := []string{
+		linkrp.DaprInvokeHttpRoutesResourceType,
+		linkrp.DaprPubSubBrokersResourceType,
+		linkrp.DaprSecretStoresResourceType,
+		linkrp.DaprStateStoresResourceType,
+		linkrp.ExtendersResourceType,
+		linkrp.MongoDatabasesResourceType,
+		linkrp.RabbitMQMessageQueuesResourceType,
+		linkrp.RedisCachesResourceType,
+		linkrp.SqlDatabasesResourceType,
+	}
+	return slices.Contains(linkTypes, link)
 }

@@ -33,7 +33,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Unregister Command",
-			Input:         []string{"test_recipe"},
+			Input:         []string{"test_recipe", "--link-type", "link-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -42,7 +42,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with fallback workspace",
-			Input:         []string{"-e", "my-env", "test_recipe"},
+			Input:         []string{"-e", "my-env", "test_recipe", "--link-type", "link-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -60,7 +60,16 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with too many args",
-			Input:         []string{"foo", "bar", "foo1"},
+			Input:         []string{"foo", "bar", "foo1", "--link-type", "link-type"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Unregister Command without link type",
+			Input:         []string{"foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -78,10 +87,11 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				UseDevRecipes: to.Ptr(true),
-				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-					"cosmosDB": {
-						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					linkrp.MongoDatabasesResourceType: {
+						"cosmosDB": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
 					},
 				},
 				Compute: &v20220315privatepreview.KubernetesCompute{
@@ -112,6 +122,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
+				LinkType:          "Applications.Link/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -122,10 +133,11 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				UseDevRecipes: to.Ptr(true),
-				Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-					"cosmosDB": {
-						LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					linkrp.MongoDatabasesResourceType: {
+						"cosmosDB": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
 					},
 				},
 			}
@@ -153,6 +165,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
+				LinkType:          "Applications.Link/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -168,10 +181,11 @@ func Test_Run(t *testing.T) {
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					UseDevRecipes: to.Ptr(true),
-					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
-						"cosmosDB": {
-							LinkType:     to.Ptr(linkrp.MongoDatabasesResourceType),
-							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+						linkrp.MongoDatabasesResourceType: {
+							"cosmosDB": {
+								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							},
 						},
 					},
 				},
@@ -189,6 +203,44 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB1",
+				LinkType:          "Applications.Link/mongoDatabases",
+			}
+
+			err := runner.Run(context.Background())
+			require.Error(t, err)
+		})
+		t.Run("Unregister recipe with linkType doesn't exist in the environment", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     to.Ptr("kind-kind"),
+				Type:     to.Ptr("applications.core/environments"),
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseDevRecipes: to.Ptr(true),
+					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+						linkrp.MongoDatabasesResourceType: {
+							"testResource": {
+								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							},
+						},
+					},
+				},
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+				RecipeName:        "testResource",
+				LinkType:          "Applications.Link/redisCaches",
 			}
 
 			err := runner.Run(context.Background())
@@ -219,10 +271,62 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
+				LinkType:          "Applications.Link/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
+		})
+		t.Run("Unregister recipe with same name for different resource types.", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+				UseDevRecipes: to.Ptr(true),
+				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					linkrp.MongoDatabasesResourceType: {
+						"testResource": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
+					},
+					linkrp.RedisCachesResourceType: {
+						"testResource": {
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1"),
+						},
+					},
+				},
+				Compute: &v20220315privatepreview.KubernetesCompute{
+					Namespace: to.Ptr("default"),
+				},
+			}
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       to.Ptr("kind-kind"),
+				Type:       to.Ptr("applications.core/environments"),
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: testEnvProperties,
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+			appManagementClient.EXPECT().
+				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+				Return(true, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+				RecipeName:        "testResource",
+				LinkType:          "Applications.Link/mongoDatabases",
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
 		})
 	})
 }

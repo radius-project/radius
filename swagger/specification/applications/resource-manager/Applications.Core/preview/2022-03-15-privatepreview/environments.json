@@ -272,7 +272,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/{recipeName}/getmetadata": {
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getmetadata": {
       "post": {
         "description": "Gets recipe metadata including parameters and any constraints on the parameters.",
         "operationId": "Environments_GetRecipeMetadata",
@@ -298,14 +298,20 @@
             "$ref": "#/parameters/EnvironmentNameParameter"
           },
           {
-            "$ref": "#/parameters/RecipeNameParameter"
+            "name": "RecipeParameter",
+            "in": "body",
+            "required": true,
+            "description": "Recipe parameters.",
+            "schema": {
+              "$ref": "#/definitions/Recipe"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Recipe metadata including parameters and any constraints on the parameters.",
             "schema": {
-              "$ref": "#/definitions/RecipeMetadata"
+              "$ref": "#/definitions/EnvironmentRecipeProperties"
             }
           },
           "default": {
@@ -416,11 +422,25 @@
           "description": "Flag to use radius owned recipes."
         },
         "recipes": {
+          "description": "Specifies Recipes linked to the Environment.",
           "additionalProperties": {
-            "$ref": "#/definitions/EnvironmentRecipeProperties",
-            "description": "Specifies Recipe linked to the Environment."
+            "additionalProperties": {
+              "$ref": "#/definitions/EnvironmentRecipeProperties"
+            }
           },
-          "type": "object"
+          "type": "object",
+          "example": [
+            {
+              "Applications.Link/mongoDatabases": {
+                "default":{
+                  "templatePath":"br:sampleregistry.azureacr.io/radius/recipes/mongodb",
+                  "parameters":{
+                    "port":6060
+                  }
+                }
+              }
+            }
+          ]
         },
         "extensions": {
           "type": "array",
@@ -459,10 +479,6 @@
     "EnvironmentRecipeProperties": {
       "description": "Properties of a Recipe linked to an Environment.",
       "properties": {
-        "linkType": {
-          "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",
-          "type": "string"
-        },
         "templatePath": {
           "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
           "type": "string"
@@ -478,35 +494,21 @@
         }
       },
       "required": [
-        "linkType",
         "templatePath"
       ]
     },
-    "RecipeMetadata": {
-      "description": "Metadata of a Recipe",
+    "Recipe":{
+      "description": "Recipe properties.",
       "properties": {
         "linkType": {
           "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",
           "type": "string"
         },
-        "templatePath": {
-          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
+        "name":{
+          "description": "Name of the recipe registered to the environment.",
           "type": "string"
-        },
-        "parameters": {
-          "description": "Key/value parameters to pass to the recipe template at deployment",
-          "type": "object",
-          "example": [
-            {
-              "port": 6060
-            }
-          ]
         }
-      },
-      "required": [
-        "linkType",
-        "templatePath"
-      ]
+      }
     }
   },
   "parameters": {

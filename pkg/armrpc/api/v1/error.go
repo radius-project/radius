@@ -39,6 +39,10 @@ type ErrClientRP struct {
 func (r *ErrClientRP) Error() string {
 	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
 }
+func (e *ErrClientRP) Is(target error) bool {
+	_, ok := target.(*ErrClientRP)
+	return ok
+}
 
 func NewClientErrInvalidRequest(message string) *ErrClientRP {
 	err := new(ErrClientRP)

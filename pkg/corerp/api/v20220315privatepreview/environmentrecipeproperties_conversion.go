@@ -24,9 +24,15 @@ func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) e
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
-
-	dst.LinkType = to.Ptr(recipe.LinkType)
 	dst.TemplatePath = to.Ptr(recipe.TemplatePath)
 	dst.Parameters = recipe.Parameters
 	return nil
+}
+
+// ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
+func (src *Recipe) ConvertTo() (v1.DataModelInterface, error) {
+	return &datamodel.Recipe{
+		Name:     to.String(src.Name),
+		LinkType: to.String(src.LinkType),
+	}, nil
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerpapps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -103,7 +103,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.TemplatePath = templatePath
 
-	linkType, err := requireLinkType(cmd)
+	linkType, err := cli.RequireLinkType(cmd)
 	if err != nil {
 		return err
 	}
@@ -139,22 +139,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeProperties := envResource.Properties.Recipes
-	if recipeProperties == nil {
-		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}
+	envRecipes := envResource.Properties.Recipes
+	if envRecipes == nil {
+		envRecipes = map[string]map[string]*corerp.EnvironmentRecipeProperties{}
 	}
 
-	if recipeProperties[r.RecipeName] != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q already exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
-	}
-
-	recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
-		LinkType:     &r.LinkType,
+	properties := &corerp.EnvironmentRecipeProperties{
 		TemplatePath: &r.TemplatePath,
 		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 	}
-
-	envResource.Properties.Recipes = recipeProperties
+	if val, ok := envRecipes[r.LinkType]; ok {
+		val[r.RecipeName] = properties
+	} else {
+		envRecipes[r.LinkType] = map[string]*corerp.EnvironmentRecipeProperties{
+			r.RecipeName: properties,
+		}
+	}
+	envResource.Properties.Recipes = envRecipes
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
 	if err != nil || !isEnvCreated {
@@ -172,12 +173,4 @@ func requireTemplatePath(cmd *cobra.Command) (string, error) {
 	}
 	return templatePath, nil
 
-}
-
-func requireLinkType(cmd *cobra.Command) (string, error) {
-	linkType, err := cmd.Flags().GetString("link-type")
-	if err != nil {
-		return linkType, err
-	}
-	return linkType, nil
 }

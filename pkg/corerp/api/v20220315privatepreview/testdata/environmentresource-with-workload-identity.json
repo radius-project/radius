@@ -19,9 +19,10 @@
             }
         },
         "recipes": {
-            "cosmos-recipe": {
-                "linkType": "Applications.Link/mongoDatabases",
-                "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+            "Applications.Link/mongoDatabases":{
+                "cosmos-recipe": {
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                }
             }
         }
     }
