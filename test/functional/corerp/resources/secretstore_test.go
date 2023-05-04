@@ -54,7 +54,7 @@ func Test_SecretStore_ReferenceSecret(t *testing.T) {
 
 	secret := corerp.K8sSecretResource(appNamespace, "secret-app-existing-secret", "kubernetes.io/tls", "tls.crt", "fakecertval", "tls.key", "fakekeyval")
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			CoreRPResources: &validation.CoreRPResourceSet{
