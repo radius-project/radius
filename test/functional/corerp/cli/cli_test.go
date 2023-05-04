@@ -86,8 +86,12 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		_, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
-		require.Error(t, err)
+		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
+		require.Contains(t, output, "Successfully linked recipe")
+		require.NoError(t, err)
+		output, err = cli.Recipelist(ctx, envName)
+		require.NoError(t, err)
+		require.Regexp(t, recipeTemplate, output)
 	})
 }
 

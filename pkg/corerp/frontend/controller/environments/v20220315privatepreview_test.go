@@ -86,12 +86,19 @@ func getTestModelsAppendDevRecipesToExisting20220315privatepreview() (*datamodel
 	return envExistingDataModel, envInput, envDataModel, expectedOutput
 }
 
-func getTestModelsUserRecipesConflictWithReservedNames20220315privatepreview() *v20220315privatepreview.EnvironmentResource {
-	rawInput := testutil.ReadFixture("environmentuserrecipesconflictwithreservednames20220315privatepreview_input.json")
+func getTestModelsUserRecipesConflictWithDevRecipes20220315privatepreview() (*v20220315privatepreview.EnvironmentResource, *datamodel.Environment, *v20220315privatepreview.EnvironmentResource) {
+	rawInput := testutil.ReadFixture("environmentuserrecipesconflictwithdevrecipes20220315privatepreview_input.json")
 	envInput := &v20220315privatepreview.EnvironmentResource{}
 	_ = json.Unmarshal(rawInput, envInput)
 
-	return envInput
+	rawDataModel := testutil.ReadFixture("environmentuserrecipesconflictwithdevrecipes20220315privatepreview_datamodel.json")
+	envDataModel := &datamodel.Environment{}
+	_ = json.Unmarshal(rawDataModel, envDataModel)
+
+	rawExpectedOutput := testutil.ReadFixture("environmentuserrecipesconflictwithdevrecipes20220315privatepreview_output.json")
+	expectedOutput := &v20220315privatepreview.EnvironmentResource{}
+	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
+	return envInput, envDataModel, expectedOutput
 }
 
 func getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepreview() (*datamodel.Environment, *v20220315privatepreview.EnvironmentResource) {

@@ -79,12 +79,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 				if devRecipes[resourceType] != nil {
 					for recipeName, recipeDetails := range recipes {
 						if newResourceRecipes[resourceType] != nil {
-							if val, ok := newResourceRecipes[resourceType][recipeName]; ok && val.TemplatePath != recipeDetails.TemplatePath {
-								if errorRecipes != "" {
-									errorRecipes += ", "
-								}
-								errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", recipeName, resourceType, val.TemplatePath)
-							} else {
+							if _, ok := newResourceRecipes[resourceType][recipeName]; !ok {
 								newResourceRecipes[resourceType][recipeName] = recipeDetails
 							}
 						} else {
