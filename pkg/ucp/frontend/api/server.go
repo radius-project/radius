@@ -186,13 +186,17 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		otelhttp.WithMeterProvider(global.MeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
+	// TODO: This is the workaround to fix the high cardinality of otelhttp.
+	// Remove this once otelhttp middleware is fixed - https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
+	app = middleware.RemoveRemoteAddr(app)
+
 	server := &http.Server{
 		Addr: s.options.Address,
 		// Need to be able to respond to requests with planes and resourcegroups segments with any casing e.g.: /Planes, /resourceGroups
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
 		// TODO: Once https://github.com/project-radius/radius/issues/3582 is fixed, we could use the lowercase middleware
-		Handler: middleware.RemoveRemoteAddr(app),
+		Handler: app,
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},
