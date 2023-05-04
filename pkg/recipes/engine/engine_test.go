@@ -36,7 +36,8 @@ func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.M
 	options := Options{
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
-			"bicep": mDriver,
+			recipes.TemplateKindBicep:     mDriver,
+			recipes.TemplateKindTerraform: mDriver,
 		},
 	}
 	engine := engine{
@@ -78,7 +79,7 @@ func Test_Engine_Success(t *testing.T) {
 		},
 	}
 	recipeDefinition := &recipes.Definition{
-		Driver:       "bicep",
+		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}
@@ -150,7 +151,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		},
 	}
 	recipeDefinition := &recipes.Definition{
-		Driver:       "bicep",
+		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}

@@ -128,6 +128,10 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 					Parameters:   recipeDetails.Parameters,
 				}
 			}
+
+			// if recipeDetails.TemplateKind != "" {
+			// 	recipes[key].TemplateKind = to.Ptr(recipeDetails.TemplateKind)
+			// }
 		}
 		dst.Properties.Recipes = recipes
 	}

@@ -112,7 +112,8 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 	}
 
 	return &recipes.Definition{
-		Driver:       recipes.DriverBicep,
+		Driver: recipes.DriverBicep,
+		// Driver:       *found.TemplateKind,
 		ResourceType: resource.Type(),
 		Parameters:   found.Parameters,
 		TemplatePath: *found.TemplatePath,
