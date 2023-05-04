@@ -92,8 +92,8 @@ func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) 
 		opType, ok := v1.ParseOperationType(serviceCtx.OperationType)
 		if ok {
 			a.counters[QueuedAsyncOperationCount].Add(ctx, 1,
-				attribute.String(ResourceTypeAttrKey, normalizeAttrValue(serviceCtx.ResourceID.Type())),
-				attribute.String(OperationTypeAttrKey, normalizeAttrValue(opType.Method.HTTPMethod())),
+				metric.WithAttributes(attribute.String(ResourceTypeAttrKey, normalizeAttrValue(serviceCtx.ResourceID.Type())),
+					attribute.String(OperationTypeAttrKey, normalizeAttrValue(opType.Method.HTTPMethod()))),
 			)
 		}
 	}
