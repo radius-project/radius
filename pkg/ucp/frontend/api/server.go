@@ -157,8 +157,8 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 			// TODO: These fields are not used in UCP. We'd like to unify these
 			// options types eventually, but that will take some time.
-			SecretClient:    nil,
-			KubeClient:      nil,
+			SecretClient: nil,
+			KubeClient:   nil,
 		},
 	}
 
@@ -185,6 +185,10 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		"ucp",
 		otelhttp.WithMeterProvider(global.MeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
+
+	// TODO: This is the workaround to fix the high cardinality of otelhttp.
+	// Remove this once otelhttp middleware is fixed - https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
+	app = middleware.RemoveRemoteAddr(app)
 
 	server := &http.Server{
 		Addr: s.options.Address,
