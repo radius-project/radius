@@ -47,3 +47,14 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 
 	return segments[1], segments[2], remainder, nil
 }
+
+// Extract Region from  a URI like /apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-west-2/providers/...
+func ExtractRegionFromURLPath(path string) (string, error) {
+	splitCount := 12
+	segments := strings.SplitN(path, SegmentSeparator, splitCount)
+	if len(segments) < splitCount {
+		return "", errors.New("URL path is not a valid UCP path for retrieving AWS region")
+	}
+	return segments[10], nil
+
+}

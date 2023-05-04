@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -39,6 +40,7 @@ type CreateOrUpdateAWSResourceWithPost struct {
 
 // NewCreateOrUpdateAWSResourceWithPost creates a new CreateOrUpdateAWSResourceWithPost.
 func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
+
 	return &CreateOrUpdateAWSResourceWithPost{
 		Operation: armrpc_controller.NewOperation(opts.Options,
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
@@ -51,6 +53,23 @@ func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+
+	path := req.URL.Path
+	region, err := resources.ExtractRegionFromURLPath(path)
+	if err != nil {
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path",
+			},
+		}
+
+		response := armrpc_rest.NewBadRequestARMResponse(e)
+		err = response.Apply(ctx, w, req)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -114,6 +133,9 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		responseProperties[k] = v
 	}
 
+	cloudControlOpts := []func(*cloudcontrol.Options){}
+	cloudControlOpts = append(cloudControlOpts, WithRegion(region))
+
 	if existing {
 		logger.Info(fmt.Sprintf("Updating resource : resourceType %q resourceID %q", serviceCtx.ResourceTypeInAWSFormat(), awsResourceIdentifier))
 
@@ -136,7 +158,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(awsResourceIdentifier),
 				PatchDocument: aws.String(string(marshaled)),
-			})
+			}, cloudControlOpts...)
 			if err != nil {
 				return awserror.HandleAWSError(err)
 			}
@@ -164,7 +186,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		response, err := p.awsOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
-		})
+		}, cloudControlOpts...)
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}
@@ -194,4 +216,10 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.basePath)
 	return resp, nil
+}
+
+func WithRegion(region string) func(*cloudcontrol.Options) {
+	return func(o *cloudcontrol.Options) {
+		o.Region = region
+	}
 }

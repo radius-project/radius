@@ -52,3 +52,7 @@ pkg/handlers/gomock_*
 
 # node modules
 cadl/node_modules
+pkg/armrpc/frontend/controller/a.json
+pkg/armrpc/frontend/controller/b.json
+pkg/armrpc/frontend/controller/b.json.yml
+pkg/armrpc/frontend/controller/c.json

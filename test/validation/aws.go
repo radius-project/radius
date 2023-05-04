@@ -115,7 +115,7 @@ func GetResourceIdentifier(ctx context.Context, resourceType string, name string
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	sessionToken := ""
-	region := os.Getenv("AWS_REGION")
+	region := "us-west-2"
 
 	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken)
 

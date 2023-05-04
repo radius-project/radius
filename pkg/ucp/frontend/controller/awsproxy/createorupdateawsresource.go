@@ -23,6 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
@@ -51,8 +52,25 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
 
+	path := req.URL.Path
+	region, err := resources.ExtractRegionFromURLPath(path)
+	if err != nil {
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path",
+			},
+		}
+
+		response := armrpc_rest.NewBadRequestARMResponse(e)
+		err = response.Apply(ctx, w, req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	body := map[string]any{}
-	err := decoder.Decode(&body)
+	err = decoder.Decode(&body)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -112,6 +130,9 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		responseProperties[k] = v
 	}
 
+	cloudControlOpts := []func(*cloudcontrol.Options){}
+	cloudControlOpts = append(cloudControlOpts, WithRegion(region))
+
 	if existing {
 		// Get resource type schema
 		describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
@@ -141,7 +162,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(serviceCtx.ResourceID.Name()),
 				PatchDocument: aws.String(string(marshaled)),
-			})
+			}, cloudControlOpts...)
 			if err != nil {
 				return awserror.HandleAWSError(err)
 			}
@@ -168,7 +189,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		response, err := p.awsOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
-		})
+		}, cloudControlOpts...)
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}

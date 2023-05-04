@@ -92,7 +92,7 @@ func (s *Service) Name() string {
 
 func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	credProviders := []func(*config.LoadOptions) error{}
+	loadOpts := []func(*config.LoadOptions) error{}
 
 	switch s.options.Identity.AuthMethod {
 	case hostoptions.AuthUCPCredential:
@@ -101,14 +101,15 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 			return aws.Config{}, err
 		}
 		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
-		credProviders = append(credProviders, config.WithCredentialsProvider(p))
+		loadOpts = append(loadOpts, config.WithCredentialsProvider(p))
 		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
 
 	default:
 		logger.Info("Configuring default authentication mode with environment variable.")
 	}
 
-	awscfg, err := config.LoadDefaultConfig(ctx, credProviders...)
+	awscfg, err := config.LoadDefaultConfig(ctx,
+		loadOpts...)
 	if err != nil {
 		return aws.Config{}, err
 	}
@@ -185,10 +186,6 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		"ucp",
 		otelhttp.WithMeterProvider(global.MeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
-
-	// TODO: This is the workaround to fix the high cardinality of otelhttp.
-	// Remove this once otelhttp middleware is fixed - https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
-	app = middleware.RemoveRemoteAddr(app)
 
 	server := &http.Server{
 		Addr: s.options.Address,

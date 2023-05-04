@@ -68,3 +68,18 @@ func Test_ExtractPlanesPrefixFromURLPath_Valid(t *testing.T) {
 		require.Equal(t, datum.remainder, remainder)
 	}
 }
+
+func Test_ExtractRegionFromURLPath_Invalid(t *testing.T) {
+	URLPath := "/planes/deployments/local/resourcegroups/localrp/providers/Microsoft.Resources/deployments/rad-deploy-06221c5e-104d-4472-bb74-876b441c7663"
+	region, err := ExtractRegionFromURLPath(URLPath)
+	require.Error(t, err, "%q should have failed", URLPath)
+	require.Empty(t, region)
+
+}
+
+func Test_ExtractRegionFromURLPath_Valid(t *testing.T) {
+	URLPath := "/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-west-2/providers/AWS.S3/Bucket/:put?api-version=default"
+	region, err := ExtractRegionFromURLPath(URLPath)
+	require.NoError(t, err, "%q should have not have failed", URLPath)
+	require.Equal(t, "us-west-2", region)
+}

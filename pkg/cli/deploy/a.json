@@ -1,0 +1,190 @@
+{
+    "timestamp": "2023-05-09T22:32:00.875Z",
+    "severity": "INFO",
+    "message": "Sending HTTP request GET http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-east-2/providers/AWS.S3/locations/global/operationStatuses/801965c9-4fd5-483b-be25-d86bd9a98854",
+    "name": "RequestStart",
+    "scope": "System.Net.Http.HttpClient.local.ClientHandler",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "958807aa59bfb0e839c46ded58503828",
+    "spanId": "5a3740dc11048b95",
+    "HttpMethod": "GET",
+    "Uri": "http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-east-2/providers/AWS.S3/locations/global/operationStatuses/801965c9-4fd5-483b-be25-d86bd9a98854"
+}
+{
+    "timestamp": "2023-05-09T22:32:00.913Z",
+    "severity": "INFO",
+    "message": "Received HTTP response headers after 38.0092ms - 400",
+    "name": "RequestEnd",
+    "scope": "System.Net.Http.HttpClient.local.ClientHandler",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "958807aa59bfb0e839c46ded58503828",
+    "spanId": "5a3740dc11048b95",
+    "ElapsedMilliseconds": 38.0092,
+    "StatusCode": 400
+}
+{
+    "timestamp": "2023-05-09T22:32:00.913Z",
+    "severity": "INFO",
+    "message": "End processing HTTP request after 38.16ms - 400",
+    "name": "RequestPipelineEnd",
+    "scope": "System.Net.Http.HttpClient.local.LogicalHandler",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "958807aa59bfb0e839c46ded58503828",
+    "spanId": "5a3740dc11048b95",
+    "ElapsedMilliseconds": 38.16,
+    "StatusCode": 400
+}
+{
+    "timestamp": "2023-05-09T22:32:00.914Z",
+    "severity": "INFO",
+    "message": "Deployment operation AzureAsyncOperationWaiting with id 913F7756F58FD00A has finished running with status: Failed, Failed",
+    "name": "0",
+    "scope": "DeploymentEngine.Jobs.DeploymentUCPJob",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "958807aa59bfb0e839c46ded58503828",
+    "spanId": "5a3740dc11048b95",
+    "0": "AzureAsyncOperationWaiting",
+    "1": "913F7756F58FD00A",
+    "2": "Failed",
+    "3": "Failed"
+}
+{
+    "timestamp": "2023-05-09T22:32:00.915Z",
+    "severity": "INFO",
+    "message": "Operation is JobExecutionEngine.ReleaseAndScheduleJobExecutions message is Creating job with next execution time \u00275/9/2023 10:32:00 PM\u0027 and state \u0027Enabled\u0027.",
+    "name": "0",
+    "scope": "DeploymentEngine.EventSources.BackgroundEventSource",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "958807aa59bfb0e839c46ded58503828",
+    "spanId": "5a3740dc11048b95",
+    "OperationName": "JobExecutionEngine.ReleaseAndScheduleJobExecutions",
+    "Message": "Creating job with next execution time \u00275/9/2023 10:32:00 PM\u0027 and state \u0027Enabled\u0027."
+}
+{
+    "timestamp": "2023-05-09T22:32:00.918Z",
+    "severity": "INFO",
+    "message": "Operation is JobExecutionEngine.ReleaseAndScheduleJobExecutions message is Creating job with next execution time \u00275/16/2023 10:32:00 PM\u0027 and state \u0027Enabled\u0027.",
+    "name": "0",
+    "scope": "DeploymentEngine.EventSources.BackgroundEventSource",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "958807aa59bfb0e839c46ded58503828",
+    "spanId": "5a3740dc11048b95",
+    "OperationName": "JobExecutionEngine.ReleaseAndScheduleJobExecutions",
+    "Message": "Creating job with next execution time \u00275/16/2023 10:32:00 PM\u0027 and state \u0027Enabled\u0027."
+}
+{
+    "timestamp": "2023-05-09T22:32:05.405Z",
+    "severity": "INFO",
+    "message": "Failed",
+    "name": "0",
+    "scope": "DeploymentEngine.Controllers.DeploymentUCPOperationController",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "f33e0acc9b6103382ba39e44ec90a2d5",
+    "spanId": "3ccf985e588b5cfa"
+}
+{
+    "timestamp": "2023-05-09T22:46:08.683Z",
+    "severity": "INFO",
+    "message": "Starting deployment rad-deploy-36ee4fa2-e599-4693-bb6c-9648d7046bbd",
+    "name": "0",
+    "scope": "DeploymentEngine.Engine.RadiusDeploymentEngine",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "585b929bd2caf0799e0e3f651b67eee5",
+    "spanId": "6bb6a85697c91ea0",
+    "DeploymentName": "rad-deploy-36ee4fa2-e599-4693-bb6c-9648d7046bbd"
+}
+{
+    "timestamp": "2023-05-09T22:46:08.690Z",
+    "severity": "INFO",
+    "message": "endpoint: http://localhost:9000/apis/api.ucp.dev/v1alpha3",
+    "name": "0",
+    "scope": "DeploymentEngine.Engine.RadiusDeploymentEngineHost",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "585b929bd2caf0799e0e3f651b67eee5",
+    "spanId": "6bb6a85697c91ea0"
+}
+{
+    "timestamp": "2023-05-09T22:46:08.690Z",
+    "severity": "INFO",
+    "message": "scope: planes/aws/aws/accounts/817312594854/regions/us-east-2",
+    "name": "0",
+    "scope": "DeploymentEngine.Engine.RadiusDeploymentEngineHost",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "585b929bd2caf0799e0e3f651b67eee5",
+    "spanId": "6bb6a85697c91ea0"
+}
+{
+    "timestamp": "2023-05-09T22:46:08.690Z",
+    "severity": "INFO",
+    "message": "Resolving URI for resource AWS.S3/Bucket/bucket - chose http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-east-2/providers/AWS.S3/Bucket/bucket?api-version=default",
+    "name": "0",
+    "scope": "DeploymentEngine.Engine.RadiusDeploymentEngineHost",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "585b929bd2caf0799e0e3f651b67eee5",
+    "spanId": "6bb6a85697c91ea0",
+    "ResourceId": "AWS.S3/Bucket/bucket",
+    "Uri": "http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-east-2/providers/AWS.S3/Bucket/bucket?api-version=default"
+}
+{
+    "timestamp": "2023-05-09T22:46:08.690Z",
+    "severity": "INFO",
+    "message": "Creating job for deployment rad-deploy-36ee4fa2-e599-4693-bb6c-9648d7046bbd",
+    "name": "0",
+    "scope": "DeploymentEngine.Controllers.DeploymentController",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "585b929bd2caf0799e0e3f651b67eee5",
+    "spanId": "6bb6a85697c91ea0",
+    "DeploymentName": "rad-deploy-36ee4fa2-e599-4693-bb6c-9648d7046bbd"
+}
+{
+    "timestamp": "2023-05-09T22:46:08.692Z",
+    "severity": "INFO",
+    "message": "Operation is JobManagementClient.CreateJob message is Creating job with next execution time \u0027Tue, 09 May 2023 22:46:08 GMT\u0027.",
+    "name": "0",
+    "scope": "DeploymentEngine.EventSources.BackgroundEventSource",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "585b929bd2caf0799e0e3f651b67eee5",
+    "spanId": "6bb6a85697c91ea0",
+    "OperationName": "JobManagementClient.CreateJob",
+    "Message": "Creating job with next execution time \u0027Tue, 09 May 2023 22:46:08 GMT\u0027."
+}
+{
+    "timestamp": "2023-05-09T22:46:08.704Z",
+    "severity": "INFO",
+    "message": "Operation is JobExecutionEngine.ReleaseAndScheduleJobExecutions message is Creating job with next execution time \u00275/9/2023 10:46:08 PM\u0027 and state \u0027Enabled\u0027.",
+    "name": "0",
+    "scope": "DeploymentEngine.EventSources.BackgroundEventSource",
+    "serviceName": "deployment.engine",
+    "version": "1.0.0",
+    "hostName": "Nithyas-MacBook-Pro",
+    "traceId": "958807aa59bfb0e839c46ded58503828",
+    "spanId": "5a3740dc11048b95",
+    "OperationName": "JobExecutionEngine.ReleaseAndScheduleJobExecutions",
+    "Message": "Creating job with next execution time \u00275/9/2023 10:46:08 PM\u0027 and state \u0027Enabled\u0027."
+}
