@@ -71,6 +71,10 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 		otelhttp.WithMeterProvider(global.MeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
+	// TODO: This is the workaround to fix the high cardinality of otelhttp.
+	// Remove this once otelhttp middleware is fixed - https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
+	handlerFunc = middleware.RemoveRemoteAddr(handlerFunc)
+
 	server := &http.Server{
 		Addr:    options.Address,
 		Handler: handlerFunc,

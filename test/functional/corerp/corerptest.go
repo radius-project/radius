@@ -101,19 +101,41 @@ func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources
 	}
 }
 
-// TestSecretResource creates the secret resource for Initial Resource in NewCoreRPTest().
-func TestSecretResource(namespace, name string, data []byte) unstructured.Unstructured {
+// K8sSecretResource creates the secret resource for Initial Resource in NewCoreRPTest().
+func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructured.Unstructured {
+	if len(kv)%2 != 0 {
+		panic("key value pairs must be even")
+	}
+	data := map[string]any{}
+	for i := 0; i < len(kv); i += 2 {
+		key, ok := kv[i].(string)
+		if !ok {
+			panic("key must be string")
+		}
+		switch v := kv[i+1].(type) {
+		case string:
+			data[key] = []byte(v)
+		case []byte:
+			data[key] = v
+		default:
+			panic("value must be string or byte array")
+		}
+	}
+
+	if secretType == "" {
+		secretType = "opaque"
+	}
+
 	return unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "v1",
 			"kind":       "Secret",
+			"type":       secretType,
 			"metadata": map[string]any{
 				"name":      name,
 				"namespace": namespace,
 			},
-			"data": map[string]any{
-				name: data,
-			},
+			"data": data,
 		},
 	}
 }
