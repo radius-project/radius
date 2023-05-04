@@ -40,6 +40,9 @@ type Options struct {
 	// Workspace is the workspace to use for deployment.
 	Workspace workspaces.Workspace
 
+	// Providers are configured on the env for deployment
+	Providers *clients.Providers
+
 	// ProgressText is a message displayed on the console when deployment begins.
 	ProgressText string
 

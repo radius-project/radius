@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -111,6 +110,7 @@ type Runner struct {
 	FilePath        string
 	Parameters      map[string]map[string]any
 	Workspace       *workspaces.Workspace
+	Providers       *clients.Providers
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -169,25 +169,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if env.Properties != nil && env.Properties.Providers != nil {
-		r.Workspace.ProviderConfig = workspaces.ProviderConfig{}
+		r.Providers = &clients.Providers{}
 		if env.Properties.Providers.Aws != nil {
-			scope, err := resources.ParseScope(*env.Properties.Providers.Aws.Scope)
-			if err != nil {
-				return err
-			}
-			r.Workspace.ProviderConfig.AWS = &workspaces.AWSProvider{
-				AccountId: scope.FindScope(resources.RegionsSegment),
-				Region:    scope.FindScope(resources.AccountsSegment),
+			r.Providers.AWS = &clients.AWSProvider{
+				Scope: *env.Properties.Providers.Aws.Scope,
 			}
 		}
 		if env.Properties.Providers.Azure != nil {
-			scope, err := resources.ParseScope(*env.Properties.Providers.Azure.Scope)
-			if err != nil {
-				return err
-			}
-			r.Workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
-				SubscriptionID: scope.FindScope(resources.SubscriptionsSegment),
-				ResourceGroup:  scope.FindScope(resources.ResourceGroupsSegment),
+			r.Providers.Azure = &clients.AzureProvider{
+				Scope: *env.Properties.Providers.Azure.Scope,
 			}
 		}
 	}
@@ -258,6 +248,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		Parameters:        r.Parameters,
 		ProgressText:      progressText,
 		CompletionText:    "Deployment Complete",
+		Providers:         r.Providers,
 	})
 	if err != nil {
 		return err

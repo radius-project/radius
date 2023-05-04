@@ -192,14 +192,15 @@ func Test_Run(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			ProviderConfig: workspaces.ProviderConfig{
-				Azure: &workspaces.AzureProvider{
-					SubscriptionID: "test-subId",
-					ResourceGroup:  "test-rg",
-				},
-			},
+
 			Name: "kind-kind",
 		}
+		provider :=
+			&clients.Providers{
+				Azure: &clients.AzureProvider{
+					Scope: "test-scope",
+				},
+			}
 
 		filePath := "app.bicep"
 		progressText := fmt.Sprintf(
@@ -213,6 +214,7 @@ func Test_Run(t *testing.T) {
 			CompletionText: "Deployment Complete",
 			ProgressText:   progressText,
 			Template:       map[string]any{},
+			Providers:      provider,
 		}
 
 		deployMock := deploy.NewMockInterface(ctrl)
@@ -236,6 +238,7 @@ func Test_Run(t *testing.T) {
 			EnvironmentName: radcli.TestEnvironmentName,
 			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
+			Providers:       provider,
 		}
 
 		err := runner.Run(context.Background())
@@ -265,13 +268,12 @@ func Test_Run(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			ProviderConfig: workspaces.ProviderConfig{
-				AWS: &workspaces.AWSProvider{
-					AccountId: "test-accountId",
-					Region:    "test-region",
-				},
-			},
 			Name: "kind-kind",
+		}
+		ProviderConfig := clients.Providers{
+			AWS: &clients.AWSProvider{
+				Scope: "test-scope",
+			},
 		}
 
 		filePath := "app.bicep"
@@ -286,6 +288,7 @@ func Test_Run(t *testing.T) {
 			CompletionText: "Deployment Complete",
 			ProgressText:   progressText,
 			Template:       map[string]any{},
+			Providers:      &ProviderConfig,
 		}
 
 		deployMock := deploy.NewMockInterface(ctrl)
@@ -300,10 +303,10 @@ func Test_Run(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:  bicep,
-			Deploy: deployMock,
-			Output: outputSink,
-
+			Bicep:           bicep,
+			Deploy:          deployMock,
+			Output:          outputSink,
+			Providers:       &ProviderConfig,
 			FilePath:        filePath,
 			EnvironmentID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			EnvironmentName: radcli.TestEnvironmentName,
