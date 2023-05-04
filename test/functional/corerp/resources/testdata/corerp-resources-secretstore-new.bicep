@@ -13,14 +13,14 @@ param tlscrt string
 param tlskey string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-secret-new'
+  name: 'corerp-resources-secretstore-new'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-secret-app'
+          namespace: 'corerp-resources-secretstore-app'
       }
     ]
   }
