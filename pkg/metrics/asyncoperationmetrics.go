@@ -17,7 +17,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 const (
@@ -46,14 +45,14 @@ const (
 )
 
 type asyncOperationMetrics struct {
-	counters       map[string]instrument.Int64Counter
-	valueRecorders map[string]instrument.Float64Histogram
+	counters       map[string]metric.Int64Counter
+	valueRecorders map[string]metric.Float64Histogram
 }
 
 func newAsyncOperationMetrics() *asyncOperationMetrics {
 	return &asyncOperationMetrics{
-		counters:       make(map[string]instrument.Int64Counter),
-		valueRecorders: make(map[string]instrument.Float64Histogram),
+		counters:       make(map[string]metric.Int64Counter),
+		valueRecorders: make(map[string]metric.Float64Histogram),
 	}
 }
 
