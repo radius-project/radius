@@ -88,6 +88,18 @@ func NewK8sServiceForResource(application string, name string) K8sObject {
 	}
 }
 
+func NewK8sSecretForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "secrets",
+		},
+		Kind:   "Secret",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
 func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating deployments in namespace %v", namespace)

@@ -29,6 +29,7 @@ const (
 	GatewaysResource     = "applications.core/gateways"
 	ContainersResource   = "applications.core/containers"
 	VolumesResource      = "applications.core/volumes"
+	SecretStoresResource = "applications.core/secretStores"
 
 	MongoDatabasesResource        = "applications.link/mongoDatabases"
 	RabbitMQMessageQueuesResource = "applications.link/rabbitMQMessageQueues"
