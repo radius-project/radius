@@ -6,8 +6,14 @@ param location string = 'global'
 @description('Specifies the environment for resources.')
 param environment string
 
+@description('Specifies tls cert secret values.')
+@secure()
+param tlscrt string
+@secure()
+param tlskey string
+
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-secret-app'
+  name: 'corerp-resources-secret-new'
   location: location
   properties: {
     environment: environment
@@ -20,16 +26,19 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-// Reference the existing `secret-app-existing-secret` secret.
-resource existingAppCert 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
-  name: 'existing-appcert'
+// Create new appcert kubernetes secret.
+resource appCert 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
+  name: 'appcert'
   properties:{
     application: app.id
     type: 'certificate'
     data: {
-      'tls.crt': {}
-      'tls.key': {}
+      'tls.key': {
+        value: tlskey
+      }
+      'tls.crt': {
+        value: tlscrt
+      }
     }
-    resource: 'secret-app-existing-secret'
   }
 }
