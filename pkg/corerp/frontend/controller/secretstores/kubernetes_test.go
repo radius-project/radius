@@ -345,7 +345,7 @@ func TestUpsertSecret(t *testing.T) {
 		require.Equal(t, "app0-ns/secret0", newResource.Properties.Resource)
 	})
 
-	t.Run("create new resource when namepsace is missing", func(t *testing.T) {
+	t.Run("create new resource when namespace is missing", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		sc := store.NewMockStorageClient(ctrl)
 
