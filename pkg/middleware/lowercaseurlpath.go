@@ -28,8 +28,6 @@ func LowercaseURLPath(next http.Handler) http.Handler {
 
 		r.URL.Path = strings.ToLower(r.URL.Path)
 		next.ServeHTTP(w, r)
-		// WORKAROUND: Ignore remote address for telemetry to lower cadinality.
-		r.RemoteAddr = ""
 	}
 	return http.HandlerFunc(fn)
 }
