@@ -13,7 +13,7 @@ param tlscrt string
 param tlskey string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-secretstore-new'
+  name: 'corerp-resources-secretstore'
   location: location
   properties: {
     environment: environment
