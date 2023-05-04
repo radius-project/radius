@@ -73,7 +73,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 
 	server := &http.Server{
 		Addr:    options.Address,
-		Handler: handlerFunc,
+		Handler: middleware.RemoveRemoteAddr(handlerFunc),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},

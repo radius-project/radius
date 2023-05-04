@@ -31,9 +31,6 @@ func NormalizePath(next http.Handler) http.Handler {
 		}
 		r.URL.Path = newURL
 		next.ServeHTTP(w, r)
-
-		// WORKAROUND: Ignore remote address for telemetry to lower cadinality.
-		r.RemoteAddr = ""
 	}
 	return http.HandlerFunc(fn)
 }
