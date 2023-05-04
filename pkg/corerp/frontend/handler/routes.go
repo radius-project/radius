@@ -26,6 +26,7 @@ import (
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateways"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
+	secret_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/secretstores"
 	vol_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/volumes"
 )
 
@@ -77,6 +78,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	volRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/volumes").Subrouter()
 	volResourceRouter := volRTSubrouter.Path("/{volumeName}").Subrouter()
 
+	// Adds secretstore resource type routes
+	secretRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/secretstores").Subrouter()
+	secretResourceRouter := secretRTSubrouter.Path("/{secretStoreName}").Subrouter()
+
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.
 		{
@@ -122,7 +127,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: env_ctrl.NewDeleteEnvironment,
 		},
 		{
-			ParentRouter:   envRTSubrouter.Path("/{environmentName}/{recipeName}/getmetadata").Subrouter(),
+			ParentRouter:   envRTSubrouter.Path("/{environmentName}/getmetadata").Subrouter(),
 			ResourceType:   env_ctrl.ResourceTypeName,
 			Method:         env_ctrl.OperationGetRecipeMetadata,
 			HandlerFactory: env_ctrl.NewGetRecipeMetadata,
@@ -368,6 +373,82 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
 						RequestConverter:  converter.VolumeResourceModelFromVersioned,
 						ResponseConverter: converter.VolumeResourceModelToVersioned,
+					},
+				)
+			},
+		},
+		// Secret Store resource handler registration.
+		{
+			ParentRouter: secretRTSubrouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						RequestConverter:  converter.SecretStoreModelFromVersioned,
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SecretStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.SecretStore],
+							secret_ctrl.ValidateRequest,
+							secret_ctrl.UpsertSecret,
+						},
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						RequestConverter:  converter.SecretStoreModelFromVersioned,
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SecretStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.SecretStore],
+							secret_ctrl.ValidateRequest,
+							secret_ctrl.UpsertSecret,
+						},
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: secretResourceRouter,
+			ResourceType: secret_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SecretStore]{
+						ResponseConverter: converter.SecretStoreModelToVersioned,
+						DeleteFilters: []frontend_ctrl.DeleteFilter[datamodel.SecretStore]{
+							secret_ctrl.DeleteRadiusSecret,
+						},
 					},
 				)
 			},

@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -48,18 +50,23 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.Properties.Compute = *envCompute
 
 	if src.Properties.Recipes != nil {
-		recipes := make(map[string]datamodel.EnvironmentRecipeProperties)
-		for key, val := range src.Properties.Recipes {
-			if val != nil {
-				recipes[key] = datamodel.EnvironmentRecipeProperties{
-					LinkType:     to.String(val.LinkType),
-					TemplatePath: to.String(val.TemplatePath),
-					Parameters:   val.Parameters,
+		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
+		for resourceType, recipes := range src.Properties.Recipes {
+			if !isValidLinkType(resourceType) {
+				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid link type: %q", resourceType))
+			}
+			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
+			for recipeName, recipeDetails := range recipes {
+				if recipeDetails != nil {
+					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
+						TemplatePath: to.String(recipeDetails.TemplatePath),
+						Parameters:   recipeDetails.Parameters,
+					}
 				}
 			}
-		}
 
-		converted.Properties.Recipes = recipes
+		}
+		converted.Properties.Recipes = envRecipes
 	}
 
 	if src.Properties.Providers != nil {
@@ -110,12 +117,14 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	if env.Properties.Recipes != nil {
-		recipes := make(map[string]*EnvironmentRecipeProperties)
-		for key, val := range env.Properties.Recipes {
-			recipes[key] = &EnvironmentRecipeProperties{
-				LinkType:     to.Ptr(val.LinkType),
-				TemplatePath: to.Ptr(val.TemplatePath),
-				Parameters:   val.Parameters,
+		recipes := make(map[string]map[string]*EnvironmentRecipeProperties)
+		for resourceType, recipe := range env.Properties.Recipes {
+			recipes[resourceType] = map[string]*EnvironmentRecipeProperties{}
+			for recipeName, recipeDetails := range recipe {
+				recipes[resourceType][recipeName] = &EnvironmentRecipeProperties{
+					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
+					Parameters:   recipeDetails.Parameters,
+				}
 			}
 		}
 		dst.Properties.Recipes = recipes

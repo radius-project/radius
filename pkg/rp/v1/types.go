@@ -44,11 +44,16 @@ func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourcePropert
 	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
 }
 
+// ResourceStatus represents the output status of Radius resource.
 type ResourceStatus struct {
-	Compute         *EnvironmentCompute `json:"compute,omitempty"`
-	OutputResources []OutputResource    `json:"outputResources,omitempty"`
+	// Compute represents a resource presented in the underlying platform.
+	Compute *EnvironmentCompute `json:"compute,omitempty"`
+
+	// OutputResources represents the output resources associated with the radius resource.
+	OutputResources []OutputResource `json:"outputResources,omitempty"`
 }
 
+// DeepCopy copies each value of in ResourceStatus.
 func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
 	in.Compute = out.Compute
 	in.OutputResources = out.OutputResources

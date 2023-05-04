@@ -17,11 +17,17 @@
       }
     },
     "recipes": {
-      "cosmos-recipe": {
-        "linkType": "Applications.Link/mongoDatabases",
-        "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
-        "parameters":{
-          "throughput": 400
+      "Applications.Link/mongoDatabases":{
+        "cosmos-recipe": {
+          "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
+          "parameters":{
+            "throughput": 400
+          }
+        }
+      },
+      "Applications.Link/redisCaches":{
+        "redis-recipe": {
+          "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscaches"
         }
       }
     },

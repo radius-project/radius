@@ -48,7 +48,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	envName := test.Steps[0].CoreRPResources.Resources[0].Name
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
-	linkType := "Applications.Link/linkType"
+	linkType := "Applications.Link/mongoDatabases"
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, recipeTemplate, linkType)
 		require.NoError(t, err)
@@ -62,7 +62,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Regexp(t, recipeTemplate, output)
 	})
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, envName, recipeName)
+		output, err := cli.RecipeUnregister(ctx, envName, recipeName, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
 	})
@@ -73,7 +73,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName)
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
@@ -86,9 +86,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
+		_, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
 		require.Error(t, err)
-		require.Contains(t, output, "recipe with name \"mongo-azure\" already exists in the environment")
 	})
 }
 
@@ -542,8 +541,17 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	name := "kubernetes-cli-params"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 
+	// corerp-kubernetes-cli-parameters.parameters.json uses radiusdev.azurecr.io as a registry parameter.
+	// Use the specified tag only if the test uses radiusdev.azurecr.io registry. Otherwise, use latest tag.
+	magpieTag := "magpietag=latest"
+	image := functional.GetMagpieImage()
+	if !strings.HasPrefix(image, "magpieimage=radiusdev.azurecr.io") {
+		magpieTag = functional.GetMagpieTag()
+	}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
+		{
+			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, magpieTag),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

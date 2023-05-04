@@ -194,6 +194,22 @@ func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
 	}
 }
 
+// SecretValueEncoding - The encoding of value
+type SecretValueEncoding string
+
+const (
+	SecretValueEncodingRaw SecretValueEncoding = "raw"
+	SecretValueEncodingBase64 SecretValueEncoding = "base64"
+)
+
+// PossibleSecretValueEncodingValues returns the possible values for the SecretValueEncoding const type.
+func PossibleSecretValueEncodingValues() []SecretValueEncoding {
+	return []SecretValueEncoding{	
+		SecretValueEncodingRaw,
+		SecretValueEncodingBase64,
+	}
+}
+
 // TLSMinVersion - TLS minimum protocol version (defaults to 1.2).
 type TLSMinVersion string
 

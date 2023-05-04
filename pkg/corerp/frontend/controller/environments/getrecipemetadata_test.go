@@ -29,9 +29,9 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
-		envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 
 		mStorageClient.
 			EXPECT().
@@ -54,7 +54,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		actualOutput := &v20220315privatepreview.EnvironmentRecipeProperties{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
@@ -95,9 +95,9 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get recipe metadata non existing recipe", func(t *testing.T) {
-		envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, envDataModel := getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, envInput)
 		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -130,7 +130,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		err = json.Unmarshal(payload, &armerr)
 		require.NoError(t, err)
 		require.Equal(t, v1.CodeNotFound, armerr.Error.Code)
-		require.Contains(t, armerr.Error.Message, "Recipe with name \"mongodb\" not found on environment with id")
+		require.Contains(t, armerr.Error.Message, "Either recipe with name \"mongodb\" or resource type \"Applications.Link/mongoDatabases\" not found on environment with id")
 	})
 }
 

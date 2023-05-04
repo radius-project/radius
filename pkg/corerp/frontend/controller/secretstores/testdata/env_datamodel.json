@@ -1,0 +1,21 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+    "name": "env0",
+    "type": "applications.core/environments",
+    "location": "global",
+    "provisioningState": "Succeeded",
+    "properties": {
+        "compute": {
+            "kind": "kubernetes",
+            "kubernetes": {
+                "resourceId": "fakeid",
+                "namespace": "default"
+            }
+        }
+    },
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroup": "testGroup",
+    "createdApiVersion": "2022-03-15-privatepreview",
+    "updatedApiVersion": "2022-03-15-privatepreview"
+}

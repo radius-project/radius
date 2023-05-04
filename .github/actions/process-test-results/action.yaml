@@ -1,0 +1,68 @@
+name: "Process Test Results"
+description: |
+  Processes a batch of test results including creating a github artifact and annotating the Pull Request (if applicable).
+
+  This requires using 'gotestum' to run tests, which our makefile can do automatically. Install 'gotestsum' using:
+
+    go install gotest.tools/gotestsum@v1.10.0
+
+  You will also need to set the path for the results file using an environment variable. This would output the jUnit
+  test results format which is what we require.
+    
+    GOTESTSUM_OPTS: '--junitfile ./dist/unit_test_results_raw.xml'
+  
+  Then running 'make <test target>' will do the right thing :)
+
+inputs:
+  test_group_name:
+    description: 'Name to use for reporting (eg: Unit Tests)'
+    required: true
+  artifact_name:
+    description: 'Name to use for uploading artifacts (eg: unit_test_results)'
+    required: true
+  result_directory:
+    description: 'Directory containing result XML files. These should be in jUnit format. See the description of the action.'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    # The test results file output by gotestsum is missing file and line number on the XML elements
+    # which is needed for the annotations to work. This script adds the missing information.
+    - name: 'Transform ${{ inputs.test_group_name }} Results'
+      # Always is REQUIRED here. Otherwise, the action will be skipped when the unit tests fail, which
+      # defeats the purpose. YES it is counterintuitive. This applies to all of the actions in this file.
+      if: always()
+      id: 'process_files'
+      shell: 'bash'
+      working-directory: ${{ github.workspace }}
+      env:
+        INPUT_DIRECTORY: ${{ inputs.result_directory }}
+      run: |
+        echo "repository root is $GITHUB_WORKSPACE"
+
+        INPUT_FILES="$INPUT_DIRECTORY*.xml"
+        mkdir -p "$INPUT_DIRECTORY/processed"
+        for INPUT_FILE in $INPUT_FILES
+        do
+          DIRECTORY=$(dirname -- "$INPUT_FILE")
+          FILENAME=$(basename -- "$INPUT_FILE")
+          FILENAME="${FILENAME%.*}"
+          OUTPUT_FILE="${DIRECTORY}/processed/${FILENAME}.xml"
+          echo "processing test results in $INPUT_FILE to add line and file info..."
+          python3 ./.github/scripts/transform_test_results.py $GITHUB_WORKSPACE "$INPUT_FILE" "$OUTPUT_FILE"
+          echo "wrote ${OUTPUT_FILE}"
+        done
+    - name: 'Create ${{ inputs.test_group_name }} Result Report'
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always()
+      with:
+        files: |
+          ${{ inputs.result_directory }}/processed/*.xml
+    - name: 'Upload ${{ inputs.test_group_name }} Results'
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: |
+          ${{ inputs.result_directory }}/*.xml 
+          ${{ inputs.result_directory }}processed/*.xml

@@ -60,6 +60,18 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/httpRoutes' (ReadOnly, DeployTimeConstant): The resource type
 
+## Resource Applications.Core/secretStores@2022-03-15-privatepreview
+* **Valid Scope(s)**: Unknown
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [SecretStoreProperties](#secretstoreproperties) (Required)
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Core/secretStores' (ReadOnly, DeployTimeConstant): The resource type
+
 ## Resource Applications.Core/volumes@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
@@ -71,6 +83,11 @@
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/volumes' (ReadOnly, DeployTimeConstant): The resource type
+
+## Function listSecrets (Applications.Core/secretStores@2022-03-15-privatepreview)
+* **Resource**: Applications.Core/secretStores
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [SecretListProperties](#secretlistproperties)
 
 ## ApplicationProperties
 ### Properties
@@ -296,7 +313,7 @@
 * **extensions**: [EnvironmentExtension](#environmentextension)[]: Extensions spec of the resource
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
+* **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Specifies Recipes linked to the Environment.
 * **useDevRecipes**: bool: Flag to use radius owned recipes.
 
 ## EnvironmentExtension
@@ -336,11 +353,15 @@
 ## EnvironmentPropertiesRecipes
 ### Properties
 ### Additional Properties
+* **Additional Properties Type**: [DictionaryOfEnvironmentRecipeProperties](#dictionaryofenvironmentrecipeproperties)
+
+## DictionaryOfEnvironmentRecipeProperties
+### Properties
+### Additional Properties
 * **Additional Properties Type**: [EnvironmentRecipeProperties](#environmentrecipeproperties)
 
 ## EnvironmentRecipeProperties
 ### Properties
-* **linkType**: string (Required): Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 * **parameters**: any: Any object
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 
@@ -394,6 +415,37 @@
 * **scheme**: string: The scheme used for traffic. Readonly.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **url**: string: A stable URL that that can be used to route traffic to a resource. Readonly.
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## SecretStoreProperties
+### Properties
+* **application**: string (Required): Specifies the resource id of the application
+* **data**: [SecretStorePropertiesData](#secretstorepropertiesdata) (Required): An object to represent key-value type secrets
+* **environment**: string: The resource id of the environment linked to the resource
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **resource**: string: The resource id of external secret store.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **type**: 'certificate' | 'generic': The type of secret store data
+
+## SecretStorePropertiesData
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
+
+## SecretValueProperties
+### Properties
+* **encoding**: 'base64' | 'raw': The encoding of value
+* **value**: string: The value of secret.
+* **valueFrom**: [ValueFromProperties](#valuefromproperties)
+
+## ValueFromProperties
+### Properties
+* **name**: string (Required): The name of the referenced secret.
+* **version**: string: The version of the referenced secret.
 
 ## TrackedResourceTags
 ### Properties
@@ -458,4 +510,14 @@
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: string
+
+## SecretListProperties
+### Properties
+* **data**: [SecretListPropertiesData](#secretlistpropertiesdata) (ReadOnly): An object to represent key-value type secrets
+* **type**: string (ReadOnly): The type of secret store data
+
+## SecretListPropertiesData
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
 

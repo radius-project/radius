@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -60,7 +61,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		ResourceName:            item.GetName(),
 	}
 
-	err = handler.PatchNamespace(ctx, item.GetNamespace())
+	err = kubeutil.PatchNamespace(ctx, handler.client, item.GetNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -127,30 +128,6 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	case <-watchErrorCh:
 		return nil, err
 	}
-}
-
-func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {
-	// Ensure that the namespace exists that we're able to operate upon.
-	ns := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": "v1",
-			"kind":       "Namespace",
-			"metadata": map[string]any{
-				"name": namespace,
-				"labels": map[string]any{
-					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-				},
-			},
-		},
-	}
-
-	err := handler.client.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
-	if err != nil {
-		// we consider this fatal - without a namespace we won't be able to apply anything else
-		return fmt.Errorf("error applying namespace: %w", err)
-	}
-
-	return nil
 }
 
 func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {

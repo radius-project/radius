@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -78,7 +79,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeDaprResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], linkrp.DaprStateStoresResourceType)
+	err = CheckDaprResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeDaprResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], properties[ResourceName], linkrp.DaprStateStoresResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -101,7 +102,7 @@ func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, re
 }
 
 func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx context.Context, accountName string, accountKey string, properties map[string]string) error {
-	err := handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
+	err := kubeutil.PatchNamespace(ctx, handler.k8s, properties[KubernetesNamespaceKey])
 	if err != nil {
 		return err
 	}

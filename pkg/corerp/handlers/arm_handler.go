@@ -76,7 +76,7 @@ func getByID(ctx context.Context, options *clientv2.Options, identity resourcemo
 		return nil, err
 	}
 
-	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), options)
+	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), options, nil)
 	if err != nil {
 		return nil, err
 	}

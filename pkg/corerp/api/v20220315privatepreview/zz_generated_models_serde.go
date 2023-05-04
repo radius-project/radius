@@ -893,7 +893,6 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentRecipeProperties.
 func (e EnvironmentRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "linkType", e.LinkType)
 	populate(objectMap, "parameters", e.Parameters)
 	populate(objectMap, "templatePath", e.TemplatePath)
 	return json.Marshal(objectMap)
@@ -908,9 +907,6 @@ func (e *EnvironmentRecipeProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "linkType":
-				err = unpopulate(val, "LinkType", &e.LinkType)
-				delete(rawMsg, key)
 		case "parameters":
 				err = unpopulate(val, "Parameters", &e.Parameters)
 				delete(rawMsg, key)
@@ -1993,17 +1989,16 @@ func (p *ProvidersAzure) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RecipeMetadata.
-func (r RecipeMetadata) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type Recipe.
+func (r Recipe) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "linkType", r.LinkType)
-	populate(objectMap, "parameters", r.Parameters)
-	populate(objectMap, "templatePath", r.TemplatePath)
+	populate(objectMap, "name", r.Name)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeMetadata.
-func (r *RecipeMetadata) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type Recipe.
+func (r *Recipe) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -2014,11 +2009,8 @@ func (r *RecipeMetadata) UnmarshalJSON(data []byte) error {
 		case "linkType":
 				err = unpopulate(val, "LinkType", &r.LinkType)
 				delete(rawMsg, key)
-		case "parameters":
-				err = unpopulate(val, "Parameters", &r.Parameters)
-				delete(rawMsg, key)
-		case "templatePath":
-				err = unpopulate(val, "TemplatePath", &r.TemplatePath)
+		case "name":
+				err = unpopulate(val, "Name", &r.Name)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2300,6 +2292,7 @@ func (s *SecretStoreResourceList) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type SecretValueProperties.
 func (s SecretValueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "encoding", s.Encoding)
 	populate(objectMap, "value", s.Value)
 	populate(objectMap, "valueFrom", s.ValueFrom)
 	return json.Marshal(objectMap)
@@ -2314,6 +2307,9 @@ func (s *SecretValueProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "encoding":
+				err = unpopulate(val, "Encoding", &s.Encoding)
+				delete(rawMsg, key)
 		case "value":
 				err = unpopulate(val, "Value", &s.Value)
 				delete(rawMsg, key)

@@ -541,8 +541,8 @@ type EnvironmentProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *Providers `json:"providers,omitempty"`
 
-	// Dictionary of
-	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
+	// Specifies Recipes linked to the Environment.
+	Recipes map[string]map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
 
 	// Flag to use radius owned recipes.
 	UseDevRecipes *bool `json:"useDevRecipes,omitempty"`
@@ -553,9 +553,6 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
-	LinkType *string `json:"linkType,omitempty"`
-
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string `json:"templatePath,omitempty"`
 
@@ -1134,16 +1131,13 @@ type ProvidersAzure struct {
 	Scope *string `json:"scope,omitempty"`
 }
 
-// RecipeMetadata - Metadata of a Recipe
-type RecipeMetadata struct {
-	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+// Recipe properties.
+type Recipe struct {
+	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 	LinkType *string `json:"linkType,omitempty"`
 
-	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
-	TemplatePath *string `json:"templatePath,omitempty"`
-
-	// Key/value parameters to pass to the recipe template at deployment
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
+	// Name of the recipe registered to the environment.
+	Name *string `json:"name,omitempty"`
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
@@ -1275,6 +1269,9 @@ type SecretStoresClientUpdateOptions struct {
 }
 
 type SecretValueProperties struct {
+	// The encoding of value
+	Encoding *SecretValueEncoding `json:"encoding,omitempty"`
+
 	// The value of secret.
 	Value *string `json:"value,omitempty"`
 

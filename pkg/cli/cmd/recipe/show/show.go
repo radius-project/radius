@@ -8,6 +8,7 @@ package show
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -16,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +52,8 @@ rad recipe show redis-dev --group dev --environment dev`,
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
+	commonflags.AddLinkTypeFlag(cmd)
+	_ = cmd.MarkFlagRequired(cli.LinkTypeFlag)
 
 	return cmd, runner
 }
@@ -61,6 +65,7 @@ type Runner struct {
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	RecipeName        string
+	LinkType          string
 	Format            string
 }
 
@@ -98,6 +103,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.RecipeName = recipeName
 
+	linkType, err := cli.RequireLinkType(cmd)
+	if err != nil {
+		return err
+	}
+	r.LinkType = linkType
+
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
@@ -117,13 +128,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, r.RecipeName)
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.Recipe{Name: &r.RecipeName, LinkType: &r.LinkType})
 	if err != nil {
 		return err
 	}
 	recipe := Recipe{
 		Name:         r.RecipeName,
-		LinkType:     *recipeDetails.LinkType,
+		LinkType:     r.LinkType,
 		TemplatePath: *recipeDetails.TemplatePath,
 	}
 
@@ -161,6 +172,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		recipeParams = append(recipeParams, paramItem)
 	}
+
+	// Sort parameters so that results are deterministic.
+	sort.Slice(recipeParams, func(i, j int) bool {
+		return recipeParams[i].Name > recipeParams[j].Name
+	})
 
 	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormat())
 	if err != nil {

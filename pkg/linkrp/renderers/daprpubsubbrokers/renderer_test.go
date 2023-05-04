@@ -82,8 +82,8 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"spec": map[string]any{
 				"type":    pubsubType,
 				"version": daprPubSubVersion,
-				"metadata": []map[string]any{
-					{
+				"metadata": []any{
+					map[string]any{
 						"name":  "foo",
 						"value": "bar",
 					},
@@ -192,7 +192,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		Version:  &properties.Version,
 		Metadata: properties.Metadata,
 	}
-	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test", linkrp.DaprPubSubBrokersResourceType)
+	item, err := dapr.ConstructDaprGeneric(daprGeneric, "radius-test", resourceName, applicationName, resourceName, linkrp.DaprPubSubBrokersResourceType)
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{

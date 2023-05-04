@@ -66,8 +66,12 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 
 // MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes Dapr resource associated with a Radius resource.
 // The descriptive labels are a superset of the selector labels.
-func MakeDescriptiveDaprLabels(application string, resource string, resourceType string) map[string]string {
-	return map[string]string{
+func MakeDescriptiveDaprLabels(application string, resource string, resourceType string) map[string]any {
+	// K8s fake client requires this to be map[string]any :(
+	//
+	// Please don't try to change this to map[string]string as it is going to cause some tests to panic
+	// with an error deep inside Kubernetes code.
+	return map[string]any{
 		LabelRadiusApplication:  NormalizeResourceName(application),
 		LabelRadiusResource:     NormalizeDaprResourceName(resource),
 		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),

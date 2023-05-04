@@ -8,6 +8,7 @@ package processors
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -40,9 +41,11 @@ func Test_NewValidator(t *testing.T) {
 	})
 
 	t.Run("provided datastores", func(t *testing.T) {
-		outputResources := []rpv1.OutputResource{}
-		values := map[string]any{}
-		secrets := map[string]rpv1.SecretValueReference{}
+		outputResources := []rpv1.OutputResource{
+			{},
+		}
+		values := map[string]any{"test": ""}
+		secrets := map[string]rpv1.SecretValueReference{"test": {}}
 
 		v := NewValidator(&values, &secrets, &outputResources)
 		require.NotNil(t, v)
@@ -53,6 +56,10 @@ func Test_NewValidator(t *testing.T) {
 		require.Same(t, &outputResources, v.OutputResources)
 		require.Equal(t, values, v.ConnectionValues)
 		require.Equal(t, secrets, v.ConnectionSecrets)
+
+		require.Empty(t, outputResources)
+		require.Empty(t, values)
+		require.Empty(t, secrets)
 	})
 }
 
@@ -68,15 +75,30 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		require.Empty(t, outputResources)
 	})
-	t.Run("resource field is empty", func(t *testing.T) {
+	t.Run("resources field is nil", func(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
 
-		var resource *string
+		var resources *[]*linkrp.ResourceReference
 
 		v := NewValidator(&values, &secrets, &outputResources)
-		v.AddResourceField(resource)
+		v.AddResourcesField(resources)
+
+		err := v.SetAndValidate(nil)
+		require.NoError(t, err)
+
+		require.Empty(t, outputResources)
+	})
+	t.Run("resources field is empty", func(t *testing.T) {
+		outputResources := []rpv1.OutputResource{}
+		values := map[string]any{}
+		secrets := map[string]rpv1.SecretValueReference{}
+
+		resources := []*linkrp.ResourceReference{}
+
+		v := NewValidator(&values, &secrets, &outputResources)
+		v.AddResourcesField(&resources)
 
 		err := v.SetAndValidate(nil)
 		require.NoError(t, err)
@@ -95,15 +117,15 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		require.Empty(t, outputResources)
 	})
-	t.Run("resource field invalid id", func(t *testing.T) {
+	t.Run("resources field invalid id", func(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
 
-		resource := "////invalid//////"
+		resources := []*linkrp.ResourceReference{{ID: "////invalid//////"}}
 
 		v := NewValidator(&values, &secrets, &outputResources)
-		v.AddResourceField(&resource)
+		v.AddResourcesField(&resources)
 
 		err := v.SetAndValidate(nil)
 		require.Error(t, err)
@@ -134,7 +156,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
 
-		resource := "/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream1"
+		resourcesField := []*linkrp.ResourceReference{
+			{
+				ID: "/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream1",
+			},
+		}
 
 		output := recipes.RecipeOutput{
 			Resources: []string{"/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream2"},
@@ -147,7 +173,7 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		}
 
 		v := NewValidator(&values, &secrets, &outputResources)
-		v.AddResourceField(&resource)
+		v.AddResourcesField(&resourcesField)
 
 		err := v.SetAndValidate(&output)
 		require.NoError(t, err)
@@ -161,8 +187,8 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 			},
 			{
 				LocalID:       "Resource0",
-				Identity:      resourcemodel.FromUCPID(mustparse(resource), ""),
-				ResourceType:  *resourcemodel.FromUCPID(mustparse(resource), "").ResourceType,
+				Identity:      resourcemodel.FromUCPID(mustparse(resourcesField[0].ID), ""),
+				ResourceType:  *resourcemodel.FromUCPID(mustparse(resourcesField[0].ID), "").ResourceType,
 				RadiusManaged: to.Ptr(false),
 			},
 		}

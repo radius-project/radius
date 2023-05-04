@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
@@ -111,7 +112,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: tCtx.MockSC,
-				KubeClient:    testutil.NewFakeKubeClient(nil),
+				KubeClient:    k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewDeleteApplication(opts)

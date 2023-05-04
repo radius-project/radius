@@ -8,6 +8,7 @@ package processors
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -15,30 +16,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_GetOutputResourceFromResourceID(t *testing.T) {
-	id := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Cache/redis/test-resource1"
+func Test_GetOutputResourcesFromResourcesField(t *testing.T) {
+	resourcesField := []*linkrp.ResourceReference{
+		{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Cache/redis/test-resource1"},
+		{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Cache/redis/test-resource2"},
+	}
 
 	redisType := resourcemodel.ResourceType{
 		Type:     "Microsoft.Cache/redis",
 		Provider: resourcemodel.ProviderAzure,
 	}
 
-	expected := rpv1.OutputResource{
-		LocalID:       "Resource0",
-		ResourceType:  redisType,
-		Identity:      resourcemodel.NewARMIdentity(&redisType, id, "unknown"),
-		RadiusManaged: to.Ptr(false),
+	expected := []rpv1.OutputResource{
+		{
+			LocalID:       "Resource0",
+			ResourceType:  redisType,
+			Identity:      resourcemodel.NewARMIdentity(&redisType, resourcesField[0].ID, "unknown"),
+			RadiusManaged: to.Ptr(false),
+		},
+		{
+			LocalID:       "Resource1",
+			ResourceType:  redisType,
+			Identity:      resourcemodel.NewARMIdentity(&redisType, resourcesField[1].ID, "unknown"),
+			RadiusManaged: to.Ptr(false),
+		},
 	}
 
-	actual, err := GetOutputResourceFromResourceID(id)
+	actual, err := GetOutputResourcesFromResourcesField(resourcesField)
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
 
 func Test_GetOutputResourceFromResourceID_Invalid(t *testing.T) {
-	id := "/////asdf////"
+	resourcesField := []*linkrp.ResourceReference{
+		{ID: "/////asdf////"},
+	}
 
-	actual, err := GetOutputResourceFromResourceID(id)
+	actual, err := GetOutputResourcesFromResourcesField(resourcesField)
 	require.Error(t, err)
 	require.Empty(t, actual)
 	require.IsType(t, &ValidationError{}, err)

@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +23,7 @@ import (
 func TestEnsureNamespace(t *testing.T) {
 	f := k8sfake.NewSimpleClientset(&v1.Namespace{ObjectMeta: meta_v1.ObjectMeta{Name: "radius-test"}})
 
-	testutil.PrependPatchReactor(f, "namespaces", func(pa clienttesting.PatchAction) runtime.Object {
+	k8sutil.PrependPatchReactor(f, "namespaces", func(pa clienttesting.PatchAction) runtime.Object {
 		return &v1.Namespace{
 			ObjectMeta: meta_v1.ObjectMeta{
 				Name: pa.GetName(),

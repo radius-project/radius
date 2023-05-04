@@ -24,6 +24,7 @@ concurrency:
 
 env:
   GOVER: '^1.20'
+  GOTESTSUMVERSION: 1.10.0
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
   DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 
@@ -83,9 +84,26 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
+          GOTESTSUM_OPTS: '--junitfile ./dist/unit_test/results.xml'
           GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
         run: |
+          go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
+      - name: Process Unit Test Results
+        uses: ./.github/actions/process-test-results
+        # Always is required here to make sure this target runs even when tests fail.
+        if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        with:
+          test_group_name: 'Unit Tests'
+          artifact_name: 'unit_test_results'
+          result_directory: 'dist/unit_test/'
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
+          path: |
+            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
+            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
@@ -122,13 +140,6 @@ jobs:
         env:
           COVERAGE_FILE: ./dist/ut_coverage.out
           GO_TOOL_COVER: go tool cover
-      - name: Upload CLI binary
-        uses: actions/upload-artifact@v3
-        with:
-          name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
-          path: |
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
       - name: Upload unit-test coverage artifact
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: actions/upload-artifact@v3

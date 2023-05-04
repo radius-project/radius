@@ -55,3 +55,35 @@ func TestEnvironmentRecipePropertiesDataModelToVersioned(t *testing.T) {
 		})
 	}
 }
+
+func TestRecipeDatamodelFromVersioned(t *testing.T) {
+	testset := []struct {
+		versionedModelFile string
+		apiVersion         string
+		err                error
+	}{
+		{
+			"../../api/v20220315privatepreview/testdata/reciperesource.json",
+			"2022-03-15-privatepreview",
+			nil,
+		},
+		// TODO: add new conversion tests.
+		{
+			"",
+			"unsupported",
+			v1.ErrUnsupportedAPIVersion,
+		},
+	}
+
+	for _, tc := range testset {
+		t.Run(tc.apiVersion, func(t *testing.T) {
+			c := loadTestData(tc.versionedModelFile)
+			_, err := RecipeDataModelFromVersioned(c, tc.apiVersion)
+			if tc.err != nil {
+				require.ErrorAs(t, tc.err, &err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

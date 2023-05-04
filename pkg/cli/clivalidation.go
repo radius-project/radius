@@ -26,6 +26,10 @@ type AzureResource struct {
 	SubscriptionID string
 }
 
+const (
+	LinkTypeFlag = "link-type"
+)
+
 func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
 	environmentName, err := ReadEnvironmentNameArgs(cmd, args)
 	if err != nil {
@@ -430,4 +434,12 @@ func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
 		return "", errors.New("no recipe name provided")
 	}
 	return args[0], nil
+}
+
+func RequireLinkType(cmd *cobra.Command) (string, error) {
+	linkType, err := cmd.Flags().GetString(LinkTypeFlag)
+	if err != nil {
+		return linkType, err
+	}
+	return linkType, nil
 }

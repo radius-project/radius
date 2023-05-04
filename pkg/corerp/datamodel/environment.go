@@ -24,18 +24,30 @@ func (e *Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	Compute       rpv1.EnvironmentCompute                `json:"compute,omitempty"`
-	Recipes       map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
-	Providers     Providers                              `json:"providers,omitempty"`
-	UseDevRecipes bool                                   `json:"useDevRecipes,omitempty"`
-	Extensions    []Extension                            `json:"extensions,omitempty"`
+	Compute       rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
+	Recipes       map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
+	Providers     Providers                                         `json:"providers,omitempty"`
+	UseDevRecipes bool                                              `json:"useDevRecipes,omitempty"`
+	Extensions    []Extension                                       `json:"extensions,omitempty"`
 }
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.
 type EnvironmentRecipeProperties struct {
-	LinkType     string         `json:"linkType,omitempty"`
 	TemplatePath string         `json:"templatePath,omitempty"`
 	Parameters   map[string]any `json:"parameters,omitempty"`
+}
+
+// Recipe represents input properties for recipe getMetadata api.
+type Recipe struct {
+	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	LinkType string `json:"linkType,omitempty"`
+
+	// Name of the recipe registered to the environment.
+	Name string `json:"recipeName,omitempty"`
+}
+
+func (e *Recipe) ResourceTypeName() string {
+	return "Applications.Core/environments"
 }
 
 func (e *EnvironmentRecipeProperties) ResourceTypeName() string {
