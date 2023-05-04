@@ -16,7 +16,8 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
+	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 )
 
 const (
@@ -45,14 +46,14 @@ const (
 )
 
 type asyncOperationMetrics struct {
-	counters       map[string]instrument.Int64Counter
-	valueRecorders map[string]instrument.Float64Histogram
+	counters       map[string]syncint64.Counter
+	valueRecorders map[string]syncfloat64.Histogram
 }
 
 func newAsyncOperationMetrics() *asyncOperationMetrics {
 	return &asyncOperationMetrics{
-		counters:       make(map[string]instrument.Int64Counter),
-		valueRecorders: make(map[string]instrument.Float64Histogram),
+		counters:       make(map[string]syncint64.Counter),
+		valueRecorders: make(map[string]syncfloat64.Histogram),
 	}
 }
 
@@ -61,22 +62,22 @@ func (a *asyncOperationMetrics) Init() error {
 	meter := global.MeterProvider().Meter("async-operation-metrics")
 
 	var err error
-	a.counters[QueuedAsyncOperationCount], err = meter.Int64Counter(QueuedAsyncOperationCount)
+	a.counters[QueuedAsyncOperationCount], err = meter.SyncInt64().Counter(QueuedAsyncOperationCount)
 	if err != nil {
 		return err
 	}
 
-	a.counters[AsyncOperationCount], err = meter.Int64Counter(AsyncOperationCount)
+	a.counters[AsyncOperationCount], err = meter.SyncInt64().Counter(AsyncOperationCount)
 	if err != nil {
 		return err
 	}
 
-	a.counters[ExtendedAsyncOperationCount], err = meter.Int64Counter(ExtendedAsyncOperationCount)
+	a.counters[ExtendedAsyncOperationCount], err = meter.SyncInt64().Counter(ExtendedAsyncOperationCount)
 	if err != nil {
 		return err
 	}
 
-	a.valueRecorders[AsnycOperationDuration], err = meter.Float64Histogram(AsnycOperationDuration)
+	a.valueRecorders[AsnycOperationDuration], err = meter.SyncFloat64().Histogram(AsnycOperationDuration)
 	if err != nil {
 		return err
 	}

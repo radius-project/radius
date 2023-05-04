@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -61,8 +61,8 @@ func SetAsyncResultStatus(result ctrl.Result, span trace.Span) {
 	if result.Error != nil {
 		span.SetStatus(otelcodes.Error, result.Error.Message)
 		opts := trace.WithAttributes(
-			semconv.ExceptionType(result.Error.Code),
-			semconv.ExceptionMessage(result.Error.Message),
+			semconv.ExceptionTypeKey.String(result.Error.Code),
+			semconv.ExceptionMessageKey.String(result.Error.Message),
 		)
 		span.AddEvent(semconv.ExceptionEventName, opts)
 	} else {

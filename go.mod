@@ -24,7 +24,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.13.0
-	github.com/go-logr/logr v1.2.3
+	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.3
 	github.com/go-openapi/errors v0.20.2
 	github.com/go-openapi/jsonpointer v0.19.5
@@ -51,19 +51,19 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
 	github.com/stern/stern v1.22.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/vippsas/go-cosmosdb v0.0.0-20200428065936-29dab535353d
 	github.com/wI2L/jsondiff v0.2.0
 	go.mongodb.org/mongo-driver v1.9.1
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.39.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.39.0
-	go.opentelemetry.io/otel v1.13.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.36.0
-	go.opentelemetry.io/otel/exporters/zipkin v1.13.0
-	go.opentelemetry.io/otel/metric v0.36.0
-	go.opentelemetry.io/otel/sdk v1.13.0
-	go.opentelemetry.io/otel/sdk/metric v0.36.0
-	go.opentelemetry.io/otel/trace v1.13.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.37.0
+	go.opentelemetry.io/otel v1.11.2
+	go.opentelemetry.io/otel/exporters/prometheus v0.34.0
+	go.opentelemetry.io/otel/exporters/zipkin v1.11.2
+	go.opentelemetry.io/otel/metric v0.34.0
+	go.opentelemetry.io/otel/sdk v1.11.2
+	go.opentelemetry.io/otel/sdk/metric v0.34.0
+	go.opentelemetry.io/otel/trace v1.11.2
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.20.0
 	golang.org/x/sync v0.1.0
