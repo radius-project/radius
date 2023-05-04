@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
 )
@@ -101,14 +102,14 @@ func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) 
 // RecordAsyncOperation records metric when an async operation is completed.
 func (a *asyncOperationMetrics) RecordAsyncOperation(ctx context.Context, req *ctrl.Request, res *ctrl.Result) {
 	if a.counters[AsyncOperationCount] != nil {
-		a.counters[AsyncOperationCount].Add(ctx, 1, newCommonAttributes(req, res)...)
+		a.counters[AsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newCommonAttributes(req, res)...))
 	}
 }
 
 // RecordExtendedAsyncOperation records metric when an async operation is extended.
 func (a *asyncOperationMetrics) RecordExtendedAsyncOperation(ctx context.Context, req *ctrl.Request) {
 	if a.counters[ExtendedAsyncOperationCount] != nil {
-		a.counters[ExtendedAsyncOperationCount].Add(ctx, 1, newCommonAttributes(req, nil)...)
+		a.counters[ExtendedAsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newCommonAttributes(req, nil)...))
 	}
 }
 
@@ -116,7 +117,7 @@ func (a *asyncOperationMetrics) RecordExtendedAsyncOperation(ctx context.Context
 func (a *asyncOperationMetrics) RecordAsyncOperationDuration(ctx context.Context, req *ctrl.Request, startTime time.Time) {
 	if a.valueRecorders[AsnycOperationDuration] != nil {
 		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
-		a.valueRecorders[AsnycOperationDuration].Record(ctx, elapsedTime, newCommonAttributes(req, nil)...)
+		a.valueRecorders[AsnycOperationDuration].Record(ctx, elapsedTime, metric.WithAttributes(newCommonAttributes(req, nil)...))
 	}
 }
 
