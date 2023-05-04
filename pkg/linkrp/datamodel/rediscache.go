@@ -92,7 +92,6 @@ type RedisCacheProperties struct {
 	Secrets       RedisCacheSecrets           `json:"secrets,omitempty"`
 	DisableRecipe bool                        `json:"disableRecipe,omitempty"`
 	Resources     []*linkrp.ResourceReference `json:"resources,omitempty"`
-	Mode          LinkMode                    `json:"mode,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

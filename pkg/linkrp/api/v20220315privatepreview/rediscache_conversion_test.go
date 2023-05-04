@@ -10,30 +10,24 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/to"
-
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []struct {
-		filename         string
-		recipe           linkrp.LinkRecipe
-		disableRecipe    bool
-		overrideRecipe   bool
-		host             string
-		port             int
-		connectionString string
-		password         string
-		resources        []linkrp.ResourceReference
+		filename       string
+		recipe         linkrp.LinkRecipe
+		overrideRecipe bool
+		resources      []*linkrp.ResourceReference
 	}{
 		{
 			// Default recipe
 			filename: "rediscacheresource_defaultrecipe.json",
-			recipe:   linkrp.LinkRecipe{Name: "", Parameters: nil},
+			recipe:   linkrp.LinkRecipe{},
 		},
 		{
 			// Named recipe
@@ -45,26 +39,15 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			filename:       "rediscacheresource_recipe2.json",
 			recipe:         linkrp.LinkRecipe{Name: "redis-test", Parameters: map[string]any{"port": float64(6081)}},
 			overrideRecipe: true,
-			port:           10255,
-			host:           "myrediscache.redis.cache.windows.net",
 		},
 		{
 			// Opt-out with resources
-			filename:         "rediscacheresource.json",
-			resources:        []linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
-			host:             "myrediscache.redis.cache.windows.net",
-			port:             10255,
-			connectionString: "test-connection-string",
-			password:         "testPassword",
-			disableRecipe:    true,
+			filename:  "rediscacheresource.json",
+			resources: []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
 		},
 		{
 			// Opt-out without resources
-			filename:      "rediscacheresource2.json",
-			resources:     []linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
-			host:          "myrediscache.redis.cache.windows.net",
-			port:          10255,
-			disableRecipe: true,
+			filename: "rediscacheresource2.json",
 		},
 	}
 
@@ -87,19 +70,23 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		if !payload.disableRecipe {
+		if versionedResource.Properties.DisableRecipe == nil {
 			require.Equal(t, payload.recipe, convertedResource.Properties.Recipe)
 			if payload.overrideRecipe {
-				require.Equal(t, payload.host, convertedResource.Properties.Host)
-				require.Equal(t, int32(payload.port), convertedResource.Properties.Port)
+				require.Equal(t, *versionedResource.Properties.Host, convertedResource.Properties.Host)
+				require.Equal(t, int32(*versionedResource.Properties.Port), convertedResource.Properties.Port)
 			}
 		} else {
 			require.Equal(t, linkrp.LinkRecipe{}, convertedResource.Properties.Recipe)
-			require.Equal(t, payload.disableRecipe, convertedResource.Properties.DisableRecipe)
-			require.Equal(t, payload.host, convertedResource.Properties.Host)
-			require.Equal(t, int32(payload.port), convertedResource.Properties.Port)
+			require.Equal(t, *versionedResource.Properties.DisableRecipe, convertedResource.Properties.DisableRecipe)
+			require.Equal(t, *versionedResource.Properties.Host, convertedResource.Properties.Host)
+			require.Equal(t, int32(*versionedResource.Properties.Port), convertedResource.Properties.Port)
+			require.Equal(t, payload.resources, convertedResource.Properties.Resources)
 			if convertedResource.Properties.Secrets.ConnectionString != "" {
-				require.Equal(t, payload.connectionString, convertedResource.Properties.Secrets.ConnectionString)
+				require.Equal(t, *versionedResource.Properties.Secrets.ConnectionString, convertedResource.Properties.Secrets.ConnectionString)
+			}
+			if convertedResource.Properties.Secrets.Password != "" {
+				require.Equal(t, *versionedResource.Properties.Secrets.Password, convertedResource.Properties.Secrets.Password)
 			}
 		}
 	}
@@ -115,16 +102,12 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		port             int32
 		connectionString string
 		password         string
-		resources        []linkrp.ResourceReference
+		resources        []*ResourceReference
 	}{
 		{
 			// Opt-out without resources
-			filename:         "rediscacheresourcedatamodel.json",
-			disableRecipe:    true,
-			host:             "myrediscache.redis.cache.windows.net",
-			port:             10255,
-			connectionString: "test-connection-string",
-			password:         "testPassword",
+			filename:      "rediscacheresourcedatamodel.json",
+			disableRecipe: true,
 		},
 		{
 			// Default recipe
@@ -140,9 +123,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			// Opt-out with resources
 			filename:      "rediscacheresourcedatamodel2.json",
 			disableRecipe: true,
-			host:          "myrediscache.redis.cache.windows.net",
-			port:          10255,
-			resources:     []linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			resources:     []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
 		},
 	}
 
@@ -164,14 +145,15 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, linkrp.RedisCachesResourceType, *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		if !payload.disableRecipe {
+		if resource.Properties.DisableRecipe == false {
 			require.Equal(t, payload.recipe, *versionedResource.Properties.Recipe)
 		} else {
-			require.Equal(t, payload.disableRecipe, *versionedResource.Properties.DisableRecipe)
+			require.Equal(t, resource.Properties.DisableRecipe, *versionedResource.Properties.DisableRecipe)
 			require.Equal(t, Recipe{Name: to.Ptr(""), Parameters: nil}, *versionedResource.Properties.Recipe)
-			require.Equal(t, "myrediscache.redis.cache.windows.net", *versionedResource.Properties.Host)
-			require.Equal(t, payload.port, *versionedResource.Properties.Port)
-			if versionedResource.Properties.Status.OutputResources != nil {
+			require.Equal(t, resource.Properties.Host, *versionedResource.Properties.Host)
+			require.Equal(t, resource.Properties.Port, *versionedResource.Properties.Port)
+			require.ElementsMatch(t, payload.resources, versionedResource.Properties.Resources)
+			if resource.Properties.Status.OutputResources != nil {
 				require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
 				require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
 			}
