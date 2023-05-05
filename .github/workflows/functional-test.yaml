@@ -28,7 +28,7 @@ jobs:
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
         run: |
-          echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}_res" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -36,7 +36,7 @@ jobs:
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_OUTPUT
       - name: Debug
-        if: github.event_name == 'schedule'
+        if: false
         run: |
           echo ${{ needs.build.outputs.CHECKOUT_REPO }}
           exit 1
@@ -74,11 +74,6 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
-      - uses: azure/docker-login@v1
-        with:
-          login-server: ${{ env.CACHE_REGISTRY }}
-          username: '${{ secrets.DOCKER_USERNAME }}'
-          password: '${{ secrets.DOCKER_PASSWORD }}'
       - name: Login ACR - ${{ env.CACHE_REGISTRY }}
         run: |
           az acr login -n ${{ env.CACHE_REGISTRY }}
