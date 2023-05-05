@@ -138,7 +138,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -203,28 +203,13 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 }
 
 func Test_Gateway_TLSTermination(t *testing.T) {
-	template := "testdata/gateways/corerp-resources-gateway-tlstermination-%d.bicep"
+	template := "testdata/gateways/corerp-resources-gateway-tlstermination.bicep"
 	name := "corerp-resources-gateway-tlstermination"
 	appNamespace := "default-corerp-resources-gateway-tlstermination"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		// Deploy the Kubernetes namespace
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(template, 1)),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
-		},
-		// Deploy the Kubernetes TLS secret
-		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(template, 2)),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
-		},
-		// Deploy everything else
-		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(template, 3), functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -234,6 +219,11 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 					{
 						Name: "tls-gtwy-gtwy",
 						Type: validation.GatewaysResource,
+						App:  name,
+					},
+					{
+						Name: "tls-gtwy-cert",
+						Type: validation.SecretStoresResource,
 						App:  name,
 					},
 					{
@@ -255,6 +245,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-gtwy"),
 						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-front-rte"),
 						validation.NewK8sServiceForResource(name, "tls-gtwy-front-rte"),
+						validation.NewK8sSecretForResource(name, "tls-gtwy-cert"),
 					},
 				},
 			},

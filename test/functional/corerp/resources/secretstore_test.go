@@ -20,7 +20,7 @@ func Test_SecretStore_CreateSecret(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, "@testdata/test-tls-cert.parameters.json"),
+			Executor: step.NewDeployExecutor(template, "@testdata/parameters/test-tls-cert.parameters.json"),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
