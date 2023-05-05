@@ -25,26 +25,21 @@ jobs:
     name: Build Radius for test
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
-      - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+      - name: Set up checkout target
+        id: checkout_target
         run: |
-          echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}_res" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_REF=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
-      - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule'
-        run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_OUTPUT
-      - name: Debug
-        if: false
-        run: |
-          echo ${{ needs.build.outputs.CHECKOUT_REPO }}
-          exit 1
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+            echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+          else
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}_res" >> $GITHUB_OUTPUT
+            echo "CHECKOUT_REF=" >> $GITHUB_OUTPUT
+          fi
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          repository: ${{ needs.build.outputs.CHECKOUT_REPO }}
-          ref: ${{ needs.build.outputs.CHECKOUT_REF }}
+          repository: ${{ steps.checkout_target.outputs.CHECKOUT_REPO }}
+          ref: ${{ steps.checkout_target.outputs.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
         with:
