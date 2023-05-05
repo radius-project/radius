@@ -24,6 +24,11 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    outputs:
+      REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
+      UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+      CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
     steps:
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -50,11 +55,24 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
       - name: Generate ID for release
+        id: gen-id
         run: |
-          BASE_STR="E2E|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
           UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
-          echo "AZURE_TEST_RESOURCE_GROUP=radius-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          
+          # Set output variables to be used in the other jobs
+          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            **Release Version:** ${{ steps.gen-id.outputs.REL_VERSION }}
+            **Unique ID:** ${{ steps.gen-id.outputs.UNIQUE_ID }}
+            **Checkout Repo:** ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
+            **Checkout Ref:** ${{ steps.gen-id.outputs.CHECKOUT_REF }}
       - uses: actions/cache@v3
         with:
           path: |
@@ -72,6 +90,10 @@ jobs:
       - name: Login ACR - ${{ env.CACHE_REGISTRY }}
         run: |
           az acr login -n ${{ env.CACHE_REGISTRY }}
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            Build started for ${{ steps.gen-id.outputs.REL_VERSION }}
       - name: Build and Push container images
         run: |
           make docker-build && make docker-push
@@ -81,27 +103,32 @@ jobs:
 
   kubernetes_tests:
     name: Run Kubernetes tests
+    needs: build
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    if: ${{ false }}
     env:
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 60m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
       RADIUS_CHART_LOCATION: deploy/Chart/
+      CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Setup rad CLI
-      uses: ./.github/actions/setup-rad-cli
+      with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
     - name: Create KinD Cluster
       uses: helm/kind-action@v1.4.0
       with:
         cluster_name: radius
-        version:  v0.11.0
+        version:  v0.18.0
     - name: Dapr tool installer
       uses: dapr/setup-dapr@v1
     - name: Install dapr into cluster
-      run: dapr init -k --wait --timeout 600
+      run: |
+        dapr init -k --wait --timeout 600
+        exit 1
     - name: Update rad env with Kubernetes
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
