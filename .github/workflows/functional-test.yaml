@@ -38,7 +38,6 @@ jobs:
       - name: Debug
         if: github.event_name == 'schedule'
         run: |
-          echo ${{ build.outputs.CHECKOUT_REPO }}
           echo ${{ needs.build.outputs.CHECKOUT_REPO }}
           exit 1
       - name: Check out code
