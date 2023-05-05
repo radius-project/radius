@@ -30,8 +30,8 @@ import (
 
 // ValidateRequest validates the resource in the incoming request.
 func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	if newResource.Properties.Type != datamodel.SecretTypeCert {
-		return rest.NewBadRequestResponse(fmt.Sprintf("secret store type %s is not supported.", newResource.Properties.Type)), nil
+	if newResource.Properties.Type == datamodel.SecretTypeNone {
+		newResource.Properties.Type = datamodel.SecretTypeGeneric
 	}
 
 	if oldResource != nil {
@@ -225,6 +225,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		return nil, err
 	}
 
+	// In order to get the secret data, we need to get the actual secret location from output resource.
 	newResource.Properties.Status.OutputResources = []rpv1.OutputResource{
 		{
 			Identity: resourcemodel.ResourceIdentity{

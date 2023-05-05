@@ -290,7 +290,7 @@ func (client *SecretStoresClient) listSecretsCreateRequest(ctx context.Context, 
 // listSecretsHandleResponse handles the ListSecrets response.
 func (client *SecretStoresClient) listSecretsHandleResponse(resp *http.Response) (SecretStoresClientListSecretsResponse, error) {
 	result := SecretStoresClientListSecretsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.SecretListProperties); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.SecretStoreListSecretsResult); err != nil {
 		return SecretStoresClientListSecretsResponse{}, err
 	}
 	return result, nil

@@ -26,6 +26,8 @@ const (
 type SecretType string
 
 const (
+	// SecretTypeNone is the undefined type.
+	SecretTypeNone SecretType = ""
 	// SecretTypeGeneric is the generic secret type.
 	SecretTypeGeneric SecretType = "generic"
 	// SecretTypeCert is the certificate secret type.

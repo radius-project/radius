@@ -8,6 +8,7 @@ package secretstores
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -54,11 +55,11 @@ func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.
 
 	ksecret, err := getSecretFromOutputResource(resource.Properties.Status.OutputResources, l.Options())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get secret from output resource: %w", err)
 	}
 
 	if ksecret == nil {
-		return rest.NewNotFoundMessageResponse("Cannot find Kubernetes secret."), nil
+		return nil, errors.New("referenced secret is not found")
 	}
 
 	resp := &datamodel.SecretStoreListSecrets{
@@ -74,13 +75,14 @@ func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.
 
 		val, ok := ksecret.Data[key]
 		if !ok {
-			return rest.NewNotFoundMessageResponse(fmt.Sprintf("Cannot find %s key from secret data.", key)), nil
+			return nil, fmt.Errorf("cannot find %s key from secret data", key)
 		}
 
+		// Kubernetes secret data is always base64-encoded. If the encoding is raw, we need to decode it.
 		if d.Encoding == datamodel.SecretValueEncodingRaw {
 			val, err = base64.StdEncoding.DecodeString(string(val))
 			if err != nil {
-				return rest.NewBadRequestResponse("invalid base64 encoded value"), nil
+				return nil, fmt.Errorf("%s is the invalid base64 encoded value: %w", key, err)
 			}
 		}
 
