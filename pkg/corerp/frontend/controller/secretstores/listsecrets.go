@@ -1,0 +1,93 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package secretstores
+
+import (
+	"context"
+	"encoding/base64"
+	"fmt"
+	"net/http"
+
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/to"
+)
+
+const (
+	OperationListSecrets = "LISTSECRETS"
+)
+
+// ListSecrets is the controller implementation to get recipe metadata such as parameters and the details of those parameters(type/minValue/etc.).
+type ListSecrets struct {
+	ctrl.Operation[*datamodel.SecretStore, datamodel.SecretStore]
+}
+
+// NewListSecrets creates a new ListSecrets controller.
+func NewListSecrets(opts ctrl.Options) (ctrl.Controller, error) {
+	return &ListSecrets{
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.SecretStore]{
+				RequestConverter:  converter.SecretStoreModelFromVersioned,
+				ResponseConverter: converter.SecretStoreModelToVersioned,
+			},
+		),
+	}, nil
+}
+
+func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	resource, _, err := l.GetResource(ctx, serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if resource == nil {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+	}
+
+	ksecret, err := getSecretFromOutputResource(resource.Properties.Status.OutputResources, l.Options())
+	if err != nil {
+		return nil, err
+	}
+
+	if ksecret == nil {
+		return rest.NewNotFoundMessageResponse("Cannot find Kubernetes secret."), nil
+	}
+
+	resp := &datamodel.SecretStoreListSecrets{
+		Type: resource.Properties.Type,
+		Data: map[string]*datamodel.SecretStoreDataValue{},
+	}
+
+	for k, d := range resource.Properties.Data {
+		key := k
+		if d.ValueFrom != nil {
+			key = d.ValueFrom.Name
+		}
+
+		val, ok := ksecret.Data[key]
+		if !ok {
+			return rest.NewNotFoundMessageResponse(fmt.Sprintf("Cannot find %s key from secret data.", key)), nil
+		}
+
+		if d.Encoding == datamodel.SecretValueEncodingRaw {
+			val, err = base64.StdEncoding.DecodeString(string(val))
+			if err != nil {
+				return rest.NewBadRequestResponse("invalid base64 encoded value"), nil
+			}
+		}
+
+		resp.Data[k] = &datamodel.SecretStoreDataValue{
+			Encoding: d.Encoding,
+			Value:    to.Ptr(string(val)),
+		}
+	}
+
+	return rest.NewOKResponse(resp), nil
+}

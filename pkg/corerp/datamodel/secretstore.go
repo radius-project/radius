@@ -32,7 +32,7 @@ const (
 	SecretTypeCert SecretType = "certificate"
 )
 
-// SecretStore represents Application environment resource.
+// SecretStore represents secret store resource.
 type SecretStore struct {
 	v1.BaseResource
 
@@ -91,4 +91,33 @@ type SecretStoreDataValueFrom struct {
 	Name string `json:"name,omitempty"`
 	// Version is the version of the secret.
 	Version string `json:"version,omitempty"`
+}
+
+// SecretStoreListSecrets represents listSecret response.
+type SecretStoreListSecrets struct {
+	// Type is the type of the data.
+	Type SecretType `json:"type,omitempty"`
+
+	// Data is the data of the secret store.
+	Data map[string]*SecretStoreDataValue `json:"data,omitempty"`
+}
+
+// ResourceTypeName returns the resource type name of the resource.
+func (e *SecretStoreListSecrets) ResourceTypeName() string {
+	return "Applications.Core/secretStores"
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (h *SecretStoreListSecrets) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
+	return nil
+}
+
+// OutputResources returns the output resources array.
+func (h *SecretStoreListSecrets) OutputResources() []rpv1.OutputResource {
+	return nil
+}
+
+// ResourceMetadata returns SecretStoreListSecrets resource metadata.
+func (h *SecretStoreListSecrets) ResourceMetadata() *rpv1.BasicResourceProperties {
+	return nil
 }

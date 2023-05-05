@@ -168,7 +168,16 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	for k, secret := range newResource.Properties.Data {
 		val := to.String(secret.Value)
 		if val != "" {
-			if newResource.Properties.Type == datamodel.SecretTypeCert || secret.Encoding == datamodel.SecretValueEncodingBase64 {
+			if newResource.Properties.Type == datamodel.SecretTypeCert {
+				// If encoding is not specified, set it to base64 because kubernetes secret data is always base64 encoded.
+				if secret.Encoding == datamodel.SecretValueEncodingNone || secret.Encoding == datamodel.SecretValueEncodingBase64 {
+					secret.Encoding = datamodel.SecretValueEncodingBase64
+				} else {
+					return rest.NewBadRequestResponse(fmt.Sprintf("%s key must be encoded in base64.", k)), nil
+				}
+			}
+
+			if secret.Encoding == datamodel.SecretValueEncodingBase64 {
 				ksecret.Data[k] = []byte(val)
 			} else {
 				base64.StdEncoding.Encode(ksecret.Data[k], []byte(val))
@@ -184,6 +193,11 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 				if k != key {
 					return rest.NewBadRequestResponse(fmt.Sprintf("%s key name must be same as valueFrom.name %s.", k, key)), nil
 				}
+			}
+
+			// If encoding is not specified, set it to base64 because kubernetes secret data is always base64 encoded.
+			if secret.Encoding == datamodel.SecretValueEncodingNone {
+				secret.Encoding = datamodel.SecretValueEncodingBase64
 			}
 
 			_, ok := ksecret.Data[k]
@@ -233,21 +247,12 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 
 // DeleteRadiusSecret deletes a secret if the secret is managed by Radius.
 func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	or := oldResource.Properties.Status.OutputResources
-	ki := resourcemodel.KubernetesIdentity{}
-	if len(or) > 0 {
-		if err := store.DecodeMap(or[0].Identity.Data, &ki); err != nil {
-			return nil, nil
-		}
+	ksecret, err := getSecretFromOutputResource(oldResource.Properties.Status.OutputResources, options)
+	if err != nil {
+		return nil, err
 	}
 
-	if ki.Kind == resourcekinds.Secret {
-		ksecret := &corev1.Secret{}
-		err := options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ki.Namespace, Name: ki.Name}, ksecret)
-		if !apierrors.IsNotFound(err) && err != nil {
-			return nil, err
-		}
-
+	if ksecret != nil {
 		// Delete only Radius managed resource.
 		if _, ok := ksecret.Labels[kubernetes.LabelRadiusResourceType]; ok {
 			if err := options.KubeClient.Delete(ctx, ksecret); err != nil {
@@ -257,4 +262,40 @@ func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore,
 	}
 
 	return nil, nil
+}
+
+func getIdentityFromOutputResource(resources []rpv1.OutputResource) (*resourcemodel.KubernetesIdentity, error) {
+	for _, r := range resources {
+		ri := r.Identity
+		if ri.ResourceType.Provider == resourcemodel.ProviderKubernetes && ri.ResourceType.Type == resourcekinds.Secret {
+			ki := &resourcemodel.KubernetesIdentity{}
+			if err := store.DecodeMap(ri.Data, ki); err != nil {
+				return nil, err
+			}
+			return ki, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func getSecretFromOutputResource(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
+	ki, err := getIdentityFromOutputResource(resources)
+	if err != nil {
+		return nil, err
+	}
+
+	if ki == nil {
+		return nil, nil
+	}
+
+	ksecret := &corev1.Secret{}
+	err = options.KubeClient.Get(context.Background(), runtimeclient.ObjectKey{Namespace: ki.Namespace, Name: ki.Name}, ksecret)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return ksecret, nil
 }

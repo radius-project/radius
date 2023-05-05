@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"errors"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -63,6 +65,24 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 		Resource:          to.Ptr(ss.Properties.Resource),
 		Data:              fromSecretValuePropertiesDataModel(ss.Properties.Data),
 	}
+
+	return nil
+}
+
+// ConvertTo converts from the versioned SecretStoreResource resource to version-agnostic datamodel.
+func (src *SecretStoresClientListSecretsResponse) ConvertTo() (v1.DataModelInterface, error) {
+	return nil, errors.New("not implemented")
+}
+
+// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoreResource resource.
+func (dst *SecretStoresClientListSecretsResponse) ConvertFrom(src v1.DataModelInterface) error {
+	ss, ok := src.(*datamodel.SecretStoreListSecrets)
+	if !ok {
+		return v1.ErrInvalidModelConversion
+	}
+
+	dst.Type = fromSecretStoreDataTypeDataModel(ss.Type)
+	dst.Data = fromSecretValuePropertiesDataModel(ss.Data)
 
 	return nil
 }

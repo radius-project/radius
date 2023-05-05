@@ -511,7 +511,7 @@
 ## SecretListProperties
 ### Properties
 * **data**: [SecretListPropertiesData](#secretlistpropertiesdata) (ReadOnly): An object to represent key-value type secrets
-* **type**: string (ReadOnly): The type of secret store data
+* **type**: 'certificate' | 'generic' (ReadOnly): The type of secret store data
 
 ## SecretListPropertiesData
 ### Properties

@@ -1155,8 +1155,8 @@ type SecretListProperties struct {
 	// An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties `json:"data,omitempty"`
 
-	// READ-ONLY; The type of secret store data
-	Type *string `json:"type,omitempty" azure:"ro"`
+	// The type of secret store data
+	Type *SecretStoreDataType `json:"type,omitempty"`
 }
 
 type SecretObjectProperties struct {
