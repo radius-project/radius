@@ -23,7 +23,7 @@ const (
 	OperationListSecrets = "LISTSECRETS"
 )
 
-// ListSecrets is the controller implementation to get recipe metadata such as parameters and the details of those parameters(type/minValue/etc.).
+// ListSecrets is the controller implementing listSecret custom action for Applications.Core/secretStores.
 type ListSecrets struct {
 	ctrl.Operation[*datamodel.SecretStore, datamodel.SecretStore]
 }
@@ -40,6 +40,7 @@ func NewListSecrets(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
+// Run reads secret store metadata and returns the secret data from kubernetes secret. Currently, we support only kubernetes secret store.
 func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	resource, _, err := l.GetResource(ctx, serviceCtx.ResourceID)
