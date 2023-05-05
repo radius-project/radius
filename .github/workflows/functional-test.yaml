@@ -166,8 +166,8 @@ jobs:
       - name: Create KinD cluster (OFF)
         if: false
         run: |
-          echo $OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
-          echo $OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
+          echo ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }} | base64 -d > sa.pub
+          echo ${{ secrets.OIDC_ISSUER_PRIVATE_KEY }} | base64 -d > sa.key
           mkdir -p kind/
 
           curl -sSLo "tmp/kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
@@ -189,17 +189,13 @@ jobs:
               kind: ClusterConfiguration
               apiServer:
                 extraArgs:
-                  service-account-issuer: $OIDC_ISSUER
+                  service-account-issuer: ${{ secrets.OIDC_ISSUER }}
                   service-account-key-file: /etc/kubernetes/pki/sa.pub
                   service-account-signing-key-file: /etc/kubernetes/pki/sa.key
               controllerManager:
                 extraArgs:
                   service-account-private-key-file: /etc/kubernetes/pki/sa.key
           EOF
-        env:
-          OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
-          OIDC_ISSUER_PUBLIC_KEY: ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }}
-          OIDC_ISSUER_PRIVATE_KEY: ${{ secrets.OIDC_ISSUER_PRIVATE_KEY }}
       - name: Dapr tool installer
         uses: dapr/setup-dapr@v1
         with:
