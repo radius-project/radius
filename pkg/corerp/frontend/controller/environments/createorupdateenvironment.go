@@ -71,20 +71,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		}
 		newResourceRecipes := newResource.Properties.Recipes
 		if newResourceRecipes != nil {
-			errorPrefix := "recipe name(s) reserved for devRecipes for: "
-			var errorRecipes string
-			// validate that if the input recipe is updating an existing dev recipe with a different templatepath
-			// if the input recipe has the same name as that of the dev recipe but different templatepath return an error
+			// validate that if the input recipe name is present in dev recipes and overwrite it with the new recipe details if present else add it to the recipe list.
 			for resourceType, recipes := range devRecipes {
 				if devRecipes[resourceType] != nil {
 					for recipeName, recipeDetails := range recipes {
 						if newResourceRecipes[resourceType] != nil {
-							if val, ok := newResourceRecipes[resourceType][recipeName]; ok && val.TemplatePath != recipeDetails.TemplatePath {
-								if errorRecipes != "" {
-									errorRecipes += ", "
-								}
-								errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", recipeName, resourceType, val.TemplatePath)
-							} else {
+							if _, ok := newResourceRecipes[resourceType][recipeName]; !ok {
 								newResourceRecipes[resourceType][recipeName] = recipeDetails
 							}
 						} else {
@@ -92,9 +84,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 						}
 					}
 				}
-			}
-			if errorRecipes != "" {
-				return nil, fmt.Errorf(errorPrefix + errorRecipes)
 			}
 		} else {
 			newResource.Properties.Recipes = devRecipes

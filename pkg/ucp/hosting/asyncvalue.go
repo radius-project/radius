@@ -45,6 +45,10 @@ func (a *AsyncValue[T]) Get(ctx context.Context) (*T, error) {
 	go func() {
 		a.Cond.L.Lock()
 
+		defer func() {
+			a.Cond.L.Unlock()
+		}()
+
 		for {
 			if a.Value != nil || a.Err != nil {
 				break
@@ -54,20 +58,19 @@ func (a *AsyncValue[T]) Get(ctx context.Context) (*T, error) {
 			a.Cond.Wait()
 		}
 
-		a.Cond.L.Unlock()
 		initialized <- result[T]{Value: a.Value, Err: a.Err}
 		close(initialized)
 	}()
 
 	select {
 	case <-ctx.Done():
+		close(initialized)
 		return nil, fmt.Errorf("failed to retrieve value: %w", ctx.Err())
 
 	case result := <-initialized:
 		if result.Err != nil {
 			return nil, result.Err
 		}
-
 		return result.Value, nil
 	}
 }
