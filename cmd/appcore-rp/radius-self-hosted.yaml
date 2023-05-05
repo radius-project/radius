@@ -18,7 +18,7 @@ metricsProvider:
     path: "/metrics"
     port: 9092
 profilerProvider:
-  enabled: false
+  enabled: true
   port: 6060
 featureFlags:
   - "PLACEHOLDER"
