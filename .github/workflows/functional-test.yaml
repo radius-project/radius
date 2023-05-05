@@ -13,12 +13,16 @@ on:
 env:
   # Go version
   GOVER: '^1.20'
-  HELMVER: '^v3.10.0'
+  HELM_VER: '^v3.10.0'
+  KIND_VER: 'v1.18.0'
+  DAPR_VER: '1.10.5'
   GOPROXY: https://proxy.golang.org
   CACHE_REGISTRY: radiusdev.azurecr.io
   FUNCTIONALTEST_TIMEOUT: 60m
   AZURE_REGION: westus3
   AZURE_SUBSCRIPTION_ID: "85716382-7362-45c3-ae03-2126e459a123"
+  AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
 
 jobs:
   build:
@@ -29,6 +33,7 @@ jobs:
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
       CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
+      AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
     steps:
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -66,13 +71,26 @@ jobs:
           echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
+          header: ${{ github.run_id }}
+          append: true
           message: |
-            **Release Version:** ${{ steps.gen-id.outputs.REL_VERSION }}
-            **Unique ID:** ${{ steps.gen-id.outputs.UNIQUE_ID }}
-            **Checkout Repo:** ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
-            **Checkout Ref:** ${{ steps.gen-id.outputs.CHECKOUT_REF }}
+            ## Radius functional test
+            ### Test information
+            | Name | Value |
+            |---|---|
+            |**Checkout Repository** | ${{ steps.gen-id.outputs.CHECKOUT_REPO }} |
+            |**Checkout ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
+            |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
+            |**Test image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
+            |**Azure test resource group** | ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} |
+
+            > **[Go to test action run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})**
+
+            ### Image build progress
+
       - uses: actions/cache@v3
         with:
           path: |
@@ -90,16 +108,26 @@ jobs:
       - name: Login ACR - ${{ env.CACHE_REGISTRY }}
         run: |
           az acr login -n ${{ env.CACHE_REGISTRY }}
-      - uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          message: |
-            Build started for ${{ steps.gen-id.outputs.REL_VERSION }}
       - name: Build and Push container images
         run: |
           make docker-build && make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ✅ Test image build is succeeded
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ❌ Test image build is failed
 
   kubernetes_tests:
     name: Run Kubernetes tests
@@ -110,53 +138,155 @@ jobs:
       K8S_FUNCTIONALTEST_TIMEOUT: 60m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
       RADIUS_CHART_LOCATION: deploy/Chart/
+      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+      AZURE_TEST_RESOURCE_GROUP: ${{ needs.build.outputs.AZURE_TEST_RESOURCE_GROUP }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
-    - name: Create KinD Cluster
-      uses: helm/kind-action@v1.4.0
-      with:
-        cluster_name: radius
-        version:  v0.18.0
-    - name: Dapr tool installer
-      uses: dapr/setup-dapr@v1
-    - name: Install dapr into cluster
-      run: |
-        dapr init -k --wait --timeout 600
-        exit 1
-    - name: Update rad env with Kubernetes
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        mkdir ~/.rad
-        dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }} --ucp-image ${{ env.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ env.REL_VERSION }}
-        # Print config for sanity check
-        cat ~/.rad/config.yaml
-    - name: Download Bicep
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        cd $GITHUB_WORKSPACE
-        which rad || { echo "cannot find rad"; exit 1; }
-        rad bicep download
-    - name: Run Kubernetes tests (PR)
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
-        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        make test-functional-kubernetes
-    - name: Upload container logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: container_logs
-        path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
-    - name: Uninstall Radius from Kubernetes
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        rad env uninstall kubernetes
-        ./.github/scripts/namespace-is-empty.sh
+      
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
 
+            ### Test environment setup
+      - name: Create KinD cluster without OIDC
+        run: |
+          mkdir -p tmp/
+
+          curl -sSLo "tmp/kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
+          chmod +x "tmp/kind"
+          tmp/kind create cluster --name radius
+      - name: Create KinD cluster (OFF)
+        if: false
+        run: |
+          echo $OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+          echo $OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
+          mkdir -p kind/
+
+          curl -sSLo "tmp/kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
+          chmod +x "tmp/kind"
+
+          # Create KinD cluster with OIDC Issuer keys
+          cat <<EOF | tmp/kind create cluster --name radius --config=-
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+          - role: control-plane
+            extraMounts:
+              - hostPath: ./sa.pub
+                containerPath: /etc/kubernetes/pki/sa.pub
+              - hostPath: ./sa.key
+                containerPath: /etc/kubernetes/pki/sa.key
+            kubeadmConfigPatches:
+            - |
+              kind: ClusterConfiguration
+              apiServer:
+                extraArgs:
+                  service-account-issuer: $OIDC_ISSUER
+                  service-account-key-file: /etc/kubernetes/pki/sa.pub
+                  service-account-signing-key-file: /etc/kubernetes/pki/sa.key
+              controllerManager:
+                extraArgs:
+                  service-account-private-key-file: /etc/kubernetes/pki/sa.key
+          EOF
+        env:
+          OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
+          OIDC_ISSUER_PUBLIC_KEY: ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }}
+          OIDC_ISSUER_PRIVATE_KEY: ${{ OIDC_ISSUER_PRIVATE_KEY }}
+      - name: Dapr tool installer
+        uses: dapr/setup-dapr@v1
+        with:
+          version: ${{ env.DAPR_VER }}
+      - name: Install dapr into cluster
+        run: |
+          dapr init -k --wait --timeout 600
+      - name: Install Azure Keyvault CSI driver chart
+        run: |
+          helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+          helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --version ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
+      - name: Install azure workload identity webhook chart
+        run: |
+          helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
+          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ✅ The following test environment is created successfully.
+
+            | Name | Version |
+            |---|---|
+            | KinD | ${{ env.KIND_VER }} |
+            | Dapr | ${{ env.DAPR_VER }} |
+            | Azure Keyvault CSI driver | ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }} |
+            | Azure workload identity webhook | ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} |
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ❌ The following test environment creation is failed. Please check the logs for more details.
+      - name: Download Bicep
+        run: |
+          exit 1
+          export PATH=$GITHUB_WORKSPACE/dist:$PATH
+          cd $GITHUB_WORKSPACE
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep download
+
+      - name: Install Radius
+        run: |
+          dist/rad install kubernetes \
+            --chart ${{ env.RADIUS_CHART_LOCATION }} --tag ${{ env.REL_VERSION }} \
+            --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},\
+          ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},ucp.provider.aws.region=${{ env.AWS_REGION }}
+
+          dist/rad workspace create kubernetes
+          dist/rad group create kind-radius
+          dist/rad group switch kind-radius
+
+          dist/rad env create kind-radius --namespace default 
+          dist/rad env switch kind-radius
+
+          dist/rad env update kind-radius --azure-subscription-id ${{ env.AZURE_SUBSCRIPTION_ID }} \
+            --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+
+          dist/rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
+            --client-secret ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
+            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+
+          dist/rad env update kind-radius --aws-region ${{ env.AWS_REGION }} \
+            --aws-account-id ${{ AWS_ACCOUNT_ID }}
+
+          dist/rad credential register aws \
+            --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
+            --secret-access-key $${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Run Kubernetes tests (PR)
+        run: |
+          # Ensure rad cli is in path before running tests.
+          export PATH=$GITHUB_WORKSPACE/dist:$PATH
+          cd $GITHUB_WORKSPACE
+          which rad || { echo "cannot find rad"; exit 1; }
+
+          make test-functional-kubernetes
+        env:
+          TEST_TIMEOUT: ${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
+          RADIUS_CONTAINER_LOG_PATH: $GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: container_logs
+          path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
