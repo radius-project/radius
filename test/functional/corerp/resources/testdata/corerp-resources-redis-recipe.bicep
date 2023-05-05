@@ -10,10 +10,11 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       kind: 'kubernetes'
       resourceId: 'self'
       namespace: 'corerp-resources-environment-recipe-env' 
-      providers: {
-        azure: {
-          scope: scope
-        }
+    }
+    providers: {
+      azure: {
+        scope: scope
+      }
     }
     recipes: {
       'Applications.Link/redisCaches':{
@@ -49,4 +50,4 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
       name: 'rediscache'
     }
   }
-}
+}}
