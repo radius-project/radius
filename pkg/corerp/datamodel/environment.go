@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const EnvironmentResourceType = "Applications.Core/environments"
+
 // Environment represents Application environment resource.
 type Environment struct {
 	v1.BaseResource
@@ -19,7 +21,7 @@ type Environment struct {
 }
 
 func (e *Environment) ResourceTypeName() string {
-	return "Applications.Core/environments"
+	return EnvironmentResourceType
 }
 
 // EnvironmentProperties represents the properties of Environment.

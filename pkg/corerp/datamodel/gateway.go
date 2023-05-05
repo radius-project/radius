@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const GatewayResourceType = "Applications.Core/gateways"
+
 // Gateway represents Gateway resource.
 type Gateway struct {
 	v1.BaseResource
@@ -22,7 +24,7 @@ type Gateway struct {
 
 // ResourceTypeName returns the qualified name of the resource
 func (g *Gateway) ResourceTypeName() string {
-	return "Applications.Core/gateways"
+	return GatewayResourceType
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.

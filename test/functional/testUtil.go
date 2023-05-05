@@ -51,6 +51,7 @@ func setDefault() (string, string) {
 	if imageTag == "" {
 		imageTag = "latest"
 	}
+
 	return defaultDockerReg, imageTag
 }
 

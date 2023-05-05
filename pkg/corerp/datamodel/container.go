@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const ContainerResourceType = "Applications.Core/containers"
+
 // ContainerResource represents Container resource.
 type ContainerResource struct {
 	v1.BaseResource
@@ -23,7 +25,7 @@ type ContainerResource struct {
 
 // ResourceTypeName returns the qualified name of the resource
 func (c ContainerResource) ResourceTypeName() string {
-	return "Applications.Core/containers"
+	return ContainerResourceType
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.

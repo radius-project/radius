@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const SecretStoreResourceType = "Applications.Core/secretStores"
+
 // SecretValueEncoding is the encoding type.
 type SecretValueEncoding string
 
@@ -36,6 +38,8 @@ const (
 type SecretStore struct {
 	v1.BaseResource
 
+	// TODO: remove this from CoreRP
+	LinkMetadata
 	// Properties is the properties of the resource.
 	Properties *SecretStoreProperties `json:"properties"`
 }

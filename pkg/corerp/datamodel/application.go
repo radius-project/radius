@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const ApplicationResourceType = "Applications.Core/applications"
+
 var _ v1.DataModelInterface = (*Application)(nil)
 
 // Application represents Application resource.
@@ -22,7 +24,7 @@ type Application struct {
 
 // ResourceTypeName returns the qualified name of the resource
 func (e *Application) ResourceTypeName() string {
-	return "Applications.Core/applications"
+	return ApplicationResourceType
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
