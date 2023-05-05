@@ -32,8 +32,8 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
           else
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}_res" >> $GITHUB_OUTPUT
-            echo "CHECKOUT_REF=" >> $GITHUB_OUTPUT
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_OUTPUT
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           fi
       - name: Check out code
         uses: actions/checkout@v3
