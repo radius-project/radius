@@ -23,6 +23,12 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
+//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
+//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -30,11 +36,22 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
+//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // Run mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.Run is a mock implementation of the Run function which takes in a context and Options and returns an 
+//	error. It calls the controller's Call function with the given parameters and returns the first element of the returned 
+//	slice as an error.
 func (m *MockInterface) Run(arg0 context.Context, arg1 Options) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Run", arg0, arg1)
@@ -43,6 +60,11 @@ func (m *MockInterface) Run(arg0 context.Context, arg1 Options) error {
 }
 
 // Run indicates an expected call of Run.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Run method of the MockInterface with the given parameters, and returns an error if 
+//	the call fails.
 func (mr *MockInterfaceMockRecorder) Run(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockInterface)(nil).Run), arg0, arg1)

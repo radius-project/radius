@@ -40,6 +40,10 @@ type ContourOptions struct {
 	HostNetwork  bool
 }
 
+// # Function Explanation
+// 
+//	ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given 
+//	ContourOptions. If an error occurs, it returns an error with the Helm output included.
 func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
@@ -87,6 +91,11 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	return err
 }
 
+// # Function Explanation
+// 
+//	AddContourValues configures the chart values for Contour to use Host Networking if the option is set, and sets the 
+//	container and service ports to avoid conflicts. It returns an error if any of the nodes in the chart values are not 
+//	found.
 func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
@@ -128,6 +137,10 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 	return nil
 }
 
+// # Function Explanation
+// 
+//	RunContourHelmInstall configures and runs an install of the Contour Helm chart using the provided Helm configuration and
+//	 chart. It returns an error if the install fails.
 func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = contourReleaseName
@@ -137,6 +150,10 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	return runInstall(installClient, helmChart)
 }
 
+// # Function Explanation
+// 
+//	RunContourHelmUninstall attempts to uninstall Contour from the specified namespace using the provided helm 
+//	configuration. It returns an error if the uninstall fails, or nil if the Contour release was not found.
 func RunContourHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Contour from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)

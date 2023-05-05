@@ -23,6 +23,12 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
+//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
+//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -30,11 +36,22 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
+//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // GetKubeContext mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.GetKubeContext is a function that retrieves a Kubernetes configuration and returns it along with any 
+//	errors that may have occurred. It handles errors by returning them to the caller, allowing them to handle the error as 
+//	needed.
 func (m *MockInterface) GetKubeContext() (*api.Config, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetKubeContext")
@@ -44,6 +61,11 @@ func (m *MockInterface) GetKubeContext() (*api.Config, error) {
 }
 
 // GetKubeContext indicates an expected call of GetKubeContext.
+//
+// # Function Explanation
+// 
+//	This function records a call to the GetKubeContext method of the MockInterface interface, which is used to handle errors
+//	 and return an appropriate response.
 func (mr *MockInterfaceMockRecorder) GetKubeContext() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKubeContext", reflect.TypeOf((*MockInterface)(nil).GetKubeContext))

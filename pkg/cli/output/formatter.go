@@ -38,6 +38,10 @@ type Formatter interface {
 	Format(obj any, writer io.Writer, options FormatterOptions) error
 }
 
+// # Function Explanation
+// 
+//	NewFormatter takes in a format string and returns a Formatter interface based on the format string. It handles errors by
+//	 returning a nil Formatter and an error if the format string is not supported.
 func NewFormatter(format string) (Formatter, error) {
 	normalized := strings.ToLower(strings.TrimSpace(format))
 	switch normalized {

@@ -75,16 +75,29 @@ type ErrUnsupportedCloudProvider struct {
 	Message string
 }
 
+// # Function Explanation
+// 
+//	ErrUnsupportedCloudProvider is an error function that returns an error message when an unsupported cloud provider is 
+//	encountered. It is useful for callers of this function to handle errors related to unsupported cloud providers.
 func (fe *ErrUnsupportedCloudProvider) Error() string {
 	return "unsupported cloud provider"
 }
 
+// # Function Explanation
+// 
+//	ErrUnsupportedCloudProvider's Is() method checks if the given error is of type ErrUnsupportedCloudProvider, and returns 
+//	a boolean value indicating the result of the check. This allows callers of the function to handle the error accordingly.
 func (fe *ErrUnsupportedCloudProvider) Is(target error) bool {
 	_, ok := target.(*ErrUnsupportedCloudProvider)
 	return ok
 }
 
 // Put registers credentials with the provided credential config
+//
+// # Function Explanation
+// 
+//	The Put function of the AzureCredentialManagementClient creates or updates an Azure credential resource in the Azure 
+//	plane. It returns an error if the credential type is not supported or if there is an issue with the request.
 func (cpm *AzureCredentialManagementClient) Put(ctx context.Context, credential ucp.AzureCredentialResource) error {
 	if strings.EqualFold(*credential.Type, AzureCredential) {
 		_, err := cpm.AzureCredentialClient.CreateOrUpdate(ctx, AzurePlaneName, defaultSecretName, credential, nil)
@@ -95,6 +108,11 @@ func (cpm *AzureCredentialManagementClient) Put(ctx context.Context, credential 
 }
 
 // Get, gets the credential from the provided ucp provider plane
+//
+// # Function Explanation
+// 
+//	The Get function of the AzureCredentialManagementClient retrieves the AzureCredentialProperties associated with the 
+//	given credentialName from the Azure plane. If the credentialName is not found, an error is returned.
 func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialName string) (ProviderCredentialConfiguration, error) {
 	var err error
 
@@ -120,6 +138,12 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 }
 
 // List, lists the credentials registered with all ucp provider planes
+//
+// # Function Explanation
+// 
+//	The List function of the AzureCredentialManagementClient retrieves a list of all the Azure credentials stored in the 
+//	root scope and returns them as a slice of CloudProviderStatus objects. It handles errors by returning them to the 
+//	caller.
 func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
 	// list azure credential
 	var providerList []*ucp.AzureCredentialResource
@@ -146,6 +170,12 @@ func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudPr
 }
 
 // Delete, deletes the credentials from the given ucp provider plane
+//
+// # Function Explanation
+// 
+//	The Delete function of the AzureCredentialManagementClient attempts to delete a credential from the AzurePlaneName and 
+//	returns a boolean and an error. If the credential is not found, it returns true and no error. If an error is 
+//	encountered, it returns false and the error.
 func (cpm *AzureCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
 	_, err := cpm.AzureCredentialClient.Delete(ctx, AzurePlaneName, name, nil)
 

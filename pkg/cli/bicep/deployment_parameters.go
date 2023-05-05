@@ -39,10 +39,19 @@ type ParameterFile struct {
 	Parameters clients.DeploymentParameters `json:"parameters"`
 }
 
+// # Function Explanation
+// 
+//	OSFileSystem.Open opens a file from the local filesystem and returns a file object or an error if the file could not be 
+//	opened.
 func (OSFileSystem) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }
 
+// # Function Explanation
+// 
+//	ParameterParser.ParseFileContents takes in a map of any type and returns a DeploymentParameters object. It marshals the 
+//	input into a JSON object, then unmarshals it into the output object. If any errors occur during the marshalling or 
+//	unmarshalling, it returns an error to the caller.
 func (pp ParameterParser) ParseFileContents(input map[string]any) (clients.DeploymentParameters, error) {
 	output := clients.DeploymentParameters{}
 
@@ -59,6 +68,11 @@ func (pp ParameterParser) ParseFileContents(input map[string]any) (clients.Deplo
 	return output, err
 }
 
+// # Function Explanation
+// 
+//	ParameterParser.Parse takes in a list of strings and merges them into a DeploymentParameters object, with later 
+//	parameters taking precedence. It returns an error if any of the parameters fail to process. Callers should check for 
+//	errors when calling this function.
 func (pp ParameterParser) Parse(inputs ...string) (clients.DeploymentParameters, error) {
 	output := clients.DeploymentParameters{}
 	for _, input := range inputs {
@@ -148,6 +162,10 @@ func (pp ParameterParser) mergeSingleParameter(output clients.DeploymentParamete
 	output[name] = NewParameter(input)
 }
 
+// # Function Explanation
+// 
+//	NewParameter creates a map containing a single key-value pair, where the key is "value" and the value is the parameter 
+//	passed to the function. If the parameter is invalid, an empty map is returned.
 func NewParameter(value any) map[string]any {
 	return map[string]any{
 		"value": value,

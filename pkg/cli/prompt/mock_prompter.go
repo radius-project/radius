@@ -24,6 +24,12 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
+//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
+//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -31,11 +37,22 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
+//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // GetListInput mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.GetListInput is a mock implementation of an interface that takes in two arguments and returns a string and
+//	 an error. It uses the ctrl.Call method to call the function and returns the string and error values. If an error is 
+//	encountered, it is returned to the caller.
 func (m *MockInterface) GetListInput(arg0 []string, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetListInput", arg0, arg1)
@@ -45,6 +62,11 @@ func (m *MockInterface) GetListInput(arg0 []string, arg1 string) (string, error)
 }
 
 // GetListInput indicates an expected call of GetListInput.
+//
+// # Function Explanation
+// 
+//	This function records a call to the GetListInput method of the MockInterface, passing in two arguments, and returns an 
+//	error if the call fails.
 func (mr *MockInterfaceMockRecorder) GetListInput(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetListInput", reflect.TypeOf((*MockInterface)(nil).GetListInput), arg0, arg1)
@@ -60,6 +82,11 @@ func (m *MockInterface) GetTextInput(arg0 string, arg1 text.TextModelOptions) (s
 }
 
 // GetTextInput indicates an expected call of GetTextInput.
+//
+// # Function Explanation
+// 
+//	The GetTextInput function records a call to the mock interface with the given parameters and returns an error if the 
+//	call fails.
 func (mr *MockInterfaceMockRecorder) GetTextInput(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTextInput", reflect.TypeOf((*MockInterface)(nil).GetTextInput), arg0, arg1)

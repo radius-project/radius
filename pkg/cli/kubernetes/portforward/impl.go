@@ -27,6 +27,11 @@ var _ Interface = (*Impl)(nil)
 type Impl struct {
 }
 
+// # Function Explanation
+// 
+//	Impl.Run initializes a Kubernetes client and config if they are not provided, then watches deployments in the 
+//	application and tries to forward to one pod at a time. If the pod shuts down, it picks the newest other replica and 
+//	forwards to that. It returns an error if any of the initialization or watching fails.
 func (i *Impl) Run(ctx context.Context, options Options) error {
 	if options.StatusChan != nil {
 		defer close(options.StatusChan)

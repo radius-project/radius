@@ -38,6 +38,11 @@ const (
 type TableFormatter struct {
 }
 
+// # Function Explanation
+// 
+//	TableFormatter's Format function takes in an object, a writer and formatting options, and writes a table to the writer 
+//	using the formatting options. It checks if columns were defined, converts the object to a slice, and then parses and 
+//	transforms the columns before writing them to the writer. If any errors occur, it returns an error.
 func (f *TableFormatter) Format(obj any, writer io.Writer, options FormatterOptions) error {
 	if len(options.Columns) == 0 {
 		return errors.New("no columns were defined, table format is not supported for this command")

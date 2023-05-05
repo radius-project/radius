@@ -83,6 +83,12 @@ func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, er
 }
 
 // GetListInput prompts user to select from a list
+//
+// # Function Explanation
+// 
+//	Impl.GetListInput creates a new ListModel with the given items and prompt message, then runs it using tea. If an error 
+//	occurs, it is returned. Otherwise, the ListModel is checked for validity and if it is quitting, an error is returned. 
+//	Otherwise, the choice from the ListModel is returned. If any errors occur, they should be handled by the caller.
 func (i *Impl) GetListInput(items []string, promptMsg string) (string, error) {
 	lm := cli_list.NewListModel(items, promptMsg)
 
@@ -123,11 +129,21 @@ func (*ErrExitConsole) IsFriendlyError() bool {
 }
 
 // Error returns the error message.
+//
+// # Function Explanation
+// 
+//	ErrExitConsole is an error type that is returned when the function encounters an error that requires the program to exit
+//	 the console. It provides a useful message to the callers of the function to inform them of the error.
 func (e *ErrExitConsole) Error() string {
 	return ErrExitConsoleMessage
 }
 
 // Is checks for the error type is ErrExitConsole.
+//
+// # Function Explanation
+// 
+//	ErrExitConsole is a custom error type that implements the error interface, allowing it to be used in error handling. It 
+//	provides a way for callers of the function to check if the error is of this type and handle it accordingly.
 func (e *ErrExitConsole) Is(target error) bool {
 	_, ok := target.(*ErrExitConsole)
 	return ok

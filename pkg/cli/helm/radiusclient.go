@@ -150,6 +150,10 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	return runUpgrade(installClient, releaseName, helmChart)
 }
 
+// # Function Explanation
+//
+//	RunRadiusHelmUninstall runs the Helm uninstall command to remove the Radius release from the specified namespace. It
+//	handles the error if the release is not found, logging a message and returning nil.
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)

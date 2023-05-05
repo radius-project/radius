@@ -22,6 +22,11 @@ import (
 	"os"
 )
 
+// # Function Explanation
+// 
+//	ReadARMJSON reads a JSON file from the given file path and returns a map of strings to any type, or an error if the file
+//	 could not be read or unmarshalled. Error handling is included to provide useful information to the caller if the file 
+//	could not be read or unmarshalled.
 func ReadARMJSON(filePath string) (map[string]any, error) {
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {

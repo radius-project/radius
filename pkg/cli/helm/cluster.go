@@ -42,6 +42,11 @@ type ClusterOptions struct {
 	Radius  RadiusOptions
 }
 
+// # Function Explanation
+// 
+//	NewDefaultClusterOptions() sets the default values for the ClusterOptions struct, such as the chart version and tag, 
+//	based on the version of the CLI. If the version is an edge build, the latest available version is used. If an error 
+//	occurs, the function will return an empty ClusterOptions struct.
 func NewDefaultClusterOptions() ClusterOptions {
 	// By default we use the chart version that matches the channel of the CLI (major.minor)
 	// If this is an edge build, we'll use the latest available.
@@ -60,6 +65,11 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 }
 
+// # Function Explanation
+// 
+//	PopulateDefaultClusterOptions takes in a CLIClusterOptions object and returns a ClusterOptions object with the default 
+//	values, unless any of the CLI options are provided, in which case they will override the default values. If any of the 
+//	CLI options are invalid, an error will be returned.
 func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 
@@ -88,6 +98,11 @@ func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext str
 	return foundExisting, nil
 }
 
+// # Function Explanation
+// 
+//	InstallOnCluster applies the Helm charts for Radius and Contour to the cluster specified in the ClusterOptions 
+//	parameter, using the kubeContext provided. It returns a boolean indicating whether an existing installation was found, 
+//	and an error if one occurred.
 func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext string) (bool, error) {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -107,6 +122,11 @@ func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext s
 	return foundExisting, err
 }
 
+// # Function Explanation
+// 
+//	UninstallOnCluster is a function that uninstalls the Radius and Contour Helm charts from a Kubernetes cluster. It takes 
+//	in a kubeContext string and returns an error if any of the Helm uninstall commands fail. If an error is encountered, the
+//	 function will return the Helm output along with the error.
 func UninstallOnCluster(kubeContext string) error {
 	var helmOutput strings.Builder
 
