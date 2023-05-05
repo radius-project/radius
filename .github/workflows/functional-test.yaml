@@ -43,8 +43,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          repository: ${{ build.outputs.CHECKOUT_REPO }}
-          ref: ${{ build.outputs.CHECKOUT_REF }}
+          repository: ${{ needs.build.outputs.CHECKOUT_REPO }}
+          ref: ${{ needs.build.outputs.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
         with:
