@@ -67,6 +67,7 @@ type TestStep struct {
 	SkipKubernetesOutputResourceValidation bool
 	SkipObjectValidation                   bool
 	SkipResourceDeletion                   bool
+	SkipLabelValidation                    bool
 }
 
 type CoreRPTest struct {
@@ -280,7 +281,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			} else {
 				if step.K8sObjects != nil {
 					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
-					validation.ValidateObjectsRunning(ctx, t, ct.Options.K8sClient, ct.Options.DynamicClient, *step.K8sObjects)
+					validation.ValidateObjectsRunning(ctx, t, ct.Options.K8sClient, ct.Options.DynamicClient, *step.K8sObjects, step.SkipLabelValidation)
 					t.Logf("finished validating creation of objects for %s", step.Executor.GetDescription())
 				}
 			}

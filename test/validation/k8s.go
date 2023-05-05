@@ -267,7 +267,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 }
 
 // ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
-func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
+func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet, skipLabelValidation bool) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
 		log.Printf("validating objects in namespace %v", namespace)
@@ -299,7 +299,7 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 					}
 					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
 
-					validated = validated && matchesActualLabels(expectedInNamespace, deployedResources.Items)
+					validated = skipLabelValidation || (validated && matchesActualLabels(expectedInNamespace, deployedResources.Items))
 				}
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
