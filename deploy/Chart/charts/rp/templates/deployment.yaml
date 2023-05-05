@@ -63,12 +63,16 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
+        - name: terraform
+          mountPath: /terraform
         securityContext:
           allowPrivilegeEscalation: false
       volumes:
         - name: config-volume
           configMap:
             name: appcore-rp-config
+        - terraform:
+            emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
