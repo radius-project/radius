@@ -199,7 +199,7 @@ jobs:
         env:
           OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
           OIDC_ISSUER_PUBLIC_KEY: ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }}
-          OIDC_ISSUER_PRIVATE_KEY: ${{ OIDC_ISSUER_PRIVATE_KEY }}
+          OIDC_ISSUER_PRIVATE_KEY: ${{ secrets.OIDC_ISSUER_PRIVATE_KEY }}
       - name: Dapr tool installer
         uses: dapr/setup-dapr@v1
         with:
