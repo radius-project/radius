@@ -265,6 +265,47 @@ func Test_GeneratePatch(t *testing.T) {
 			},
 			nil,
 		},
+		{
+			"conditional-create-only-property noops if not updated",
+			map[string]any{
+				"A": "B",
+			},
+			map[string]any{},
+			map[string]any{
+				"properties": map[string]any{
+					"A": map[string]any{},
+				},
+				"conditionalCreateOnlyProperties": []any{
+					"/properties/A",
+				},
+			},
+			nil,
+		},
+		{
+			"can update conditional-create-only-property",
+			map[string]any{
+				"A": "B",
+			},
+			map[string]any{
+				"A": "C",
+			},
+			map[string]any{
+				"properties": map[string]any{
+					"A": map[string]any{},
+				},
+				"conditionalCreateOnlyProperties": []any{
+					"/properties/A",
+				},
+			},
+			jsondiff.Patch{
+				{
+					Type:     "replace",
+					Path:     "/A",
+					OldValue: "B",
+					Value:    "C",
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
