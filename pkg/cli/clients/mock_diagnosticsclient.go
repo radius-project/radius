@@ -24,6 +24,11 @@ type MockDiagnosticsClientMockRecorder struct {
 }
 
 // NewMockDiagnosticsClient creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockDiagnosticsClient creates a new MockDiagnosticsClient object with a given controller and recorder, which can be used
+//	 to mock and record calls to the DiagnosticsClient. If an error occurs, it will be returned to the caller.
 func NewMockDiagnosticsClient(ctrl *gomock.Controller) *MockDiagnosticsClient {
 	mock := &MockDiagnosticsClient{ctrl: ctrl}
 	mock.recorder = &MockDiagnosticsClientMockRecorder{mock}
@@ -31,11 +36,23 @@ func NewMockDiagnosticsClient(ctrl *gomock.Controller) *MockDiagnosticsClient {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockDiagnosticsClient's EXPECT() function returns a MockDiagnosticsClientMockRecorder object which can be used to set 
+//	expectations on the MockDiagnosticsClient object, allowing callers to check for errors when making calls to the 
+//	MockDiagnosticsClient.
 func (m *MockDiagnosticsClient) EXPECT() *MockDiagnosticsClientMockRecorder {
 	return m.recorder
 }
 
 // Expose mocks base method.
+//
+// # Function Explanation
+// 
+//	MockDiagnosticsClient.Expose is a function that provides a way to expose diagnostics data from a service. It returns 
+//	channels for errors, completion and signals, and an error if the operation fails. Callers of this function should check 
+//	the error channel for errors and the completion channel to know when the operation is finished.
 func (m *MockDiagnosticsClient) Expose(arg0 context.Context, arg1 ExposeOptions) (chan error, chan struct{}, chan os.Signal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Expose", arg0, arg1)
@@ -47,12 +64,23 @@ func (m *MockDiagnosticsClient) Expose(arg0 context.Context, arg1 ExposeOptions)
 }
 
 // Expose indicates an expected call of Expose.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Expose method of the MockDiagnosticsClient, passing in two arguments and returning a
+//	 gomock.Call object. If an error occurs, it will be returned to the caller.
 func (mr *MockDiagnosticsClientMockRecorder) Expose(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Expose", reflect.TypeOf((*MockDiagnosticsClient)(nil).Expose), arg0, arg1)
 }
 
 // GetPublicEndpoint mocks base method.
+//
+// # Function Explanation
+// 
+//	MockDiagnosticsClient.GetPublicEndpoint is a mock implementation of the GetPublicEndpoint function which calls the 
+//	controller's Call method with the given context and EndpointOptions, and returns a string and an error. If an error is 
+//	encountered, it is returned to the caller.
 func (m *MockDiagnosticsClient) GetPublicEndpoint(arg0 context.Context, arg1 EndpointOptions) (*string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPublicEndpoint", arg0, arg1)
@@ -62,12 +90,23 @@ func (m *MockDiagnosticsClient) GetPublicEndpoint(arg0 context.Context, arg1 End
 }
 
 // GetPublicEndpoint indicates an expected call of GetPublicEndpoint.
+//
+// # Function Explanation
+// 
+//	This function records a call to the GetPublicEndpoint function of the MockDiagnosticsClient, which is used to handle 
+//	errors that may occur when calling the function. It returns a gomock.Call object which can be used to check for errors.
 func (mr *MockDiagnosticsClientMockRecorder) GetPublicEndpoint(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicEndpoint", reflect.TypeOf((*MockDiagnosticsClient)(nil).GetPublicEndpoint), arg0, arg1)
 }
 
 // Logs mocks base method.
+//
+// # Function Explanation
+// 
+//	MockDiagnosticsClient.Logs is a function that takes in a context and LogsOptions and returns a slice of LogStreams and 
+//	an error. It uses the controller to call the function and returns the results as a slice of LogStreams and an error, 
+//	which should be handled by the caller.
 func (m *MockDiagnosticsClient) Logs(arg0 context.Context, arg1 LogsOptions) ([]LogStream, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Logs", arg0, arg1)
@@ -77,6 +116,12 @@ func (m *MockDiagnosticsClient) Logs(arg0 context.Context, arg1 LogsOptions) ([]
 }
 
 // Logs indicates an expected call of Logs.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Logs method of the MockDiagnosticsClient, which takes in two parameters and returns 
+//	an error if the call fails. The error handling allows the caller to handle any errors that may occur when calling the 
+//	Logs method.
 func (mr *MockDiagnosticsClientMockRecorder) Logs(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockDiagnosticsClient)(nil).Logs), arg0, arg1)

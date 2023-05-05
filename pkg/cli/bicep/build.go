@@ -86,6 +86,11 @@ func runBicepJson(args ...string) (map[string]any, error) {
 }
 
 // Build the provided `.bicep` file and returns the deployment template.
+//
+// # Function Explanation
+// 
+//	Build() runs the rad-bicep command to build a template from the given file path and returns the output as a map of 
+//	strings to any type, or an error if the build fails.
 func Build(filePath string) (map[string]any, error) {
 	// rad-bicep is being told to output the template to stdout and we will capture it
 	// rad-bicep will output compilation errors to stderr which will go to the user's console
@@ -95,6 +100,11 @@ func Build(filePath string) (map[string]any, error) {
 // Return a Bicep version.
 //
 // In case we can't determine a version, output "unknown (<failure reason>)".
+//
+// # Function Explanation
+// 
+//	Version() runs the "bicep --version" command and parses the output to return the version of bicep as a string. If the 
+//	command fails or the version cannot be parsed, it returns an error string.
 func Version() string {
 	bytes, err := runBicepRaw("--version")
 	if err != nil {

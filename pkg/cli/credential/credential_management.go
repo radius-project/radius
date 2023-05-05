@@ -47,12 +47,22 @@ type UCPCredentialManagementClient struct {
 var _ CredentialManagementClient = (*UCPCredentialManagementClient)(nil)
 
 // PutAWS registers credentials with the provided credential config
+//
+// # Function Explanation
+// 
+//	UCPCredentialManagementClient's PutAWS function stores an AWS credential resource in the AWSClient, and returns an error
+//	 if unsuccessful.
 func (cpm *UCPCredentialManagementClient) PutAWS(ctx context.Context, credential ucp.AWSCredentialResource) error {
 	err := cpm.AWSClient.Put(ctx, credential)
 	return err
 }
 
 // PutAzure registers credentials with the provided credential config
+//
+// # Function Explanation
+// 
+//	UCPCredentialManagementClient.PutAzure stores an AzureCredentialResource in the Azure Client, and returns an error if 
+//	the operation fails.
 func (cpm *UCPCredentialManagementClient) PutAzure(ctx context.Context, credential ucp.AzureCredentialResource) error {
 	err := cpm.AzClient.Put(ctx, credential)
 	return err
@@ -62,6 +72,12 @@ func (cpm *UCPCredentialManagementClient) PutAzure(ctx context.Context, credenti
 // We've a single credential configured today for all providers which we name as "default"
 // example: If we ask for azure credential, then we will fetch the credential with the name "default" because that is the only
 // credential for azure expected in the system.
+//
+// # Function Explanation
+// 
+//	The Get function of UCPCredentialManagementClient retrieves the credentials for a given cloud provider from the backend.
+//	 It handles errors by returning a CloudProviderStatus with Enabled set to false if the credentials are not registered, 
+//	and returns an ErrUnsupportedCloudProvider error if the provider is not supported.
 func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, providerName string) (ProviderCredentialConfiguration, error) {
 	var err error
 	var cred ProviderCredentialConfiguration
@@ -91,6 +107,12 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, providerName 
 }
 
 // List, lists the credentials registered with all ucp provider planes
+//
+// # Function Explanation
+// 
+//	The List function of UCPCredentialManagementClient retrieves a list of CloudProviderStatus objects from both the Azure 
+//	and AWS clients, and returns them in a single slice. If an error occurs while retrieving the list from either client, it
+//	 is returned to the caller.
 func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
 	// list azure credential
 	res, err := cpm.AzClient.List(ctx)
@@ -111,6 +133,11 @@ func (cpm *UCPCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 // We've a single credential configured today for all providers which we name as "default"
 // example: If we ask to delete azure credential, then we will delete the credential with the name "default" because that is the only
 // credential for azure expected in the system.
+//
+// # Function Explanation
+// 
+//	UCPCredentialManagementClient's Delete function checks the providerName parameter and calls the appropriate Delete 
+//	function from either the AzClient or AWSClient, returning the result of the Delete call and an error if one occurs.
 func (cpm *UCPCredentialManagementClient) Delete(ctx context.Context, providerName string) (bool, error) {
 	if strings.EqualFold(providerName, AzureCredential) {
 		return cpm.AzClient.Delete(ctx, defaultSecretName)

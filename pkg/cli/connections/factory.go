@@ -42,6 +42,12 @@ var _ Factory = (*impl)(nil)
 type impl struct {
 }
 
+// # Function Explanation
+// 
+//	The CreateDeploymentClient function establishes a connection to a workspace and creates a deployment client for it. It 
+//	also tests the connection and returns an error if the connection fails or if the Radius is not installed. If successful,
+//	 it returns a ResourceDeploymentClient with the RadiusResourceGroup set. If any errors occur, they are returned to the 
+//	caller.
 func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
@@ -87,6 +93,11 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	The CreateDiagnosticsClient function creates a DiagnosticsClient by connecting to the given workspace, testing the 
+//	connection, and creating the necessary clients for the application, container, environment, and gateway resources. If 
+//	the connection fails or the radius is not installed, an error is returned.
 func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
@@ -151,6 +162,11 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 	}
 }
 
+// # Function Explanation
+// 
+//	The CreateApplicationsManagementClient function creates a client for managing applications in a workspace. It connects 
+//	to the workspace, tests the connection, and returns an ApplicationsManagementClient if successful. If the connection 
+//	fails or the Radius is not installed, it returns an error.
 func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
@@ -172,6 +188,12 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 }
 
 // Creates Credential management client to interact with server side credentials.
+//
+// # Function Explanation
+// 
+//	The CreateCredentialManagementClient function connects to a workspace, tests the connection, and creates a 
+//	CredentialManagementClient for Azure and AWS. If the connection fails or the Radius is not installed, an error is 
+//	returned.
 func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {

@@ -24,6 +24,12 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
+//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
+//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -31,11 +37,22 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
+//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // DeployWithProgress mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.DeployWithProgress is a function that mocks the DeployWithProgress function, allowing callers to test 
+//	their code without actually deploying. It takes in a context and an Options object, and returns a DeploymentResult and 
+//	an error. If an error is returned, the caller should handle it accordingly.
 func (m *MockInterface) DeployWithProgress(arg0 context.Context, arg1 Options) (clients.DeploymentResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeployWithProgress", arg0, arg1)
@@ -45,6 +62,11 @@ func (m *MockInterface) DeployWithProgress(arg0 context.Context, arg1 Options) (
 }
 
 // DeployWithProgress indicates an expected call of DeployWithProgress.
+//
+// # Function Explanation
+// 
+//	This function records a call to the DeployWithProgress function of the MockInterface, passing in two arguments, and 
+//	returns an error if the call fails.
 func (mr *MockInterfaceMockRecorder) DeployWithProgress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeployWithProgress", reflect.TypeOf((*MockInterface)(nil).DeployWithProgress), arg0, arg1)

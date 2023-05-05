@@ -30,6 +30,12 @@ type ChartArgs struct {
 }
 
 // RegisterPersistentChartArgs registers the CLI arguments used for our Helm chart.
+//
+// # Function Explanation
+// 
+//	RegisterPersistentChartArgs registers flags for the given command that can be used to specify parameters for installing 
+//	a helm chart, such as the chart file path, image and tag to use, and any overrides. If any of the parameters are 
+//	invalid, an error will be returned.
 func RegisterPersistentChartArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().Bool("reinstall", false, "Specify to force reinstallation of Radius")
 	cmd.PersistentFlags().String("chart", "", "Specify a file path to a helm chart to install Radius from")
@@ -44,6 +50,12 @@ func RegisterPersistentChartArgs(cmd *cobra.Command) {
 }
 
 // ParseChartArgs the arguments we provide for installation of the Helm chart.
+//
+// # Function Explanation
+// 
+//	ParseChartArgs parses the command line flags for the ChartArgs struct, and returns an error if any of the flags are 
+//	invalid. It also checks for a valid public endpoint override, and returns an error if the value is not in the correct 
+//	format.
 func ParseChartArgs(cmd *cobra.Command) (*ChartArgs, error) {
 	reinstall, err := cmd.Flags().GetBool("reinstall")
 	if err != nil {

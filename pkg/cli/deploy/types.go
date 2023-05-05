@@ -60,6 +60,12 @@ type Impl struct {
 
 // DeployWithProgress runs a deployment and displays progress to the user. This is intended to be used
 // from the CLI and thus logs to the console.
+//
+// # Function Explanation
+// 
+//	The DeployWithProgress function calls the DeployWithProgress function from another package and returns the deployment 
+//	result and any errors that may have occurred. If an error is encountered, it is returned to the caller for further 
+//	handling.
 func (*Impl) DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
 	return DeployWithProgress(ctx, options)
 }

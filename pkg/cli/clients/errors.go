@@ -15,6 +15,13 @@ import (
 )
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
+//
+// # Function Explanation
+// 
+//	Is404Error checks if the given error is a 404 error. It first checks if the error is an azcore ResponseError with a 
+//	NotFound error code, and if not, it attempts to convert the error into a v20220315privatepreview ErrorResponse and 
+//	checks if the error code is NotFound. If either of these checks are true, it returns true, otherwise it returns false. 
+//	Callers of this function should use this to determine if the error they received was a 404 error.
 func Is404Error(err error) bool {
 	if err == nil {
 		return false

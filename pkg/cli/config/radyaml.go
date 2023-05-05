@@ -39,6 +39,12 @@ type DirectoryWorkspaceConfig struct {
 //
 // This scheme allows multiple applications to exist in the same git repo, but also prevents
 // configuration from outside of a repo affecting the stuff inside.
+//
+// # Function Explanation
+// 
+//	LoadDirectoryConfig searches the directory and its parent directories for a ".rad/rad.yaml" file, and if found, loads 
+//	it. If the file is not found, or if the directory is the root of a git repository, the search stops. If an error occurs,
+//	 it is returned to the caller.
 func LoadDirectoryConfig(workingDirectory string) (*DirectoryConfig, error) {
 	// Root path and clean traversals
 	current, err := filepath.Abs(workingDirectory)

@@ -31,6 +31,11 @@ type Model struct {
 }
 
 // NewTextModel returns a new text model with prompt message.
+//
+// # Function Explanation
+// 
+//	NewTextModel creates a new Model object with a textinput, prompt message, placeholder, and width set to 40. It also sets
+//	 the valueEntered flag to false and the err field to nil, allowing callers to check for errors when using the Model.
 func NewTextModel(promptMsg string, placeHolder string) Model {
 	ti := textinput.New()
 	ti.Placeholder = placeHolder
@@ -46,11 +51,21 @@ func NewTextModel(promptMsg string, placeHolder string) Model {
 }
 
 // Init returns initial tea command for text input.
+//
+// # Function Explanation
+// 
+//	Model.Init() returns a textinput.Blink command, which is used to handle errors and provide useful feedback to the 
+//	caller.
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
 // Update updates model with input form user.
+//
+// # Function Explanation
+// 
+//	Model.Update handles user input and errors, and returns a Model and a Cmd. It handles KeyEnter, KeyCtrlC, and KeyEsc, 
+//	and sets the valueEntered and Quitting flags accordingly. It also handles errors by setting the err field in the Model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -75,6 +90,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders a view with user selected value.
+//
+// # Function Explanation
+// 
+//	Model.View() returns a string based on the value of the textInput field. If the valueEntered flag is true, it will 
+//	return the promptMsg and either the value of the textInput field or its placeholder if the value is empty. Otherwise, it
+//	 will return the promptMsg, the textInput field's view, and a message to quit. If an error occurs, it will return an 
+//	empty string.
 func (m Model) View() string {
 	if m.valueEntered {
 		if m.textInput.Value() == "" {
@@ -88,6 +110,11 @@ func (m Model) View() string {
 }
 
 // GetValue returns the input from the user.
+//
+// # Function Explanation
+// 
+//	"GetValue" retrieves the value of the textInput field from the Model struct and returns it. If an error occurs, it is 
+//	logged and an empty string is returned.
 func (m Model) GetValue() string {
 	return m.textInput.Value()
 }

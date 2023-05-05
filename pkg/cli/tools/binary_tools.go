@@ -30,6 +30,12 @@ var validPlatforms = map[string]string{
 
 // GetLocalFilepath returns the local binary file path. It does not verify that the file
 // exists on disk.
+//
+// # Function Explanation
+// 
+//	GetLocalFilepath attempts to find the local filepath of a given binary name, first by checking for an override 
+//	environment variable, and then by looking in the user's home directory. If an error occurs, it is returned to the 
+//	caller.
 func GetLocalFilepath(overrideEnvVarName string, binaryName string) (string, error) {
 	override, err := getOverridePath(overrideEnvVarName, binaryName)
 	if err != nil {
@@ -90,6 +96,11 @@ func getOverridePath(overrideEnvVarName string, binaryName string) (string, erro
 }
 
 // GetValidPlatform returns the valid platform for the current OS and architecture.
+//
+// # Function Explanation
+// 
+//	GetValidPlatform checks if the given OS and architecture combination is supported and returns the corresponding platform
+//	 string, or an error if the combination is not supported.
 func GetValidPlatform(currentOS, currentArch string) (string, error) {
 	platform, ok := validPlatforms[currentOS+"-"+currentArch]
 	if !ok {
@@ -98,6 +109,12 @@ func GetValidPlatform(currentOS, currentArch string) (string, error) {
 	return platform, nil
 }
 
+// # Function Explanation
+// 
+//	GetDownloadURI takes in a downloadURIFmt string and a binaryName string and returns a download URI string. It first gets
+//	 the filename from the binaryName and then gets the valid platform from the runtime GOOS and GOARCH. It then formats the
+//	 downloadURIFmt string with the version channel, platform and filename and returns the download URI string. If any of 
+//	the steps fail, it returns an error.
 func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 	filename, err := getFilename(binaryName)
 	if err != nil {
@@ -112,6 +129,10 @@ func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 	return fmt.Sprintf(downloadURIFmt, version.Channel(), platform, filename), nil
 }
 
+// # Function Explanation
+// 
+//	DownloadToFolder creates a folder and file at the given filepath, writes the response body to the file, and makes the 
+//	file executable by everyone. It returns an error if any of these steps fail.
 func DownloadToFolder(filepath string, resp *http.Response) error {
 	// create folders
 	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)

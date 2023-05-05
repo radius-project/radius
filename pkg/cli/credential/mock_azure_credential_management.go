@@ -24,6 +24,12 @@ type MockAzureCredentialManagementClientInterfaceMockRecorder struct {
 }
 
 // NewMockAzureCredentialManagementClientInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockAzureCredentialManagementClientInterface is a function that creates a mock object of the 
+//	AzureCredentialManagementClientInterface interface, which can be used to mock the behavior of the interface in tests. It
+//	 returns an error if the mock object cannot be created.
 func NewMockAzureCredentialManagementClientInterface(ctrl *gomock.Controller) *MockAzureCredentialManagementClientInterface {
 	mock := &MockAzureCredentialManagementClientInterface{ctrl: ctrl}
 	mock.recorder = &MockAzureCredentialManagementClientInterfaceMockRecorder{mock}
@@ -31,11 +37,23 @@ func NewMockAzureCredentialManagementClientInterface(ctrl *gomock.Controller) *M
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockAzureCredentialManagementClientInterface's EXPECT() method returns a 
+//	MockAzureCredentialManagementClientInterfaceMockRecorder which allows callers to set expectations on the function's 
+//	behavior and check for errors.
 func (m *MockAzureCredentialManagementClientInterface) EXPECT() *MockAzureCredentialManagementClientInterfaceMockRecorder {
 	return m.recorder
 }
 
 // Delete mocks base method.
+//
+// # Function Explanation
+// 
+//	MockAzureCredentialManagementClientInterface.Delete is a mock function that takes in a context and a string and returns 
+//	a boolean and an error. It is used to simulate the behavior of the actual Delete function and allows callers to handle 
+//	any errors that may occur.
 func (m *MockAzureCredentialManagementClientInterface) Delete(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
@@ -45,12 +63,24 @@ func (m *MockAzureCredentialManagementClientInterface) Delete(arg0 context.Conte
 }
 
 // Delete indicates an expected call of Delete.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Delete method of the MockAzureCredentialManagementClientInterface, which takes in 
+//	two parameters and returns an error if the call fails.
 func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Delete), arg0, arg1)
 }
 
 // Get mocks base method.
+//
+// # Function Explanation
+// 
+//	MockAzureCredentialManagementClientInterface.Get is a mock implementation of the Get function which takes in a context 
+//	and a string as parameters and returns a ProviderCredentialConfiguration and an error. It is used to simulate the 
+//	behavior of the Get function in a controlled environment. If an error is encountered, it is returned to the caller for 
+//	further handling.
 func (m *MockAzureCredentialManagementClientInterface) Get(arg0 context.Context, arg1 string) (ProviderCredentialConfiguration, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
@@ -60,12 +90,23 @@ func (m *MockAzureCredentialManagementClientInterface) Get(arg0 context.Context,
 }
 
 // Get indicates an expected call of Get.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Get method of the MockAzureCredentialManagementClientInterface, which takes in two 
+//	parameters and returns an error if the call fails.
 func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Get), arg0, arg1)
 }
 
 // List mocks base method.
+//
+// # Function Explanation
+// 
+//	MockAzureCredentialManagementClientInterface.List is a function that retrieves a list of CloudProviderStatus objects 
+//	from an Azure Credential Management Client. It returns any errors encountered during the operation, which should be 
+//	handled by the caller.
 func (m *MockAzureCredentialManagementClientInterface) List(arg0 context.Context) ([]CloudProviderStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
@@ -75,12 +116,23 @@ func (m *MockAzureCredentialManagementClientInterface) List(arg0 context.Context
 }
 
 // List indicates an expected call of List.
+//
+// # Function Explanation
+// 
+//	This function records a call to the List method of the MockAzureCredentialManagementClientInterface, which takes in an 
+//	argument and returns an error if the call fails.
 func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) List(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).List), arg0)
 }
 
 // Put mocks base method.
+//
+// # Function Explanation
+// 
+//	MockAzureCredentialManagementClientInterface.Put is a mock implementation of the Put function which takes in a context 
+//	and an AzureCredentialResource object and returns an error. It is used to test the Put function and handles any errors 
+//	that may occur.
 func (m *MockAzureCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20220901privatepreview.AzureCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", arg0, arg1)
@@ -89,6 +141,11 @@ func (m *MockAzureCredentialManagementClientInterface) Put(arg0 context.Context,
 }
 
 // Put indicates an expected call of Put.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Put method of the MockAzureCredentialManagementClientInterface, which takes in two 
+//	parameters and returns an error if the call fails.
 func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Put(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Put), arg0, arg1)

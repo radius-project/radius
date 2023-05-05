@@ -17,6 +17,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
+// # Function Explanation
+// 
+//	NewProgressListener creates a ProgressListener based on whether the output is a terminal or not. If it is a terminal, an
+//	 InteractiveListener is created with a progress channel, a WaitGroup and a spinner. Otherwise, a NoOpListener is created
+//	 with just the progress channel. If an error occurs, the function will return nil.
 func NewProgressListener(progressChan <-chan clients.ResourceProgress) ProgressListener {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		return &InteractiveListener{
@@ -41,6 +46,10 @@ type NoOpListener struct {
 	progressChan <-chan clients.ResourceProgress
 }
 
+// # Function Explanation
+// 
+//	NoOpListener's Run() function listens to the progressChan channel and does nothing with the updates it receives, simply 
+//	draining them. If the channel is closed, the function exits without error.
 func (listener *NoOpListener) Run() {
 	for range listener.progressChan {
 		// Do nothing except drain the updates.
@@ -80,6 +89,11 @@ func (listener *InteractiveListener) updateEntry(index int, state string, format
 	listener.entries[index] = Entry{FinalState: state, Format: format}
 }
 
+// # Function Explanation
+// 
+//	InteractiveListener.Run() is a concurrent function that updates a UI spinner and writes output to the console. It 
+//	listens for updates on a progress channel and updates the UI accordingly. If an error is encountered, it will update the
+//	 UI with the failed state.
 func (listener *InteractiveListener) Run() {
 	ticker := time.NewTicker(500 * time.Millisecond)
 

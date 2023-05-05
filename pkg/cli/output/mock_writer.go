@@ -22,6 +22,12 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
+//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
+//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -29,11 +35,21 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
+//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // Write mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.Write is a function that mocks the behavior of the Write function, allowing callers to test their code 
+//	without actually writing to a file. It returns an error if the call fails.
 func (m *MockInterface) Write(arg0 string, arg1 any, arg2 FormatterOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Write", arg0, arg1, arg2)
@@ -42,6 +58,11 @@ func (m *MockInterface) Write(arg0 string, arg1 any, arg2 FormatterOptions) erro
 }
 
 // Write indicates an expected call of Write.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Write method of the MockInterface, passing in the given arguments, and returns an 
+//	error if the call fails.
 func (mr *MockInterfaceMockRecorder) Write(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockInterface)(nil).Write), arg0, arg1, arg2)

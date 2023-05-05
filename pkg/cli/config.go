@@ -39,12 +39,23 @@ type WorkspaceSection struct {
 }
 
 // HasWorkspace returns true if the specified workspace already exists. This function ignores the default workspace.
+//
+// # Function Explanation
+// 
+//	"HasWorkspace" checks if a workspace with the given name exists in the WorkspaceSection and returns a boolean value 
+//	indicating the result. If the name is not found, an error is returned.
 func (ws WorkspaceSection) HasWorkspace(name string) bool {
 	_, ok := ws.Items[cases.Fold().String(name)]
 	return ok
 }
 
 // GetWorkspace returns the specified workspace or the default workspace if 'name' is empty.
+//
+// # Function Explanation
+// 
+//	"GetWorkspace" checks if the given workspace name is empty and if so, checks if a default workspace is set. If a 
+//	workspace name is provided, it looks up the workspace in the Items map and returns it. If the workspace does not exist, 
+//	it returns an error.
 func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, error) {
 	if name == "" && ws.Default == "" {
 		return nil, nil
@@ -61,6 +72,11 @@ func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, err
 }
 
 // ReadWorkspaceSection reads the WorkspaceSection from radius config.
+//
+// # Function Explanation
+// 
+//	ReadWorkspaceSection reads the WorkspaceSection from the given viper instance, validates it and returns it. If the 
+//	WorkspaceSection is not present, an empty one is returned. If any errors occur during validation, an error is returned.
 func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
 	section := WorkspaceSection{}
 	s := v.Sub(WorkspacesKey)
@@ -113,11 +129,20 @@ func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
 	return section, nil
 }
 
+// # Function Explanation
+// 
+//	UpdateWorkspaceSection updates the WorkspacesKey in the given viper instance with the given WorkspaceSection. If an 
+//	error occurs, it will be returned to the caller.
 func UpdateWorkspaceSection(v *viper.Viper, section WorkspaceSection) {
 	v.Set(WorkspacesKey, section)
 }
 
 // HasWorkspace returns true if the specified workspace already exists. This function ignores the default workspace.
+//
+// # Function Explanation
+// 
+//	HasWorkspace reads the workspace section from the given Viper instance and checks if it contains a workspace with the 
+//	given name. If an error occurs while reading the workspace section, it is returned to the caller.
 func HasWorkspace(v *viper.Viper, name string) (bool, error) {
 	section, err := ReadWorkspaceSection(v)
 	if err != nil {
@@ -128,6 +153,11 @@ func HasWorkspace(v *viper.Viper, name string) (bool, error) {
 }
 
 // GetWorkspace returns the specified workspace or the default workspace in configuration if 'name' is empty.
+//
+// # Function Explanation
+// 
+//	GetWorkspace reads the workspace section from the viper configuration and returns the workspace with the given name, or 
+//	an error if the workspace does not exist or there was an issue reading the configuration.
 func GetWorkspace(v *viper.Viper, name string) (*workspaces.Workspace, error) {
 	section, err := ReadWorkspaceSection(v)
 	if err != nil {
@@ -174,6 +204,10 @@ func createConfigFile(configFilePath string) error {
 	return nil
 }
 
+// # Function Explanation
+// 
+//	LoadConfigNoLock reads in a configuration file from the given path and creates it if it doesn't exist. It handles errors
+//	 if the file is not found or if there is an issue reading it.
 func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
 	config, err := getConfig(configFilePath)
 	if err != nil {
@@ -204,6 +238,10 @@ func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
 	return config, nil
 }
 
+// # Function Explanation
+// 
+//	LoadConfig() attempts to read a configuration file from the given path and acquire a shared lock on it. If the file does
+//	 not exist, it will be created. If the lock cannot be acquired, an error will be returned.
 func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	config, err := getConfig(configFilePath)
 	if err != nil {
@@ -252,6 +290,10 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	return config, nil
 }
 
+// # Function Explanation
+// 
+//	GetConfigFilePath attempts to find the user's config file path, first by checking if one has already been set, and if 
+//	not, by using the user's home directory. If the home directory cannot be found, an error is returned.
 func GetConfigFilePath(v *viper.Viper) (string, error) {
 	configFilePath := v.ConfigFileUsed()
 
@@ -269,6 +311,10 @@ func GetConfigFilePath(v *viper.Viper) (string, error) {
 	return configFilePath, nil
 }
 
+// # Function Explanation
+// 
+//	UpdateAzProvider updates the Azure provider configuration for each workspace item in the given WorkspaceSection that 
+//	matches the given context name. If no workspace item matches the context name, no changes are made.
 func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
 	for _, workspaceItem := range section.Items {
 		if workspaceItem.IsSameKubernetesContext(contextName) {
@@ -282,6 +328,10 @@ func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvid
 	}
 }
 
+// # Function Explanation
+// 
+//	UpdateAWSProvider updates the AWSProvider configuration for each workspace item in the given WorkspaceSection that 
+//	matches the given contextName. If no workspace item matches the contextName, no changes are made.
 func UpdateAWSProvider(section *WorkspaceSection, provider workspaces.AWSProvider, contextName string) {
 	for _, workspaceItem := range section.Items {
 		if workspaceItem.IsSameKubernetesContext(contextName) {
@@ -296,6 +346,13 @@ func UpdateAWSProvider(section *WorkspaceSection, provider workspaces.AWSProvide
 }
 
 // Required to be called while holding the exclusive lock on config.yaml.lock file.
+//
+// # Function Explanation
+// 
+//	EditWorkspaces is a function that allows users to edit the workspaces in a config file. It takes in a context, config 
+//	and an editor function as parameters. It reads the workspace section from the config, passes it to the editor function 
+//	and then updates the workspace section in the config. It also checks for case-invariance to prevent duplicates. If an 
+//	error occurs, it is returned to the caller.
 func EditWorkspaces(ctx context.Context, config *viper.Viper, editor func(section *WorkspaceSection) error) error {
 	return SaveConfigOnLock(ctx, config, func(v *viper.Viper) error {
 		section, err := ReadWorkspaceSection(v)
@@ -328,6 +385,12 @@ func EditWorkspaces(ctx context.Context, config *viper.Viper, editor func(sectio
 }
 
 // Save Config with exclusive lock on the config file
+//
+// # Function Explanation
+// 
+//	SaveConfigOnLock acquires an exclusive lock on the config file and updates it with the given config, retrying every 
+//	second for 5 times if another goroutine is holding the lock. It returns an error if it fails to acquire the lock or if 
+//	the updateConfig function fails.
 func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig func(*viper.Viper) error) error {
 	// Acquire exclusive lock on the config.yaml.lock file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
@@ -361,6 +424,10 @@ func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig fun
 	return nil
 }
 
+// # Function Explanation
+// 
+//	SaveConfig saves the configuration to the file path specified in the viper instance. It returns an error if the file 
+//	path is not found or if the configuration could not be written.
 func SaveConfig(v *viper.Viper) error {
 	configFilePath, err := GetConfigFilePath(v)
 	if err != nil {

@@ -16,6 +16,12 @@ import (
 
 // DeployWithProgress runs a deployment and displays progress to the user. This is intended to be used
 // from the CLI and thus logs to the console.
+//
+// # Function Explanation
+// 
+//	DeployWithProgress creates a deployment client, injects environment and application parameters into the template, and 
+//	then deploys the template. It also listens for progress updates and logs them to the console. If an error occurs, it is 
+//	returned to the caller.
 func DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
 	deploymentClient, err := options.ConnectionFactory.CreateDeploymentClient(ctx, options.Workspace)
 	if err != nil {

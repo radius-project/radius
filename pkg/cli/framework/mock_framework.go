@@ -24,6 +24,12 @@ type MockRunnerMockRecorder struct {
 }
 
 // NewMockRunner creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockRunner is a function that creates a MockRunner object with a MockRunnerMockRecorder, which is used to record and 
+//	verify expectations for the MockRunner. It also handles any errors that may occur during the creation of the MockRunner 
+//	object.
 func NewMockRunner(ctrl *gomock.Controller) *MockRunner {
 	mock := &MockRunner{ctrl: ctrl}
 	mock.recorder = &MockRunnerMockRecorder{mock}
@@ -31,11 +37,22 @@ func NewMockRunner(ctrl *gomock.Controller) *MockRunner {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockRunner's EXPECT() function creates and returns a MockRunnerMockRecorder object which can be used to set expectations
+//	 for the MockRunner's behavior. It also handles any errors that may occur during the creation of the 
+//	MockRunnerMockRecorder.
 func (m *MockRunner) EXPECT() *MockRunnerMockRecorder {
 	return m.recorder
 }
 
 // Run mocks base method.
+//
+// # Function Explanation
+// 
+//	MockRunner.Run is a mock implementation of the Run function which is used to mock the behavior of the Run function for 
+//	testing purposes. It takes in a context and returns an error if one occurs.
 func (m *MockRunner) Run(arg0 context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Run", arg0)
@@ -44,12 +61,22 @@ func (m *MockRunner) Run(arg0 context.Context) error {
 }
 
 // Run indicates an expected call of Run.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Run method of the MockRunner interface, with the given argument, and returns a 
+//	gomock.Call object for error handling.
 func (mr *MockRunnerMockRecorder) Run(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockRunner)(nil).Run), arg0)
 }
 
 // Validate mocks base method.
+//
+// # Function Explanation
+// 
+//	MockRunner.Validate is a function that validates the given command and arguments, and returns an error if any validation
+//	 fails. It also handles any errors that occur during the validation process.
 func (m *MockRunner) Validate(arg0 *cobra.Command, arg1 []string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Validate", arg0, arg1)
@@ -58,6 +85,11 @@ func (m *MockRunner) Validate(arg0 *cobra.Command, arg1 []string) error {
 }
 
 // Validate indicates an expected call of Validate.
+//
+// # Function Explanation
+// 
+//	This function records a call to the Validate method of the MockRunner object, passing in two arguments. It returns an 
+//	error if the arguments are invalid, otherwise it returns a gomock.Call object.
 func (mr *MockRunnerMockRecorder) Validate(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Validate", reflect.TypeOf((*MockRunner)(nil).Validate), arg0, arg1)

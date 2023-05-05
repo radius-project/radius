@@ -48,6 +48,11 @@ type RadiusOptions struct {
 	Values                 string
 }
 
+// # Function Explanation
+// 
+//	ApplyRadiusHelmChart checks if a Radius helm chart is already installed and, if not, installs it with the given options.
+//	 If the --reinstall flag is set, it will reinstall the chart. If an error occurs, it will return an error with the 
+//	output of the helm command.
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
@@ -122,6 +127,10 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
+// # Function Explanation
+// 
+//	GetAzProvider retrieves the Azure Provider configuration from the Helm release configuration, and returns it as an 
+//	azure.Provider object. If the configuration is not found, or an error occurs, it returns nil and an error.
 func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, error) {
 
 	var helmOutput strings.Builder
@@ -209,6 +218,11 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	return runUpgrade(installClient, releaseName, helmChart)
 }
 
+// # Function Explanation
+// 
+//	AddRadiusValues adds values to a helm chart based on the options provided, and returns an error if the values provided 
+//	are invalid. It also sets default values for the images and tags for the radius, ucp and de components. If an error 
+//	occurs, the caller should check the error message for more information.
 func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
@@ -290,6 +304,10 @@ func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 	return nil
 }
 
+// # Function Explanation
+// 
+//	RunRadiusHelmUninstall runs the Helm uninstall command to remove the Radius release from the specified namespace. It 
+//	handles the error if the release is not found, logging a message and returning nil.
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)

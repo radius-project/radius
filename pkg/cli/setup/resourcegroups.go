@@ -21,6 +21,12 @@ type ErrUCPResourceGroupCreationFailed struct {
 	err  error
 }
 
+// # Function Explanation
+// 
+//	ErrUCPResourceGroupCreationFailed is an error handling function that returns a descriptive error message based on the 
+//	parameters passed in. If the response parameter is nil, it returns a message with the error passed in, otherwise it 
+//	returns a message with the response status code and response object. This is useful for callers of this function to 
+//	understand why the UCP resourceGroup creation failed.
 func (e *ErrUCPResourceGroupCreationFailed) Error() string {
 	if e.resp == nil {
 		return fmt.Sprintf("failed to create UCP resourceGroup: %s", e.err)
@@ -29,12 +35,21 @@ func (e *ErrUCPResourceGroupCreationFailed) Error() string {
 	return fmt.Sprintf("request to create UCP resourceGroup failed with status: %d, response: %+v", e.resp.StatusCode, e.resp)
 }
 
+// # Function Explanation
+// 
+//	ErrUCPResourceGroupCreationFailed is an error type that allows callers to check if a given error is of this type, which 
+//	can be useful for error handling.
 func (e *ErrUCPResourceGroupCreationFailed) Is(target error) bool {
 	_, ok := target.(*ErrUCPResourceGroupCreationFailed)
 	return ok
 }
 
 // TODO remove this when envInit is removed. DO NOT add new uses of this function. Use the generated client.
+//
+// # Function Explanation
+// 
+//	CreateWorkspaceResourceGroup creates two resource groups in UCP, one in the radius plane and one in the deployments 
+//	plane, and returns the ID of the resource group in the radius plane. If an error occurs, it is returned to the caller.
 func CreateWorkspaceResourceGroup(ctx context.Context, connection sdk.Connection, name string) (string, error) {
 	id, err := createUCPResourceGroup(ctx, connection, name, "/planes/radius/local")
 	if err != nil {
