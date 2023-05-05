@@ -26,25 +26,32 @@ jobs:
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Set up checkout target (pull_request)
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'pull_request'
         run: |
           echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
       - name: Set up checkout target (scheduled)
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'schedule'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_OUTPUT
+      - name: Debug
+        if: github.event_name == 'schedule'
+        run: |
+          echo ${{ build.outputs.CHECKOUT_REPO }}
+          echo ${{ needs.build.outputs.CHECKOUT_REPO }}
+          exit 1
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          repository: ${{ needs.build.outputs.CHECKOUT_REPO }}
-          ref: ${{ needs.build.outputs.CHECKOUT_REF }}
+          repository: ${{ build.outputs.CHECKOUT_REPO }}
+          ref: ${{ build.outputs.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GOVER }}
       - name: Get Go Cache path
+        id: go-cache-paths
         run: |
           echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
@@ -57,8 +64,8 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: |
-            ${{ needs.build.outputs.go-build }}
-            ${{ needs.build.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
