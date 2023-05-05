@@ -135,7 +135,6 @@ jobs:
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       # Timeout used for Kubernetes functional tests
-      K8S_FUNCTIONALTEST_TIMEOUT: 60m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
       RADIUS_CHART_LOCATION: deploy/Chart/
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -263,7 +262,7 @@ jobs:
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
           dist/rad env update kind-radius --aws-region ${{ env.AWS_REGION }} \
-            --aws-account-id ${{ AWS_ACCOUNT_ID }}
+            --aws-account-id ${{ secrets.AWS_ACCOUNT_ID }}
 
           dist/rad credential register aws \
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
@@ -278,7 +277,7 @@ jobs:
 
           make test-functional-kubernetes
         env:
-          TEST_TIMEOUT: ${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
+          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: $GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
       - name: Upload container logs
         if: always()
