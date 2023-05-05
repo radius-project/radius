@@ -25,21 +25,21 @@ jobs:
     name: Build Radius for test
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
-      - name: Set up checkout target
-        id: checkout_target
+      - name: Set up checkout target (scheduled)
+        if: github.event_name == 'schedule'
         run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
-          else
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_OUTPUT
-            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-          fi
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+      - name: Set up checkout target (pull_request)
+        if: github.event_name == 'pull_request'
+        run: |
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          repository: ${{ steps.checkout_target.outputs.CHECKOUT_REPO }}
-          ref: ${{ steps.checkout_target.outputs.CHECKOUT_REF }}
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
         with:
@@ -74,7 +74,7 @@ jobs:
           az acr login -n ${{ env.CACHE_REGISTRY }}
       - name: Build and Push container images
         run: |
-          make docker-build
+          make docker-build && make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
