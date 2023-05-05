@@ -29,6 +29,11 @@ var (
 	errNotEmptyTemplate = "%s cannot be empty"
 )
 
+// # Function Explanation
+// 
+//	RegisterPersistentAWSProviderArgs registers flags for the AWS provider, allowing users to specify an access key, secret 
+//	access key, and region when creating cloud resources. It also handles any errors that may occur when registering the 
+//	flags.
 func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolP(
 		AWSProviderFlagName,
@@ -54,6 +59,12 @@ func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 }
 
 // ParseAWSProviderArgs parses AWS args from user cmd line and returns an aws provider.
+//
+// # Function Explanation
+// 
+//	ParseAWSProviderArgs is a function that parses arguments for the AWS Provider. It takes in a cobra command, a boolean 
+//	value and a prompter interface. Depending on the boolean value, it either parses the arguments interactively or 
+//	non-interactively. If an error occurs, it is returned to the caller.
 func ParseAWSProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*radAWS.Provider, error) {
 	if interactive {
 		return parseAWSProviderInteractive(cmd, prompter)

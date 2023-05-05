@@ -12,6 +12,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+// # Function Explanation
+// 
+//	ValidateWorkspaceUniqueness checks if a workspace already exists in the config and returns an error if it does, unless 
+//	the overwrite flag is set. It also provides a helpful message to the caller if the workspace already exists.
 func ValidateWorkspaceUniqueness(config *viper.Viper, overwrite bool) func(string) (bool, string, error) {
 	return func(input string) (bool, string, error) {
 		if overwrite {

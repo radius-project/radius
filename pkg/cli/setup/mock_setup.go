@@ -26,6 +26,12 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
+//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
+//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -33,11 +39,21 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
+//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // ParseAWSProviderArgs mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.ParseAWSProviderArgs is a function that creates an AWS Provider object and returns it, or an error if one 
+//	occurs. It handles errors by returning them to the caller.
 func (m *MockInterface) ParseAWSProviderArgs(arg0 *cobra.Command, arg1 bool, arg2 prompt.Interface) (*aws.Provider, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ParseAWSProviderArgs", arg0, arg1, arg2)
@@ -47,12 +63,22 @@ func (m *MockInterface) ParseAWSProviderArgs(arg0 *cobra.Command, arg1 bool, arg
 }
 
 // ParseAWSProviderArgs indicates an expected call of ParseAWSProviderArgs.
+//
+// # Function Explanation
+// 
+//	This function, ParseAWSProviderArgs, records a call to the mock interface with the given arguments and returns an error 
+//	if the call fails.
 func (mr *MockInterfaceMockRecorder) ParseAWSProviderArgs(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseAWSProviderArgs", reflect.TypeOf((*MockInterface)(nil).ParseAWSProviderArgs), arg0, arg1, arg2)
 }
 
 // ParseAzureProviderArgs mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.ParseAzureProviderArgs is a function that creates an Azure Provider object and returns it, or an error if 
+//	one occurs. It handles errors by returning them to the caller.
 func (m *MockInterface) ParseAzureProviderArgs(arg0 *cobra.Command, arg1 bool, arg2 prompt.Interface) (*azure.Provider, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ParseAzureProviderArgs", arg0, arg1, arg2)
@@ -62,6 +88,12 @@ func (m *MockInterface) ParseAzureProviderArgs(arg0 *cobra.Command, arg1 bool, a
 }
 
 // ParseAzureProviderArgs indicates an expected call of ParseAzureProviderArgs.
+//
+// # Function Explanation
+// 
+//	This function records a call to the ParseAzureProviderArgs function, which takes in three parameters and returns an 
+//	error if any of them are invalid. It also checks for any errors that may have occurred during the call and returns them 
+//	to the caller.
 func (mr *MockInterfaceMockRecorder) ParseAzureProviderArgs(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseAzureProviderArgs", reflect.TypeOf((*MockInterface)(nil).ParseAzureProviderArgs), arg0, arg1, arg2)

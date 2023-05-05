@@ -30,6 +30,12 @@ import (
 )
 
 // RegisterAzureProviderArgs adds flags to configure Azure provider for cloud resources.
+//
+// # Function Explanation
+// 
+//	RegisterPersistentAzureProviderArgs registers flags for configuring an Azure provider for cloud resources, such as 
+//	subscription, resource group, client ID, client secret and tenant ID. It also provides error handling for callers of 
+//	this function.
 func RegisterPersistentAzureProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolP("provider-azure", "", false, "Add Azure provider for cloud resources")
 	cmd.PersistentFlags().String("provider-azure-subscription", "", "Azure subscription for cloud resources")
@@ -39,6 +45,12 @@ func RegisterPersistentAzureProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringP("provider-azure-tenant-id", "", "", "The tenant id for the service principal")
 }
 
+// # Function Explanation
+// 
+//	ParseAzureProviderArgs is a function that parses arguments for the Azure Provider. It takes in a command object and a 
+//	boolean value to determine if the parsing should be done interactively or non-interactively. If interactive, it will 
+//	prompt the user for input. If non-interactive, it will parse the command object for the necessary arguments. It returns 
+//	a Provider object and an error if one occurs.
 func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error) {
 	if interactive {
 		return parseAzureProviderInteractive(cmd, prompter)
@@ -414,11 +426,21 @@ type Impl struct {
 }
 
 // Parses user input from the CLI for Azure Provider arguments
+//
+// # Function Explanation
+// 
+//	Impl.ParseAzureProviderArgs parses command line arguments and prompts the user for input if interactive mode is enabled,
+//	 returning a Provider object or an error if something goes wrong.
 func (i *Impl) ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error) {
 	return ParseAzureProviderArgs(cmd, interactive, prompter)
 }
 
 // Parses user input from the CLI for Azure Provider arguments
+//
+// # Function Explanation
+// 
+//	Impl.ParseAWSProviderArgs parses command line arguments and prompts the user for input if interactive mode is enabled, 
+//	returning a Provider object or an error if something goes wrong.
 func (i *Impl) ParseAWSProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*cli_aws.Provider, error) {
 	return ParseAWSProviderArgs(cmd, interactive, prompter)
 }

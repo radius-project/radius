@@ -23,6 +23,12 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
+//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
+//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -30,11 +36,22 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
+//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // CheckRadiusInstall mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.CheckRadiusInstall is a mock function that takes in a string and returns a boolean and an error. It is 
+//	used to simulate the behavior of the actual CheckRadiusInstall function and allows callers to handle any errors that may
+//	 occur.
 func (m *MockInterface) CheckRadiusInstall(arg0 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckRadiusInstall", arg0)
@@ -44,12 +61,23 @@ func (m *MockInterface) CheckRadiusInstall(arg0 string) (bool, error) {
 }
 
 // CheckRadiusInstall indicates an expected call of CheckRadiusInstall.
+//
+// # Function Explanation
+// 
+//	This function records a call to the CheckRadiusInstall method of the MockInterface interface, with the given argument, 
+//	and returns a gomock.Call object for error handling.
 func (mr *MockInterfaceMockRecorder) CheckRadiusInstall(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckRadiusInstall", reflect.TypeOf((*MockInterface)(nil).CheckRadiusInstall), arg0)
 }
 
 // InstallRadius mocks base method.
+//
+// # Function Explanation
+// 
+//	MockInterface.InstallRadius is a function that mocks the behavior of the InstallRadius function. It takes in a context, 
+//	ClusterOptions and a string and returns a boolean and an error. If an error is encountered, it is returned to the caller
+//	 for further handling.
 func (m *MockInterface) InstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InstallRadius", arg0, arg1, arg2)
@@ -59,6 +87,11 @@ func (m *MockInterface) InstallRadius(arg0 context.Context, arg1 ClusterOptions,
 }
 
 // InstallRadius indicates an expected call of InstallRadius.
+//
+// # Function Explanation
+// 
+//	This function records a call to the InstallRadius function with the given parameters, and returns an error if the call 
+//	fails.
 func (mr *MockInterfaceMockRecorder) InstallRadius(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallRadius", reflect.TypeOf((*MockInterface)(nil).InstallRadius), arg0, arg1, arg2)

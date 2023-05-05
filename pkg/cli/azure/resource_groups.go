@@ -12,6 +12,10 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+// # Function Explanation
+// 
+//	LoadDefaultResourceGroupFromConfig() loads the default resource group from the config file and returns it as a string. 
+//	If an error occurs, it returns an error message with details about the cause of the error.
 func LoadDefaultResourceGroupFromConfig() (string, error) {
 	profilePath, err := ProfilePath()
 	if err != nil {

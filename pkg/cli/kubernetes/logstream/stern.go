@@ -31,6 +31,12 @@ type Impl struct {
 
 // Stream opens a log stream and writes the application's log to the provided writer.
 // This function will block until the context is cancelled.
+//
+// # Function Explanation
+// 
+//	Stream() uses the Stern library to watch pods in the given Kubernetes context and namespace, and streams the logs of all
+//	 matching pods to the given writer. It also uses the "radius.dev/application" label to include pods that are part of the
+//	 given application. If an error occurs, it is returned to the caller.
 func (i *Impl) Stream(ctx context.Context, options Options) error {
 
 	// The functionality of the package is provided almost entirely be github.com/stern/stern.

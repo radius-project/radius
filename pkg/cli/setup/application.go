@@ -41,6 +41,13 @@ resource demo 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 // ScaffoldApplication creates a working sample application in the provided directory
 // along with configuration for the application name.
+//
+// # Function Explanation
+// 
+//	ScaffoldApplication creates the necessary files and directories for a new application, including a .rad directory and an
+//	 app.bicep file. It also creates a rad.yaml file in the .rad directory with the given name. If the app.bicep file 
+//	already exists, it will not be overwritten, but the rad.yaml file will always be overwritten. If any errors occur, they 
+//	will be returned to the caller.
 func ScaffoldApplication(output output.Interface, directory string, name string) error {
 	// Create .rad in the working directory
 	err := os.Mkdir(filepath.Join(directory, ".rad"), 0755)

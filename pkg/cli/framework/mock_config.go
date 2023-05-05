@@ -25,6 +25,12 @@ type MockConfigFileInterfaceMockRecorder struct {
 }
 
 // NewMockConfigFileInterface creates a new mock instance.
+//
+// # Function Explanation
+// 
+//	MockConfigFileInterface is a function that creates a new MockConfigFileInterface object, which is used to mock the 
+//	ConfigFileInterface interface for testing purposes. It also sets up an error recorder to capture any errors that occur 
+//	during the mock.
 func NewMockConfigFileInterface(ctrl *gomock.Controller) *MockConfigFileInterface {
 	mock := &MockConfigFileInterface{ctrl: ctrl}
 	mock.recorder = &MockConfigFileInterfaceMockRecorder{mock}
@@ -32,11 +38,21 @@ func NewMockConfigFileInterface(ctrl *gomock.Controller) *MockConfigFileInterfac
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
+//
+// # Function Explanation
+// 
+//	The MockConfigFileInterface function creates a mock recorder object which can be used to set expectations for the 
+//	MockConfigFileInterface function. It also returns an error if the expectations are not met.
 func (m *MockConfigFileInterface) EXPECT() *MockConfigFileInterfaceMockRecorder {
 	return m.recorder
 }
 
 // ConfigFromContext mocks base method.
+//
+// # Function Explanation
+// 
+//	MockConfigFileInterface.ConfigFromContext() creates a mock configuration file interface and returns a viper instance 
+//	from the given context. It handles any errors that occur during the process and returns nil if an error occurs.
 func (m *MockConfigFileInterface) ConfigFromContext(arg0 context.Context) *viper.Viper {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConfigFromContext", arg0)
@@ -45,12 +61,22 @@ func (m *MockConfigFileInterface) ConfigFromContext(arg0 context.Context) *viper
 }
 
 // ConfigFromContext indicates an expected call of ConfigFromContext.
+//
+// # Function Explanation
+// 
+//	This function, ConfigFromContext, records a call to the mock object with the given argument, and returns an error if the
+//	 call fails. It is used to check if the given argument is valid and can be used by the caller of the function.
 func (mr *MockConfigFileInterfaceMockRecorder) ConfigFromContext(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFromContext", reflect.TypeOf((*MockConfigFileInterface)(nil).ConfigFromContext), arg0)
 }
 
 // DeleteWorkspace mocks base method.
+//
+// # Function Explanation
+// 
+//	MockConfigFileInterface.DeleteWorkspace is a mock implementation of the DeleteWorkspace function which allows callers to
+//	 test the function without actually deleting a workspace. It returns an error if the workspace cannot be deleted.
 func (m *MockConfigFileInterface) DeleteWorkspace(arg0 context.Context, arg1 *viper.Viper, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteWorkspace", arg0, arg1, arg2)
@@ -59,12 +85,23 @@ func (m *MockConfigFileInterface) DeleteWorkspace(arg0 context.Context, arg1 *vi
 }
 
 // DeleteWorkspace indicates an expected call of DeleteWorkspace.
+//
+// # Function Explanation
+// 
+//	This function records a call to the DeleteWorkspace function of the MockConfigFileInterface, which is used to delete a 
+//	workspace from the configuration file. It returns an error if the workspace cannot be deleted.
 func (mr *MockConfigFileInterfaceMockRecorder) DeleteWorkspace(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).DeleteWorkspace), arg0, arg1, arg2)
 }
 
 // EditWorkspaces mocks base method.
+//
+// # Function Explanation
+// 
+//	MockConfigFileInterface.EditWorkspaces is a function that mocks the behavior of the ConfigFileInterface.EditWorkspaces 
+//	function. It takes in a context, a viper, a workspace and a slice of interfaces and returns an error. If an error is 
+//	encountered, it is returned to the caller.
 func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *viper.Viper, arg2 *workspaces.Workspace) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EditWorkspaces", arg0, arg1, arg2)
@@ -73,12 +110,22 @@ func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *vip
 }
 
 // EditWorkspaces indicates an expected call of EditWorkspaces.
+//
+// # Function Explanation
+// 
+//	This function records a call to the EditWorkspaces function, which is used to edit workspaces in a configuration file. 
+//	It returns an error if the call fails, allowing the caller to handle the error accordingly.
 func (mr *MockConfigFileInterfaceMockRecorder) EditWorkspaces(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspaces", reflect.TypeOf((*MockConfigFileInterface)(nil).EditWorkspaces), arg0, arg1, arg2)
 }
 
 // SetDefaultWorkspace mocks base method.
+//
+// # Function Explanation
+// 
+//	MockConfigFileInterface.SetDefaultWorkspace is a function that sets the default workspace in a viper configuration file,
+//	 and returns an error if it fails. It handles errors by returning them to the caller.
 func (m *MockConfigFileInterface) SetDefaultWorkspace(arg0 context.Context, arg1 *viper.Viper, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetDefaultWorkspace", arg0, arg1, arg2)
@@ -87,6 +134,11 @@ func (m *MockConfigFileInterface) SetDefaultWorkspace(arg0 context.Context, arg1
 }
 
 // SetDefaultWorkspace indicates an expected call of SetDefaultWorkspace.
+//
+// # Function Explanation
+// 
+//	This function records a call to the SetDefaultWorkspace function, which is used to set the default workspace for a given
+//	 request. It returns an error if the workspace cannot be set.
 func (mr *MockConfigFileInterfaceMockRecorder) SetDefaultWorkspace(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).SetDefaultWorkspace), arg0, arg1, arg2)
