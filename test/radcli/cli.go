@@ -263,7 +263,7 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) Recipelist(ctx context.Context, envName string) (string, error) {
+func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) {
 	args := []string{
 		"recipe",
 		"list",

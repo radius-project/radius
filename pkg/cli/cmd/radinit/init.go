@@ -31,7 +31,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
@@ -80,6 +79,7 @@ type Runner struct {
 	Output              output.Interface
 	Prompter            prompt.Interface
 	SetupInterface      setup.Interface
+	DevRecipeClient     DevRecipeClient
 
 	Format                  string
 	AzureCloudProvider      *azure.Provider
@@ -109,6 +109,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
 		SetupInterface:      factory.GetSetupInterface(),
+		DevRecipeClient:     NewDevRecipeClient(),
 	}
 }
 
@@ -382,7 +383,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		//ignore the id of the resource group created
-		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, ucp.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil || !isGroupCreated {
@@ -391,7 +392,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 		// We'll remove this in the future.
-		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, ucp.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil {
@@ -415,12 +416,23 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
+		var recipes map[string]map[string]*corerp.EnvironmentRecipeProperties
+		if r.Dev {
+			r.Output.LogInfo("Installing dev recipes...")
+			recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
 		envProperties := corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr(r.Namespace),
 			},
-			Providers:     &providers,
-			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
+			Providers: &providers,
+			// Setting this to false to make sure that we only install the recipes with --dev flag.
+			UseDevRecipes: to.Ptr(false),
+			Recipes:       recipes,
 		}
 
 		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, &envProperties)

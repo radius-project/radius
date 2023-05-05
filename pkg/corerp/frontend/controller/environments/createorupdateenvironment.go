@@ -181,7 +181,6 @@ var getDevRecipes = func(ctx context.Context) (map[string]map[string]datamodel.E
 
 		// This function never returns an error as we currently silently continue on any repositories that don't have the path pattern specified.
 		// It has a definition that specifies an error is returned to match the definition defined by reg.Repositories.
-		// TODO: Add metrics here to identify how long this takes. Long-term, we should ensure the registry only has recipes. #4440
 		return nil
 	})
 
