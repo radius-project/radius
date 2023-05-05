@@ -125,6 +125,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -134,6 +135,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	envResource, err := client.GetEnvDetails(ctx, r.Workspace.Environment)
 	if err != nil {
 		return err
@@ -171,6 +173,6 @@ func requireTemplatePath(cmd *cobra.Command) (string, error) {
 	if err != nil {
 		return templatePath, err
 	}
-	return templatePath, nil
 
+	return templatePath, nil
 }

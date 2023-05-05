@@ -417,10 +417,6 @@
           "$ref": "#/definitions/Providers",
           "description": "Cloud providers configuration for the environment."
         },
-        "useDevRecipes": {
-          "type": "boolean",
-          "description": "Flag to use radius owned recipes."
-        },
         "recipes": {
           "description": "Specifies Recipes linked to the Environment.",
           "additionalProperties": {

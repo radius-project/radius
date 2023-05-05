@@ -6,7 +6,6 @@
             "resourceId": "fakeid",
             "namespace": "default"
         },
-        "useDevRecipes": false,
         "recipes": {
             "Applications.Link/mongoDatabases":{
                 "mongo-azure": {

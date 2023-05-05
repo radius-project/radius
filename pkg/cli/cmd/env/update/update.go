@@ -171,6 +171,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.noFlagsSet {
 		return nil
 	}
+
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err

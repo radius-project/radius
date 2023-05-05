@@ -7,8 +7,11 @@ package update
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -74,6 +77,178 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Update(t *testing.T) {
+	t.Run("Failure: No Flags Set", func(t *testing.T) {
+		runner := &Runner{
+			noFlagsSet: true,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, nil, err)
+	})
+
+	t.Run("Failure: Get Environment Details Error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		environment := corerp.EnvironmentResource{
+			Name:       to.Ptr("test-env"),
+			Properties: &corerp.EnvironmentProperties{},
+		}
+
+		expectedError := errors.New("failed to update the environment")
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvDetails(gomock.Any(), "test-env").
+			Return(environment, expectedError).
+			Times(1)
+
+		testProviders := &corerp.Providers{
+			Azure: &corerp.ProvidersAzure{
+				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+			},
+			Aws: &corerp.ProvidersAws{
+				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+			},
+		}
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			EnvName:           "test-env",
+			providers:         testProviders,
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, expectedError)
+		require.Equal(t, expectedError.Error(), err.Error())
+	})
+
+	t.Run("Failure: Environment Doesn't Exist", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		environment := corerp.EnvironmentResource{
+			Name:       to.Ptr("test-env"),
+			Properties: &corerp.EnvironmentProperties{},
+		}
+
+		expectedError := &azcore.ResponseError{
+			ErrorCode: v1.CodeNotFound,
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvDetails(gomock.Any(), "test-env").
+			Return(environment, expectedError).
+			Times(1)
+
+		testProviders := &corerp.Providers{
+			Azure: &corerp.ProvidersAzure{
+				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+			},
+			Aws: &corerp.ProvidersAws{
+				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+			},
+		}
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			EnvName:           "test-env",
+			providers:         testProviders,
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, expectedError)
+		require.Equal(t, envNotFoundErrMessage, err.Error())
+	})
+
+	t.Run("Failure: Update Environment Error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		environment := corerp.EnvironmentResource{
+			Name:       to.Ptr("test-env"),
+			Properties: &corerp.EnvironmentProperties{},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvDetails(gomock.Any(), "test-env").
+			Return(environment, nil).
+			Times(1)
+
+		testProviders := &corerp.Providers{
+			Azure: &corerp.ProvidersAzure{
+				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+			},
+			Aws: &corerp.ProvidersAws{
+				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+			},
+		}
+
+		testEnvProperties := &corerp.EnvironmentProperties{
+			Providers: testProviders,
+		}
+
+		expectedError := errors.New("failed to update the environment")
+		expectedErrorMessage := fmt.Sprintf("failed to configure cloud provider scope to the environment %s: %s", "test-env", expectedError.Error())
+
+		appManagementClient.EXPECT().
+			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).
+			Return(false, expectedError).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			EnvName:           "test-env",
+			providers:         testProviders,
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, expectedError)
+		require.Equal(t, expectedErrorMessage, err.Error())
+	})
+
 	t.Run("Success: Update Environment With Providers", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -81,7 +256,12 @@ func Test_Update(t *testing.T) {
 		environment := corerp.EnvironmentResource{
 			Name: to.Ptr("test-env"),
 			Properties: &corerp.EnvironmentProperties{
-				UseDevRecipes: to.Ptr(false),
+				Recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+				Compute: &corerp.KubernetesCompute{
+					Namespace:  to.Ptr("default"),
+					Kind:       to.Ptr("kubernetes"),
+					ResourceID: to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
+				},
 			},
 		}
 
@@ -101,8 +281,13 @@ func Test_Update(t *testing.T) {
 		}
 
 		testEnvProperties := &corerp.EnvironmentProperties{
-			UseDevRecipes: to.Ptr(false),
-			Providers:     testProviders,
+			Providers: testProviders,
+			Recipes:   map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			Compute: &corerp.KubernetesCompute{
+				Namespace:  to.Ptr("default"),
+				Kind:       to.Ptr("kubernetes"),
+				ResourceID: to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
+			},
 		}
 		appManagementClient.EXPECT().
 			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).
@@ -131,9 +316,10 @@ func Test_Update(t *testing.T) {
 
 		environment.Properties.Providers = testProviders
 		obj := objectformats.OutputEnvObject{
-			EnvName:   "test-env",
-			Recipes:   0,
-			Providers: 2,
+			EnvName:     "test-env",
+			Recipes:     0,
+			Providers:   2,
+			ComputeKind: "kubernetes",
 		}
 
 		expected := []any{
@@ -153,88 +339,182 @@ func Test_Update(t *testing.T) {
 
 		require.Equal(t, expected, outputSink.Writes)
 	})
-	t.Run("Success: Update Environment With Existing Providers", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 
-		environment := corerp.EnvironmentResource{
-			Name: to.Ptr("test-env"),
-			Properties: &corerp.EnvironmentProperties{
-				Providers: &corerp.Providers{
+	t.Run("Update Environment With Existing Providers", func(t *testing.T) {
+		testCases := []struct {
+			name              string
+			existingProviders *corerp.Providers
+			expectedProviders *corerp.Providers
+			clearEnvAzure     bool // only applies to Azure
+			clearEnvAws       bool // only applies to AWS
+			expectedError     error
+		}{
+			{
+				name: "Update Environment With Existing Azure Provider",
+				existingProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
 						Scope: to.Ptr("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
 					},
+					Aws: &corerp.ProvidersAws{
+						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+					},
 				},
-				UseDevRecipes: to.Ptr(false),
+				expectedProviders: &corerp.Providers{
+					Azure: &corerp.ProvidersAzure{
+						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+					},
+					Aws: &corerp.ProvidersAws{
+						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+					},
+				},
+				clearEnvAzure: false,
+				clearEnvAws:   false,
+				expectedError: nil,
+			},
+			{
+				name: "Update Environment With Existing Azure Provider and Clear Azure Provider",
+				existingProviders: &corerp.Providers{
+					Azure: &corerp.ProvidersAzure{
+						Scope: to.Ptr("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
+					},
+					Aws: &corerp.ProvidersAws{
+						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+					},
+				},
+				expectedProviders: &corerp.Providers{
+					Aws: &corerp.ProvidersAws{
+						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+					},
+				},
+				clearEnvAzure: true,
+				clearEnvAws:   false,
+				expectedError: nil,
+			},
+			{
+				name: "Update Environment With Existing AWS Provider",
+				existingProviders: &corerp.Providers{
+					Azure: &corerp.ProvidersAzure{
+						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+					},
+					Aws: &corerp.ProvidersAws{
+						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+					},
+				},
+				expectedProviders: &corerp.Providers{
+					Azure: &corerp.ProvidersAzure{
+						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+					},
+					Aws: &corerp.ProvidersAws{
+						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount-1/regions/us-west-2"),
+					},
+				},
+				clearEnvAzure: false,
+				clearEnvAws:   false,
+				expectedError: nil,
+			},
+			{
+				name: "Update Environment With Existing AWS Provider and Clear AWS Provider",
+				existingProviders: &corerp.Providers{
+					Azure: &corerp.ProvidersAzure{
+						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+					},
+					Aws: &corerp.ProvidersAws{
+						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+					},
+				},
+				expectedProviders: &corerp.Providers{
+					Azure: &corerp.ProvidersAzure{
+						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+					},
+				},
+				clearEnvAzure: false,
+				clearEnvAws:   true,
+				expectedError: nil,
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), "test-env").
-			Return(environment, nil).
-			Times(1)
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
 
-		testProviders := &corerp.Providers{
-			Azure: &corerp.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
-			},
-			Aws: &corerp.ProvidersAws{
-				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-			},
+				existingEnvironment := corerp.EnvironmentResource{
+					Name: to.Ptr("test-env"),
+					Properties: &corerp.EnvironmentProperties{
+						Providers: tc.existingProviders,
+					},
+				}
+
+				appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+				appManagementClient.EXPECT().
+					GetEnvDetails(gomock.Any(), "test-env").
+					Return(existingEnvironment, nil).
+					Times(1)
+
+				existingEnvironment.Properties.Providers = tc.expectedProviders
+
+				appManagementClient.EXPECT().
+					CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, existingEnvironment.Properties).
+					Return(true, nil).
+					Times(1)
+
+				workspace := &workspaces.Workspace{
+					Connection: map[string]any{
+						"kind":    "kubernetes",
+						"context": "kind-kind",
+					},
+					Name:  "kind-kind",
+					Scope: "/planes/radius/local/resourceGroups/test-group",
+				}
+
+				outputSink := &output.MockOutput{}
+
+				runner := &Runner{
+					ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+					Workspace:         workspace,
+					Output:            outputSink,
+					EnvName:           "test-env",
+					providers:         tc.expectedProviders,
+					clearEnvAzure:     tc.clearEnvAzure,
+				}
+
+				err := runner.Run(context.Background())
+				require.NoError(t, err)
+
+				numberOfProviders := func() int {
+					numberOfProviders := 0
+					if tc.expectedProviders.Azure != nil {
+						numberOfProviders++
+					}
+					if tc.expectedProviders.Aws != nil {
+						numberOfProviders++
+					}
+					return numberOfProviders
+				}
+
+				obj := objectformats.OutputEnvObject{
+					EnvName:   "test-env",
+					Recipes:   0,
+					Providers: numberOfProviders(),
+				}
+
+				expected := []any{
+					output.LogOutput{
+						Format: "Updating Environment...",
+					},
+					output.FormattedOutput{
+						Format:  "table",
+						Obj:     obj,
+						Options: objectformats.GetUpdateEnvironmentTableFormat(),
+					},
+					output.LogOutput{
+						Format: "Successfully updated environment %q.",
+						Params: []any{"test-env"},
+					},
+				}
+
+				require.Equal(t, expected, outputSink.Writes)
+			})
 		}
-
-		testEnvProperties := &corerp.EnvironmentProperties{
-			UseDevRecipes: to.Ptr(false),
-			Providers:     testProviders,
-		}
-		appManagementClient.EXPECT().
-			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).
-			Return(true, nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			providers:         testProviders,
-		}
-
-		err := runner.Run(context.Background())
-		require.NoError(t, err)
-
-		environment.Properties.Providers = testProviders
-		obj := objectformats.OutputEnvObject{
-			EnvName:   "test-env",
-			Recipes:   0,
-			Providers: 2,
-		}
-
-		expected := []any{
-			output.LogOutput{
-				Format: "Updating Environment...",
-			},
-			output.FormattedOutput{
-				Format:  "table",
-				Obj:     obj,
-				Options: objectformats.GetUpdateEnvironmentTableFormat(),
-			},
-			output.LogOutput{
-				Format: "Successfully updated environment %q.",
-				Params: []any{"test-env"},
-			},
-		}
-
-		require.Equal(t, expected, outputSink.Writes)
 	})
 }

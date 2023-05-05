@@ -1,12 +1,13 @@
-// // ------------------------------------------------------------
-// // Copyright (c) Microsoft Corporation.
-// // Licensed under the MIT License.
-// // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 
 package create
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -120,14 +121,13 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Run_Success(t *testing.T) {
-	t.Run("Run env create tests", func(t *testing.T) {
+func Test_Run(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		testEnvProperties := &corerp.EnvironmentProperties{
-			UseDevRecipes: to.Ptr(false),
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr("default"),
 			},
@@ -158,8 +158,67 @@ func Test_Run_Success(t *testing.T) {
 			ConfigFileInterface: configFileInterface,
 		}
 
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Creating Environment...",
+			},
+			output.LogOutput{
+				Format: "Successfully created environment %q in resource group %q",
+				Params: []interface{}{
+					"default",
+					"default",
+				},
+			},
+		}
+
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+		require.Equal(t, expectedOutput, outputSink.Writes)
+	})
+
+	t.Run("Failure", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		namespaceClient := namespace.NewMockInterface(ctrl)
+		testEnvProperties := &corerp.EnvironmentProperties{
+			Compute: &corerp.KubernetesCompute{
+				Namespace: to.Ptr("default"),
+			},
+		}
+
+		expectedError := errors.New("failed to create the environment")
+
+		appManagementClient.EXPECT().
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
+			Return(false, expectedError).
+			Times(1)
+
+		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+		outputSink := &output.MockOutput{}
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "defaultWorkspace",
+		}
+
+		runner := &Runner{
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			Output:              outputSink,
+			Workspace:           workspace,
+			EnvironmentName:     "default",
+			UCPResourceGroup:    "default",
+			Namespace:           "default",
+			NamespaceInterface:  namespaceClient,
+			ConfigFileInterface: configFileInterface,
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, err)
+		require.Equal(t, expectedError, err)
 	})
 }
 

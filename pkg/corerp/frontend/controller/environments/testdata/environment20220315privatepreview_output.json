@@ -24,7 +24,6 @@
                 }
             }
         },
-        "useDevRecipes": false,
         "provisioningState": "Succeeded"
     },
     "systemData": {

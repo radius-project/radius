@@ -544,9 +544,6 @@ type EnvironmentProperties struct {
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
 
-	// Flag to use radius owned recipes.
-	UseDevRecipes *bool `json:"useDevRecipes,omitempty"`
-
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
