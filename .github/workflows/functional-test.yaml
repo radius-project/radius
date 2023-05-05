@@ -1,0 +1,139 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: Functional test
+on:
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
+env:
+  # Go version
+  GOVER: '^1.20'
+  HELMVER: '^v3.10.0'
+  GOPROXY: https://proxy.golang.org
+  CACHE_REGISTRY: radiusdev.azurecr.io
+  FUNCTIONALTEST_TIMEOUT: 60m
+  AZURE_REGION: westus3
+  AZURE_SUBSCRIPTION_ID: "85716382-7362-45c3-ae03-2126e459a123"
+
+jobs:
+  build:
+    name: Build Radius for test
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    steps:
+      - name: Set up checkout target (pull_request)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REF=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
+      - name: Set up checkout target (scheduled)
+        if: github.event_name != 'schedule'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_OUTPUT
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ needs.build.outputs.CHECKOUT_REPO }}
+          ref: ${{ needs.build.outputs.CHECKOUT_REF }}
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Get Go Cache path
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+      - name: Generate ID for release
+        run: |
+          BASE_STR="E2E|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
+          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
+          echo "AZURE_TEST_RESOURCE_GROUP=radius-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ needs.build.outputs.go-build }}
+            ${{ needs.build.outputs.go-mod }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
+      - uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.CACHE_REGISTRY }}
+          username: '${{ secrets.DOCKER_USERNAME }}'
+          password: '${{ secrets.DOCKER_PASSWORD }}'
+      - name: Login ACR - ${{ env.CACHE_REGISTRY }}
+        run: |
+          az acr login -n ${{ env.CACHE_REGISTRY }}
+      - name: Build and Push container images
+        run: |
+          make docker-build
+        env:
+          DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+  kubernetes_tests:
+    name: Run Kubernetes tests
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    if: ${{ false }}
+    env:
+      # Timeout used for Kubernetes functional tests
+      K8S_FUNCTIONALTEST_TIMEOUT: 60m
+      RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+      RADIUS_CHART_LOCATION: deploy/Chart/
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup rad CLI
+      uses: ./.github/actions/setup-rad-cli
+    - name: Create KinD Cluster
+      uses: helm/kind-action@v1.4.0
+      with:
+        cluster_name: radius
+        version:  v0.11.0
+    - name: Dapr tool installer
+      uses: dapr/setup-dapr@v1
+    - name: Install dapr into cluster
+      run: dapr init -k --wait --timeout 600
+    - name: Update rad env with Kubernetes
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        mkdir ~/.rad
+        dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }} --ucp-image ${{ env.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ env.REL_VERSION }}
+        # Print config for sanity check
+        cat ~/.rad/config.yaml
+    - name: Download Bicep
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        cd $GITHUB_WORKSPACE
+        which rad || { echo "cannot find rad"; exit 1; }
+        rad bicep download
+    - name: Run Kubernetes tests (PR)
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
+        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+        make test-functional-kubernetes
+    - name: Upload container logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: container_logs
+        path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+    - name: Uninstall Radius from Kubernetes
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        rad env uninstall kubernetes
+        ./.github/scripts/namespace-is-empty.sh
+
