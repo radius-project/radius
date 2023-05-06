@@ -152,9 +152,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        incldue:
-          - name: corerp
-          - name: ucp
+        name: [corerp, ucp]
     env:
       # Timeout used for Kubernetes functional tests
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
