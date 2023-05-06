@@ -142,7 +142,6 @@ jobs:
             ### Test Status
 
             :white_check_mark: Preparing functional tests...
-
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
