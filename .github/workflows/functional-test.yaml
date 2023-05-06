@@ -19,7 +19,7 @@ env:
   GOPROXY: https://proxy.golang.org
   CACHE_REGISTRY: radiusdev.azurecr.io
   FUNCTIONALTEST_TIMEOUT: 60m
-  AZURE_REGION: westus3
+  AZURE_LOCATION: westus3
   AZURE_SUBSCRIPTION_ID: "85716382-7362-45c3-ae03-2126e459a123"
   AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
@@ -77,7 +77,7 @@ jobs:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ## Radius functional test
+            ## Functional test summary
             ### Test information
             | Name | Value |
             |---|---|
@@ -114,6 +114,12 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: rad_cli_linux_amd64
+          path: |
+            ./dist/linux_amd64/release/rad
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success()
         with:
@@ -128,11 +134,24 @@ jobs:
           append: true
           message: |
             ❌ Test image build is failed
+      - name: Create azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+        run: |
+          az group create \
+            --location ${{ env.AZURE_LOCATION }} \
+            --name ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} \
+            --subscription ${{ env.AZURE_SUBSCRIPTION_ID }}
+          while [ $(az group exists --name ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} = false ]; do sleep 2; done
 
-  kubernetes_tests:
-    name: Run Kubernetes tests
+  tests:
+    name: Run ${{ matrix.name }} functional tests
     needs: build
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    strategy:
+      fail-fast: false
+      matrix:
+        incldue:
+          - name: corerp
+          - name: ucp
     env:
       # Timeout used for Kubernetes functional tests
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
@@ -148,6 +167,11 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_darwin_arm64
+          path: bin
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: ${{ github.run_id }}
@@ -157,23 +181,20 @@ jobs:
             ### Test environment setup
       - name: Create KinD cluster without OIDC
         run: |
-          mkdir -p tmp/
-
-          curl -sSLo "tmp/kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
-          chmod +x "tmp/kind"
-          tmp/kind create cluster --name radius
+          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
+          chmod +x ./kind
+          ./kind create cluster --name radius
       - name: Create KinD cluster (OFF)
         if: false
         run: |
-          echo ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }} | base64 -d > sa.pub
-          echo ${{ secrets.OIDC_ISSUER_PRIVATE_KEY }} | base64 -d > sa.key
-          mkdir -p kind/
-
-          curl -sSLo "tmp/kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
-          chmod +x "tmp/kind"
+          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
+          chmod +x ./kind
 
           # Create KinD cluster with OIDC Issuer keys
-          cat <<EOF | tmp/kind create cluster --name radius --config=-
+
+          echo ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }} | base64 -d > sa.pub
+          echo ${{ secrets.OIDC_ISSUER_PRIVATE_KEY }} | base64 -d > sa.key
+          cat <<EOF | ./kind create cluster --name radius --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
           nodes:
@@ -231,51 +252,55 @@ jobs:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ❌ The following test environment creation is failed. Please check the logs for more details.
+            ❌ The test environment creation is failed. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
       - name: Download Bicep
         run: |
-          exit 1
-          export PATH=$GITHUB_WORKSPACE/dist:$PATH
-          cd $GITHUB_WORKSPACE
+          chmod +x ./bin/rad
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
+          rad version
+          exit 1
 
       - name: Install Radius
         run: |
-          dist/rad install kubernetes \
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+
+          rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} --tag ${{ env.REL_VERSION }} \
             --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},\
           ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},ucp.provider.aws.region=${{ env.AWS_REGION }}
 
-          dist/rad workspace create kubernetes
-          dist/rad group create kind-radius
-          dist/rad group switch kind-radius
+          rad workspace create kubernetes
+          rad group create kind-radius
+          rad group switch kind-radius
 
-          dist/rad env create kind-radius --namespace default 
-          dist/rad env switch kind-radius
+          rad env create kind-radius --namespace default 
+          rad env switch kind-radius
 
-          dist/rad env update kind-radius --azure-subscription-id ${{ env.AZURE_SUBSCRIPTION_ID }} \
+          rad env update kind-radius --azure-subscription-id ${{ env.AZURE_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
 
-          dist/rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
+          rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --client-secret ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
-          dist/rad env update kind-radius --aws-region ${{ env.AWS_REGION }} \
+          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} \
             --aws-account-id ${{ secrets.AWS_ACCOUNT_ID }}
 
-          dist/rad credential register aws \
+          rad credential register aws \
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
             --secret-access-key $${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Run Kubernetes tests (PR)
         run: |
           # Ensure rad cli is in path before running tests.
-          export PATH=$GITHUB_WORKSPACE/dist:$PATH
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
           cd $GITHUB_WORKSPACE
           which rad || { echo "cannot find rad"; exit 1; }
 
-          make test-functional-kubernetes
+          make test-functional-${{ matrix.name }}
         env:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: $GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -285,3 +310,24 @@ jobs:
         with:
           name: container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+  cleanup:
+    name: Clean-up resources
+    needs: tests
+    if: always()
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    env:
+      AZURE_TEST_RESOURCE_GROUP: ${{ needs.build.outputs.AZURE_TEST_RESOURCE_GROUP }}
+    steps:
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
+      - name: Delete azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+        run: |
+          az group delete \
+            --subscription ${{ env.AZURE_SUBSCRIPTION_ID }} \
+            --name ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} \
+            --yes \
+            --verbose
