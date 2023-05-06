@@ -20,7 +20,7 @@ env:
   # KinD cluster version
   KIND_VER: 'v0.18.0'
   # Dapr version
-  DAPR_VER: '1.10.5'
+  DAPR_VER: '1.10.0'
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
