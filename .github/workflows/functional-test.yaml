@@ -120,7 +120,7 @@ jobs:
 
             <details>
             
-            <summary>Test tool information</summary>
+            <summary>List of tool versions for test.</summary>
 
             | Tool | Version |
             |------|---------|
