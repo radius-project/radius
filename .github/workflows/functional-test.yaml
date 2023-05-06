@@ -167,7 +167,7 @@ jobs:
     needs: build
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         name: [corerp, ucp]
     env:
