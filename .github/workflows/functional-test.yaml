@@ -113,12 +113,13 @@ jobs:
         if: env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
-          number: ${{ steps.gen-id.outputs.PR_NUMBER }}
-          append: true
+          number: ${{ env.PR_NUMBER }}
+          hide: true
+          hide_classify: OUTDATED
           message: |
-            ### Test information
+            ### Radius functional test overview
 
-            :mag: **[Go to test run](${{ env.ACTION_LINK }})**
+            :mag: **[Go to test action run](${{ env.ACTION_LINK }})**
 
             | Name | Value |
             |------|-------|
@@ -129,7 +130,7 @@ jobs:
             |**Azure test resource group** | ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} |
 
             <details>
-            <summary>List of tool versions in test environment.</summary>
+            <summary> Click here to see the list of tools for the current test run.</summary>
 
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
@@ -139,6 +140,8 @@ jobs:
             </details>
             
             ### Test Status
+
+            :white_check_mark: Preparing functional tests...
 
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -165,6 +168,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :white_check_mark: Test image build is succeeded
@@ -172,6 +176,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :x: Test image build is failed
@@ -232,6 +237,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: ${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :white_check_mark: Starting ${{ matrix.name }} functional tests...
@@ -300,6 +306,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :x: Test tool installation for ${{ matrix.name }} is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
@@ -338,6 +345,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
@@ -379,6 +387,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :100: ${{ matrix.name }} functional tests are passed.
@@ -386,6 +395,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :x: ${{ matrix.name }} functional test is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
