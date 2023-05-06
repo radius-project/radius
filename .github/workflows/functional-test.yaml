@@ -59,6 +59,14 @@ jobs:
         run: |
           echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -91,14 +99,6 @@ jobs:
 
             ### Image build progress
 
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
-            ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
@@ -138,9 +138,12 @@ jobs:
         run: |
           az group create \
             --location ${{ env.AZURE_LOCATION }} \
-            --name ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} \
+            --name $RESOURCE_GROUP \
             --subscription ${{ env.AZURE_SUBSCRIPTION_ID }}
-          while [ $(az group exists --name ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} = false ]; do sleep 2; done
+
+          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
+        env:
+          RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
 
   tests:
     name: Run ${{ matrix.name }} functional tests
@@ -166,7 +169,23 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
-      
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Get Go Cache path
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Download release artifacts
         uses: actions/download-artifact@v3
         with:
@@ -312,7 +331,7 @@ jobs:
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
   cleanup:
     name: Clean-up resources
-    needs: tests
+    needs: [build, tests]
     if: always()
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
@@ -324,10 +343,10 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
-      - name: Delete azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+      - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           az group delete \
             --subscription ${{ env.AZURE_SUBSCRIPTION_ID }} \
-            --name ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes \
             --verbose
