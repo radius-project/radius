@@ -31,8 +31,11 @@ env:
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
   AZURE_LOCATION: westus3
+  # The test subscription id for testing.
   AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
+  # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+  # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources.
   AWS_REGION: 'us-west-2'
