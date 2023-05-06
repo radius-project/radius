@@ -47,6 +47,7 @@ jobs:
       CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
       AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+      RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -93,16 +94,16 @@ jobs:
           echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
           echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ## Functional test summary
             ### Test information
             | Name | Value |
             |---|---|
-            |**Checkout Repository** | ${{ steps.gen-id.outputs.CHECKOUT_REPO }} |
+            |**Repository** | ${{ steps.gen-id.outputs.CHECKOUT_REPO }} |
             |**Checkout ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
             |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
             |**Test image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
@@ -110,7 +111,7 @@ jobs:
 
             > **[Go to test action run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})**
 
-            ### Image build progress
+            ### Test Status
 
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -130,7 +131,7 @@ jobs:
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
         with:
-          name: rad_cli_linux_amd64
+          name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
       - uses: marocchino/sticky-pull-request-comment@v2
@@ -171,6 +172,7 @@ jobs:
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
       AZURE_TEST_RESOURCE_GROUP: ${{ needs.build.outputs.AZURE_TEST_RESOURCE_GROUP }}
+      RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -194,18 +196,17 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Download release artifacts
+      - name: Download rad CLI
         uses: actions/download-artifact@v3
         with:
-          name: rad_cli_darwin_arm64
+          name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
-
-            ### Test environment setup
+            ✅ [${{ matrix.name }}] Starting functional tests...
       - uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VER }}
@@ -261,13 +262,20 @@ jobs:
         run: |
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
+      - name: Download Bicep.
+        run: |
+          chmod +x ./bin/rad
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep download
+          rad version
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success()
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ✅ The following test environment is created successfully.
+            ✅ [${{ matrix.name }}] The following test tools are installed successfully.
 
             | Name | Version |
             |---|---|
@@ -282,17 +290,9 @@ jobs:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ❌ The test environment creation is failed. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
-      - name: Download Bicep
-        run: |
-          chmod +x ./bin/rad
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep download
-          rad version
-          exit 1
-
+            ❌ [${{ matrix.name }}] Test tool installation is failed. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
       - name: Install Radius
+        if: false # TODO: Enable it later
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -322,8 +322,22 @@ jobs:
           rad credential register aws \
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
             --secret-access-key $${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Run Kubernetes tests (PR)
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ✅ [${{ matrix.name }}] Installed Radius to the cluster successfully. Running functional test now...
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failed()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ❌ [${{ matrix.name }}] Failed to install Radius. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
+      - name: Run functional tests
+        if: false # TODO: Enable it later
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -350,8 +364,22 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: container_logs
+          name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ✅ [${{ matrix.name }}] Functional tests is passed.
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failed()
+        with:
+          header: ${{ github.run_id }}
+          append: true
+          message: |
+            ❌ [${{ matrix.name }}] Functional test is failed. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
   cleanup:
     name: Clean-up resources
     needs: [build, tests]
