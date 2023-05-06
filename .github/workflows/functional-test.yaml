@@ -333,7 +333,7 @@ jobs:
           message: |
             ✅ [${{ matrix.name }}] Installed Radius to the cluster successfully. Running functional test now...
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: failed()
+        if: failure()
         with:
           header: ${{ github.run_id }}
           append: true
@@ -377,7 +377,7 @@ jobs:
           message: |
             ✅ [${{ matrix.name }}] Functional tests is passed.
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: failed()
+        if: failure()
         with:
           header: ${{ github.run_id }}
           append: true
