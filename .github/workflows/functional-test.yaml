@@ -40,6 +40,9 @@ env:
   # The region for AWS resources.
   AWS_REGION: 'us-west-2'
 
+  OIDC_ISSUER: 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
+  ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
 jobs:
   build:
     name: Build Radius for test
@@ -104,16 +107,30 @@ jobs:
           append: true
           message: |
             ### Test information
+
+            :mag: **[Go to test run](${{ env.ACTION_LINK }})**
+
             | Name | Value |
-            |---|---|
+            |------|-------|
             |**Repository** | ${{ steps.gen-id.outputs.CHECKOUT_REPO }} |
             |**Checkout ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
             |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
-            |**Test image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
+            |**Image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
             |**Azure test resource group** | ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} |
 
-            > **[Go to test action run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})**
+            <details>
+            
+            <summary>Test tool information</summary>
 
+            | Tool | Version |
+            |------|---------|
+            | KinD | ${{ env.KIND_VER }} |
+            | Dapr | ${{ env.DAPR_VER }} |
+            | Azure KeyVault CSI driver | ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }} |
+            | Azure Workload identity webhook | ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} |
+
+            </details>
+            
             ### Test Status
 
       - name: Setup Azure CLI
@@ -143,14 +160,14 @@ jobs:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ✅ Test image build is succeeded
+            :white_check_mark: Test image build is succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure()
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ❌ Test image build is failed
+            :x: Test image build is failed
       - name: Create azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           az group create \
@@ -209,7 +226,7 @@ jobs:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ✅ [${{ matrix.name }}] Starting functional tests...
+            :white_check_mark: Starting ${{ matrix.name }} functional tests...
       - uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VER }}
@@ -225,7 +242,6 @@ jobs:
           chmod +x ./kind
 
           # Create KinD cluster with OIDC Issuer keys
-
           echo ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }} | base64 -d > sa.pub
           echo ${{ secrets.OIDC_ISSUER_PRIVATE_KEY }} | base64 -d > sa.key
           cat <<EOF | ./kind create cluster --name radius --config=-
@@ -243,7 +259,7 @@ jobs:
               kind: ClusterConfiguration
               apiServer:
                 extraArgs:
-                  service-account-issuer: ${{ secrets.OIDC_ISSUER }}
+                  service-account-issuer: ${{ env.OIDC_ISSUER }}
                   service-account-key-file: /etc/kubernetes/pki/sa.pub
                   service-account-signing-key-file: /etc/kubernetes/pki/sa.key
               controllerManager:
@@ -273,27 +289,12 @@ jobs:
           rad bicep download
           rad version
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: success()
-        with:
-          header: ${{ github.run_id }}
-          append: true
-          message: |
-            ✅ [${{ matrix.name }}] The following test tools are installed successfully.
-
-            | Name | Version |
-            |---|---|
-            | KinD | ${{ env.KIND_VER }} |
-            | Dapr | ${{ env.DAPR_VER }} |
-            | Azure Keyvault CSI driver | ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }} |
-            | Azure workload identity webhook | ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} |
-
-      - uses: marocchino/sticky-pull-request-comment@v2
         if: failure()
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ❌ [${{ matrix.name }}] Test tool installation is failed. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
+            :x: Test tool installation for ${{ matrix.name }} is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
       - name: Install Radius
         if: false # TODO: Enable it later
         run: |
@@ -326,19 +327,12 @@ jobs:
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
             --secret-access-key $${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: success()
-        with:
-          header: ${{ github.run_id }}
-          append: true
-          message: |
-            ✅ [${{ matrix.name }}] Installed Radius to the cluster successfully. Running functional test now...
-      - uses: marocchino/sticky-pull-request-comment@v2
         if: failure()
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ❌ [${{ matrix.name }}] Failed to install Radius. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
+            :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
       - name: Run functional tests
         if: false # TODO: Enable it later
         run: |
@@ -346,7 +340,11 @@ jobs:
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           cd $GITHUB_WORKSPACE
           export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=$GITHUB_WORKSPACE/samples
+
           which rad || { echo "cannot find rad"; exit 1; }
+
+          # Populate test environment variables from secret.
+          # eval "export $(echo "${{ secrets.TEST_JSON_ENV_VARS }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
           make test-functional-${{ matrix.name }}
         env:
@@ -375,14 +373,14 @@ jobs:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ✅ [${{ matrix.name }}] Functional tests is passed.
+            :100: ${{ matrix.name }} functional tests are passed.
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure()
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
-            ❌ [${{ matrix.name }}] Functional test is failed. Please check [the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
+            :x: ${{ matrix.name }} functional test is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
   cleanup:
     name: Clean-up resources
     needs: [build, tests]
