@@ -179,12 +179,14 @@ func TestGetRecipeDefinition(t *testing.T) {
 			Recipes: map[string]map[string]*model.EnvironmentRecipeProperties{
 				"Applications.Link/mongoDatabases": {
 					"cosmosDB": {
+						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"),
 						Parameters: map[string]any{
 							"foo": "bar",
 						},
 					},
 					"default": {
+						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongoDefault/azure:1.0"),
 					},
 				},
