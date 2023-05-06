@@ -3,8 +3,12 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: Functional test
+name: Radius test
 on:
+  # Run every 4 hours on weekdays, and every 12 hours on weekends
+  schedule:
+    - cron: "11 3,7,11,15,19,23 * * 1-5"
+    - cron: "11 11,23 * * 0,6"
   pull_request:
     branches:
       - main
@@ -39,8 +43,9 @@ env:
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources.
   AWS_REGION: 'us-west-2'
-
-  OIDC_ISSUER: 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
+  # The OIDC Issuer for Azure Workload identity.
+  AZURE_OIDC_ISSUER: 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
+  # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
 jobs:
@@ -50,6 +55,7 @@ jobs:
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+      PR_NUMBER: ${{ steps.gen-id.outputs.PR_NUMBER }}
       CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
       AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
@@ -65,6 +71,7 @@ jobs:
         run: |
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Check out code
         uses: actions/checkout@v3
         with:
@@ -101,9 +108,12 @@ jobs:
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
           echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
+          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
       - uses: marocchino/sticky-pull-request-comment@v2
+        if: env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
+          number: ${{ steps.gen-id.outputs.PR_NUMBER }}
           append: true
           message: |
             ### Test information
@@ -113,22 +123,19 @@ jobs:
             | Name | Value |
             |------|-------|
             |**Repository** | ${{ steps.gen-id.outputs.CHECKOUT_REPO }} |
-            |**Checkout ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
+            |**Commit ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
             |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
             |**Image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
             |**Azure test resource group** | ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} |
 
             <details>
-            
-            <summary>List of tool versions for test.</summary>
-
+            <summary>List of tool versions in test environment.</summary>
             | Tool | Version |
             |------|---------|
             | KinD | ${{ env.KIND_VER }} |
             | Dapr | ${{ env.DAPR_VER }} |
             | Azure KeyVault CSI driver | ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }} |
             | Azure Workload identity webhook | ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} |
-
             </details>
             
             ### Test Status
@@ -155,14 +162,14 @@ jobs:
           path: |
             ./dist/linux_amd64/release/rad
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: success()
+        if: success() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
             :white_check_mark: Test image build is succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: failure()
+        if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
           append: true
@@ -191,6 +198,7 @@ jobs:
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+      PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
       AZURE_TEST_RESOURCE_GROUP: ${{ needs.build.outputs.AZURE_TEST_RESOURCE_GROUP }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
@@ -236,14 +244,14 @@ jobs:
           chmod +x ./kind
           ./kind create cluster --name radius
       - name: Create KinD cluster (OFF)
-        if: false
+        if: false # TODO: enable this once we have a way to test OIDC
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
           chmod +x ./kind
 
           # Create KinD cluster with OIDC Issuer keys
-          echo ${{ secrets.OIDC_ISSUER_PUBLIC_KEY }} | base64 -d > sa.pub
-          echo ${{ secrets.OIDC_ISSUER_PRIVATE_KEY }} | base64 -d > sa.key
+          echo ${{ secrets.AZURE_OIDC_ISSUER_PUBLIC_KEY }} | base64 -d > sa.pub
+          echo ${{ secrets.AZURE_OIDC_ISSUER_PRIVATE_KEY }} | base64 -d > sa.key
           cat <<EOF | ./kind create cluster --name radius --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
@@ -259,7 +267,7 @@ jobs:
               kind: ClusterConfiguration
               apiServer:
                 extraArgs:
-                  service-account-issuer: ${{ env.OIDC_ISSUER }}
+                  service-account-issuer: ${{ env.AZURE_OIDC_ISSUER }}
                   service-account-key-file: /etc/kubernetes/pki/sa.pub
                   service-account-signing-key-file: /etc/kubernetes/pki/sa.key
               controllerManager:
@@ -289,7 +297,7 @@ jobs:
           rad bicep download
           rad version
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: failure()
+        if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
           append: true
@@ -327,7 +335,7 @@ jobs:
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
             --secret-access-key $${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: failure()
+        if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
           append: true
@@ -368,19 +376,31 @@ jobs:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: success()
+        if: success() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
             :100: ${{ matrix.name }} functional tests are passed.
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: failure()
+        if: failure() && env.PR_NUMBER != ''
         with:
           header: ${{ github.run_id }}
           append: true
           message: |
             :x: ${{ matrix.name }} functional test is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
+      - name: Create the failure issue for functional test.
+        uses: actions/github-script@v6
+        if: failure() && github.event_name == 'schedule'
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Scheduled functional test failure - ${{ matrix.name }} ',
+              body: '${{ matrix.name }} functional test is failed. Please check [the action run](' + process.env.ACTION_LINK + ') for more details.'
+              labels: ['bug']
+            })
   cleanup:
     name: Clean-up resources
     needs: [build, tests]
