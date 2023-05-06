@@ -110,7 +110,7 @@ jobs:
           az acr login -n ${{ env.CACHE_REGISTRY }}
       - name: Build and Push container images
         run: |
-          make docker-build && make docker-push
+          make build && docker-build && make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
