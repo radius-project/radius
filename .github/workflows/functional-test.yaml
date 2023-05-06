@@ -13,16 +13,29 @@ on:
 env:
   # Go version
   GOVER: '^1.20'
-  HELM_VER: '^v3.10.0'
-  KIND_VER: 'v1.18.0'
-  DAPR_VER: '1.10.5'
   GOPROXY: https://proxy.golang.org
-  CACHE_REGISTRY: radiusdev.azurecr.io
-  FUNCTIONALTEST_TIMEOUT: 60m
-  AZURE_LOCATION: westus3
-  AZURE_SUBSCRIPTION_ID: "85716382-7362-45c3-ae03-2126e459a123"
-  AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
+
+  # Helm version
+  HELM_VER: 'v3.11.3'
+  # KinD cluster version
+  KIND_VER: 'v1.18.0'
+  # Dapr version
+  DAPR_VER: '1.10.5'
+  # Azure Keyvault CSI driver chart version
+  AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
+  # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
+  # ACR for storing test images
+  CACHE_REGISTRY: radiusdev.azurecr.io
+  # The radius functional test timeout
+  FUNCTIONALTEST_TIMEOUT: 60m
+  # The Azure Location to store test resources
+  AZURE_LOCATION: westus3
+  AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
+  RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+  RADIUS_CHART_LOCATION: deploy/Chart/
+  # The region for AWS resources.
+  AWS_REGION: 'us-west-2'
 
 jobs:
   build:
@@ -154,9 +167,6 @@ jobs:
       matrix:
         name: [corerp, ucp]
     env:
-      # Timeout used for Kubernetes functional tests
-      RADIUS_CONTAINER_LOG_BASE: dist/container_logs
-      RADIUS_CHART_LOCATION: deploy/Chart/
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
@@ -196,6 +206,9 @@ jobs:
           message: |
 
             ### Test environment setup
+      - uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VER }}
       - name: Create KinD cluster without OIDC
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
@@ -315,12 +328,24 @@ jobs:
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           cd $GITHUB_WORKSPACE
+          export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=$GITHUB_WORKSPACE/samples
           which rad || { echo "cannot find rad"; exit 1; }
 
           make test-functional-${{ matrix.name }}
         env:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: $GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          AZURE_MONGODB_RESOURCE_ID: ${{ secrets.AZURE_MONGODB_RESOURCE_ID }}
+          AZURE_COSMOS_MONGODB_ACCOUNT_ID: ${{ secrets.AZURE_COSMOS_MONGODB_ACCOUNT_ID }}
+          AZURE_TABLESTORAGE_RESOURCE_ID: ${{ secrets.AZURE_TABLESTORAGE_RESOURCE_ID }}
+          AZURE_SERVICEBUS_RESOURCE_ID: ${{ secrets.AZURE_SERVICEBUS_RESOURCE_ID }}
+          AZURE_REDIS_RESOURCE_ID: ${{ secrets.AZURE_REDIS_RESOURCE_ID }}
+          AZURE_MSSQL_RESOURCE_ID: ${{ secrets.AZURE_MSSQL_RESOURCE_ID }}
+          AZURE_MSSQL_USERNAME: ${{ secrets.AZURE_MSSQL_USERNAME }}
+          AZURE_MSSQL_PASSWORD: ${{ secrets.AZURE_MSSQL_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3
