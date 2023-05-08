@@ -408,7 +408,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :rocket: ${{ matrix.name }} functional tests are passed.
+            :rocket: ${{ matrix.name }} functional tests passed.
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -418,7 +418,7 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
-      - name: Create the failure issue for functional test.
+      - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v6
         if: failure() && github.event_name == 'schedule'
         with:
