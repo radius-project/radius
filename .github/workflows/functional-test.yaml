@@ -438,7 +438,7 @@ jobs:
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           az group delete \
-            --subscription ${{ env.AZURE_SUBSCRIPTION_ID }} \
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes \
             --verbose
