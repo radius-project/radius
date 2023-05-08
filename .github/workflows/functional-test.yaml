@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: Radius test
+name: Functional tests
 on:
   schedule:
     # Run every 4 hours on weekdays.
