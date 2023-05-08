@@ -154,7 +154,7 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request && github.event.pull_request.head.repo.full_name == github.repository
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: testcov-${{ github.run_id }}
+          header: testcov-${{ github.event.pull_request.number }}
           number: ${{ github.event.pull_request.number }}
           hide: true
           hide_classify: OUTDATED
