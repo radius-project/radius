@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"errors"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -69,12 +67,12 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// ConvertTo converts from the versioned SecretStoreResource resource to version-agnostic datamodel.
+// ConvertTo does no-op because SecretStoresClientListSecretsResponse model is used only for response.
 func (src *SecretStoresClientListSecretsResponse) ConvertTo() (v1.DataModelInterface, error) {
-	return nil, errors.New("not implemented")
+	return nil, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoreResource resource.
+// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoresClientListSecretsResponse resource.
 func (dst *SecretStoresClientListSecretsResponse) ConvertFrom(src v1.DataModelInterface) error {
 	ss, ok := src.(*datamodel.SecretStoreListSecrets)
 	if !ok {
