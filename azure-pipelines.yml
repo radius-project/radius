@@ -231,6 +231,16 @@ stages:
       condition: always()
       continueOnError: 'true'
     - script: |
+        echo "$AZURE_MONGODB_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt
+        echo "$AZURE_COSMOS_MONGODB_ACCOUNT_ID ::" >> ./dist/container_logs/tmp.txt
+        echo "$AZURE_TABLESTORAGE_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt
+        echo "$AZURE_SERVICEBUS_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt
+        echo "$AZURE_REDIS_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt
+        echo "$AZURE_MSSQL_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt
+        echo "$AZURE_MSSQL_USERNAME ::" >> ./dist/container_logs/tmp.txt
+        echo "$AZURE_MSSQL_PASSWORD ::" >> ./dist/container_logs/tmp.txt
+        exit 1
+
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/$(targetName)test
