@@ -204,7 +204,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [corerp, ucp]
+        name: [ucp,corerp,samples]
     env:
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
@@ -218,6 +218,13 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+      - name: Checkout samples repo
+        uses: actions/checkout@v3
+        if: matrix.name == 'samples'
+        with:
+          repository: project-radius/samples
+          ref: refs/heads/edge
+          path: samples
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
         with:
