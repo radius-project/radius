@@ -156,6 +156,13 @@ jobs:
           append: true
           message: |
             :white_check_mark: Building Radius and pushing container images for functional test...
+            <details>
+            <summary> See the details for container images</summary>
+
+            * appcore-rp: `${{ env.CACHE_REGISTRY }}/appcore-rp:${{ env.REL_VERSION }}`
+            * ucp: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
+
+            </details>
       - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
@@ -388,6 +395,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
+          # Test_MongoDB_Recipe_Parameters is using the following environment variable.
+          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3
