@@ -3,14 +3,8 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: Clean up test resources
+name: Purge test resources
 on:
-  # for testing
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
   schedule:
     # Run at 23:05 on Sunday.
     - cron: "5 23 * * 0"
