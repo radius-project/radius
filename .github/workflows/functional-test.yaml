@@ -36,16 +36,12 @@ env:
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
   AZURE_LOCATION: westus3
-  # The test subscription id for testing.
-  AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources.
   AWS_REGION: 'us-west-2'
-  # The OIDC Issuer for Azure Workload identity.
-  AZURE_OIDC_ISSUER: 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
@@ -146,7 +142,7 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
+          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - name: Login ACR - ${{ env.CACHE_REGISTRY }}
         run: |
           az acr login -n ${{ env.CACHE_REGISTRY }}
@@ -191,7 +187,7 @@ jobs:
           az group create \
             --location ${{ env.AZURE_LOCATION }} \
             --name $RESOURCE_GROUP \
-            --subscription ${{ env.AZURE_SUBSCRIPTION_ID }}
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
 
           while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
         env:
@@ -257,20 +253,20 @@ jobs:
       - uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VER }}
-      - name: Create KinD cluster without OIDC
-        run: |
-          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
-          chmod +x ./kind
-          ./kind create cluster --name radius
-      - name: Create KinD cluster (OFF)
-        if: false # TODO: enable this once we have a way to test OIDC
+      - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
           chmod +x ./kind
 
+          # Populate the following environment variables for Azure workload identity from secrets.
+          # AZURE_OIDC_ISSUER_PUBLIC_KEY
+          # AZURE_OIDC_ISSUER_PRIVATE_KEY
+          # AZURE_OIDC_ISSUER
+          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+
           # Create KinD cluster with OIDC Issuer keys
-          echo ${{ secrets.AZURE_OIDC_ISSUER_PUBLIC_KEY }} | base64 -d > sa.pub
-          echo ${{ secrets.AZURE_OIDC_ISSUER_PRIVATE_KEY }} | base64 -d > sa.key
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+          echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
           cat <<EOF | ./kind create cluster --name radius --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
@@ -286,7 +282,7 @@ jobs:
               kind: ClusterConfiguration
               apiServer:
                 extraArgs:
-                  service-account-issuer: ${{ env.AZURE_OIDC_ISSUER }}
+                  service-account-issuer: $AZURE_OIDC_ISSUER
                   service-account-key-file: /etc/kubernetes/pki/sa.pub
                   service-account-signing-key-file: /etc/kubernetes/pki/sa.key
               controllerManager:
@@ -307,7 +303,7 @@ jobs:
       - name: Install azure workload identity webhook chart
         run: |
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
-          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
       - name: Download Bicep.
         run: |
           chmod +x ./bin/rad
@@ -341,12 +337,12 @@ jobs:
           rad env create kind-radius --namespace default 
           rad env switch kind-radius
 
-          rad env update kind-radius --azure-subscription-id ${{ env.AZURE_SUBSCRIPTION_ID }} \
+          rad env update kind-radius --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
 
-          rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
-            --client-secret ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
-            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+            --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+            --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
 
           rad env update kind-radius --aws-region ${{ env.AWS_REGION }} \
             --aws-account-id ${{ secrets.AWS_ACCOUNT_ID }}
@@ -372,21 +368,21 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          # Populate test environment variables from secret.
-          # eval "export $(echo "${{ secrets.TEST_JSON_ENV_VARS }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          # Populate the following test environment variables from secret.
+          # AZURE_MONGODB_RESOURCE_ID
+          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+          # AZURE_TABLESTORAGE_RESOURCE_ID
+          # AZURE_SERVICEBUS_RESOURCE_ID
+          # AZURE_REDIS_RESOURCE_ID
+          # AZURE_MSSQL_RESOURCE_ID
+          # AZURE_MSSQL_USERNAME
+          # AZURE_MSSQL_PASSWORD
+          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
           make test-functional-${{ matrix.name }}
         env:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: $GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          AZURE_MONGODB_RESOURCE_ID: ${{ secrets.AZURE_MONGODB_RESOURCE_ID }}
-          AZURE_COSMOS_MONGODB_ACCOUNT_ID: ${{ secrets.AZURE_COSMOS_MONGODB_ACCOUNT_ID }}
-          AZURE_TABLESTORAGE_RESOURCE_ID: ${{ secrets.AZURE_TABLESTORAGE_RESOURCE_ID }}
-          AZURE_SERVICEBUS_RESOURCE_ID: ${{ secrets.AZURE_SERVICEBUS_RESOURCE_ID }}
-          AZURE_REDIS_RESOURCE_ID: ${{ secrets.AZURE_REDIS_RESOURCE_ID }}
-          AZURE_MSSQL_RESOURCE_ID: ${{ secrets.AZURE_MSSQL_RESOURCE_ID }}
-          AZURE_MSSQL_USERNAME: ${{ secrets.AZURE_MSSQL_USERNAME }}
-          AZURE_MSSQL_PASSWORD: ${{ secrets.AZURE_MSSQL_PASSWORD }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
@@ -437,7 +433,7 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
+          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           az group delete \
