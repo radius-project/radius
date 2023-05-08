@@ -113,7 +113,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           hide: true
           hide_classify: 'OUTDATED'
@@ -167,7 +167,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -175,7 +175,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -236,7 +236,7 @@ jobs:
           path: bin
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -305,7 +305,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -344,7 +344,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -386,7 +386,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -394,7 +394,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         with:
-          header: teststatus-${{ env.PR_NUMBER }}
+          header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
