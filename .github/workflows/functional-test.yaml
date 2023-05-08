@@ -320,21 +320,19 @@ jobs:
           message: |
             :x: Test tool installation for ${{ matrix.name }} is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
       - name: Install Radius
-        if: false # TODO: Enable it later
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
 
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} --tag ${{ env.REL_VERSION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},\
-          ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},ucp.provider.aws.region=${{ env.AWS_REGION }}
+            --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},ucp.provider.aws.region=${{ env.AWS_REGION }}
 
           rad workspace create kubernetes
           rad group create kind-radius
           rad group switch kind-radius
 
-          rad env create kind-radius --namespace default 
+          rad env create kind-radius --namespace default
           rad env switch kind-radius
 
           rad env update kind-radius --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
