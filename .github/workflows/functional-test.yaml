@@ -188,7 +188,6 @@ jobs:
             --location ${{ env.AZURE_LOCATION }} \
             --name $RESOURCE_GROUP \
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
-
           while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
         env:
           RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
