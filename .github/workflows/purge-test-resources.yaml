@@ -13,8 +13,8 @@ env:
   AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
   AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
 jobs:
-  azure_resources:
-    name: Clean up test azure resource groups
+  purge_azure_resources:
+    name: Azure resources clean-ups
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Setup Azure CLI
@@ -31,7 +31,7 @@ jobs:
           # Delete test resource groups created by functional-test.yaml
           az group list --query "[?starts_with(name, 'radtest-')].{name:name}" --output table|grep radtest- >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
           cat ${{ env.AZURE_RG_DELETE_LIST_FILE}}
-          echo "## Deleting Azure resource groups:" >> $GITHUB_STEP_SUMMARY
+          echo "## Azure resource groups:" >> $GITHUB_STEP_SUMMARY
       - name: Delete Azure resource groups
         run: |
           cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
