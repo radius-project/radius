@@ -63,7 +63,7 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 		Application:       to.Ptr(ss.Properties.Application),
 		Type:              fromSecretStoreDataTypeDataModel(ss.Properties.Type),
 		Resource:          to.Ptr(ss.Properties.Resource),
-		Data:              fromSecretValuePropertiesDataModel(ss.Properties.Data),
+		Data:              fromSecretStoreDataPropertiesDataModel(ss.Properties.Data),
 	}
 
 	return nil
@@ -82,7 +82,7 @@ func (dst *SecretStoresClientListSecretsResponse) ConvertFrom(src v1.DataModelIn
 	}
 
 	dst.Type = fromSecretStoreDataTypeDataModel(ss.Type)
-	dst.Data = fromSecretValuePropertiesDataModel(ss.Data)
+	dst.Data = fromSecretStoreDataPropertiesDataModel(ss.Data)
 
 	return nil
 }
@@ -143,7 +143,7 @@ func toSecretValuePropertiesDataModel(src map[string]*SecretValueProperties) map
 	return dst
 }
 
-func fromSecretValuePropertiesDataModel(src map[string]*datamodel.SecretStoreDataValue) map[string]*SecretValueProperties {
+func fromSecretStoreDataPropertiesDataModel(src map[string]*datamodel.SecretStoreDataValue) map[string]*SecretValueProperties {
 	if src == nil {
 		return nil
 	}
