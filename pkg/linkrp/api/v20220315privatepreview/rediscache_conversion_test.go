@@ -94,20 +94,14 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []struct {
-		filename         string
-		recipe           Recipe
-		disableRecipe    bool
-		overrideRecipe   bool
-		host             string
-		port             int32
-		connectionString string
-		password         string
-		resources        []*ResourceReference
+		filename       string
+		recipe         Recipe
+		overrideRecipe bool
+		resources      []*ResourceReference
 	}{
 		{
 			// Opt-out without resources
-			filename:      "rediscacheresourcedatamodel.json",
-			disableRecipe: true,
+			filename: "rediscacheresourcedatamodel.json",
 		},
 		{
 			// Default recipe
@@ -121,9 +115,8 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		},
 		{
 			// Opt-out with resources
-			filename:      "rediscacheresourcedatamodel2.json",
-			disableRecipe: true,
-			resources:     []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+			filename:  "rediscacheresourcedatamodel2.json",
+			resources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
 		},
 	}
 
