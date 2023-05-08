@@ -108,6 +108,7 @@ jobs:
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -148,6 +149,7 @@ jobs:
           az acr login -n ${{ env.CACHE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -168,6 +170,7 @@ jobs:
             ./dist/linux_amd64/release/rad
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -176,6 +179,7 @@ jobs:
             :white_check_mark: Test image build is succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -244,6 +248,7 @@ jobs:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
       - uses: marocchino/sticky-pull-request-comment@v2
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -313,6 +318,7 @@ jobs:
           rad version
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -351,6 +357,7 @@ jobs:
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -392,6 +399,7 @@ jobs:
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
@@ -400,6 +408,7 @@ jobs:
             :rocket: ${{ matrix.name }} functional tests are passed.
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
