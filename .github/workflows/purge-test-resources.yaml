@@ -1,0 +1,41 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: Purge test resources
+on:
+  schedule:
+    # Run at 23:05 on Sunday.
+    - cron: "5 23 * * 0"
+env:
+  # The test subscription id for testing.
+  AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
+  AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
+jobs:
+  purge_azure_resources:
+    name: Azure resources clean-ups
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    steps:
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
+      - name: Find all deleting resource groups
+        run: |
+          az account set -s ${{ env.AZURE_SUBSCRIPTION_ID }}
+          # Delete test resource groups created by ADO pipeline
+          az group list --query "[?starts_with(name, 'radius-1')].{name:name}" --output table|grep radius- > ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          # Delete test resource groups created by functional-test.yaml
+          az group list --query "[?starts_with(name, 'radtest-')].{name:name}" --output table|grep radtest- >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          echo "## Azure resource groups:" >> $GITHUB_STEP_SUMMARY
+      - name: Delete Azure resource groups
+        run: |
+          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
+          do
+              echo " * $line" >> $GITHUB_STEP_SUMMARY
+              az group delete --resource-group $line --yes
+          done
