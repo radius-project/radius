@@ -24,7 +24,7 @@ const (
 	azureScope      = "/subscriptions/test-sub/resourceGroups/testRG"
 	awsScope        = "/planes/aws/aws/accounts/000/regions/cool-region"
 	mongoResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0"
-	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/redisCaches/redis=0"
+	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/redisCaches/redis-0"
 )
 
 func Test_GetConfigurationAzure(t *testing.T) {
@@ -228,6 +228,13 @@ func TestGetRecipeDefinition(t *testing.T) {
 		recipeDef, err := getRecipeDefinition(&envResource, recipeMetadata)
 		require.NoError(t, err)
 		require.Equal(t, recipeDef, &expected)
+	})
+	t.Run("", func(t *testing.T) {
+		envResourceNilRecipe := envResource
+		envResourceNilRecipe.Properties.Recipes = nil
+		_, err := getRecipeDefinition(&envResourceNilRecipe, recipeMetadata)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not find recipe")
 	})
 
 }
