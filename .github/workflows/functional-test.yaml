@@ -431,6 +431,7 @@ jobs:
               labels: ['bug']
             })
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+        if: always()
         run: |
           az group delete \
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
