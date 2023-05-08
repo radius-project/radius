@@ -294,12 +294,9 @@ jobs:
                 extraArgs:
                   service-account-private-key-file: /etc/kubernetes/pki/sa.key
           EOF
-      - name: Dapr tool installer
-        uses: dapr/setup-dapr@v1
-        with:
-          version: ${{ env.DAPR_VER }}
       - name: Install dapr into cluster
         run: |
+          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
           dapr init -k --wait --timeout 600
       - name: Install Azure Keyvault CSI driver chart
         run: |
