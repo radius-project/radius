@@ -298,8 +298,9 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 						deployedResources, err = dynamic.Resource(mapping.Resource).List(ctx, metav1.ListOptions{})
 					}
 					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
-
-					validated = skipLabelValidation || (validated && matchesActualLabels(expectedInNamespace, deployedResources.Items))
+					if !skipLabelValidation {
+						validated = validated && matchesActualLabels(expectedInNamespace, deployedResources.Items)
+					}
 				}
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
