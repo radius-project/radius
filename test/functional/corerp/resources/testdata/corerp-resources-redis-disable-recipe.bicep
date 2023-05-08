@@ -76,8 +76,5 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
       connectionString: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
       password: ''
     }
-    resources: [{ 
-      id: redisresourceid
-    }] 
   }
 }
