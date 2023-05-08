@@ -1,7 +1,17 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+------------------------------------------------------------
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+------------------------------------------------------------
+*/
 
 package cmd
 
@@ -31,6 +41,7 @@ import (
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
+	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
 	recipe_show "github.com/project-radius/radius/pkg/cli/cmd/recipe/show"
@@ -55,7 +66,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
-	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
 	"github.com/project-radius/radius/pkg/trace"
 	"go.opentelemetry.io/otel"
 

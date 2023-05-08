@@ -17,8 +17,8 @@
     "autorest",
     "bicep"
   ],
-  "author": "Microsoft Corporation",
-  "license": "MIT",
+  "author": "The Radius Authors",
+  "license": "Apache License 2.0",
   "bugs": {
     "url": "https://github.com/Azure/bicep-types-az/issues"
   },
