@@ -27,7 +27,7 @@ jobs:
         run: |
           az account set -s ${{ env.AZURE_SUBSCRIPTION_ID }}
           # Delete test resource groups created by ADO pipeline
-          az group list --query "[?starts_with(name, 'radius-16819459877')].{name:name}" --output table|grep radius- > ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          az group list --query "[?starts_with(name, 'radius-1')].{name:name}" --output table|grep radius- > ${{ env.AZURE_RG_DELETE_LIST_FILE}}
           # Delete test resource groups created by functional-test.yaml
           az group list --query "[?starts_with(name, 'radtest-')].{name:name}" --output table|grep radtest- >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
           cat ${{ env.AZURE_RG_DELETE_LIST_FILE}}
