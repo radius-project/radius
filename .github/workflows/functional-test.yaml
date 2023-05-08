@@ -220,6 +220,7 @@ jobs:
         with:
           repository: project-radius/samples
           ref: refs/heads/edge
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
