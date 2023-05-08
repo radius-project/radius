@@ -178,7 +178,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :white_check_mark: Test image build is succeeded
+            :white_check_mark: Test image build succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -187,7 +187,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: Test image build is failed
+            :x: Test image build failed
       - name: Create azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           az group create \
@@ -323,7 +323,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: Test tool installation for ${{ matrix.name }} is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
+            :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
       - name: Install Radius
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -415,7 +415,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: ${{ matrix.name }} functional test is failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
+            :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
       - name: Create the failure issue for functional test.
         uses: actions/github-script@v6
         if: failure() && github.event_name == 'schedule'
@@ -425,7 +425,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: 'Scheduled functional test failure - ${{ matrix.name }} ',
-              body: '${{ matrix.name }} functional test is failed. Please check [the action run](' + process.env.ACTION_LINK + ') for more details.'
+              body: '${{ matrix.name }} functional test failed. Please check [the action run](' + process.env.ACTION_LINK + ') for more details.'
               labels: ['bug']
             })
   cleanup:
