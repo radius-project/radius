@@ -34,14 +34,14 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
-var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH")
+var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("RADIUS_SAMPLES_REPO_ROOT")
 
-// Test process must run with PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH env var set to samples repo absolute path
+// Test process must run with RADIUS_SAMPLES_REPO_ROOT env var set to samples repo absolute path
 // You can set the variables used by vscode codelens (e.g. 'debug test', 'run test') using 'go.testEnvVars' in vscode settings.json
-// Ex: export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=/home/uname/src/samples
+// Ex: export RADIUS_SAMPLES_REPO_ROOT=/home/uname/src/samples
 func Test_TutorialSampleMongoContainer(t *testing.T) {
 	if !samplesRepoEnvVarSet {
-		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
+		t.Skipf("Skip samples test execution, to enable you must set env var RADIUS_SAMPLES_REPO_ROOT to the absolute path of the project-radius/samples repository")
 	} else {
 		// Workaround for go-lint. I just want to disable the test :(
 		t.Skip("This test is temporarily disabled while we're making updates to the tutorial. This will be fixed again by release time.", samplesRepoAbsPath, samplesRepoAbsPath)

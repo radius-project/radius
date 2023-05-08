@@ -152,10 +152,13 @@ jobs:
             ./dist/ut_coverage.html
       - name: Add coverage result comment
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request && github.event.pull_request.head.repo.full_name == github.repository
-        uses: peter-evans/create-or-update-comment@v2.1.1
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
+          header: testcov-${{ github.run_id }}
+          number: ${{ github.event.pull_request.number }}
+          hide: true
+          hide_classify: OUTDATED
+          message: |
             ![${{ env.ut_coverage }}](${{ env.coverage_img }})
 
             For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
@@ -270,61 +273,6 @@ jobs:
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz --force
-
-  kubernetes_tests:
-    name: Run Kubernetes tests
-    needs: [ 'build', 'images' ]
-    if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    env:
-      # Timeout used for Kubernetes functional tests
-      K8S_FUNCTIONALTEST_TIMEOUT: 60m
-      RADIUS_CONTAINER_LOG_BASE: dist/container_logs
-      RADIUS_CHART_LOCATION: deploy/Chart/
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Setup rad CLI
-      uses: ./.github/actions/setup-rad-cli
-    - name: Create KinD Cluster
-      uses: helm/kind-action@v1.4.0
-      with:
-        cluster_name: radius
-        version:  v0.11.0
-    - name: Dapr tool installer
-      uses: dapr/setup-dapr@v1
-    - name: Install dapr into cluster
-      run: dapr init -k --wait --timeout 600
-    - name: Update rad env with Kubernetes
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        mkdir ~/.rad
-        dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }} --ucp-image ${{ env.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ env.REL_VERSION }}
-        # Print config for sanity check
-        cat ~/.rad/config.yaml
-    - name: Download Bicep
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        cd $GITHUB_WORKSPACE
-        which rad || { echo "cannot find rad"; exit 1; }
-        rad bicep download
-    - name: Run Kubernetes tests (PR)
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
-        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        make test-functional-kubernetes
-    - name: Upload container logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: container_logs
-        path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
-    - name: Uninstall Radius from Kubernetes
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        rad env uninstall kubernetes
-        ./.github/scripts/namespace-is-empty.sh
 
   publish:
     name: Publish rad CLI binaries
