@@ -55,7 +55,6 @@ jobs:
       PR_NUMBER: ${{ steps.gen-id.outputs.PR_NUMBER }}
       CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
-      AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
       - name: Set up checkout target (scheduled)
@@ -125,7 +124,6 @@ jobs:
             |**Commit ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
             |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
             |**Image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
-            |**Azure test resource group** | ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} |
 
             <details>
             <summary> Click here to see the list of tools in the current test run</summary>
@@ -188,16 +186,6 @@ jobs:
           append: true
           message: |
             :x: Test image build failed
-      - name: Create azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
-        run: |
-          az group create \
-            --location ${{ env.AZURE_LOCATION }} \
-            --name $RESOURCE_GROUP \
-            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
-          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
-        env:
-          RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
-
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
@@ -207,11 +195,12 @@ jobs:
       matrix:
         name: [ucp,corerp,samples]
     env:
+      UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: ${{ needs.build.outputs.AZURE_TEST_RESOURCE_GROUP }}
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
       - name: Checkout
@@ -249,6 +238,10 @@ jobs:
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
@@ -257,6 +250,15 @@ jobs:
           append: true
           message: |
             :white_check_mark: Starting ${{ matrix.name }} functional tests...
+      - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+        run: |
+          az group create \
+            --location ${{ env.AZURE_LOCATION }} \
+            --name $RESOURCE_GROUP \
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
+        env:
+          RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VER }}
@@ -428,20 +430,6 @@ jobs:
               body: '${{ matrix.name }} functional test failed. Please check [the action run](' + process.env.ACTION_LINK + ') for more details.'
               labels: ['bug']
             })
-  cleanup:
-    name: Clean-up resources
-    needs: [build, tests]
-    if: always()
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    env:
-      AZURE_TEST_RESOURCE_GROUP: ${{ needs.build.outputs.AZURE_TEST_RESOURCE_GROUP }}
-    steps:
-      - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           az group delete \
