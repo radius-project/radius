@@ -43,7 +43,7 @@ func TestValidateAndMutateRequest_Gateway(t *testing.T) {
 					},
 				},
 			},
-			resp: rest.NewBadRequestResponse("Only one of tls.certificateFrom and tls.sslPassthrough can be specified at a time."),
+			resp: rest.NewBadRequestResponse("Only one of $.properties.tls.certificateFrom and $.properties.tls.sslPassthrough can be specified at a time."),
 		},
 		{
 			desc: "cannot set TLS protocol version without certificateFrom",
@@ -54,7 +54,7 @@ func TestValidateAndMutateRequest_Gateway(t *testing.T) {
 					},
 				},
 			},
-			resp: rest.NewBadRequestResponse("Field tls.certificateFrom is required when tls.minimumProtocolVersion is set."),
+			resp: rest.NewBadRequestResponse("Field $.properties.tls.certificateFrom is required when $.properties.tls.minimumProtocolVersion is set."),
 		},
 		{
 			desc: "can set minimum TLS protocol version",
