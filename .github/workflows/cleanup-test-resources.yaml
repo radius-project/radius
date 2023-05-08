@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: Purge test resources
+name: Clean up test resources
 on:
   # for testing
   pull_request:
@@ -17,10 +17,10 @@ on:
 env:
   # The test subscription id for testing.
   AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
-  DELETED_RESOURCE_GROUP_LIST_FILE: 'az_rg_list.txt'
+  AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
 jobs:
-  purge_azure_resources:
-    name: Purge test azure resource groups
+  azure_resources:
+    name: Clean up test azure resource groups
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Setup Azure CLI
@@ -32,13 +32,15 @@ jobs:
       - name: Find all deleting resource groups
         run: |
           az account set -s ${{ env.AZURE_SUBSCRIPTION_ID }}
-          az group list --query "[?starts_with(name, 'radius-')].{name:name}" --output table|grep radius- > ${{ env.DELETED_RESOURCE_GROUP_LIST_FILE}}
-          az group list --query "[?starts_with(name, 'radtest-')].{name:name}" --output table|grep radtest- >> ${{ env.DELETED_RESOURCE_GROUP_LIST_FILE}}
-          cat ${{ env.DELETED_RESOURCE_GROUP_LIST_FILE}}
+          # Delete test resource groups created by ADO pipeline
+          az group list --query "[?starts_with(name, 'radius-')].{name:name}" --output table|grep radius- > ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          # Delete test resource groups created by functional-test.yaml
+          az group list --query "[?starts_with(name, 'radtest-')].{name:name}" --output table|grep radtest- >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}}
           echo "## Deleting Azure resource groups:" >> $GITHUB_STEP_SUMMARY
       - name: Delete Azure resource groups
         run: |
-          cat ${{ env.DELETED_RESOURCE_GROUP_LIST_FILE}} | while read line
+          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
           do
               echo " * $line" >> $GITHUB_STEP_SUMMARY
               # az group delete --resource-group $line --yes
