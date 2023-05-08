@@ -43,24 +43,24 @@ type SecretStore struct {
 }
 
 // ResourceTypeName returns the resource type name of the resource.
-func (e *SecretStore) ResourceTypeName() string {
+func (s *SecretStore) ResourceTypeName() string {
 	return "Applications.Core/secretStores"
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (h *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	h.Properties.Status.OutputResources = do.DeployedOutputResources
+func (s *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
+	s.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
 // OutputResources returns the output resources array.
-func (h *SecretStore) OutputResources() []rpv1.OutputResource {
-	return h.Properties.Status.OutputResources
+func (s *SecretStore) OutputResources() []rpv1.OutputResource {
+	return s.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *SecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
-	return &h.Properties.BasicResourceProperties
+func (s *SecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
+	return &s.Properties.BasicResourceProperties
 }
 
 // SecretStoreProperties represents the properties of SecretStore.
@@ -105,21 +105,21 @@ type SecretStoreListSecrets struct {
 }
 
 // ResourceTypeName returns the resource type name of the resource.
-func (e *SecretStoreListSecrets) ResourceTypeName() string {
+func (s *SecretStoreListSecrets) ResourceTypeName() string {
 	return "Applications.Core/secretStores"
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (h *SecretStoreListSecrets) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
+func (s *SecretStoreListSecrets) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
 // OutputResources returns the output resources array.
-func (h *SecretStoreListSecrets) OutputResources() []rpv1.OutputResource {
+func (s *SecretStoreListSecrets) OutputResources() []rpv1.OutputResource {
 	return nil
 }
 
 // ResourceMetadata returns SecretStoreListSecrets resource metadata.
-func (h *SecretStoreListSecrets) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (s *SecretStoreListSecrets) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return nil
 }

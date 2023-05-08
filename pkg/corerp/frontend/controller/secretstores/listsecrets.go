@@ -53,7 +53,7 @@ func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	ksecret, err := getSecretFromOutputResource(resource.Properties.Status.OutputResources, l.Options())
+	ksecret, err := getSecretFromOutputResources(resource.Properties.Status.OutputResources, l.Options())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from output resource: %w", err)
 	}

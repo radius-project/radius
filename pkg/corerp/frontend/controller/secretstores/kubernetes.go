@@ -248,7 +248,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 
 // DeleteRadiusSecret deletes a secret if the secret is managed by Radius.
 func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	ksecret, err := getSecretFromOutputResource(oldResource.Properties.Status.OutputResources, options)
+	ksecret, err := getSecretFromOutputResources(oldResource.Properties.Status.OutputResources, options)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +265,7 @@ func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore,
 	return nil, nil
 }
 
-func getIdentityFromOutputResource(resources []rpv1.OutputResource) (*resourcemodel.KubernetesIdentity, error) {
+func getIdentityFromOutputResources(resources []rpv1.OutputResource) (*resourcemodel.KubernetesIdentity, error) {
 	for _, r := range resources {
 		ri := r.Identity
 		if ri.ResourceType.Provider == resourcemodel.ProviderKubernetes && ri.ResourceType.Type == resourcekinds.Secret {
@@ -280,8 +280,8 @@ func getIdentityFromOutputResource(resources []rpv1.OutputResource) (*resourcemo
 	return nil, nil
 }
 
-func getSecretFromOutputResource(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
-	ki, err := getIdentityFromOutputResource(resources)
+func getSecretFromOutputResources(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
+	ki, err := getIdentityFromOutputResources(resources)
 	if err != nil {
 		return nil, err
 	}
