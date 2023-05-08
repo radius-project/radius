@@ -427,7 +427,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: 'Scheduled functional test failure - ${{ matrix.name }} ',
-              body: '${{ matrix.name }} functional test failed. Please check [the action run](' + process.env.ACTION_LINK + ') for more details.'
+              body: '${{ matrix.name }} functional tests failed. Please check [the action run](' + process.env.ACTION_LINK + ') for more details.'
               labels: ['bug']
             })
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
