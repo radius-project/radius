@@ -100,15 +100,15 @@ type MinimumTLSProtocolVersion string
 
 const (
 	// TLS 1.2
-	MinimumProtocolVersion12 MinimumTLSProtocolVersion = "1.2"
+	TLSMinVersion12 MinimumTLSProtocolVersion = "1.2"
 	// TLS 1.3
-	MinimumProtocolVersion13 MinimumTLSProtocolVersion = "1.3"
+	TLSMinVersion13 MinimumTLSProtocolVersion = "1.3"
 )
 
 // ValidMinimumTLSProtocolVersions returns a list of valid MinimumTLSProtocolVersions.
 func ValidMinimumTLSProtocolVersions() []MinimumTLSProtocolVersion {
 	return []MinimumTLSProtocolVersion{
-		MinimumProtocolVersion12,
-		MinimumProtocolVersion13,
+		TLSMinVersion12,
+		TLSMinVersion13,
 	}
 }

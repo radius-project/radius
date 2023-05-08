@@ -24,10 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-const (
-	SecretLocalId = "secret"
-)
-
 type Renderer struct {
 }
 
@@ -161,7 +157,7 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
-			secretResource := secretStoreResource.OutputResources[SecretLocalId].Data
+			secretResource := secretStoreResource.OutputResources[rpv1.LocalIDSecret].Data
 			secretResourceData, ok := secretResource.(map[string]any)
 			if !ok {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))

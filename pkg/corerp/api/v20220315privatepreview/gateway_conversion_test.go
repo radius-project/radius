@@ -152,7 +152,7 @@ func TestGatewayTLSTerminationConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", gw.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, "secretname", gw.Properties.TLS.CertificateFrom)
-	require.Equal(t, datamodel.MinimumProtocolVersion12, gw.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, datamodel.TLSMinVersion12, gw.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayTLSTerminationConvertDataModelToVersioned(t *testing.T) {

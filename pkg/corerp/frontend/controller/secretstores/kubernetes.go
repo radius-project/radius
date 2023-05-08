@@ -28,10 +28,6 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	SecretLocalId = "secret"
-)
-
 // ValidateRequest validates the resource in the incoming request.
 func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
 	if newResource.Properties.Type != datamodel.SecretTypeCert {
@@ -217,7 +213,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 
 	newResource.Properties.Status.OutputResources = []rpv1.OutputResource{
 		{
-			LocalID: SecretLocalId,
+			LocalID: rpv1.LocalIDSecret,
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &resourcemodel.ResourceType{
 					Type:     resourcekinds.Secret,

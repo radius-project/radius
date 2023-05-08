@@ -28,7 +28,7 @@ func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.Gatewa
 
 		// TLS protocol version defaults to 1.2
 		if newResource.Properties.TLS.MinimumProtocolVersion == "" {
-			newResource.Properties.TLS.MinimumProtocolVersion = datamodel.MinimumProtocolVersion12
+			newResource.Properties.TLS.MinimumProtocolVersion = datamodel.TLSMinVersion12
 		}
 	}
 
