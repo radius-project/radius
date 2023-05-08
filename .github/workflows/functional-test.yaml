@@ -134,6 +134,8 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
+            * appcore-rp test image location: `${{ env.CACHE_REGISTRY }}/appcore-rp:${{ env.REL_VERSION }}`
+            * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
 
             </details>
             
@@ -156,13 +158,6 @@ jobs:
           append: true
           message: |
             :white_check_mark: Building Radius and pushing container images for functional test...
-            <details>
-            <summary> See the details for container images</summary>
-
-            * appcore-rp: `${{ env.CACHE_REGISTRY }}/appcore-rp:${{ env.REL_VERSION }}`
-            * ucp: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
-
-            </details>
       - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
