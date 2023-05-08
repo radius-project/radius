@@ -248,7 +248,7 @@ stages:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
-        PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH: $(Build.SourcesDirectory)/samples
+        RADIUS_SAMPLES_REPO_ROOT: $(Build.SourcesDirectory)/samples
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
       artifact: $(targetName)FunctionalTest.$(Build.BuildNumber).$(System.JobAttempt)

@@ -324,27 +324,29 @@ jobs:
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
 
+          echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} --tag ${{ env.REL_VERSION }} \
             --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},ucp.provider.aws.region=${{ env.AWS_REGION }}
 
+          echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
           rad group create kind-radius
           rad group switch kind-radius
 
+          # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
 
+          echo "*** Configuring Azure provider ***"
           rad env update kind-radius --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-
           rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
             --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
             --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
 
-          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} \
-            --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-
+          echo "*** Configuring AWS provider ***"
+          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - uses: marocchino/sticky-pull-request-comment@v2
@@ -356,16 +358,14 @@ jobs:
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
       - name: Run functional tests
-        if: false # TODO: Enable it later
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           cd $GITHUB_WORKSPACE
-          export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=$GITHUB_WORKSPACE/samples
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          # Populate the following test environment variables from secret.
+          # Populate the following test environment variables from JSON secret.
           # AZURE_MONGODB_RESOURCE_ID
           # AZURE_COSMOS_MONGODB_ACCOUNT_ID
           # AZURE_TABLESTORAGE_RESOURCE_ID
@@ -379,10 +379,11 @@ jobs:
           make test-functional-${{ matrix.name }}
         env:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
-          RADIUS_CONTAINER_LOG_PATH: $GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
+          RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3
