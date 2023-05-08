@@ -5,10 +5,11 @@
 
 name: Radius test
 on:
-  # Run every 4 hours on weekdays, and every 12 hours on weekends
   schedule:
-    - cron: "11 3,7,11,15,19,23 * * 1-5"
-    - cron: "11 11,23 * * 0,6"
+    # Run every 4 hours on weekdays.
+    - cron: "30 0,4,8,12,16,20 * * 1-5"
+    # Run every 12 hours on weekends.
+    - cron: "30 0,12 * * 0,6"
   pull_request:
     branches:
       - main
@@ -117,7 +118,7 @@ jobs:
           hide: true
           hide_classify: 'OUTDATED'
           message: |
-            ### Radius functional test overview
+            ## Radius functional test overview
 
             :mag: **[Go to test action run](${{ env.ACTION_LINK }})**
 
@@ -130,7 +131,7 @@ jobs:
             |**Azure test resource group** | ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }} |
 
             <details>
-            <summary> Click here to see the list of tools for the current test run.</summary>
+            <summary> Click here to see the list of tools in the current test run</summary>
 
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
@@ -139,7 +140,7 @@ jobs:
 
             </details>
             
-            ### Test Status
+            ## Test Status
 
             :white_check_mark: Preparing functional tests...
       - name: Setup Azure CLI
@@ -389,7 +390,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :100: ${{ matrix.name }} functional tests are passed.
+            :rocket: ${{ matrix.name }} functional tests are passed.
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         with:
