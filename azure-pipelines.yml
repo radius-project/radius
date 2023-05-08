@@ -231,7 +231,9 @@ stages:
       condition: always()
       continueOnError: 'true'
     - script: |
-        echo "$AZURE_MONGODB_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt
+        mkdir -p ./dist/container_logs
+
+        echo "$AZURE_MONGODB_RESOURCE_ID ::" > ./dist/container_logs/tmp.txt
         echo "$AZURE_COSMOS_MONGODB_ACCOUNT_ID ::" >> ./dist/container_logs/tmp.txt
         echo "$AZURE_TABLESTORAGE_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt
         echo "$AZURE_SERVICEBUS_RESOURCE_ID ::" >> ./dist/container_logs/tmp.txt

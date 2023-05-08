@@ -141,8 +141,6 @@ jobs:
             </details>
             
             ## Test Status
-
-            :white_check_mark: Preparing functional tests...
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
@@ -152,6 +150,14 @@ jobs:
       - name: Login ACR - ${{ env.CACHE_REGISTRY }}
         run: |
           az acr login -n ${{ env.CACHE_REGISTRY }}
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: env.PR_NUMBER != ''
+        with:
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :white_check_mark: Building Radius and pushing container images for functional test...
       - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
