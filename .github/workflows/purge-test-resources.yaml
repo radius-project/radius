@@ -41,7 +41,7 @@ jobs:
             fi
 
             if [ "$creation_time" = "None" ]; then
-              echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
+              echo " * $name - creationTime: None - skipping"  >> $GITHUB_STEP_SUMMARY
               continue
             fi
 
