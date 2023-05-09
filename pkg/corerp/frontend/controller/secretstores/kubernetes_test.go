@@ -140,15 +140,16 @@ func TestFromResourceID(t *testing.T) {
 }
 
 func TestValidateRequest(t *testing.T) {
-	t.Run("type is not certificate", func(t *testing.T) {
+	t.Run("default type is generic", func(t *testing.T) {
 		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
-		newResource.Properties.Type = datamodel.SecretTypeGeneric
+		newResource.Properties.Type = ""
+
 		resp, err := ValidateRequest(context.TODO(), newResource, nil, nil)
 		require.NoError(t, err)
+		require.Nil(t, resp)
 
 		// assert
-		r := resp.(*rest.BadRequestResponse)
-		require.Equal(t, "secret store type generic is not supported.", r.Body.Error.Message)
+		require.Equal(t, datamodel.SecretTypeGeneric, newResource.Properties.Type)
 	})
 
 	t.Run("new resource, but referencing valueFrom", func(t *testing.T) {

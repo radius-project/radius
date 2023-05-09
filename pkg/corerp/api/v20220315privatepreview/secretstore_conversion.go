@@ -61,8 +61,26 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 		Application:       to.Ptr(ss.Properties.Application),
 		Type:              fromSecretStoreDataTypeDataModel(ss.Properties.Type),
 		Resource:          to.Ptr(ss.Properties.Resource),
-		Data:              fromSecretValuePropertiesDataModel(ss.Properties.Data),
+		Data:              fromSecretStoreDataPropertiesDataModel(ss.Properties.Data),
 	}
+
+	return nil
+}
+
+// ConvertTo does no-op because SecretStoresClientListSecretsResponse model is used only for response.
+func (src *SecretStoresClientListSecretsResponse) ConvertTo() (v1.DataModelInterface, error) {
+	return nil, nil
+}
+
+// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoresClientListSecretsResponse resource.
+func (dst *SecretStoresClientListSecretsResponse) ConvertFrom(src v1.DataModelInterface) error {
+	ss, ok := src.(*datamodel.SecretStoreListSecrets)
+	if !ok {
+		return v1.ErrInvalidModelConversion
+	}
+
+	dst.Type = fromSecretStoreDataTypeDataModel(ss.Type)
+	dst.Data = fromSecretStoreDataPropertiesDataModel(ss.Data)
 
 	return nil
 }
@@ -123,7 +141,7 @@ func toSecretValuePropertiesDataModel(src map[string]*SecretValueProperties) map
 	return dst
 }
 
-func fromSecretValuePropertiesDataModel(src map[string]*datamodel.SecretStoreDataValue) map[string]*SecretValueProperties {
+func fromSecretStoreDataPropertiesDataModel(src map[string]*datamodel.SecretStoreDataValue) map[string]*SecretValueProperties {
 	if src == nil {
 		return nil
 	}

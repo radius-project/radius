@@ -87,7 +87,7 @@
 ## Function listSecrets (Applications.Core/secretStores@2022-03-15-privatepreview)
 * **Resource**: Applications.Core/secretStores
 * **ApiVersion**: 2022-03-15-privatepreview
-* **Output**: [SecretListProperties](#secretlistproperties)
+* **Output**: [SecretStoreListSecretsResult](#secretstorelistsecretsresult)
 
 ## ApplicationProperties
 ### Properties
@@ -508,12 +508,12 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
-## SecretListProperties
+## SecretStoreListSecretsResult
 ### Properties
-* **data**: [SecretListPropertiesData](#secretlistpropertiesdata) (ReadOnly): An object to represent key-value type secrets
-* **type**: string (ReadOnly): The type of secret store data
+* **data**: [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) (ReadOnly): An object to represent key-value type secrets
+* **type**: 'certificate' | 'generic' (ReadOnly): The type of secret store data
 
-## SecretListPropertiesData
+## SecretStoreListSecretsResultData
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
