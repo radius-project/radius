@@ -26,11 +26,13 @@ type MongoDatabase struct {
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
 	rpv1.BasicResourceProperties
-	MongoDatabaseResourceProperties
-	MongoDatabaseRecipeProperties
-	MongoDatabaseValuesProperties
-	Secrets MongoDatabaseSecrets `json:"secrets,omitempty"`
-	Mode    LinkMode             `json:"mode"`
+	Secrets       MongoDatabaseSecrets        `json:"secrets,omitempty"`
+	Host          string                      `json:"host,omitempty"`
+	Port          int32                       `json:"port,omitempty"`
+	Database      string                      `json:"database,omitempty"`
+	Recipe        linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Resources     []*linkrp.ResourceReference `json:"resources,omitempty"`
+	DisableRecipe bool                        `json:"disableRecipe,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
@@ -76,18 +78,4 @@ func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
 
 func (mongo *MongoDatabase) ResourceTypeName() string {
 	return linkrp.MongoDatabasesResourceType
-}
-
-type MongoDatabaseValuesProperties struct {
-	Host     string `json:"host,omitempty"`
-	Port     int32  `json:"port,omitempty"`
-	Database string `json:"database,omitempty"`
-}
-
-type MongoDatabaseResourceProperties struct {
-	Resource string `json:"resource,omitempty"`
-}
-
-type MongoDatabaseRecipeProperties struct {
-	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
 }

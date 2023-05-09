@@ -46,10 +46,6 @@ func Test_Render_Success(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: datamodel.LinkModeResource,
-			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
 		},
 	}
 
@@ -123,11 +119,6 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: datamodel.LinkModeValues,
-			MongoDatabaseValuesProperties: datamodel.MongoDatabaseValuesProperties{
-				Host: "testAccount1.mongo.cosmos.azure.com",
-				Port: 1234,
-			},
 			Secrets: datamodel.MongoDatabaseSecrets{
 				Username:         userName,
 				Password:         password,
@@ -198,10 +189,6 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: datamodel.LinkModeResource,
-			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
-				Resource: "//subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
 		},
 	}
 
@@ -227,10 +214,6 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-			},
-			Mode: datamodel.LinkModeResource,
-			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 	}
@@ -258,10 +241,6 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Application: "invalid-app-id",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: datamodel.LinkModeResource,
-			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
 		},
 	}
 
@@ -288,7 +267,6 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: datamodel.LinkModeResource,
 		},
 	}
 	expectedErr := &v1.ErrClientRP{
@@ -317,10 +295,6 @@ func Test_Render_InvalidMode(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: "abcd",
-			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
 		},
 	}
 
@@ -346,15 +320,6 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-			},
-			Mode: datamodel.LinkModeRecipe,
-			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
-				Recipe: linkrp.LinkRecipe{
-					Name: "mongodb",
-					Parameters: map[string]any{
-						"throughput": 400,
-					},
-				},
 			},
 		},
 	}
@@ -439,12 +404,6 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-			},
-			Mode: datamodel.LinkModeRecipe,
-			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
-				Recipe: linkrp.LinkRecipe{
-					Name: "mongodb",
-				},
 			},
 		},
 	}
