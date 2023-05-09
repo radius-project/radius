@@ -252,10 +252,12 @@ jobs:
             :white_check_mark: Starting ${{ matrix.name }} functional tests...
       - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
+          current_time=$(date +%s)
           az group create \
             --location ${{ env.AZURE_LOCATION }} \
             --name $RESOURCE_GROUP \
-            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --tags creationTime=$current_time
           while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
@@ -433,8 +435,9 @@ jobs:
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         run: |
+          # if deletion fails, purge workflow will purge the resource group and its resources later.
           az group delete \
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes \
-            --verbose
+            --no-wait
