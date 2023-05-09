@@ -24,7 +24,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "show [resourceType] [resourceName]",
-		Short: "Show RAD resource details",
+		Short: "Show Radius resource details",
 		Long:  "Show details of the specified Radius resource",
 		Example: `
 	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
