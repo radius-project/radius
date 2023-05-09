@@ -155,7 +155,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :white_check_mark: Building Radius and pushing container images for functional test...
+            :hourglass: Building Radius and pushing container images for functional test...
       - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
@@ -176,7 +176,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :white_check_mark: Test image build succeeded
+            :white_check_mark: Continer images build succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -185,7 +185,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: Test image build failed
+            :x: Continer images build failed
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
@@ -249,7 +249,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :white_check_mark: Starting ${{ matrix.name }} functional tests...
+            :hourglass: Starting ${{ matrix.name }} functional tests...
       - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           current_time=$(date +%s)
@@ -410,7 +410,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :rocket: ${{ matrix.name }} functional tests passed.
+            :white_check_mark: ${{ matrix.name }} functional tests succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
