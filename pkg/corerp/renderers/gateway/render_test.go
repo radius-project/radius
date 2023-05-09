@@ -17,7 +17,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -755,7 +757,7 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
-	expectedURL := "http://" + expectedHostname
+	expectedURL := "https://" + expectedHostname
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
@@ -1223,6 +1225,8 @@ func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
 func Test_Render_With_TLSTermination(t *testing.T) {
 	r := &Renderer{}
 
+	secretName := "myapp-tls-secret"
+	secretStoreResourceId := makeSecretStoreResourceID(secretName)
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
@@ -1230,12 +1234,45 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 		TLS: &datamodel.GatewayPropertiesTLS{
 			Hostname:               "myapp.radapp.dev",
 			MinimumProtocolVersion: "1.2",
-			CertificateFrom:        "myapp-tls-secret",
+			CertificateFrom:        secretStoreResourceId,
 		},
 	})
 	resource := makeResource(t, properties)
-	dependencies := map[string]renderers.RendererDependency{}
+
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
+
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, secretStoreResourceId).String()): {
+			ResourceID: makeResourceID(t, secretStoreResourceId),
+			Resource: &datamodel.SecretStore{
+				Properties: &datamodel.SecretStoreProperties{
+					Type: "certificate",
+					Data: map[string]*datamodel.SecretStoreDataValue{
+						"tls.crt": {
+							Value: to.Ptr("test-crt"),
+						},
+						"tls.key": {
+							Value: to.Ptr("test-crt"),
+						},
+					},
+				},
+			},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{
+				"Secret": {
+					ResourceType: &resourcemodel.ResourceType{
+						Type:     "Secret",
+						Provider: "kubernetes",
+					},
+					Data: map[string]any{
+						"kind":       "Secret",
+						"apiVersion": "v1",
+						"name":       secretName,
+						"namespace":  environmentOptions.Namespace,
+					},
+				},
+			},
+		},
+	}
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
@@ -1243,7 +1280,7 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
-	expectedURL := "http://" + expectedHostname
+	expectedURL := "https://" + expectedHostname
 	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 	expectedTLS := &contourv1.TLS{
 		MinimumProtocolVersion: "1.2",
@@ -1331,20 +1368,11 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 }
 
 func makeRouteResourceID(routeName string) string {
+	return "/planes/radius/local/resourcegroups/test-resourcegroup/providers/Applications.Core/httpRoutes/" + routeName
+}
 
-	return resources.MakeRelativeID(
-		[]resources.ScopeSegment{
-			{Type: "subscriptions", Name: "test-subscription"},
-			{Type: "resourceGroups", Name: "test-resourcegroup"},
-		},
-		resources.TypeSegment{
-			Type: "radius.dev/Application",
-			Name: applicationName,
-		},
-		resources.TypeSegment{
-			Type: "HttpRoute",
-			Name: routeName,
-		})
+func makeSecretStoreResourceID(secretStoreName string) string {
+	return "/planes/radius/local/resourcegroups/test-resourcegroup/providers/Applications.Core/secretStores/" + secretStoreName
 }
 
 func makeResource(t *testing.T, properties datamodel.GatewayProperties) *datamodel.Gateway {
