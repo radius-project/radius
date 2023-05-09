@@ -49,8 +49,8 @@ func Test_SecretStore_CreateSecret(t *testing.T) {
 
 func Test_SecretStore_ReferenceSecret(t *testing.T) {
 	template := "testdata/corerp-resources-secretstore-ref.bicep"
-	appName := "corerp-resources-secretstore"
-	appNamespace := "corerp-resources-secretstore-app"
+	appName := "corerp-resources-secretstore-ref"
+	appNamespace := "corerp-resources-secretstore-ref"
 
 	secret := corerp.K8sSecretResource(appNamespace, "secret-app-existing-secret", "kubernetes.io/tls", "tls.crt", "fakecertval", "tls.key", "fakekeyval")
 
