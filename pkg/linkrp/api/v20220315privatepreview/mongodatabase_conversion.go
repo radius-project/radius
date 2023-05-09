@@ -17,8 +17,6 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"fmt"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -38,69 +36,31 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			InternalMetadata: v1.InternalMetadata{
 				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetMongoDatabaseProperties().ProvisioningState),
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.GetMongoDatabaseProperties().Environment),
-				Application: to.String(src.Properties.GetMongoDatabaseProperties().Application),
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
 			},
 		},
 	}
-	switch v := src.Properties.(type) {
-	case *ResourceMongoDatabaseProperties:
-		if v.Resource == nil {
-			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
+	v := src.Properties
+	converted.Properties.Resources = toResourcesDataModel(v.Resources)
+	converted.Properties.Host = to.String(v.Host)
+	converted.Properties.Port = to.Int32(v.Port)
+	converted.Properties.Database = to.String(v.Database)
+	if v.Secrets != nil {
+		converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
+			ConnectionString: to.String(v.Secrets.ConnectionString),
+			Username:         to.String(v.Secrets.Username),
+			Password:         to.String(v.Secrets.Password),
 		}
-		converted.Properties.Resource = to.String(v.Resource)
-		converted.Properties.Host = to.String(v.Host)
-		converted.Properties.Port = to.Int32(v.Port)
-		converted.Properties.Database = to.String(v.Database)
-		if v.Secrets != nil {
-			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
-				ConnectionString: to.String(v.Secrets.ConnectionString),
-				Username:         to.String(v.Secrets.Username),
-				Password:         to.String(v.Secrets.Password),
-			}
-		}
-		converted.Properties.Mode = datamodel.LinkModeResource
-	case *ValuesMongoDatabaseProperties:
-		if v.Host == nil || v.Port == nil {
-			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
-		}
-		converted.Properties.Host = to.String(v.Host)
-		converted.Properties.Port = to.Int32(v.Port)
-		converted.Properties.Database = to.String(v.Database)
-		if v.Secrets != nil {
-			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
-				ConnectionString: to.String(v.Secrets.ConnectionString),
-				Username:         to.String(v.Secrets.Username),
-				Password:         to.String(v.Secrets.Password),
-			}
-		}
-		converted.Properties.Mode = datamodel.LinkModeValues
-	case *RecipeMongoDatabaseProperties:
-		if v.Recipe == nil {
-			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
-		}
-		converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
-			Recipe: toRecipeDataModel(v.Recipe),
-		}
-		converted.Properties.Host = to.String(v.Host)
-		converted.Properties.Port = to.Int32(v.Port)
-		converted.Properties.Database = to.String(v.Database)
-		converted.Properties.Mode = datamodel.LinkModeRecipe
-		if v.Secrets != nil {
-			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
-				ConnectionString: to.String(v.Secrets.ConnectionString),
-				Username:         to.String(v.Secrets.Username),
-				Password:         to.String(v.Secrets.Password),
-			}
-		}
-	default:
-		return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetMongoDatabaseProperties().Mode))
 	}
+	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+	converted.Properties.DisableRecipe = to.Bool(v.DisableRecipe)
+
 	return converted, nil
 }
 
@@ -118,53 +78,19 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Location = to.Ptr(mongo.Location)
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 
-	switch mongo.Properties.Mode {
-	case datamodel.LinkModeResource:
-		mode := "resource"
-		dst.Properties = &ResourceMongoDatabaseProperties{
-			Mode:     &mode,
-			Resource: to.Ptr(mongo.Properties.MongoDatabaseResourceProperties.Resource),
-			Host:     to.Ptr(mongo.Properties.Host),
-			Port:     to.Ptr(mongo.Properties.Port),
-			Database: to.Ptr(mongo.Properties.Database),
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(mongo.Properties.Environment),
-			Application:       to.Ptr(mongo.Properties.Application),
-		}
-	case datamodel.LinkModeValues:
-		mode := "values"
-		dst.Properties = &ValuesMongoDatabaseProperties{
-			Mode:     &mode,
-			Host:     to.Ptr(mongo.Properties.Host),
-			Port:     to.Ptr(mongo.Properties.Port),
-			Database: to.Ptr(mongo.Properties.Database),
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(mongo.Properties.Environment),
-			Application:       to.Ptr(mongo.Properties.Application),
-		}
-	case datamodel.LinkModeRecipe:
-		mode := "recipe"
-		dst.Properties = &RecipeMongoDatabaseProperties{
-			Mode:     &mode,
-			Recipe:   fromRecipeDataModel(mongo.Properties.Recipe),
-			Host:     to.Ptr(mongo.Properties.Host),
-			Port:     to.Ptr(mongo.Properties.Port),
-			Database: to.Ptr(mongo.Properties.Database),
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(mongo.Properties.Environment),
-			Application:       to.Ptr(mongo.Properties.Application),
-		}
-	default:
-		return fmt.Errorf("unsupported mode %s", mongo.Properties.Mode)
+	dst.Properties = &MongoDatabaseProperties{
+		Resources: fromResourcesDataModel(mongo.Properties.Resources),
+		Host:      to.Ptr(mongo.Properties.Host),
+		Port:      to.Ptr(mongo.Properties.Port),
+		Database:  to.Ptr(mongo.Properties.Database),
+		Status: &ResourceStatus{
+			OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+		},
+		ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
+		Environment:       to.Ptr(mongo.Properties.Environment),
+		Application:       to.Ptr(mongo.Properties.Application),
+		Recipe:            fromRecipeDataModel(mongo.Properties.Recipe),
+		DisableRecipe:     to.Ptr(mongo.Properties.DisableRecipe),
 	}
 
 	return nil

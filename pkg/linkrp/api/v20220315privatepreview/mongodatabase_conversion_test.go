@@ -23,6 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +34,33 @@ func (f *fakeResource) ResourceTypeName() string {
 }
 
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"mongodatabaseresource2.json", "mongodatabaseresource_recipe.json"}
+	testset := []struct {
+		filename       string
+		recipe         linkrp.LinkRecipe
+		overrideRecipe bool
+		resources      []*linkrp.ResourceReference
+	}{
+		{
+			// Opt-out with resources
+			filename:  "mongodatabaseresource2.json",
+			resources: []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"}},
+		},
+		{
+			// Named recipe
+			filename: "mongodatabaseresource_recipe.json",
+			recipe:   linkrp.LinkRecipe{Name: "cosmosdb", Parameters: map[string]any{"foo": "bar"}},
+		},
+		{
+			// Default recipe with overridden values
+			filename:       "mongodatabaseresource_recipe2.json",
+			recipe:         linkrp.LinkRecipe{Name: "", Parameters: nil},
+			overrideRecipe: true,
+		},
+		{
+			// Opt-out without resources
+			filename: "mongodatabaseresource.json",
+		},
+	}
 	for _, payload := range testset {
 		// arrange
 		rawPayload, err := loadTestData("./testdata/" + payload)
@@ -54,11 +81,29 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
-		require.Equal(t, int32(10255), convertedResource.Properties.Port)
-		if payload == "mongodatabaseresource_recipe.json" {
-			require.Equal(t, "cosmosdb", convertedResource.Properties.Recipe.Name)
-			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
+		if payload.overrideRecipe {
+			require.Equal(t, *versionedResource.Properties.Host, convertedResource.Properties.Host)
+			require.Equal(t, int32(*versionedResource.Properties.Port), convertedResource.Properties.Port)
+		} else {
+			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
+			require.Equal(t, int32(10255), convertedResource.Properties.Port)
+		}
+		if versionedResource.Properties.DisableRecipe == nil {
+			require.Equal(t, payload.recipe, convertedResource.Properties.Recipe)
+		} else {
+			require.Equal(t, linkrp.LinkRecipe{}, convertedResource.Properties.Recipe)
+			require.Equal(t, *versionedResource.Properties.DisableRecipe, convertedResource.Properties.DisableRecipe)
+			require.Equal(t, payload.resources, convertedResource.Properties.Resources)
+			if convertedResource.Properties.Secrets.ConnectionString != "" {
+				require.Equal(t, *versionedResource.Properties.Secrets.ConnectionString, convertedResource.Properties.Secrets.ConnectionString)
+			}
+			if convertedResource.Properties.Secrets.Password != "" {
+				require.Equal(t, *versionedResource.Properties.Secrets.Password, convertedResource.Properties.Secrets.Password)
+			}
+			if convertedResource.Properties.Secrets.Username != "" {
+				require.Equal(t, *versionedResource.Properties.Secrets.Username, convertedResource.Properties.Secrets.Username)
+			}
+
 		}
 	}
 }
@@ -95,7 +140,27 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 }
 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"mongodatabaseresourcedatamodel.json", "mongodatabaseresourcedatamodel2.json", "mongodatabaseresourcedatamodel_recipe.json"}
+	testset := []struct {
+		filename       string
+		recipe         Recipe
+		overrideRecipe bool
+		resources      []*ResourceReference
+	}{
+		{
+			// Opt-out without resources
+			filename: "mongodatabaseresourcedatamodel.json",
+		},
+		{
+			// Opt-out with resources
+			filename:  "mongodatabaseresourcedatamodel2.json",
+			resources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db")}},
+		},
+		{
+			// Named recipe
+			filename: "mongodatabaseresourcedatamodel_recipe.json",
+			recipe:   Recipe{Name: to.Ptr("cosmosdb"), Parameters: map[string]any{"foo": "bar"}},
+		},
+	}
 	for _, payload := range testset {
 		// arrange
 		rawPayload, err := loadTestData("./testdata/" + payload)
@@ -113,23 +178,21 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", *versionedResource.ID)
 		require.Equal(t, "mongo0", *versionedResource.Name)
 		require.Equal(t, linkrp.MongoDatabasesResourceType, *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetMongoDatabaseProperties().Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetMongoDatabaseProperties().Environment)
-		switch v := versionedResource.Properties.(type) {
-		case *ResourceMongoDatabaseProperties:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *v.Resource)
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-		case *RecipeMongoDatabaseProperties:
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-			require.Equal(t, "cosmosdb", *v.Recipe.Name)
-			require.Equal(t, "bar", v.Recipe.Parameters["foo"])
-		case *ValuesMongoDatabaseProperties:
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-			require.Equal(t, "AzureCosmosAccount", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "azure", v.Status.OutputResources[0]["Provider"])
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
+
+		if resource.Properties.DisableRecipe == false {
+			require.Equal(t, payload.recipe, *versionedResource.Properties.Recipe)
+		} else {
+			require.Equal(t, resource.Properties.DisableRecipe, *versionedResource.Properties.DisableRecipe)
+			require.Equal(t, Recipe{Name: to.Ptr(""), Parameters: nil}, *versionedResource.Properties.Recipe)
+			require.Equal(t, resource.Properties.Host, *versionedResource.Properties.Host)
+			require.Equal(t, resource.Properties.Port, *versionedResource.Properties.Port)
+			require.ElementsMatch(t, payload.resources, versionedResource.Properties.Resources)
+			if resource.Properties.Status.OutputResources != nil {
+				require.Equal(t, "AzureCosmosAccount", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+				require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+			}
 		}
 	}
 }

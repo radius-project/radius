@@ -30,7 +30,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -49,34 +48,36 @@ func (r Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options r
 		return renderers.RendererOutput{}, err
 	}
 
-	switch resource.Properties.Mode {
-	case datamodel.LinkModeRecipe:
-		rendererOutput, err := RenderAzureRecipe(resource, options)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-		return rendererOutput, nil
-	case datamodel.LinkModeResource:
-		// Source resource identifier is provided
-		// Currently only Azure resources are supported with non empty resource id
-		rendererOutput, err := RenderAzureResource(resource.Properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-		return rendererOutput, nil
-	case datamodel.LinkModeValues:
-		return renderers.RendererOutput{
-			Resources: []rpv1.OutputResource{},
-			ComputedValues: map[string]renderers.ComputedValueReference{
-				renderers.DatabaseNameValue: {
-					Value: resource.Name,
-				},
-			},
-			SecretValues: getProvidedSecretValues(resource.Properties),
-		}, nil
-	default:
-		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s", resource.Properties.Mode))
-	}
+	// switch resource.Properties.Mode {
+	// case datamodel.LinkModeRecipe:
+	// 	rendererOutput, err := RenderAzureRecipe(resource, options)
+	// 	if err != nil {
+	// 		return renderers.RendererOutput{}, err
+	// 	}
+	// 	return rendererOutput, nil
+	// case datamodel.LinkModeResource:
+	// 	// Source resource identifier is provided
+	// 	// Currently only Azure resources are supported with non empty resource id
+	// 	rendererOutput, err := RenderAzureResource(resource.Properties)
+	// 	if err != nil {
+	// 		return renderers.RendererOutput{}, err
+	// 	}
+	// 	return rendererOutput, nil
+	// case datamodel.LinkModeValues:
+	// 	return renderers.RendererOutput{
+	// 		Resources: []rpv1.OutputResource{},
+	// 		ComputedValues: map[string]renderers.ComputedValueReference{
+	// 			renderers.DatabaseNameValue: {
+	// 				Value: resource.Name,
+	// 			},
+	// 		},
+	// 		SecretValues: getProvidedSecretValues(resource.Properties),
+	// 	}, nil
+	// default:
+	// 	return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s", resource.Properties.Mode))
+	// }
+	return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s"))
+
 }
 
 func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -132,57 +133,53 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 
 func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this link
-	cosmosMongoDBID, err := resources.ParseResource(properties.Resource)
-	if err != nil {
-		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
-	}
-	// Validate resource type matches the expected Azure Mongo DB resource type
-	err = cosmosMongoDBID.ValidateResourceType(AzureCosmosMongoResourceType)
-	if err != nil {
-		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure CosmosDB Mongo Database resource")
-	}
+	// cosmosMongoDBID, err := resources.ParseResource(properties.Resource)
+	// if err != nil {
+	// 	return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+	// }
+	// // Validate resource type matches the expected Azure Mongo DB resource type
+	// err = cosmosMongoDBID.ValidateResourceType(AzureCosmosMongoResourceType)
+	// if err != nil {
+	// 	return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure CosmosDB Mongo Database resource")
+	// }
 
-	computedValues := map[string]renderers.ComputedValueReference{
-		renderers.DatabaseNameValue: {
-			Value: cosmosMongoDBID.Name(),
-		},
-	}
+	// computedValues := map[string]renderers.ComputedValueReference{
+	// 	renderers.DatabaseNameValue: {
+	// 		Value: cosmosMongoDBID.Name(),
+	// 	},
+	// }
 
-	secretValues := buildSecretValueReferenceForAzure(properties)
+	// secretValues := buildSecretValueReferenceForAzure(properties)
 
-	// Build output resources
-	// Truncate the database part of the ID to get ID for the account
-	cosmosMongoAccountID := cosmosMongoDBID.Truncate()
-	cosmosAccountResource := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureCosmosAccount,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureCosmosAccount,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		RadiusManaged: to.Ptr(false),
-	}
-	cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clientv2.DocumentDBManagementClientAPIVersion)
+	// // Build output resources
+	// // Truncate the database part of the ID to get ID for the account
+	// cosmosMongoAccountID := cosmosMongoDBID.Truncate()
+	// cosmosAccountResource := rpv1.OutputResource{
+	// 	LocalID: rpv1.LocalIDAzureCosmosAccount,
+	// 	ResourceType: resourcemodel.ResourceType{
+	// 		Type:     resourcekinds.AzureCosmosAccount,
+	// 		Provider: resourcemodel.ProviderAzure,
+	// 	},
+	// 	RadiusManaged: to.Ptr(false),
+	// }
+	// cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clientv2.DocumentDBManagementClientAPIVersion)
 
-	databaseResource := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureCosmosDBMongo,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureCosmosDBMongo,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		RadiusManaged: to.Ptr(false),
-		Dependencies: []rpv1.Dependency{
-			{
-				LocalID: rpv1.LocalIDAzureCosmosAccount,
-			},
-		},
-	}
-	databaseResource.Identity = resourcemodel.NewARMIdentity(&databaseResource.ResourceType, cosmosMongoDBID.String(), clientv2.DocumentDBManagementClientAPIVersion)
+	// databaseResource := rpv1.OutputResource{
+	// 	LocalID: rpv1.LocalIDAzureCosmosDBMongo,
+	// 	ResourceType: resourcemodel.ResourceType{
+	// 		Type:     resourcekinds.AzureCosmosDBMongo,
+	// 		Provider: resourcemodel.ProviderAzure,
+	// 	},
+	// 	RadiusManaged: to.Ptr(false),
+	// 	Dependencies: []rpv1.Dependency{
+	// 		{
+	// 			LocalID: rpv1.LocalIDAzureCosmosAccount,
+	// 		},
+	// 	},
+	// }
+	// databaseResource.Identity = resourcemodel.NewARMIdentity(&databaseResource.ResourceType, cosmosMongoDBID.String(), clientv2.DocumentDBManagementClientAPIVersion)
 
-	return renderers.RendererOutput{
-		Resources:      []rpv1.OutputResource{cosmosAccountResource, databaseResource},
-		ComputedValues: computedValues,
-		SecretValues:   secretValues,
-	}, nil
+	return renderers.RendererOutput{}, nil
 }
 
 func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[string]rpv1.SecretValueReference {

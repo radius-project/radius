@@ -18,16 +18,58 @@ func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (Mon
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
-	var b MongoDatabasePropertiesClassification
+	var b DaprStateStorePropertiesClassification
 	switch m["mode"] {
 	case "recipe":
-		b = &RecipeMongoDatabaseProperties{}
+		b = &RecipeDaprStateStoreProperties{}
 	case "resource":
-		b = &ResourceMongoDatabaseProperties{}
+		b = &ResourceDaprStateStoreProperties{}
 	case "values":
-		b = &ValuesMongoDatabaseProperties{}
+		b = &ValuesDaprStateStoreProperties{}
 	default:
 		b = &MongoDatabaseProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalRabbitMQMessageQueuePropertiesClassification(rawMsg json.RawMessage) (RabbitMQMessageQueuePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b RabbitMQMessageQueuePropertiesClassification
+	switch m["mode"] {
+	case "recipe":
+		b = &RecipeRabbitMQMessageQueueProperties{}
+	case "values":
+		b = &ValuesRabbitMQMessageQueueProperties{}
+	default:
+		b = &RabbitMQMessageQueueProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b SQLDatabasePropertiesClassification
+	switch m["mode"] {
+	case "recipe":
+		b = &RecipeSQLDatabaseProperties{}
+	case "resource":
+		b = &ResourceSQLDatabaseProperties{}
+	case "values":
+		b = &ValuesSQLDatabaseProperties{}
+	default:
+		b = &SQLDatabaseProperties{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }

@@ -98,7 +98,6 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 	}
 
 	if mode == modeResource {
-		testResource.Properties.Resource = cosmosMongoID
 	} else if mode == modeRecipe {
 		testResource.Properties.Recipe = linkrp.LinkRecipe{
 			Name:       recipeName,
@@ -707,9 +706,6 @@ func Test_Render(t *testing.T) {
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: applicationID,
 					Environment: envID,
-				},
-				MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
-					Resource: cosmosMongoID,
 				},
 			},
 		}

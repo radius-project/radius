@@ -2087,10 +2087,6 @@
     "MongoDatabaseProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for MongoDatabaseProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the mongo database link at the time the operation was called",
@@ -2099,13 +2095,39 @@
         "secrets": {
           "$ref": "#/definitions/MongoDatabaseSecrets",
           "description": "Secrets values provided for the resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host name of the target Mongo database"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Mongo database"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name of the target Mongo database",
+          "readOnly": true
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscaches link"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          },
+          "x-cadl-name": "ResourceReference[]",
+          "description": "List of the resource IDs that support the redis resource"
+        },
+        "disableRecipe": {
+          "type": "boolean",
+          "description": "Whether or not to disable the use of a recipe"
         }
       },
       "description": "MongoDatabase link properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -2317,7 +2339,7 @@
       "properties": {
         "host": {
           "type": "string",
-          "description": "Host name of the target Mongo database"
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
         },
         "port": {
           "type": "integer",
@@ -2334,13 +2356,63 @@
           "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabases link"
         }
       },
-      "description": "MongoDatabase Properties for Mode Recipe",
+      "description": "DaprStateStore Properties for Mode Recipe",
       "required": [
         "recipe"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/MongoDatabaseProperties"
+          "$ref": "#/definitions/DaprStateStoreProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "recipe"
+    },
+    "RecipeRabbitMQMessageQueueProperties": {
+      "type": "object",
+      "properties": {
+        "queue": {
+          "type": "string",
+          "description": "The name of the queue"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
+        }
+      },
+      "description": "RabbitMQMessageQueue Properties for Mode Recipe",
+      "required": [
+        "recipe"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "recipe"
+    },
+    "RecipeSqlDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
+        },
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        }
+      },
+      "description": "SqlDatabase Properties for Mode Recipe",
+      "required": [
+        "recipe"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/SqlDatabaseProperties"
         }
       ],
       "x-ms-discriminator-value": "recipe"
@@ -2469,35 +2541,46 @@
     "ResourceMongoDatabaseProperties": {
       "type": "object",
       "properties": {
+        "metadata": {
+          "$ref": "#/definitions/object",
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
         "resource": {
           "type": "string",
-          "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this link"
-        },
-        "host": {
-          "type": "string",
-          "description": "Host name of the target Mongo database"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Mongo database"
-        },
-        "database": {
-          "type": "string",
-          "description": "Database name of the target Mongo database",
-          "readOnly": true
+          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to."
         }
       },
-      "description": "MongoDatabase Properties for Mode Resource",
+      "description": "DaprStateStore Properties for Mode Resource",
       "required": [
         "resource"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/MongoDatabaseProperties"
+          "$ref": "#/definitions/DaprStateStoreProperties"
         }
       ],
       "x-ms-discriminator-value": "resource"
+    },
+    "ResourceRedisCacheProperties": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource id of an existing resource"
+        }
+      },
+      "description": "Describes a reference to an existing resource",
+      "required": [
+        "id"
+      ]
     },
     "ResourceProvisioning": {
       "type": "string",
@@ -2622,12 +2705,41 @@
         "value"
       ]
     },
-    "ValuesMongoDatabaseProperties": {
+    "ValuesDaprSecretStoreProperties": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "metadata": {
+          "$ref": "#/definitions/object",
+          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+        }
+      },
+      "description": "DaprSecretStore Properties for Mode Values",
+      "required": [
+        "type",
+        "version",
+        "metadata"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprSecretStoreProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "values"
+    },
+    "ValuesDaprStateStoreProperties": {
       "type": "object",
       "properties": {
         "host": {
           "type": "string",
-          "description": "Host name of the target Mongo database"
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
         },
         "port": {
           "type": "integer",
@@ -2640,14 +2752,58 @@
           "readOnly": true
         }
       },
-      "description": "MongoDatabase Properties for Mode Values",
+      "description": "DaprStateStore Properties for Mode Values",
       "required": [
-        "host",
-        "port"
+        "metadata",
+        "type",
+        "version"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/MongoDatabaseProperties"
+          "$ref": "#/definitions/DaprStateStoreProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "values"
+    },
+    "ValuesRabbitMQMessageQueueProperties": {
+      "type": "object",
+      "properties": {
+        "queue": {
+          "type": "string",
+          "description": "The name of the queue"
+        }
+      },
+      "description": "RabbitMQMessageQueue Properties for Mode Values",
+      "required": [
+        "queue"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "values"
+    },
+    "ValuesSqlDatabaseProperties": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        }
+      },
+      "description": "SqlDatabase Properties for Mode Values",
+      "required": [
+        "database",
+        "server"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/SqlDatabaseProperties"
         }
       ],
       "x-ms-discriminator-value": "values"
