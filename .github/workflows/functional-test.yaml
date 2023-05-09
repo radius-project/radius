@@ -327,7 +327,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
+            :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
       - name: Install Radius
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -366,7 +366,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
+            :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
@@ -419,7 +419,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details.
+            :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v6
         if: failure() && github.event_name == 'schedule'
