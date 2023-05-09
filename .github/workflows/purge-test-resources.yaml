@@ -5,11 +5,6 @@
 
 name: Purge test resources
 on:
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
   schedule:
     # Run every hour in 6 hours window
     - cron: "30 * * * *"
