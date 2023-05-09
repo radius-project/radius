@@ -185,7 +185,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :x: Continer images build failed
+            :x: Container images build failed
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
