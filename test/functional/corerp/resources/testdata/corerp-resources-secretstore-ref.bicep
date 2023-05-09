@@ -30,6 +30,6 @@ resource existingAppCert 'Applications.Core/secretStores@2022-03-15-privateprevi
       'tls.crt': {}
       'tls.key': {}
     }
-    resource: 'secret-app-existing-secret'
+    resource: 'default/secret-app-existing-secret'
   }
 }
