@@ -7,14 +7,14 @@ param location string = 'global'
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-secretstore'
+  name: 'corerp-resources-secretstore-ref'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-secretstore-app'
+          namespace: 'corerp-resources-secretstore-ref'
       }
     ]
   }
@@ -30,6 +30,6 @@ resource existingAppCert 'Applications.Core/secretStores@2022-03-15-privateprevi
       'tls.crt': {}
       'tls.key': {}
     }
-    resource: 'secret-app-existing-secret'
+    resource: 'default/secret-app-existing-secret'
   }
 }

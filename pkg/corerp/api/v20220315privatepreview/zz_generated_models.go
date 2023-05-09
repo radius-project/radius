@@ -1159,15 +1159,6 @@ type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
-// SecretListProperties - The list of secrets
-type SecretListProperties struct {
-	// An object to represent key-value type secrets
-	Data map[string]*SecretValueProperties `json:"data,omitempty"`
-
-	// READ-ONLY; The type of secret store data
-	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
 type SecretObjectProperties struct {
 	// REQUIRED; The name of the secret
 	Name *string `json:"name,omitempty"`
@@ -1180,6 +1171,15 @@ type SecretObjectProperties struct {
 
 	// Secret version
 	Version *string `json:"version,omitempty"`
+}
+
+// SecretStoreListSecretsResult - The list of secrets
+type SecretStoreListSecretsResult struct {
+	// An object to represent key-value type secrets
+	Data map[string]*SecretValueProperties `json:"data,omitempty"`
+
+	// The type of secret store data
+	Type *SecretStoreDataType `json:"type,omitempty"`
 }
 
 type SecretStoreProperties struct {

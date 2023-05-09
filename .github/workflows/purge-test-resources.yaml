@@ -6,8 +6,8 @@
 name: Purge test resources
 on:
   schedule:
-    # Run at 23:05 on Sunday.
-    - cron: "5 23 * * 0"
+    # Run every hour in 6 hours window
+    - cron: "30 * * * *"
 env:
   # The test subscription id for testing.
   AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
@@ -23,19 +23,44 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
-      - name: Find all deleting resource groups
+      - name: Find old test resource groups
         run: |
+          echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
+
           az account set -s ${{ env.AZURE_SUBSCRIPTION_ID }}
-          # Delete test resource groups created by ADO pipeline
-          az group list --query "[?starts_with(name, 'radius-1')].{name:name}" --output table|grep radius- > ${{ env.AZURE_RG_DELETE_LIST_FILE}}
-          # Delete test resource groups created by functional-test.yaml
-          az group list --query "[?starts_with(name, 'radtest-')].{name:name}" --output table|grep radtest- >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+
+          current_time=$(date +%s)
+          # 6 hours ago
+          hours_ago=$((current_time - 6*60*60))
+
+          resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
+          
+          while IFS=$'\t' read -r name creation_time; do
+            if [[ ! "$name" =~ ^"radius-" ]] && [[ ! "$name" =~ ^"radtest-" ]]; then
+              continue
+            fi
+
+            if [ "$creation_time" = "None" ]; then
+              echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
+              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+              continue
+            fi
+
+            # Check if the resource group was created more than 6 hours ago
+            if [ "$creation_time" -lt "$hours_ago" ]; then
+              echo " * :wastebasket: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
+              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+            else
+              echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
+            fi
+          done <<< "$resource_groups"
+
           cat ${{ env.AZURE_RG_DELETE_LIST_FILE}}
-          echo "## Azure resource groups:" >> $GITHUB_STEP_SUMMARY
       - name: Delete Azure resource groups
         run: |
+          echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
           cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
           do
               echo " * $line" >> $GITHUB_STEP_SUMMARY
-              az group delete --resource-group $line --yes
+              az group delete --resource-group $line --yes --verbose
           done

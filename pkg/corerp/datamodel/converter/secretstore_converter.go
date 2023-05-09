@@ -26,6 +26,19 @@ func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (
 	}
 }
 
+// ListSecretsToVersioned converts version agnostic SecretStoreListSecrets datamodel to versioned model.
+func ListSecretsToVersioned(model *datamodel.SecretStoreListSecrets, version string) (v1.VersionedModelInterface, error) {
+	switch version {
+	case v20220315privatepreview.Version:
+		versioned := &v20220315privatepreview.SecretStoresClientListSecretsResponse{}
+		err := versioned.ConvertFrom(model)
+		return versioned, err
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
 // SecretStoreModelFromVersioned converts versioned SecretStore model to datamodel.
 func SecretStoreModelFromVersioned(content []byte, version string) (*datamodel.SecretStore, error) {
 	switch version {
