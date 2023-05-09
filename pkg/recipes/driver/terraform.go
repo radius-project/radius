@@ -159,7 +159,9 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 	}
 
 	// Write the JSON data to a file in the working directory
-	configFilePath := fmt.Sprintf("%s/main.json", workingDir)
+	// JSON configuration syntax for Terraform requires the file to be named with .tf.json suffix.
+	// https://developer.hashicorp.com/terraform/language/syntax/json
+	configFilePath := fmt.Sprintf("%s/main.tf.json", workingDir)
 	file, err := os.Create(configFilePath)
 	if err != nil {
 		return fmt.Errorf("Error creating file: %w", err)
