@@ -34,8 +34,8 @@ import (
 
 var envInitCmd = &cobra.Command{
 	Use:    "init",
-	Short:  "Create a RAD environment",
-	Long:   `Create a RAD environment`,
+	Short:  "Create a Radius environment",
+	Long:   `Create a Radius environment`,
 	Hidden: true,
 }
 

@@ -24,8 +24,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List applications",
-		Long:  `Lists applications deployed in the resource group associated with the default environment`,
+		Short: "List Radius applications",
+		Long:  `Lists Radius applications deployed in the resource group associated with the default environment`,
 		Args:  cobra.NoArgs,
 		Example: `
 # List applications

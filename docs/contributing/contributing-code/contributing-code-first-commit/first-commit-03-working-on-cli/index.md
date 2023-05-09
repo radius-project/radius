@@ -60,7 +60,7 @@ Available Commands:
   application Manage applications
   bicep       Manage bicep compiler
   component   Manage components
-  deploy      Deploy a RAD application
+  deploy      Deploy a Radius application
   deployment  Manage deployments
   env         Manage environments
   expose      Expose local port

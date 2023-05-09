@@ -25,8 +25,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "delete [resourceType] [resourceName]",
-		Short: "Delete a RAD resource",
-		Long:  "Deletes a RAD resource with the given name",
+		Short: "Delete a Radius resource",
+		Long:  "Deletes a Radius resource with the given name",
 		Example: `
 		sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 		
