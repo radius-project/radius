@@ -435,8 +435,9 @@ jobs:
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         run: |
+          # if deletion fails, purge workflow will purge the resource group and its resources later.
           az group delete \
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes \
-            --verbose
+            --no-wait
