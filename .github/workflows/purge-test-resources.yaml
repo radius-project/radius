@@ -5,13 +5,8 @@
 
 name: Purge test resources
 on:
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
   schedule:
-    # Run every 30 minutes
+    # Run every hour in 6 hours window
     - cron: "30 * * * *"
 env:
   # The test subscription id for testing.
@@ -47,7 +42,6 @@ jobs:
 
             if [ "$creation_time" = "None" ]; then
               echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
-              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
               continue
             fi
 
