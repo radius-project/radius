@@ -41,7 +41,8 @@ jobs:
             fi
 
             if [ "$creation_time" = "None" ]; then
-              echo " * $name - creationTime: None - skipping"  >> $GITHUB_STEP_SUMMARY
+              echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
+              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
               continue
             fi
 
@@ -50,7 +51,7 @@ jobs:
               echo " * :wastebasket: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
               echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
             else
-              echo " * :white_check_mark: $name - creationTime: $creation_time - skipping"  >> $GITHUB_STEP_SUMMARY
+              echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
             fi
           done <<< "$resource_groups"
 
