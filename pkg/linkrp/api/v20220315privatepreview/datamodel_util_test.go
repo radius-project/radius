@@ -158,3 +158,34 @@ func TestFromResourcesDataModel(t *testing.T) {
 
 	}
 }
+
+func TestToResourceProvisiongDataModel(t *testing.T) {
+	testset := []struct {
+		versioned ResourceProvisioning
+		datamodel linkrp.ResourceProvisioning
+	}{
+		{ResourceProvisioningManual, linkrp.ResourceProvisioningManual},
+		{ResourceProvisioningRecipe, linkrp.ResourceProvisioningRecipe},
+		{"", ""},
+	}
+	for _, tt := range testset {
+		sc := toResourceProvisiongDataModel(&tt.versioned)
+		require.Equal(t, tt.datamodel, sc)
+	}
+}
+
+func TestFromResourceProvisiongDataModel(t *testing.T) {
+	testCases := []struct {
+		datamodel linkrp.ResourceProvisioning
+		versioned ResourceProvisioning
+	}{
+		{linkrp.ResourceProvisioningManual, ResourceProvisioningManual},
+		{linkrp.ResourceProvisioningRecipe, ResourceProvisioningRecipe},
+		{"", ResourceProvisioningRecipe},
+	}
+
+	for _, testCase := range testCases {
+		sc := fromResourceProvisioningDataModel(testCase.datamodel)
+		require.Equal(t, testCase.versioned, *sc)
+	}
+}

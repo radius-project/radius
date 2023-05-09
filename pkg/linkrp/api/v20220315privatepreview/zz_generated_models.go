@@ -1109,19 +1109,19 @@ type RedisCacheProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Whether or not to disable the use of a recipe
-	DisableRecipe *bool `json:"disableRecipe,omitempty"`
-
 	// The host name of the target Redis cache
 	Host *string `json:"host,omitempty"`
 
 	// The port value of the target Redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the rediscaches link
+	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
-	// List of the resource IDs that support the redis resource
+	// How Radius should manage a resource
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the Redis resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secrets provided by resource

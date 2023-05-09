@@ -73,7 +73,7 @@ func (redis *RedisCache) ResourceTypeName() string {
 }
 
 func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
-	if redis.Properties.DisableRecipe {
+	if redis.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
 	}
 	return &redis.Properties.Recipe
@@ -83,15 +83,17 @@ func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
 }
 
+type ResourceProvisioning string
+
 type RedisCacheProperties struct {
 	rpv1.BasicResourceProperties
-	Host          string                      `json:"host,omitempty"`
-	Port          int32                       `json:"port,omitempty"`
-	Username      string                      `json:"username,omitempty"`
-	Recipe        linkrp.LinkRecipe           `json:"recipe,omitempty"`
-	Secrets       RedisCacheSecrets           `json:"secrets,omitempty"`
-	DisableRecipe bool                        `json:"disableRecipe,omitempty"`
-	Resources     []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Host                 string                      `json:"host,omitempty"`
+	Port                 int32                       `json:"port,omitempty"`
+	Username             string                      `json:"username,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Secrets              RedisCacheSecrets           `json:"secrets,omitempty"`
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

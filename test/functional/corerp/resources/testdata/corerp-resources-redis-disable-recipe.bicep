@@ -2,8 +2,6 @@ import radius as radius
 
 param magpieimage string
 param environment string
-param redisresourceid string
-
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
   name: 'corerp-resources-redis-disable-recipe'
@@ -69,9 +67,7 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   properties: {
     environment: environment
     application: app.id
-    disableRecipe: true
-    host: redisRoute.properties.hostname
-    port: redisRoute.properties.port
+    resourceProvisioning: 'manual'
     secrets: {
       connectionString: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
       password: ''

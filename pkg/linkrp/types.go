@@ -84,3 +84,13 @@ const (
 	RedisCachesResourceType           = "Applications.Link/redisCaches"
 	SqlDatabasesResourceType          = "Applications.Link/sqlDatabases"
 )
+
+// ResourceProvisioning specifies how the resource should be managed
+type ResourceProvisioning string
+
+const (
+	// ResourceProvisioningRecipe is the selection to use a recipe to deploy a resource
+	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
+	// ResourceProvisiongManual is the selection to manually specify resource values
+	ResourceProvisioningManual ResourceProvisioning = "manual"
+)

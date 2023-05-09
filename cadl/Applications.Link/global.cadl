@@ -53,6 +53,12 @@ enum ProvisioningState {
   Accepted,
 }
 
+@doc("Describes how Radius should manage a resource. Options are 'recipe' and 'manual, with 'recipe' as the default")
+enum ResourceProvisioning {
+    recipe,
+    manual,
+}
+
 @doc("The recipe used to automatically deploy underlying infrastructure for a link")
 model Recipe{
   @doc("The name of the recipe within the environment to use")

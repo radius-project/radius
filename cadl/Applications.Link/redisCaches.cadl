@@ -74,14 +74,14 @@ model RedisCacheProperties extends BasicResourceProperties {
   @visibility("read")
   username?: string;
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the rediscaches link")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Redis caches link")
   recipe?: Recipe;
 
-  @doc("List of the resource IDs that support the redis resource")
+  @doc("List of the resource IDs that support the Redis resource")
   resources?: ResourceReference[];
 
-  @doc("Whether or not to disable the use of a recipe")
-  disableRecipe?: boolean;
+  @doc("How Radius should manage a resource")
+  resourceProvisioning?: ResourceProvisioning;
 }
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
 @doc("Lists secrets values for the specified RedisCache resource")

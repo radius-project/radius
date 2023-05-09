@@ -7,6 +7,7 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -70,15 +71,16 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		if versionedResource.Properties.DisableRecipe == nil {
+		if versionedResource.Properties.ResourceProvisioning == nil {
 			require.Equal(t, payload.recipe, convertedResource.Properties.Recipe)
+			require.Equal(t, linkrp.ResourceProvisioningRecipe, convertedResource.Properties.ResourceProvisioning)
 			if payload.overrideRecipe {
 				require.Equal(t, *versionedResource.Properties.Host, convertedResource.Properties.Host)
 				require.Equal(t, int32(*versionedResource.Properties.Port), convertedResource.Properties.Port)
 			}
 		} else {
 			require.Equal(t, linkrp.LinkRecipe{}, convertedResource.Properties.Recipe)
-			require.Equal(t, *versionedResource.Properties.DisableRecipe, convertedResource.Properties.DisableRecipe)
+			require.Equal(t, linkrp.ResourceProvisioningManual, convertedResource.Properties.ResourceProvisioning)
 			require.Equal(t, *versionedResource.Properties.Host, convertedResource.Properties.Host)
 			require.Equal(t, int32(*versionedResource.Properties.Port), convertedResource.Properties.Port)
 			require.Equal(t, payload.resources, convertedResource.Properties.Resources)
@@ -138,10 +140,10 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, linkrp.RedisCachesResourceType, *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		if resource.Properties.DisableRecipe == false {
+		if resource.Properties.ResourceProvisioning == "" {
 			require.Equal(t, payload.recipe, *versionedResource.Properties.Recipe)
 		} else {
-			require.Equal(t, resource.Properties.DisableRecipe, *versionedResource.Properties.DisableRecipe)
+			require.Equal(t, ResourceProvisioningManual, *versionedResource.Properties.ResourceProvisioning)
 			require.Equal(t, Recipe{Name: to.Ptr(""), Parameters: nil}, *versionedResource.Properties.Recipe)
 			require.Equal(t, resource.Properties.Host, *versionedResource.Properties.Host)
 			require.Equal(t, resource.Properties.Port, *versionedResource.Properties.Port)
@@ -150,6 +152,27 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
 				require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
 			}
+		}
+	}
+}
+
+func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
+	testset := []string{"rediscacheresource-invalid.json", "rediscacheresource-invalid2.json"}
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		versionedResource := &RedisCacheResource{}
+		err := json.Unmarshal(rawPayload, versionedResource)
+		require.NoError(t, err)
+		if payload == "rediscacheresource-invalid.json" {
+			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+			_, err = versionedResource.ConvertTo()
+			require.Equal(t, &expectedErr, err)
+		}
+		if payload == "rediscacheresource-invalidmode2.json" {
+			expectedErr := &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host or port is required for resourceProvisioning: %s", ResourceProvisioningManual)}
+			_, err = versionedResource.ConvertTo()
+			require.Equal(t, &expectedErr, err)
 		}
 	}
 }

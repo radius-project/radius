@@ -7,6 +7,6 @@
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "host": "myrediscache.redis.cache.windows.net",
         "port": 10255,
-        "disableRecipe": true
+        "resourceProvisioning": "manual"
     }
 }

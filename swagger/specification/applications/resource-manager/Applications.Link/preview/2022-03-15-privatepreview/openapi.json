@@ -2474,7 +2474,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscaches link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Redis caches link"
         },
         "resources": {
           "type": "array",
@@ -2482,11 +2482,11 @@
             "$ref": "#/definitions/ResourceReference"
           },
           "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the redis resource"
+          "description": "List of the resource IDs that support the Redis resource"
         },
-        "disableRecipe": {
-          "type": "boolean",
-          "description": "Whether or not to disable the use of a recipe"
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "How Radius should manage a resource"
         }
       },
       "description": "RedisCache link properties",
@@ -2647,6 +2647,18 @@
         }
       ],
       "x-ms-discriminator-value": "resource"
+    },
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Describes how Radius should manage a resource. Options are 'recipe' and 'manual, with 'recipe' as the default",
+      "enum": [
+        "recipe",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true
+      }
     },
     "ResourceReference": {
       "type": "object",

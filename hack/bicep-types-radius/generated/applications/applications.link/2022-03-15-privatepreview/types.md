@@ -364,13 +364,13 @@
 ## RedisCacheProperties
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **host**: string: The host name of the target Redis cache
 * **port**: int: The port value of the target Redis cache
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the redis resource
+* **resourceProvisioning**: 'manual' | 'recipe': Describes how Radius should manage a resource. Options are 'recipe' and 'manual, with 'recipe' as the default
+* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the Redis resource
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **username**: string (ReadOnly): The username for Redis cache

@@ -25,6 +25,6 @@
           "password": "testPassword",
           "connectionString": "test-connection-string"
         },
-        "disableRecipe": true
+        "resourceProvisioning": "manual"
     }
 }

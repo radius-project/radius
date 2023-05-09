@@ -6,7 +6,10 @@
 package v20220315privatepreview
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -36,7 +39,19 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 	}
 	v := src.Properties
-	converted.Properties.DisableRecipe = to.Bool(v.DisableRecipe)
+
+	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
+	var found bool
+	for _, k := range PossibleResourceProvisioningValues() {
+		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	}
+
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 	converted.Properties.Resources = toResourcesDataModel(v.Resources)
 	converted.Properties.Host = to.String(v.Host)
@@ -48,6 +63,11 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 			Password:         to.String(v.Secrets.Password),
 		}
 	}
+	manualInputs := verifyManualInputs(*v)
+	if manualInputs != nil {
+		return nil, manualInputs
+	}
+
 	return converted, nil
 }
 
@@ -66,12 +86,12 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 
 	dst.Properties = &RedisCacheProperties{
-		Recipe:        fromRecipeDataModel(redis.Properties.Recipe),
-		DisableRecipe: to.Ptr(redis.Properties.DisableRecipe),
-		Resources:     fromResourcesDataModel(redis.Properties.Resources),
-		Host:          to.Ptr(redis.Properties.Host),
-		Port:          to.Ptr(redis.Properties.Port),
-		Username:      to.Ptr(redis.Properties.Username),
+		Recipe:               fromRecipeDataModel(redis.Properties.Recipe),
+		ResourceProvisioning: fromResourceProvisioningDataModel(redis.Properties.ResourceProvisioning),
+		Resources:            fromResourcesDataModel(redis.Properties.Resources),
+		Host:                 to.Ptr(redis.Properties.Host),
+		Port:                 to.Ptr(redis.Properties.Port),
+		Username:             to.Ptr(redis.Properties.Username),
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
@@ -103,4 +123,13 @@ func (src *RedisCacheSecrets) ConvertTo() (v1.DataModelInterface, error) {
 		Password:         to.String(src.Password),
 	}
 	return converted, nil
+}
+
+func verifyManualInputs(properties RedisCacheProperties) error {
+	if *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
+		if properties.Host == nil || properties.Port == nil {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host or port is required for resourceProvisioning: %s", ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }

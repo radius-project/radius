@@ -93,3 +93,20 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// ResourceProvisioning - Describes how Radius should manage a resource. Options are 'recipe' and 'manual, with 'recipe' as
+// the default
+type ResourceProvisioning string
+
+const (
+	ResourceProvisioningManual ResourceProvisioning = "manual"
+	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
+)
+
+// PossibleResourceProvisioningValues returns the possible values for the ResourceProvisioning const type.
+func PossibleResourceProvisioningValues() []ResourceProvisioning {
+	return []ResourceProvisioning{	
+		ResourceProvisioningManual,
+		ResourceProvisioningRecipe,
+	}
+}
+

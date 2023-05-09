@@ -18,7 +18,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     recipes: {
       'Applications.Link/redisCaches':{
-        rediscache: {
+        default: {
           templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/valuebacked/rediscaches/azure:1.0' 
         }
       }
@@ -46,8 +46,5 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   properties: {
     environment: env.id
     application: app.id
-    recipe: {
-      name: 'rediscache'
-    }
   }
 }
