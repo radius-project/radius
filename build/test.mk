@@ -13,6 +13,7 @@ DOCKER_REGISTRY ?=radiusdev.azurecr.io
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.23.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
+TEST_RECIPES_PATH=test/functional/corerp/resources/testdata/recipes/test-recipes/
 
 # Use gotestsum if available, otherwise use go test. We want to enable testing with just 'make test'
 # without external dependencies, but want to use gotestsum in our CI pipelines for the improved
@@ -46,9 +47,9 @@ test-validate-cli: ## Run cli integration tests
 test-functional-kubernetes: ## Runs Kubernetes functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-publish-recipes:
-	@for file in $(shell ls $(MYDIR)); do \
-		$(HOME)/.rad/bin/rad-bicep publish $(MYDIR)$${file} --target br:radiusdev.azurecr.io/recipes/functionaltest/`basename -s .bicep $${file}`:1.0; \
+publish-recipes-to-acr:
+	@for file in $(shell ls $(TEST_RECIPES_PATH)); do \
+		$(HOME)/.rad/bin/rad-bicep publish $(TEST_RECIPES_PATH)$${file} --target br:radiusdev.azurecr.io/recipes/functionaltest/`basename -s .bicep $${file}`:1.0; \
 	done
 test-functional-corerp: ## Runs Applications.Core functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
