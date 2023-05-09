@@ -93,8 +93,9 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// ResourceProvisioning - Describes how Radius should manage a resource. Options are 'recipe' and 'manual, with 'recipe' as
-// the default
+// ResourceProvisioning - Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe',
+// where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user
+// manages the resource and provides the values.
 type ResourceProvisioning string
 
 const (

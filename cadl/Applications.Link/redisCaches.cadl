@@ -80,7 +80,7 @@ model RedisCacheProperties extends BasicResourceProperties {
   @doc("List of the resource IDs that support the Redis resource")
   resources?: ResourceReference[];
 
-  @doc("How Radius should manage a resource")
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
   resourceProvisioning?: ResourceProvisioning;
 }
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"

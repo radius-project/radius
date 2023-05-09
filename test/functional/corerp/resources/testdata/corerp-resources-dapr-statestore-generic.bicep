@@ -74,7 +74,7 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   properties: {
     environment: environment
     application: app.id
-    disableRecipe: true
+    resourceProvisioning: 'manual'
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {

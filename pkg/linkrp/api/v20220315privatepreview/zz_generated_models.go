@@ -1118,7 +1118,7 @@ type RedisCacheProperties struct {
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
-	// How Radius should manage a resource
+	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// List of the resource IDs that support the Redis resource
