@@ -176,7 +176,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :white_check_mark: Continer images build succeeded
+            :white_check_mark: Container images build succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
