@@ -26,7 +26,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-// Create new appcert kubernetes secret.
+// Create new certificate type appcert secret.
 resource appCert 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
   name: 'appcert'
   properties:{
@@ -38,6 +38,26 @@ resource appCert 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
       }
       'tls.crt': {
         value: tlscrt
+      }
+    }
+  }
+}
+
+// Create new generic type appSecret.
+resource appSecret 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
+  name: 'appsecret'
+  properties:{
+    application: app.id
+    data: {
+      servicePrincialPassword: {
+        value: '10000000-1000-1000-0000-000000000000'
+      }
+      appId: {
+        value: '00000000-0000-0000-0000-000000000001'
+      }
+      tenantId: {
+        encoding: 'raw'
+        value: '00000000-0000-0000-0000-000000000002'
       }
     }
   }
