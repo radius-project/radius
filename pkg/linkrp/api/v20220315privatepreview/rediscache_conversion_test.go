@@ -169,8 +169,8 @@ func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 			_, err = versionedResource.ConvertTo()
 			require.Equal(t, &expectedErr, err)
 		}
-		if payload == "rediscacheresource-invalidmode2.json" {
-			expectedErr := &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
+		if payload == "rediscacheresource-invalid2.json" {
+			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
 			_, err = versionedResource.ConvertTo()
 			require.Equal(t, &expectedErr, err)
 		}
