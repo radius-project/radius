@@ -18,8 +18,6 @@ import (
 	"helm.sh/helm/v3/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/version"
 )
@@ -31,21 +29,10 @@ const (
 )
 
 type RadiusOptions struct {
-	Reinstall              bool
-	ChartPath              string
-	ChartVersion           string
-	Image                  string
-	Tag                    string
-	AppCoreImage           string
-	AppCoreTag             string
-	UCPImage               string
-	UCPTag                 string
-	DEImage                string
-	DETag                  string
-	PublicEndpointOverride string
-	AzureProvider          *azure.Provider
-	AWSProvider            *aws.Provider
-	Values                 string
+	Reinstall    bool
+	ChartPath    string
+	ChartVersion string
+	Values       string
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
@@ -74,17 +61,11 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	// TODO: refactor this to use the addChartValues function
-	err = AddRadiusValues(helmChart, &options)
-	if err != nil {
-		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
-	}
+	values := helmChart.Values
 
-	if options.AWSProvider != nil {
-		err = addAWSProviderValues(helmChart, options.AWSProvider)
-		if err != nil {
-			return false, fmt.Errorf("failed to add aws provider values, err: %w, helm output: %s", err, helmOutput.String())
-		}
+	err = strvals.ParseInto(options.Values, values)
+	if err != nil {
+		return false, err
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -122,74 +103,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
-func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, error) {
-
-	var helmOutput strings.Builder
-
-	namespace := RadiusSystemNamespace
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
-		Context:   &kubeContext,
-	}
-
-	helmConf, err := HelmConfig(&helmOutput, &flags)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
-	}
-
-	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
-	rel, err := histClient.Run(radiusReleaseName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get helm config, err: %w", err)
-	}
-
-	if len(rel) == 0 {
-		return nil, nil
-	}
-	cfg := rel[0].Config
-
-	_, ok := cfg["global"]
-	if !ok {
-		return nil, nil
-	}
-	global := cfg["global"].(map[string]any)
-
-	_, ok = global["rp"]
-	if !ok {
-		return nil, nil
-	}
-	rp := global["rp"].(map[string]any)
-
-	_, ok = rp["provider"]
-	if !ok {
-		return nil, nil
-	}
-	provider := rp["provider"].(map[string]any)
-
-	_, ok = provider["azure"]
-	if !ok {
-		return nil, nil
-	}
-	azureProvider := provider["azure"].(map[string]any)
-
-	var azProvider azure.Provider
-
-	subscriptionId, ok := azureProvider["subscriptionId"]
-	if !ok {
-		return nil, nil
-	}
-	resourceGroup, ok := azureProvider["resourceGroup"]
-	if !ok {
-		return nil, nil
-	}
-
-	azProvider.SubscriptionID = subscriptionId.(string)
-	azProvider.ResourceGroup = resourceGroup.(string)
-	return &azProvider, nil
-
-}
-
 func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = radiusReleaseName
@@ -207,87 +120,6 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	installClient.Timeout = installTimeout
 	installClient.Recreate = true //force recreating radius pods on adding or modfying azprovider
 	return runUpgrade(installClient, releaseName, helmChart)
-}
-
-func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
-	values := helmChart.Values
-
-	// TODO: clean up below code using options, for now retain it since CI/CD uses old rad env init with options.
-	_, ok := values["rp"]
-	if !ok {
-		values["rp"] = make(map[string]any)
-	}
-	radiusRP := values["rp"].(map[string]any)
-
-	if options.AppCoreImage != "" {
-		radiusRP["image"] = options.AppCoreImage
-	}
-	if options.AppCoreTag != "" {
-		radiusRP["tag"] = options.AppCoreTag
-	}
-	if options.PublicEndpointOverride != "" {
-		radiusRP["publicEndpointOverride"] = options.PublicEndpointOverride
-	}
-	_, ok = values["ucp"]
-	if !ok {
-		values["ucp"] = make(map[string]any)
-	}
-	ucp := values["ucp"].(map[string]any)
-
-	if options.UCPImage != "" {
-		ucp["image"] = options.UCPImage
-	}
-	if options.UCPTag != "" {
-		ucp["tag"] = options.UCPTag
-	}
-
-	_, ok = values["de"]
-	if !ok {
-		values["de"] = make(map[string]any)
-	}
-	de := values["de"].(map[string]any)
-
-	if options.DEImage != "" {
-		de["image"] = options.DEImage
-	}
-
-	if options.DETag != "" {
-		de["tag"] = options.DETag
-	}
-
-	err := strvals.ParseInto(options.Values, values)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) error {
-	if awsProvider == nil {
-		return nil
-	}
-	values := helmChart.Values
-
-	_, ok := values["ucp"]
-	if !ok {
-		values["ucp"] = make(map[string]any)
-	}
-	ucp := values["ucp"].(map[string]any)
-
-	_, ok = ucp["provider"]
-	if !ok {
-		ucp["provider"] = make(map[string]any)
-	}
-	provider := ucp["provider"].(map[string]any)
-
-	_, ok = provider["aws"]
-	if !ok {
-		provider["aws"] = make(map[string]any)
-	}
-	aws := provider["aws"].(map[string]any)
-
-	aws["region"] = awsProvider.TargetRegion
-	return nil
 }
 
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {

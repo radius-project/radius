@@ -269,32 +269,6 @@ func GetConfigFilePath(v *viper.Viper) (string, error) {
 	return configFilePath, nil
 }
 
-func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
-	for _, workspaceItem := range section.Items {
-		if workspaceItem.IsSameKubernetesContext(contextName) {
-			workspaceName := workspaceItem.Name
-			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{
-				ResourceGroup:  provider.ResourceGroup,
-				SubscriptionID: provider.SubscriptionID,
-			}
-			section.Items[workspaceName] = workspaceItem
-		}
-	}
-}
-
-func UpdateAWSProvider(section *WorkspaceSection, provider workspaces.AWSProvider, contextName string) {
-	for _, workspaceItem := range section.Items {
-		if workspaceItem.IsSameKubernetesContext(contextName) {
-			workspaceName := workspaceItem.Name
-			workspaceItem.ProviderConfig.AWS = &workspaces.AWSProvider{
-				AccountId: provider.AccountId,
-				Region:    provider.Region,
-			}
-			section.Items[workspaceName] = workspaceItem
-		}
-	}
-}
-
 // Required to be called while holding the exclusive lock on config.yaml.lock file.
 func EditWorkspaces(ctx context.Context, config *viper.Viper, editor func(section *WorkspaceSection) error) error {
 	return SaveConfigOnLock(ctx, config, func(v *viper.Viper) error {

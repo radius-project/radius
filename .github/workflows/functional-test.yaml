@@ -132,6 +132,7 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
+            * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/corerp/recipes/<name>:${{ env.REL_VERSION }}`
             * appcore-rp test image location: `${{ env.CACHE_REGISTRY }}/appcore-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
 
@@ -186,6 +187,36 @@ jobs:
           append: true
           message: |
             :x: Test image build failed
+      - name: Download rad-bicep
+        run: |
+          mkdir -p dist
+          ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/edge/linux-x64/rad-bicep --output dist/rad-bicep
+          chmod +x dist/rad-bicep
+      - name: Publish Bicep Test Recipes
+        run: |
+          make publish-test-recipes
+        env:
+          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+          RAD_BICEP_PATH: dist
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :white_check_mark: Test recipe publishing succeeded
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: Test recipe publishing failed
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
