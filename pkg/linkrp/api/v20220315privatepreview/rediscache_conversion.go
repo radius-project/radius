@@ -128,7 +128,7 @@ func (src *RedisCacheSecrets) ConvertTo() (v1.DataModelInterface, error) {
 func verifyManualInputs(properties RedisCacheProperties) error {
 	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
 		if properties.Host == nil || properties.Port == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host or port is required for resourceProvisioning: %s", ResourceProvisioningManual)}
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
 		}
 	}
 	return nil

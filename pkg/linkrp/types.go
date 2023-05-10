@@ -89,8 +89,8 @@ const (
 type ResourceProvisioning string
 
 const (
-	// ResourceProvisioningRecipe is the selection to use a recipe to deploy a resource
+	// ResourceProvisioningRecipe is the scenario when Radius manages the lifecycle of the resource through a Recipe
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
-	// ResourceProvisiongManual is the selection to manually specify resource values
+	// ResourceProvisiongManual is the scenario wher the user manages the resource and provides the values
 	ResourceProvisioningManual ResourceProvisioning = "manual"
 )
