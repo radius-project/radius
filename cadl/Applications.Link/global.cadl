@@ -43,6 +43,12 @@ model ResourceStatus {
   outputResources?: OutputResource[];
 }
 
+@doc("Describes a reference to an existing resource")
+model ResourceReference {
+  @doc("Resource id of an existing resource")
+  id: string
+}
+
 @doc("Properties of an output resource.")
 model OutputResource {}
 
@@ -58,6 +64,12 @@ enum ProvisioningState {
   Updating,
   Deleting,
   Accepted,
+}
+
+@doc("Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.")
+enum ResourceProvisioning {
+    recipe,
+    manual,
 }
 
 @doc("The recipe used to automatically deploy underlying infrastructure for a link")

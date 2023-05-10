@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -45,10 +44,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Renderer:     &sqldatabases.Renderer{},
-		},
-		{
-			ResourceType: linkrp.RedisCachesResourceType,
-			Renderer:     &rediscaches.Renderer{},
 		},
 		{
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
@@ -174,14 +169,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRedis,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler:        handlers.NewARMHandler(arm),
-			SecretValueTransformer: &rediscaches.AzureTransformer{},
 		},
 	}
 

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 )
@@ -110,5 +112,80 @@ func TestFromSystemDataModel(t *testing.T) {
 			tt.LastModifiedAt = "0001-01-01T00:00:00Z"
 		}
 		require.Equal(t, tt.LastModifiedAt, string(c))
+	}
+}
+
+func TestToResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		dm := toResourcesDataModel(tt.VersionedResources)
+		require.Equal(t, tt.DMResources, dm)
+
+	}
+}
+
+func TestFromResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		versioned := fromResourcesDataModel(tt.DMResources)
+		require.Equal(t, tt.VersionedResources, versioned)
+
+	}
+}
+
+func TestToResourceProvisiongDataModel(t *testing.T) {
+	testset := []struct {
+		versioned ResourceProvisioning
+		datamodel linkrp.ResourceProvisioning
+	}{
+		{ResourceProvisioningManual, linkrp.ResourceProvisioningManual},
+		{ResourceProvisioningRecipe, linkrp.ResourceProvisioningRecipe},
+		{"", ""},
+	}
+	for _, tt := range testset {
+		sc := toResourceProvisiongDataModel(&tt.versioned)
+		require.Equal(t, tt.datamodel, sc)
+	}
+}
+
+func TestFromResourceProvisiongDataModel(t *testing.T) {
+	testCases := []struct {
+		datamodel linkrp.ResourceProvisioning
+		versioned ResourceProvisioning
+	}{
+		{linkrp.ResourceProvisioningManual, ResourceProvisioningManual},
+		{linkrp.ResourceProvisioningRecipe, ResourceProvisioningRecipe},
+		{"", ResourceProvisioningRecipe},
+	}
+
+	for _, testCase := range testCases {
+		sc := fromResourceProvisioningDataModel(testCase.datamodel)
+		require.Equal(t, testCase.versioned, *sc)
 	}
 }

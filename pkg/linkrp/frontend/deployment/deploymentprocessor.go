@@ -512,10 +512,8 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(linkrp.RedisCachesResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.Mode == datamodel.LinkModeRecipe {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
-		}
+		recipe.Name = obj.Properties.Recipe.Name
+		recipe.Parameters = obj.Properties.Recipe.Parameters
 	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
 		basicResource = &obj.Properties.BasicResourceProperties
