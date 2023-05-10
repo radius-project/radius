@@ -48,6 +48,7 @@ type K8sObject struct {
 	GroupVersionResource schema.GroupVersionResource
 	Labels               map[string]string
 	Kind                 string
+	SkipLabelValidation  bool
 }
 
 func NewK8sPodForResource(application string, name string) K8sObject {
@@ -62,6 +63,12 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 		Kind:   "Pod",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
+}
+
+func (k K8sObject) ValidateLabels(validate bool) K8sObject {
+	copy := k
+	copy.SkipLabelValidation = !validate
+	return copy
 }
 
 func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
@@ -267,7 +274,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 }
 
 // ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
-func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet, skipLabelValidation bool) {
+func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
 		log.Printf("validating objects in namespace %v", namespace)
@@ -298,9 +305,9 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 						deployedResources, err = dynamic.Resource(mapping.Resource).List(ctx, metav1.ListOptions{})
 					}
 					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
-					if !skipLabelValidation {
-						validated = validated && matchesActualLabels(expectedInNamespace, deployedResources.Items)
-					}
+
+					validated = validated && matchesActualLabels(expectedInNamespace, deployedResources.Items)
+
 				}
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
@@ -490,6 +497,9 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {
+		if expectedResource.SkipLabelValidation {
+			continue
+		}
 		resourceExists := false
 		for idx, actualResource := range actualResources {
 			if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {

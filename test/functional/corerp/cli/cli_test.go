@@ -476,7 +476,7 @@ func Test_CLI_Delete(t *testing.T) {
 					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
 				},
 			},
-		}, false)
+		})
 
 		err = cli.ApplicationDelete(ctx, appName)
 		require.NoErrorf(t, err, "failed to delete %s", appName)
@@ -510,7 +510,7 @@ func Test_CLI_Delete(t *testing.T) {
 					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
 				},
 			},
-		}, false)
+		})
 
 		//ignore response for tests
 		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerb-app-with-resources")

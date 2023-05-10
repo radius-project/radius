@@ -145,12 +145,11 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr"),
-						validation.NewK8sPodForResource(name, "mongo-recipe-resource"),
+						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mongo-recipe-resource").ValidateLabels(false),
 					},
 				},
 			},
-			SkipLabelValidation: true,
 		},
 	})
 
