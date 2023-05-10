@@ -58,7 +58,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("return secrets successfully", func(t *testing.T) {
-		secretdm := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		secretdm := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		mStorageClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
@@ -110,7 +110,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2022-03-15-privatepreview", nil)
 	require.NoError(t, err)
 
-	secretdm := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+	secretdm := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 	secretdm.Properties.Data["tls.key"].Encoding = datamodel.SecretValueEncodingRaw
 
 	kubeSecretTests := []struct {

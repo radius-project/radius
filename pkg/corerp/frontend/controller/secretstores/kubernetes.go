@@ -28,15 +28,53 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ValidateRequest validates the resource in the incoming request.
-func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	if newResource.Properties.Type == datamodel.SecretTypeNone {
-		newResource.Properties.Type = datamodel.SecretTypeGeneric
+func getOrDefaultType(t datamodel.SecretType) (datamodel.SecretType, error) {
+	var err error
+	switch t {
+	case datamodel.SecretTypeNone:
+		t = datamodel.SecretTypeGeneric
+	case datamodel.SecretTypeCert:
+	case datamodel.SecretTypeGeneric:
+	default:
+		err = fmt.Errorf("'%s' is invalid secret type", t)
+	}
+	return t, err
+}
+
+func getOrDefaultEncoding(t datamodel.SecretType, e datamodel.SecretValueEncoding) (datamodel.SecretValueEncoding, error) {
+	var err error
+	switch e {
+	case datamodel.SecretValueEncodingBase64:
+		// no-op
+	case datamodel.SecretValueEncodingNone:
+		// certificate value must be base64-encoded.
+		if t == datamodel.SecretTypeCert {
+			e = datamodel.SecretValueEncodingBase64
+		} else {
+			e = datamodel.SecretValueEncodingRaw
+		}
+	case datamodel.SecretValueEncodingRaw:
+		if t == datamodel.SecretTypeCert {
+			err = fmt.Errorf("%s type doesn't support %s", datamodel.SecretTypeCert, datamodel.SecretValueEncodingRaw)
+		}
+	default:
+		err = fmt.Errorf("%s is the invalid encoding type", e)
+	}
+
+	return e, err
+}
+
+// ValidateAndMutateRequest validates and mutate the resource in the incoming request.
+func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
+	var err error
+	newResource.Properties.Type, err = getOrDefaultType(newResource.Properties.Type)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	if oldResource != nil {
 		if oldResource.Properties.Type != newResource.Properties.Type {
-			return rest.NewBadRequestResponse("type cannot be changed."), nil
+			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.type cannot change from '%s' to '%s'.", oldResource.Properties.Type, newResource.Properties.Type)), nil
 		}
 
 		if newResource.Properties.Resource == "" {
@@ -45,16 +83,24 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.SecretStore, ol
 	}
 
 	refResourceID := newResource.Properties.Resource
-	if refResourceID == "" {
-		// In this case, Radius creates and manages new Kubernetes secret.
-		for k, secret := range newResource.Properties.Data {
-			if secret.ValueFrom != nil {
-				return rest.NewBadRequestResponse(fmt.Sprintf("data[%s] must not set valueFrom.", k)), nil
-			}
+	if _, _, err := fromResourceID(refResourceID); err != nil {
+		return nil, err
+	}
+
+	for k, secret := range newResource.Properties.Data {
+		// Kubernetes secret does not support valueFrom. Note that this property is reserved to
+		// reference the secret in the external secret stores, such as Azure KeyVault and AWS secrets manager.
+		if secret.ValueFrom != nil && secret.ValueFrom.Name != "" {
+			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.data[%s].valueFrom.Name is specified. Kubernetes secret resource doesn't support secret reference. ", k)), nil
 		}
-	} else {
-		if _, _, err := fromResourceID(refResourceID); err != nil {
-			return nil, err
+
+		secret.Encoding, err = getOrDefaultEncoding(newResource.Properties.Type, secret.Encoding)
+		if err != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' encoding is not valid: %q", k, err)), nil
+		}
+
+		if refResourceID == "" && secret.Value == nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.data[%s].Value must be given to create the secret.", k)), nil
 		}
 	}
 
@@ -150,6 +196,10 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	ksecret := &corev1.Secret{}
 	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
 	if apierrors.IsNotFound(err) {
+		// If resource in incoming request references resource, then the resource must exist.
+		if ref != "" {
+			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' referenced resource does not exist.", ref)), nil
+		}
 		app, _ := resources.ParseResource(newResource.Properties.Application)
 		ksecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -164,45 +214,22 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	}
 
 	updateRequired := false
-
 	for k, secret := range newResource.Properties.Data {
 		val := to.String(secret.Value)
 		if val != "" {
-			if newResource.Properties.Type == datamodel.SecretTypeCert {
-				// If encoding is not specified, set it to base64 because kubernetes secret data is always base64 encoded.
-				if secret.Encoding == datamodel.SecretValueEncodingNone || secret.Encoding == datamodel.SecretValueEncodingBase64 {
-					secret.Encoding = datamodel.SecretValueEncodingBase64
-				} else {
-					return rest.NewBadRequestResponse(fmt.Sprintf("%s key must be encoded in base64.", k)), nil
-				}
-			}
-
-			if secret.Encoding == datamodel.SecretValueEncodingBase64 {
-				ksecret.Data[k] = []byte(val)
+			// Kubernetes secret data expects base64 encoded value.
+			if secret.Encoding == datamodel.SecretValueEncodingRaw {
+				encoded := base64.StdEncoding.EncodeToString([]byte(val))
+				ksecret.Data[k] = []byte(encoded)
 			} else {
-				base64.StdEncoding.Encode(ksecret.Data[k], []byte(val))
+				ksecret.Data[k] = []byte(val)
 			}
-
 			updateRequired = true
-
-			// Remove secret from metadata.
+			// Remove secret from metadata before storing it to data store.
 			secret.Value = nil
 		} else {
-			if secret.ValueFrom != nil {
-				key := secret.ValueFrom.Name
-				if k != key {
-					return rest.NewBadRequestResponse(fmt.Sprintf("%s key name must be same as valueFrom.name %s.", k, key)), nil
-				}
-			}
-
-			// If encoding is not specified, set it to base64 because kubernetes secret data is always base64 encoded.
-			if secret.Encoding == datamodel.SecretValueEncodingNone {
-				secret.Encoding = datamodel.SecretValueEncodingBase64
-			}
-
-			_, ok := ksecret.Data[k]
-			if !ok {
-				return rest.NewBadRequestResponse(fmt.Sprintf("%s does not have key, %s.", newResource.Properties.Resource, k)), nil
+			if _, ok := ksecret.Data[k]; !ok {
+				return rest.NewBadRequestResponse(fmt.Sprintf("'%s' resource does not have key, '%s'.", newResource.Properties.Resource, k)), nil
 			}
 		}
 	}
@@ -213,8 +240,6 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 			ksecret.Type = corev1.SecretTypeTLS
 		case datamodel.SecretTypeGeneric:
 			ksecret.Type = corev1.SecretTypeOpaque
-		default:
-			return rest.NewBadRequestResponse(fmt.Sprintf("%s is invalid secret type.", newResource.Properties.Type)), nil
 		}
 		err = options.KubeClient.Create(ctx, ksecret)
 	} else if updateRequired {

@@ -413,7 +413,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						ResponseConverter: converter.SecretStoreModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SecretStore]{
 							rp_frontend.PrepareRadiusResource[*datamodel.SecretStore],
-							secret_ctrl.ValidateRequest,
+							secret_ctrl.ValidateAndMutateRequest,
 							secret_ctrl.UpsertSecret,
 						},
 					},
@@ -431,7 +431,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						ResponseConverter: converter.SecretStoreModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SecretStore]{
 							rp_frontend.PrepareRadiusResource[*datamodel.SecretStore],
-							secret_ctrl.ValidateRequest,
+							secret_ctrl.ValidateAndMutateRequest,
 							secret_ctrl.UpsertSecret,
 						},
 					},
