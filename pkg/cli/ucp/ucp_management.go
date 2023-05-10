@@ -45,6 +45,7 @@ var (
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
+		"Applications.Core/secretStores",
 	}
 )
 
