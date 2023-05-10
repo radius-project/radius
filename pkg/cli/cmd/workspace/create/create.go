@@ -185,7 +185,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("creating workspace...")
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.Config, r.Workspace, []interface{}{})
+	err := r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.Config, r.Workspace)
 	if err != nil {
 		return err
 	}

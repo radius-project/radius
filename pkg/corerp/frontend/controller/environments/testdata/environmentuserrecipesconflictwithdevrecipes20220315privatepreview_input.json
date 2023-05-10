@@ -9,7 +9,7 @@
         "recipes": {
             "Applications.Link/mongoDatabases":{
                 "mongo-azure": {
-                    "templatePath": "radiusdev.azurecr.io/mongo:1.0"
+                    "templatePath": "radiusdev.azurecr.io/test/mongo:1.0"
                 }
             }
         },

@@ -50,9 +50,9 @@ func (host *Host) RunAsync(ctx context.Context) (<-chan error, <-chan LifecycleM
 	serviceErrors := make(chan LifecycleMessage, len(host.Services))
 
 	go func() {
+		defer close(stopped)
 		err := host.Run(ctx, serviceErrors)
 		stopped <- err
-		close(stopped)
 	}()
 
 	return stopped, serviceErrors

@@ -129,7 +129,7 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.Deploymen
 		return providerConfig
 	}
 
-	if options.Providers.Azure.Scope != "" {
+	if options.Providers.Azure != nil && options.Providers.Azure.Scope != "" {
 		providerConfig.Az = &sdkclients.Az{
 			Type: sdkclients.ProviderTypeAzure,
 			Value: sdkclients.Value{
@@ -138,7 +138,7 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.Deploymen
 		}
 	}
 
-	if options.Providers.AWS.Scope != "" {
+	if options.Providers.AWS != nil && options.Providers.AWS.Scope != "" {
 		providerConfig.AWS = &sdkclients.AWS{
 			Type: sdkclients.ProviderTypeAWS,
 			Value: sdkclients.Value{

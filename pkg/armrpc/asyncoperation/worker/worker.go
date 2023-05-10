@@ -201,7 +201,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
 	ctx, span := trace.StartConsumerSpan(ctx, "worker.runOperation receive", trace.BackendTracerName)
-
+	defer span.End()
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	asyncReq := &ctrl.Request{}
@@ -272,12 +272,10 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
-			span.End()
 			return
 
 		case <-ctx.Done():
 			logger.Info("Stopping processing async operation. This operation will be reprocessed.")
-			span.End()
 			return
 
 		case <-opDone:
@@ -286,7 +284,6 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 			opEndAt := time.Now()
 			logger.Info("End processing operation.", "startAt", opStartAt.UTC(), "endAt", opEndAt.UTC(), "duration", opEndAt.Sub(opStartAt))
-			span.End()
 			return
 		}
 	}

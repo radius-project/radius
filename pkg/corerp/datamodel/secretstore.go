@@ -26,13 +26,15 @@ const (
 type SecretType string
 
 const (
+	// SecretTypeNone is the undefined type.
+	SecretTypeNone SecretType = ""
 	// SecretTypeGeneric is the generic secret type.
 	SecretTypeGeneric SecretType = "generic"
 	// SecretTypeCert is the certificate secret type.
 	SecretTypeCert SecretType = "certificate"
 )
 
-// SecretStore represents Application environment resource.
+// SecretStore represents secret store resource.
 type SecretStore struct {
 	v1.BaseResource
 
@@ -41,24 +43,24 @@ type SecretStore struct {
 }
 
 // ResourceTypeName returns the resource type name of the resource.
-func (e *SecretStore) ResourceTypeName() string {
+func (s *SecretStore) ResourceTypeName() string {
 	return "Applications.Core/secretStores"
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (h *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	h.Properties.Status.OutputResources = do.DeployedOutputResources
+func (s *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
+	s.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
 // OutputResources returns the output resources array.
-func (h *SecretStore) OutputResources() []rpv1.OutputResource {
-	return h.Properties.Status.OutputResources
+func (s *SecretStore) OutputResources() []rpv1.OutputResource {
+	return s.Properties.Status.OutputResources
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *SecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
-	return &h.Properties.BasicResourceProperties
+func (s *SecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
+	return &s.Properties.BasicResourceProperties
 }
 
 // SecretStoreProperties represents the properties of SecretStore.
@@ -91,4 +93,33 @@ type SecretStoreDataValueFrom struct {
 	Name string `json:"name,omitempty"`
 	// Version is the version of the secret.
 	Version string `json:"version,omitempty"`
+}
+
+// SecretStoreListSecrets represents listSecret response.
+type SecretStoreListSecrets struct {
+	// Type is the type of the data.
+	Type SecretType `json:"type,omitempty"`
+
+	// Data is the data of the secret store.
+	Data map[string]*SecretStoreDataValue `json:"data,omitempty"`
+}
+
+// ResourceTypeName returns the resource type name of the resource.
+func (s *SecretStoreListSecrets) ResourceTypeName() string {
+	return "Applications.Core/secretStores"
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (s *SecretStoreListSecrets) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
+	return nil
+}
+
+// OutputResources returns the output resources array.
+func (s *SecretStoreListSecrets) OutputResources() []rpv1.OutputResource {
+	return nil
+}
+
+// ResourceMetadata returns SecretStoreListSecrets resource metadata.
+func (s *SecretStoreListSecrets) ResourceMetadata() *rpv1.BasicResourceProperties {
+	return nil
 }

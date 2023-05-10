@@ -1,0 +1,66 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: Purge test resources
+on:
+  schedule:
+    # Run twice a day
+    - cron: "30 0,12 * * *"
+env:
+  # The test subscription id for testing.
+  AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
+  AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
+  # The valid resource time window in seconds to delete the test resources. 6 hours
+  VALID_RESOURCE_WINDOW: 6*60*60
+jobs:
+  purge_azure_resources:
+    name: Azure resources clean-ups
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    steps:
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
+      - name: Find old test resource groups
+        run: |
+          echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
+
+          # Create the file to store the resource group list
+          touch ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+
+          az account set -s ${{ env.AZURE_SUBSCRIPTION_ID }}
+          resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
+
+          current_time=$(date +%s)
+          hours_ago=$((current_time - ${{ env.VALID_RESOURCE_WINDOW }}))
+          while IFS=$'\t' read -r name creation_time; do
+            if [[ ! "$name" =~ ^"radius-" ]] && [[ ! "$name" =~ ^"radtest-" ]]; then
+              continue
+            fi
+
+            if [ "$creation_time" = "None" ]; then
+              echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
+              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+              continue
+            fi
+
+            # Check if the resource group was created more than 6 hours ago
+            if [ "$creation_time" -lt "$hours_ago" ]; then
+              echo " * :wastebasket: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
+              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+            else
+              echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
+            fi
+          done <<< "$resource_groups"
+      - name: Delete Azure resource groups
+        run: |
+          echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
+          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
+          do
+              echo " * $line" >> $GITHUB_STEP_SUMMARY
+              az group delete --resource-group $line --yes --verbose
+          done

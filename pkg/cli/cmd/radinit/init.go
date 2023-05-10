@@ -449,7 +449,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, []interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
+	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -519,9 +519,7 @@ func (r *Runner) getAWSCredential() ucp.AWSCredentialResource {
 func installRadius(ctx context.Context, r *Runner) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
-			Reinstall:     r.Reinstall,
-			AzureProvider: r.AzureCloudProvider,
-			AWSProvider:   r.AwsCloudProvider,
+			Reinstall: r.Reinstall,
 		},
 	}
 

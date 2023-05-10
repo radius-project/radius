@@ -16,10 +16,11 @@ import (
 )
 
 type ResourceTypeSchema struct {
-	Properties           map[string]any `json:"properties,omitempty"`
-	ReadOnlyProperties   []string       `json:"readOnlyProperties,omitempty"`
-	CreateOnlyProperties []string       `json:"createOnlyProperties,omitempty"`
-	WriteOnlyProperties  []string       `json:"writeOnlyProperties,omitempty"`
+	Properties                      map[string]any `json:"properties,omitempty"`
+	ReadOnlyProperties              []string       `json:"readOnlyProperties,omitempty"`
+	CreateOnlyProperties            []string       `json:"createOnlyProperties,omitempty"`
+	ConditionalCreateOnlyProperties []string       `json:"conditionalCreateOnlyProperties,omitempty"`
+	WriteOnlyProperties             []string       `json:"writeOnlyProperties,omitempty"`
 }
 
 // FlattenProperties flattens a state object.
@@ -143,11 +144,12 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 		if isWriteOnlyProperty && isCreateOnlyProperty {
 			flattenedDesiredStateObject[k] = v
 		} else if _, exists := flattenedDesiredStateObject[k]; !exists {
-			// Add the property (if not exists already) to the desired state if it is a read-only or create-only
-			// property. This ensures that these types of properties result in a no-op in the patch if they aren't
-			// updated in the desired state
+			// Add the property (if not exists already) to the desired state if it is a read-only, create-only,
+			// or conditional-create-only property. This ensures that these types of properties result in a
+			// no-op in the patch if they aren't updated in the desired state
 			isReadOnlyProperty := slices.Contains(resourceTypeSchema.ReadOnlyProperties, property)
-			if isReadOnlyProperty || isCreateOnlyProperty {
+			isConditionalCreateOnlyProperty := slices.Contains(resourceTypeSchema.ConditionalCreateOnlyProperties, property)
+			if isReadOnlyProperty || isCreateOnlyProperty || isConditionalCreateOnlyProperty {
 				flattenedDesiredStateObject[k] = v
 			}
 		}

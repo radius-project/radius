@@ -453,6 +453,12 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 				)
 			},
 		},
+		{
+			ParentRouter:   secretRTSubrouter.Path("/{secretStoreName}/listsecrets").Subrouter(),
+			ResourceType:   secret_ctrl.ResourceTypeName,
+			Method:         secret_ctrl.OperationListSecrets,
+			HandlerFactory: secret_ctrl.NewListSecrets,
+		},
 	}
 	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
