@@ -31,6 +31,11 @@ if ((Get-ExecutionPolicy) -gt 'RemoteSigned' -or (Get-ExecutionPolicy) -eq 'ByPa
 # Change security protocol to support TLS 1.2 / 1.1 / 1.0 - old powershell uses TLS 1.0 as a default protocol
 [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
 
+# Remove old rad CLI at legacy location, C:\radius
+if (Test-Path "C:\radius\rad.exe" -PathType Leaf) {
+    Remove-Item -Recurse -Force "C:\radius"
+}
+
 # Check if Radius CLI is installed.
 if (Test-Path $RadiusCliFilePath -PathType Leaf) {
     Write-Output "Previous rad CLI detected: $RadiusCliFilePath"
@@ -92,13 +97,20 @@ $UserPathEnvironmentVar = (Get-Item -Path HKCU:\Environment).GetValue(
     'DoNotExpandEnvironmentNames' # the option that suppresses expansion
 )
 
-Write-Output "Adding $RadiusRoot to User Path..."  
+# Remove legacy c:\radius from User Path if it exists
+if ($UserPathEnvironmentVar -like '*c:\radius*') {
+    $UserPathEnvironmentVar = $UserPathEnvironmentVar -replace 'c:\\radius;', ''
+    Set-ItemProperty HKCU:\Environment "PATH" "$UserPathEnvironmentVar" -Type ExpandString
+}
+
 if (-Not ($UserPathEnvironmentVar -like '*radius*')) {
+    Write-Output "Adding $RadiusRoot to User Path..."
     # [Environment]::SetEnvironmentVariable sets the value kind as REG_SZ, use the function below to set a value of kind REG_EXPAND_SZ
     Set-ItemProperty HKCU:\Environment "PATH" "$UserPathEnvironmentVar;$RadiusRoot" -Type ExpandString
     # Also add the path to the current session
     $env:PATH += ";$RadiusRoot"
 }
+
 Write-Output "rad CLI has been successfully installed"
 
 Write-Output "`r`nInstalling Bicep..."
