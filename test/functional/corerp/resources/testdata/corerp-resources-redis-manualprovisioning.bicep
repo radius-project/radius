@@ -4,7 +4,7 @@ param magpieimage string
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
-  name: 'corerp-resources-redis-disable-recipe'
+  name: 'corerp-resources-redis-manualprovisioning'
   location: 'global'
   properties:{
     environment: environment
@@ -68,6 +68,8 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
     environment: environment
     application: app.id
     resourceProvisioning: 'manual'
+    host: redisRoute.properties.hostname
+    port: redisRoute.properties.port
     secrets: {
       connectionString: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
       password: ''

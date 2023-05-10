@@ -14,10 +14,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_RedisDisableRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-redis-disable-recipe.bicep"
-	name := "corerp-resources-redis-disable-recipe"
-	appNamespace := "default-corerp-resources-redis-disable-recipe"
+func Test_RedisManualProvisioning(t *testing.T) {
+	template := "testdata/corerp-resources-redis-manualprovisioning.bicep"
+	name := "corerp-resources-redis-manualprovisioning"
+	appNamespace := "default-corerp-resources-redis-manualprovisioning"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
