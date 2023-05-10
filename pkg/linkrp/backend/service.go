@@ -12,24 +12,26 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
+	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/configloader"
+	"github.com/project-radius/radius/pkg/recipes/driver"
+	"github.com/project-radius/radius/pkg/recipes/engine"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
+	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/sdk/clients"
+	"k8s.io/client-go/discovery"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
-)
-
-var (
-	// ResourceTypeNames is the array that holds resource types that needs async processing.
-	// We use this array to generate generic backend controller for each resource.
-	ResourceTypeNames = []string{
-		linkrp.MongoDatabasesResourceType,
-		linkrp.RedisCachesResourceType,
-		linkrp.DaprStateStoresResourceType,
-	}
 )
 
 type Service struct {
@@ -54,6 +56,50 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
+	runtimeClient, err := kubeutil.NewRuntimeClient(s.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(s.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
+	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
+
+	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
+		Cred:             &aztoken.AnonymousCredential{},
+		BaseURI:          s.Options.UCPConnection.Endpoint(),
+		ARMClientOptions: sdk.NewClientOptions(s.Options.UCPConnection),
+	})
+	if err != nil {
+		return err
+	}
+
+	configLoader := configloader.NewEnvironmentLoader(clientOptions)
+	engine := engine.NewEngine(engine.Options{
+		ConfigurationLoader: configLoader,
+		Drivers: map[string]driver.Driver{
+			recipes.DriverBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient),
+		},
+	})
+
+	// resourceTypes is the array that holds resource types that needs async processing.
+	// We use this array to register backend controllers for each resource.
+	resourceTypes := []struct {
+		TypeName            string
+		CreatePutController func(options ctrl.Options) (ctrl.Controller, error)
+	}{
+		{linkrp.MongoDatabasesResourceType, backend_ctrl.NewLegacyCreateOrUpdateResource},
+		{linkrp.RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &rediscaches.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RedisCache, datamodel.RedisCache](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.DaprStateStoresResourceType, backend_ctrl.NewLegacyCreateOrUpdateResource},
+	}
+
 	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient, s.Options.UCPConnection)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
@@ -67,13 +113,13 @@ func (s *Service) Run(ctx context.Context) error {
 		},
 	}
 
-	for _, rt := range ResourceTypeNames {
+	for _, rt := range resourceTypes {
 		// Register controllers
-		err = s.Controllers.Register(ctx, rt, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
+		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
 		if err != nil {
 			return err
 		}
-		err = s.Controllers.Register(ctx, rt, v1.OperationPut, backend_ctrl.NewLegacyCreateOrUpdateResource, opts)
+		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationPut, rt.CreatePutController, opts)
 		if err != nil {
 			return err
 		}

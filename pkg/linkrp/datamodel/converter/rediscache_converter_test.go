@@ -66,9 +66,9 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid.json",
+			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalidinput.json",
 			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field RedisCacheProperties.properties.resource of type string"),
+			errors.New("json: cannot unmarshal number into Go struct field RedisCacheProperties.properties.host of type string"),
 		},
 		{
 			"",

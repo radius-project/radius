@@ -41,7 +41,6 @@ func Test_Process(t *testing.T) {
 				},
 				Secrets: map[string]any{
 					"password": password,
-
 					// Let the connection string be computed, it will result in the same value
 					// as the variable 'connectionString'
 				},
@@ -82,14 +81,10 @@ func Test_Process(t *testing.T) {
 	t.Run("success - values", func(t *testing.T) {
 		resource := &datamodel.RedisCache{
 			Properties: datamodel.RedisCacheProperties{
-				RedisResourceProperties: datamodel.RedisResourceProperties{
-					Resource: azureRedisResourceID1,
-				},
-				RedisValuesProperties: datamodel.RedisValuesProperties{
-					Host:     host,
-					Port:     RedisSSLPort,
-					Username: username,
-				},
+				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+				Host:      host,
+				Port:      RedisSSLPort,
+				Username:  username,
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
@@ -134,14 +129,11 @@ func Test_Process(t *testing.T) {
 	t.Run("success - recipe with value overrides", func(t *testing.T) {
 		resource := &datamodel.RedisCache{
 			Properties: datamodel.RedisCacheProperties{
-				RedisResourceProperties: datamodel.RedisResourceProperties{
-					Resource: azureRedisResourceID1,
-				},
-				RedisValuesProperties: datamodel.RedisValuesProperties{
-					Host:     host,
-					Port:     RedisSSLPort,
-					Username: username,
-				},
+				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+				Host:      host,
+				Port:      RedisSSLPort,
+				Username:  username,
+
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
@@ -153,7 +145,6 @@ func Test_Process(t *testing.T) {
 				Resources: []string{
 					azureRedisResourceID2,
 				},
-
 				// Values and secrets will be overridden by the resource.
 				Values: map[string]any{
 					"host":     "asdf",

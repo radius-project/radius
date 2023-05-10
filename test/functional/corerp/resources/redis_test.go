@@ -6,7 +6,6 @@
 package resource_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
@@ -15,10 +14,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Redis(t *testing.T) {
-	template := "testdata/corerp-resources-redis-user-secrets.bicep"
-	name := "corerp-resources-redis-user-secrets"
-	appNamespace := "default-corerp-resources-redis-user-secrets"
+func Test_RedisManualProvisioning(t *testing.T) {
+	template := "testdata/corerp-resources-redis-manualprovisioning.bicep"
+	name := "corerp-resources-redis-manualprovisioning"
+	appNamespace := "default-corerp-resources-redis-manualprovisioning"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -66,46 +65,9 @@ func Test_Redis(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_RedisAzure(t *testing.T) {
-	template := "testdata/corerp-resources-redis-azure.bicep"
-	name := "corerp-resources-redis-azure"
-
-	if os.Getenv("AZURE_REDIS_RESOURCE_ID") == "" {
-		t.Error("AZURE_REDIS_RESOURCE_ID environment variable must be set to run this test.")
-	}
-	redisresourceid := "redisresourceid=" + os.Getenv("AZURE_REDIS_RESOURCE_ID")
-
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), redisresourceid),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
-					{
-						Name: name,
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: "redis-azure-app-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "redis-link",
-						Type: validation.RedisCachesResource,
-						App:  name,
-					},
-				},
-			},
-			SkipObjectValidation: true,
-		},
-	})
-
-	test.Test(t)
-}
-
-func Test_RedisValueBackedRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-redis-value-backed-recipe.bicep"
-	name := "corerp-resources-redis-value-backed-recipe"
+func Test_RedisRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-redis-recipe.bicep"
+	name := "corerp-resources-redis-recipe"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -113,7 +75,7 @@ func Test_RedisValueBackedRecipe(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-value-backed-recipe-env",
+						Name: "corerp-resources-environment-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -121,7 +83,7 @@ func Test_RedisValueBackedRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-value-backed-recipe",
+						Name: "rds-recipe",
 						Type: validation.RedisCachesResource,
 						App:  name,
 					},

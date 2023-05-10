@@ -60,6 +60,30 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 	return &converted
 }
 
+func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) linkrp.ResourceProvisioning {
+	if provisioning == nil {
+		return linkrp.ResourceProvisioningRecipe
+	}
+	switch *provisioning {
+	case ResourceProvisioningManual:
+		return linkrp.ResourceProvisioningManual
+	default:
+		return linkrp.ResourceProvisioning(*provisioning)
+	}
+}
+
+func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning) *ResourceProvisioning {
+	var converted ResourceProvisioning
+	switch provisioning {
+	case linkrp.ResourceProvisioningManual:
+		converted = ResourceProvisioningManual
+	default:
+		converted = ResourceProvisioningRecipe
+	}
+
+	return &converted
+}
+
 func unmarshalTimeString(ts string) *time.Time {
 	var tt timeRFC3339
 	_ = tt.UnmarshalText([]byte(ts))
@@ -78,6 +102,10 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 }
 
 func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
+	if r == nil {
+		return linkrp.LinkRecipe{}
+	}
+
 	recipe := linkrp.LinkRecipe{
 		Name: to.String(r.Name),
 	}
@@ -93,4 +121,30 @@ func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
 		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,
 	}
+}
+
+func toResourcesDataModel(r []*ResourceReference) []*linkrp.ResourceReference {
+	if r == nil {
+		return nil
+	}
+	resources := make([]*linkrp.ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &linkrp.ResourceReference{
+			ID: to.String(resource.ID),
+		}
+	}
+	return resources
+}
+
+func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference {
+	if r == nil {
+		return nil
+	}
+	resources := make([]*ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &ResourceReference{
+			ID: to.Ptr(resource.ID),
+		}
+	}
+	return resources
 }

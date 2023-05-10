@@ -1793,69 +1793,6 @@ func (r *RecipeRabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error 
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RecipeRedisCacheProperties.
-func (r RecipeRedisCacheProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "application", r.Application)
-	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "host", r.Host)
-	objectMap["mode"] = "recipe"
-	populate(objectMap, "port", r.Port)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "recipe", r.Recipe)
-	populate(objectMap, "secrets", r.Secrets)
-	populate(objectMap, "status", r.Status)
-	populate(objectMap, "username", r.Username)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeRedisCacheProperties.
-func (r *RecipeRedisCacheProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", r, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &r.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &r.Environment)
-				delete(rawMsg, key)
-		case "host":
-				err = unpopulate(val, "Host", &r.Host)
-				delete(rawMsg, key)
-		case "mode":
-				err = unpopulate(val, "Mode", &r.Mode)
-				delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, "Port", &r.Port)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "recipe":
-				err = unpopulate(val, "Recipe", &r.Recipe)
-				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, "Secrets", &r.Secrets)
-				delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &r.Status)
-				delete(rawMsg, key)
-		case "username":
-				err = unpopulate(val, "Username", &r.Username)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", r, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type RecipeSQLDatabaseProperties.
 func (r RecipeSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
@@ -1947,10 +1884,15 @@ func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
-	objectMap["mode"] = r.Mode
+	populate(objectMap, "host", r.Host)
+	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "recipe", r.Recipe)
+	populate(objectMap, "resourceProvisioning", r.ResourceProvisioning)
+	populate(objectMap, "resources", r.Resources)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
+	populate(objectMap, "username", r.Username)
 	return json.Marshal(objectMap)
 }
 
@@ -1969,17 +1911,32 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 		case "environment":
 				err = unpopulate(val, "Environment", &r.Environment)
 				delete(rawMsg, key)
-		case "mode":
-				err = unpopulate(val, "Mode", &r.Mode)
+		case "host":
+				err = unpopulate(val, "Host", &r.Host)
+				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, "Port", &r.Port)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
+				delete(rawMsg, key)
+		case "resourceProvisioning":
+				err = unpopulate(val, "ResourceProvisioning", &r.ResourceProvisioning)
+				delete(rawMsg, key)
+		case "resources":
+				err = unpopulate(val, "Resources", &r.Resources)
 				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, "Secrets", &r.Secrets)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		case "username":
+				err = unpopulate(val, "Username", &r.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2021,7 +1978,7 @@ func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &r.Name)
 				delete(rawMsg, key)
 		case "properties":
-				r.Properties, err = unmarshalRedisCachePropertiesClassification(val)
+				err = unpopulate(val, "Properties", &r.Properties)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &r.SystemData)
@@ -2334,24 +2291,15 @@ func (r *ResourceMongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ResourceRedisCacheProperties.
-func (r ResourceRedisCacheProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ResourceReference.
+func (r ResourceReference) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "application", r.Application)
-	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "host", r.Host)
-	objectMap["mode"] = "resource"
-	populate(objectMap, "port", r.Port)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "resource", r.Resource)
-	populate(objectMap, "secrets", r.Secrets)
-	populate(objectMap, "status", r.Status)
-	populate(objectMap, "username", r.Username)
+	populate(objectMap, "id", r.ID)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceRedisCacheProperties.
-func (r *ResourceRedisCacheProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceReference.
+func (r *ResourceReference) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -2359,35 +2307,8 @@ func (r *ResourceRedisCacheProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &r.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &r.Environment)
-				delete(rawMsg, key)
-		case "host":
-				err = unpopulate(val, "Host", &r.Host)
-				delete(rawMsg, key)
-		case "mode":
-				err = unpopulate(val, "Mode", &r.Mode)
-				delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, "Port", &r.Port)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, "Resource", &r.Resource)
-				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, "Secrets", &r.Secrets)
-				delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &r.Status)
-				delete(rawMsg, key)
-		case "username":
-				err = unpopulate(val, "Username", &r.Username)
+		case "id":
+				err = unpopulate(val, "ID", &r.ID)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2980,65 +2901,6 @@ func (v *ValuesRabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error 
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &v.Status)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", v, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ValuesRedisCacheProperties.
-func (v ValuesRedisCacheProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "application", v.Application)
-	populate(objectMap, "environment", v.Environment)
-	populate(objectMap, "host", v.Host)
-	objectMap["mode"] = "values"
-	populate(objectMap, "port", v.Port)
-	populate(objectMap, "provisioningState", v.ProvisioningState)
-	populate(objectMap, "secrets", v.Secrets)
-	populate(objectMap, "status", v.Status)
-	populate(objectMap, "username", v.Username)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesRedisCacheProperties.
-func (v *ValuesRedisCacheProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", v, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &v.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &v.Environment)
-				delete(rawMsg, key)
-		case "host":
-				err = unpopulate(val, "Host", &v.Host)
-				delete(rawMsg, key)
-		case "mode":
-				err = unpopulate(val, "Mode", &v.Mode)
-				delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, "Port", &v.Port)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, "ProvisioningState", &v.ProvisioningState)
-				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, "Secrets", &v.Secrets)
-				delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &v.Status)
-				delete(rawMsg, key)
-		case "username":
-				err = unpopulate(val, "Username", &v.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {

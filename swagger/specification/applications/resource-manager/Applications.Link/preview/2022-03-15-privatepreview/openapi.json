@@ -2405,39 +2405,6 @@
       ],
       "x-ms-discriminator-value": "recipe"
     },
-    "RecipeRedisCacheProperties": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": "string",
-          "description": "The host name of the target Redis cache"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port value of the target Redis cache"
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscaches link"
-        }
-      },
-      "description": "RedisCache Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RedisCacheProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
     "RecipeSqlDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2482,10 +2449,6 @@
     "RedisCacheProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for RedisCacheProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the redis cache link at the time the operation was called",
@@ -2494,13 +2457,39 @@
         "secrets": {
           "$ref": "#/definitions/RedisCacheSecrets",
           "description": "Secrets provided by resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "The host name of the target Redis cache"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port value of the target Redis cache"
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for Redis cache",
+          "readOnly": true
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Redis caches link"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          },
+          "x-cadl-name": "ResourceReference[]",
+          "description": "List of the resource IDs that support the Redis resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
       "description": "RedisCache link properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -2659,38 +2648,30 @@
       ],
       "x-ms-discriminator-value": "resource"
     },
-    "ResourceRedisCacheProperties": {
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
+      "enum": [
+        "recipe",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true
+      }
+    },
+    "ResourceReference": {
       "type": "object",
       "properties": {
-        "resource": {
+        "id": {
           "type": "string",
-          "description": "Fully qualified resource ID of a supported resource with Redis API to use for this link"
-        },
-        "host": {
-          "type": "string",
-          "description": "The host name of the target Redis cache"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port value of the target Redis cache"
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
+          "description": "Resource id of an existing resource"
         }
       },
-      "description": "RedisCache Properties for Mode Resource",
+      "description": "Describes a reference to an existing resource",
       "required": [
-        "resource"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RedisCacheProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "resource"
+        "id"
+      ]
     },
     "ResourceSqlDatabaseProperties": {
       "type": "object",
@@ -2933,36 +2914,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/RabbitMQMessageQueueProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesRedisCacheProperties": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": "string",
-          "description": "The host name of the target Redis cache"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port value of the target Redis cache"
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
-        }
-      },
-      "description": "RedisCache Properties for Mode Values",
-      "required": [
-        "host",
-        "port"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RedisCacheProperties"
         }
       ],
       "x-ms-discriminator-value": "values"

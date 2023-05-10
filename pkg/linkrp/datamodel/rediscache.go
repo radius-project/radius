@@ -72,7 +72,11 @@ func (redis *RedisCache) ResourceTypeName() string {
 	return linkrp.RedisCachesResourceType
 }
 
+// Recipe returns the recipe for the Redis cache
 func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
+	if redis.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
 	return &redis.Properties.Recipe
 }
 
@@ -80,26 +84,28 @@ func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
 }
 
-type RedisValuesProperties struct {
-	Host     string `json:"host,omitempty"`
-	Port     int32  `json:"port,omitempty"`
-	Username string `json:"username,omitempty"`
-}
-
-type RedisResourceProperties struct {
-	Resource string `json:"resource,omitempty"`
-}
-
-type RedisRecipeProperties struct {
-	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
-}
 type RedisCacheProperties struct {
 	rpv1.BasicResourceProperties
-	RedisValuesProperties
-	RedisResourceProperties
-	RedisRecipeProperties
+	// The host name of the target Redis cache
+	Host string `json:"host,omitempty"`
+
+	// The port value of the target Redis cache
+	Port int32 `json:"port,omitempty"`
+
+	// The username for Redis cache
+	Username string `json:"username,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
+	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+
+	// Secrets provided by resource
 	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
-	Mode    LinkMode          `json:"mode"`
+
+	// Specifies how the underlying service/resource is provisioned and managed
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the Redis resource
+	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
