@@ -84,3 +84,13 @@ const (
 	RedisCachesResourceType           = "Applications.Link/redisCaches"
 	SqlDatabasesResourceType          = "Applications.Link/sqlDatabases"
 )
+
+// ResourceProvisioning specifies how the resource should be managed
+type ResourceProvisioning string
+
+const (
+	// ResourceProvisioningRecipe is the scenario when Radius manages the lifecycle of the resource through a Recipe
+	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
+	// ResourceProvisiongManual is the scenario wher the user manages the resource and provides the values
+	ResourceProvisioningManual ResourceProvisioning = "manual"
+)

@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -31,17 +30,7 @@ type Processor struct {
 func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 
-	// TODO: update data model and remove the workaround
-	// validator.AddResourcesField(&resource.Properties.Resource)
-
-	// Begin workaround
-	resources := []*linkrp.ResourceReference{}
-	if resource.Properties.Resource != "" {
-		resources = append(resources, &linkrp.ResourceReference{ID: resource.Properties.Resource})
-	}
-	validator.AddResourcesField(&resources)
-	// End workaround
-
+	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)

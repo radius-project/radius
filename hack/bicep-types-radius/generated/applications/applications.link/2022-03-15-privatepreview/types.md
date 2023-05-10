@@ -362,37 +362,22 @@
 * **Additional Properties Type**: string
 
 ## RedisCacheProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **host**: string: The host name of the target Redis cache
+* **port**: int: The port value of the target Redis cache
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the Redis resource
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeRedisCacheProperties
-#### Properties
-* **host**: string: The host name of the target Redis cache
-* **mode**: 'recipe' (Required): Discriminator property for RedisCacheProperties.
-* **port**: int: The port value of the target Redis cache
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **username**: string (ReadOnly): The username for Redis cache
 
-### ResourceRedisCacheProperties
-#### Properties
-* **host**: string: The host name of the target Redis cache
-* **mode**: 'resource' (Required): Discriminator property for RedisCacheProperties.
-* **port**: int: The port value of the target Redis cache
-* **resource**: string (Required): Fully qualified resource ID of a supported resource with Redis API to use for this link
-* **username**: string (ReadOnly): The username for Redis cache
-
-### ValuesRedisCacheProperties
-#### Properties
-* **host**: string (Required): The host name of the target Redis cache
-* **mode**: 'values' (Required): Discriminator property for RedisCacheProperties.
-* **port**: int (Required): The port value of the target Redis cache
-* **username**: string (ReadOnly): The username for Redis cache
-
+## ResourceReference
+### Properties
+* **id**: string (Required): Resource id of an existing resource
 
 ## RedisCacheSecrets
 ### Properties
