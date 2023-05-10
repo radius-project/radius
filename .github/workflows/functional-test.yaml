@@ -156,7 +156,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :hourglass: Building Radius and pushing container images for functional test...
+            :hourglass: Building Radius and pushing container images for functional tests...
       - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
@@ -187,6 +187,15 @@ jobs:
           append: true
           message: |
             :x: Container images build failed
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :hourglass: Publishing Bicep Recipes for functional tests...
       - name: Download rad-bicep
         run: |
           mkdir -p dist
@@ -207,7 +216,7 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :white_check_mark: Test recipe publishing succeeded
+            :white_check_mark: Recipe publishing succeeded
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
