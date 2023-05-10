@@ -29,6 +29,10 @@ func Test_RedisManualProvisioning(t *testing.T) {
 	template := "testdata/corerp-resources-redis-manualprovisioning.bicep"
 	name := "corerp-resources-redis-manualprovisioning"
 	appNamespace := "default-corerp-resources-redis-manualprovisioning"
+func Test_RedisManualProvisioning(t *testing.T) {
+	template := "testdata/corerp-resources-redis-manualprovisioning.bicep"
+	name := "corerp-resources-redis-manualprovisioning"
+	appNamespace := "default-corerp-resources-redis-manualprovisioning"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -79,6 +83,9 @@ func Test_RedisManualProvisioning(t *testing.T) {
 func Test_RedisRecipe(t *testing.T) {
 	template := "testdata/corerp-resources-redis-recipe.bicep"
 	name := "corerp-resources-redis-recipe"
+func Test_RedisRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-redis-recipe.bicep"
+	name := "corerp-resources-redis-recipe"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -117,7 +124,7 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-default-recipe-env",
+						Name: "corerp-resources-environment-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -125,7 +132,7 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-default-recipe",
+						Name: "rds-recipe",
 						Type: validation.RedisCachesResource,
 						App:  name,
 					},

@@ -98,7 +98,7 @@ func (s *Service) Run(ctx context.Context) error {
 	engine := engine.NewEngine(engine.Options{
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
-			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient),
+			recipes.DriverBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient),
 		},
 	})
 

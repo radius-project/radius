@@ -8,11 +8,13 @@ param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-environment-recipe-env'
+  name: 'corerp-resources-environment-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
+      namespace: 'corerp-resources-environment-recipe-env' 
       namespace: 'corerp-resources-environment-recipe-env' 
     }
     providers: {
@@ -33,12 +35,14 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-redis-recipe'
+  name: 'corerp-resources-redis-recipe'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
+          namespace: 'corerp-resources-redis-recipe-app'
           namespace: 'corerp-resources-redis-recipe-app'
       }
     ]
@@ -47,12 +51,10 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 
 resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   name: 'rds-recipe'
+  name: 'rds-recipe'
   location: 'global'
   properties: {
     environment: env.id
     application: app.id
-    recipe: {
-      name: 'rediscache'
-    }
   }
 }
