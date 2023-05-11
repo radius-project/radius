@@ -22,7 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -50,7 +49,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 
-	Path := req.URL.Path
+	/*Path := req.URL.Path
 	region, err := resources.ExtractRegionFromURLPath(Path)
 	if err != nil {
 		e := v1.ErrorResponse{
@@ -67,9 +66,10 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
-	cloudControlOpts := []func(*cloudcontrol.Options){}
-	cloudControlOpts = append(cloudControlOpts, WithRegion(region))
 
+		cloudControlOpts := []func(*cloudcontrol.Options){}
+		cloudControlOpts = append(cloudControlOpts, WithRegion(region))
+	*/
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
 		e := v1.ErrorResponse{
@@ -105,7 +105,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(awsResourceIdentifier),
-	}, cloudControlOpts...)
+	} /*, cloudControlOpts...*/)
 	if err != nil {
 		if awsclient.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil

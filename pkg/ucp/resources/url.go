@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+const (
+	basePath string = "/apis/api.ucp.dev/v1alpha3"
+)
+
 func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error) {
 	// Remove the /planes/foo/bar/ prefix from the URL with the minimum amount of
 	// garbage allocated during parsing.
@@ -50,11 +54,15 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 
 // Extract Region from  a URI like /apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-west-2/providers/...
 func ExtractRegionFromURLPath(path string) (string, error) {
-	splitCount := 12
+	path = strings.TrimPrefix(path, basePath)
+	splitCount := 9
 	segments := strings.SplitN(path, SegmentSeparator, splitCount)
 	if len(segments) < splitCount {
 		return "", errors.New("URL path is not a valid UCP path for retrieving AWS region")
 	}
-	return segments[10], nil
+	if segments[6] != "regions" {
+		return "", errors.New("URL path does not contain AWS region")
+	}
+	return segments[7], nil
 
 }
