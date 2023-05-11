@@ -47,6 +47,13 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 	}
 	v := src.Properties
+
+	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
+	err := verifyProvisioningValue(converted.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
+	}
+
 	converted.Properties.Resources = toResourcesDataModel(v.Resources)
 	converted.Properties.Host = to.String(v.Host)
 	converted.Properties.Port = to.Int32(v.Port)
@@ -59,8 +66,11 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 		}
 	}
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
-	converted.Properties.DisableRecipe = to.Bool(v.DisableRecipe)
 
+	manualInputs := verifyManualInputs(v.ResourceProvisioning, v.Host, v.Port)
+	if manualInputs != nil {
+		return nil, manualInputs
+	}
 	return converted, nil
 }
 
@@ -86,11 +96,11 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.Ptr(mongo.Properties.Environment),
-		Application:       to.Ptr(mongo.Properties.Application),
-		Recipe:            fromRecipeDataModel(mongo.Properties.Recipe),
-		DisableRecipe:     to.Ptr(mongo.Properties.DisableRecipe),
+		ProvisioningState:    fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
+		Environment:          to.Ptr(mongo.Properties.Environment),
+		Application:          to.Ptr(mongo.Properties.Application),
+		Recipe:               fromRecipeDataModel(mongo.Properties.Recipe),
+		ResourceProvisioning: fromResourceProvisioningDataModel(mongo.Properties.ResourceProvisioning),
 	}
 
 	return nil

@@ -244,12 +244,12 @@
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **database**: string (ReadOnly): Database name of the target Mongo database
-* **disableRecipe**: bool: Whether or not to disable the use of a recipe
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **host**: string: Host name of the target Mongo database
 * **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the redis resource
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.

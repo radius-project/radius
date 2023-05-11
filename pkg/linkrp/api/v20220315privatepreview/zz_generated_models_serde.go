@@ -1047,12 +1047,12 @@ func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", m.Application)
 	populate(objectMap, "database", m.Database)
-	populate(objectMap, "disableRecipe", m.DisableRecipe)
 	populate(objectMap, "environment", m.Environment)
 	populate(objectMap, "host", m.Host)
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "provisioningState", m.ProvisioningState)
 	populate(objectMap, "recipe", m.Recipe)
+	populate(objectMap, "resourceProvisioning", m.ResourceProvisioning)
 	populate(objectMap, "resources", m.Resources)
 	populate(objectMap, "secrets", m.Secrets)
 	populate(objectMap, "status", m.Status)
@@ -1074,9 +1074,6 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 		case "database":
 				err = unpopulate(val, "Database", &m.Database)
 				delete(rawMsg, key)
-		case "disableRecipe":
-				err = unpopulate(val, "DisableRecipe", &m.DisableRecipe)
-				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &m.Environment)
 				delete(rawMsg, key)
@@ -1091,6 +1088,9 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "recipe":
 				err = unpopulate(val, "Recipe", &m.Recipe)
+				delete(rawMsg, key)
+		case "resourceProvisioning":
+				err = unpopulate(val, "ResourceProvisioning", &m.ResourceProvisioning)
 				delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &m.Resources)
@@ -2098,15 +2098,11 @@ func (r *ResourceMongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON implements the json.Marshaller interface for type ResourceReference.
 func (r ResourceReference) MarshalJSON() ([]byte, error) {
-// MarshalJSON implements the json.Marshaller interface for type ResourceReference.
-func (r ResourceReference) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "id", r.ID)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceReference.
-func (r *ResourceReference) UnmarshalJSON(data []byte) error {
 // UnmarshalJSON implements the json.Unmarshaller interface for type ResourceReference.
 func (r *ResourceReference) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
@@ -2116,8 +2112,6 @@ func (r *ResourceReference) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "id":
-				err = unpopulate(val, "ID", &r.ID)
 		case "id":
 				err = unpopulate(val, "ID", &r.ID)
 				delete(rawMsg, key)

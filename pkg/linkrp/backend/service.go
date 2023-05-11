@@ -34,6 +34,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprstatestores"
+	"github.com/project-radius/radius/pkg/linkrp/processors/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/processors/sqldatabases"
@@ -108,7 +109,10 @@ func (s *Service) Run(ctx context.Context) error {
 		TypeName            string
 		CreatePutController func(options ctrl.Options) (ctrl.Controller, error)
 	}{
-		{linkrp.MongoDatabasesResourceType, backend_ctrl.NewLegacyCreateOrUpdateResource},
+		{linkrp.MongoDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &mongodatabases.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.MongoDatabase, datamodel.MongoDatabase](processor, engine, client, configLoader, options)
+		}},
 		{linkrp.RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &rediscaches.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RedisCache, datamodel.RedisCache](processor, engine, client, configLoader, options)

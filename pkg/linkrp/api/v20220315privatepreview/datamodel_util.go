@@ -155,3 +155,27 @@ func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference 
 	}
 	return resources
 }
+
+func verifyProvisioningValue(resourceProvisioning linkrp.ResourceProvisioning) error {
+	var found bool
+	for _, k := range PossibleResourceProvisioningValues() {
+		if ResourceProvisioning(resourceProvisioning) == k {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	}
+
+	return nil
+}
+
+func verifyManualInputs(resourceProvisioning *ResourceProvisioning, host *string, port *int32) error {
+	if resourceProvisioning != nil && *resourceProvisioning == ResourceProvisioningManual {
+		if host == nil || port == nil {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
+		}
+	}
+	return nil
+}

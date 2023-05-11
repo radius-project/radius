@@ -83,7 +83,6 @@ resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' =
   properties: {
     application: app.id
     environment: env.id
-    mode: 'recipe'
     recipe: {
       name: 'mongodb'
       parameters: {

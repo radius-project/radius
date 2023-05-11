@@ -564,9 +564,6 @@ type MongoDatabaseProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Whether or not to disable the use of a recipe
-	DisableRecipe *bool `json:"disableRecipe,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -575,6 +572,9 @@ type MongoDatabaseProperties struct {
 
 	// The recipe used to automatically deploy underlying infrastructure for the rediscaches link
 	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// List of the resource IDs that support the redis resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
@@ -1052,40 +1052,41 @@ type ResourceMongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
+	// REQUIRED; Discriminator property for DaprStateStoreProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
+	// REQUIRED; The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
 	Resource *string `json:"resource,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
+	// Metadata for the state store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
+	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
 
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
 
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
+	// READ-ONLY; Provisioning state of the DaprStateStore link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
-func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ResourceDaprStateStoreProperties.
+func (r *ResourceDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+	return &DaprStateStoreProperties{
 		Mode: r.Mode,
 		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
+		ComponentName: r.ComponentName,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,

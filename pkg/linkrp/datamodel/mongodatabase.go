@@ -37,13 +37,20 @@ type MongoDatabase struct {
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
 	rpv1.BasicResourceProperties
-	Secrets       MongoDatabaseSecrets        `json:"secrets,omitempty"`
-	Host          string                      `json:"host,omitempty"`
-	Port          int32                       `json:"port,omitempty"`
-	Database      string                      `json:"database,omitempty"`
-	Recipe        linkrp.LinkRecipe           `json:"recipe,omitempty"`
-	Resources     []*linkrp.ResourceReference `json:"resources,omitempty"`
-	DisableRecipe bool                        `json:"disableRecipe,omitempty"`
+	// Secrets values provided for the resource
+	Secrets MongoDatabaseSecrets `json:"secrets,omitempty"`
+	// Host name of the target Mongo database
+	Host string `json:"host,omitempty"`
+	// Port value of the target Mongo database
+	Port int32 `json:"port,omitempty"`
+	// Database name of the target Mongo database
+	Database string `json:"database,omitempty"`
+	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
+	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	// List of the resource IDs that support the Redis resource
+	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
+	// Specifies how the underlying service/resource is provisioned and managed
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
@@ -80,6 +87,9 @@ func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
+	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
 	return &r.Properties.Recipe
 }
 

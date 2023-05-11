@@ -12,7 +12,7 @@ param environment string
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-mongodb-user-secrets'
+  name: 'corerp-resources-mongodb-manual-provisioning'
   location: 'global'
   properties: {
     environment: environment
@@ -75,7 +75,6 @@ resource mongo 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     environment: environment
-    mode: 'values'
     host: mongoRoute.properties.hostname
     port: mongoRoute.properties.port
     secrets: {

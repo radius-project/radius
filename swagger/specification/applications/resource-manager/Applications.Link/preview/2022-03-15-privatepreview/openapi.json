@@ -2122,9 +2122,9 @@
           "x-cadl-name": "ResourceReference[]",
           "description": "List of the resource IDs that support the redis resource"
         },
-        "disableRecipe": {
-          "type": "boolean",
-          "description": "Whether or not to disable the use of a recipe"
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
       "description": "MongoDatabase link properties",
@@ -2568,19 +2568,6 @@
         }
       ],
       "x-ms-discriminator-value": "resource"
-    },
-    "ResourceRedisCacheProperties": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Resource id of an existing resource"
-        }
-      },
-      "description": "Describes a reference to an existing resource",
-      "required": [
-        "id"
-      ]
     },
     "ResourceProvisioning": {
       "type": "string",

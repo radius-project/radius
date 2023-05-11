@@ -28,54 +28,11 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MongoDB(t *testing.T) {
-	template := "testdata/corerp-resources-mongodb.bicep"
-	name := "corerp-resources-mongodb"
-
-	if os.Getenv("AZURE_MONGODB_RESOURCE_ID") == "" {
-		t.Error("AZURE_MONGODB_RESOURCE_ID environment variable must be set to run this test.")
-	}
-	mongodbresourceid := "mongodbresourceid=" + os.Getenv("AZURE_MONGODB_RESOURCE_ID")
-	appNamespace := "default-corerp-resources-mongodb"
-
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mongodbresourceid),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
-					{
-						Name: "corerp-resources-mongodb",
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: "mdb-app-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "mdb-db",
-						Type: validation.MongoDatabasesResource,
-						App:  name,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
-					},
-				},
-			},
-		},
-	})
-
-	test.Test(t)
-}
-
-func Test_MongoDBUserSecrets(t *testing.T) {
-	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
-	name := "corerp-resources-mongodb-user-secrets"
-	appNamespace := "default-corerp-resources-mongodb-user-secrets"
+// Opt-out case for manual resource provisioning
+func Test_MongoManualProvisioning(t *testing.T) {
+	template := "testdata/corerp-resources-mongodb-manual-provisioning.bicep"
+	name := "corerp-resources-mongodb-manual-provisioning"
+	appNamespace := "default-ccorerp-resources-mongodb-manual-provisioning"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -124,30 +81,34 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 }
 
 // Test_MongoDB_Recipe validates:
-// the creation of a mongoDB from recipe
-// container using the mongoDB link to connect to the mongoDB resource
-func Test_MongoDB_Recipe(t *testing.T) {
-	// template using recipe testdata/recipes/test-recipes/mongodb-recipe-kubernetes.bicep
-	template := "testdata/corerp-resources-mongodb-recipe.bicep"
-	name := "corerp-resources-mongodb-recipe"
-	appNamespace := "corerp-resources-mongodb-recipe-app"
+// the creation of a mongoDB from a recipe that uses an Azure resource
+func Test_MongoDB_AzureResourceRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-mongodb-azureres-recipe.bicep"
+	name := "corerp-resources-mongodb-azureres-recipe"
+	appNamespace := "corerp-resources-mongodb-azureres-recipe-app"
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-recipes-env",
+						Name: "corerp-resources-mongodb-azureres-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-mongodb-recipe",
+						Name: "corerp-resources-mongodb-azureres-recipe",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "mongodb-recipe-app-ctnr",
+						Name: "mongodb-azureres-app-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "mongo-azureres-db",
+						Type: validation.MongoDatabasesResource,
 						App:  name,
 					},
 				},
@@ -155,8 +116,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "mongo-recipe-resource").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mongodb-azureres-app-ctnr"),
 					},
 				},
 			},
@@ -233,7 +193,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 }
 
 // Test_MongoDB_Recipe_ContextParameter validates creation of a mongoDB from
-// recipe using the context parameter generated and set by linkRP,
+// a default recipe using the context parameter generated and set by linkRP,
 // and container using the mongoDB link to connect to the underlying mongoDB resource.
 func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-context.bicep"
