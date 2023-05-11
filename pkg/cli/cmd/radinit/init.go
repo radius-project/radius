@@ -408,6 +408,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		// create the providers scope to the environment and register credentials at provider plane
+		if len(providerList) > 0 {
+			r.Output.LogInfo("Configuring cloud providers...")
+		}
 		providers, err := cmd.CreateEnvProviders(providerList)
 		if err != nil {
 			return err
@@ -421,7 +424,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		}
 
-		r.Output.LogInfo("Configuring Cloud providers")
 		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, &envProperties)
 		if err != nil || !isEnvCreated {
 			return &cli.FriendlyError{Message: "Failed to create radius environment"}
