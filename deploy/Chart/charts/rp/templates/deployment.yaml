@@ -71,7 +71,7 @@ spec:
         - name: config-volume
           configMap:
             name: appcore-rp-config
-        - terraform:
+        - name: terraform
             emptyDir: {}
 ---
 apiVersion: v1
