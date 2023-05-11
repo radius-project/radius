@@ -49,7 +49,7 @@ resource appSecret 'Applications.Core/secretStores@2022-03-15-privatepreview' = 
   properties:{
     application: app.id
     data: {
-      servicePrincialPassword: {
+      servicePrincipalPassword: {
         value: '10000000-1000-1000-0000-000000000000'
       }
       appId: {

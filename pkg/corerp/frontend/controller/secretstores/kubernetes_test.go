@@ -385,7 +385,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		require.Equal(t, "dGxzLmNydA==", string(ksecret.Data["tls.crt"]))
 		require.Equal(t, "dGxzLmNlcnQK", string(ksecret.Data["tls.key"]))
-		require.Equal(t, "MTAwMDAwMDAtMTAwMC0xMDAwLTAwMDAtMDAwMDAwMDAwMDAw", string(ksecret.Data["servicePrincialPassword"]))
+		require.Equal(t, "MTAwMDAwMDAtMTAwMC0xMDAwLTAwMDAtMDAwMDAwMDAwMDAw", string(ksecret.Data["servicePrincipalPassword"]))
 		require.Equal(t, rpv1.OutputResource{
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &resourcemodel.ResourceType{

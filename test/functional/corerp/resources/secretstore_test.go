@@ -62,7 +62,7 @@ func Test_SecretStore_CreateSecret(t *testing.T) {
 				secret, err = test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, "appsecret", metav1.GetOptions{})
 				require.NoError(t, err)
 
-				for _, key := range []string{"servicePrincialPassword", "appId", "tenantId"} {
+				for _, key := range []string{"servicePrincipalPassword", "appId", "tenantId"} {
 					_, ok := secret.Data[key]
 					require.True(t, ok)
 				}
