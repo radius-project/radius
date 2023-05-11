@@ -111,7 +111,7 @@ jobs:
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
-          hide_and_recreate: true
+          hide: true
           hide_classify: 'OUTDATED'
           message: |
             ## Radius functional test overview
@@ -471,7 +471,7 @@ jobs:
             --no-wait
   report-failure:
     name: Report test failure
-    needs: [tests]
+    needs: [build, tests]
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     if: failure() && github.event_name == 'schedule'
     steps:
