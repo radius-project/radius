@@ -560,7 +560,7 @@ type EnvironmentRecipeProperties struct {
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 
-	// Format of the template provided by the recipe. Currenlty only Bicep and Terraform templates are supported.
+	// Format of the template provided by the recipe. Currently only Bicep and Terraform templates are supported.
 	TemplateKind *string `json:"templateKind,omitempty"`
 }
 

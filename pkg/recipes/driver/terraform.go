@@ -8,6 +8,7 @@ package driver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,23 +18,32 @@ import (
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/ucp/credentials"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/util"
 )
 
 const (
 	installDirRoot = "/terraform/install"
 	workingDirRoot = "/terraform/exec"
+
+	defaultCredential = "default"
 )
 
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver() Driver {
-	return &terraformDriver{}
+func NewTerraformDriver(ucpConn sdk.Connection) Driver {
+	return &terraformDriver{UcpConn: ucpConn}
 }
 
 type terraformDriver struct {
+	UcpConn sdk.Connection
 }
 
 type TerraformConfig struct {
@@ -52,17 +62,22 @@ type ModuleData struct {
 	Version string `json:"version"`
 }
 
-func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.Metadata, definition recipes.Definition) (recipeOutput *recipes.RecipeOutput, err error) {
+func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.Metadata, definition recipes.Definition) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
 
 	// Create Terraform installation directory
 	installDir := filepath.Join(installDirRoot, util.NormalizeStringToLower(recipe.ResourceID), uuid.NewString())
 	logger.Info(fmt.Sprintf("Creating Terraform install directory: %q", installDir))
-	if err = os.MkdirAll(installDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(installDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create directory for terraform installation for resource %q: %w", recipe.ResourceID, err)
 	}
-	defer os.RemoveAll(installDir)
+	defer func() {
+		err := os.RemoveAll(installDir)
+		if err != nil {
+			logger.Error(err, "Failed to remove Terraform installation directory")
+		}
+	}()
 
 	// Install Terraform
 	// Using latest version, revisit this if we want to use a specific version.
@@ -78,7 +93,10 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	}
 	// TODO check if anything else is needed to clean up Terraform installation.
 	defer func() {
-		err = installer.Remove(ctx)
+		err := installer.Remove(ctx)
+		if err != nil {
+			logger.Error(err, "Failed to remove Terraform installation")
+		}
 	}()
 
 	// Create working directory for Terraform execution
@@ -87,18 +105,24 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	if err = os.Mkdir(workingDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create working directory for terraform execution for Radius resource %q. %w", recipe.ResourceID, err)
 	}
-	defer os.RemoveAll(workingDir)
+	defer func() {
+		err := os.RemoveAll(workingDir)
+		if err != nil {
+			logger.Error(err, "Failed to remove Terraform working directory")
+		}
+	}()
 
 	// Generate Terraform json config in the working directory
-	if err = d.generateJsonConfig(ctx, workingDir, recipe.Name, definition.TemplatePath); err != nil {
-		return
+	// TODO scope should be passed based on the provider needed for the recipe. Hardcoding to Azure for now.
+	if err = d.generateJsonConfig(ctx, workingDir, recipe.Name, definition.TemplatePath, configuration.Providers); err != nil {
+		return nil, err
 	}
 
 	if err = d.initAndApply(ctx, recipe.ResourceID, workingDir, execPath); err != nil {
-		return
+		return nil, err
 	}
 
-	return
+	return nil, nil
 }
 
 // Runs Terraform init and apply in the provided working directory.
@@ -127,8 +151,18 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 // See https://www.terraform.io/docs/language/syntax/json.html for more information
 // on the JSON syntax for Terraform configuration.
 // templatePath is the path to the Terraform module source, e.g. "Azure/cosmosdb/azurerm".
-func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, recipeName, templatePath string) error {
-	// TODO hardcoding provider data until we implement a way to pass this in.
+func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, recipeName, templatePath string, providers datamodel.Providers) error {
+	// TODO setting provider data for both AWS and Azure until we implement a way to pass this in.
+	// This should be set based on the provider needed by the recipe/source module and not just Azure/AWS providers.
+	azureProviderConfig, err := d.buildAzureProviderConfig(providers.Azure.Scope)
+	if err != nil {
+		return err
+	}
+	awsProviderConfig, err := d.buildAWSProviderConfig(providers.AWS.Scope)
+	if err != nil {
+		return err
+	}
+
 	tfConfig := TerraformConfig{
 		Terraform: TerraformDefinition{
 			RequiredProviders: map[string]interface{}{
@@ -136,13 +170,16 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 					"source":  "hashicorp/azurerm",
 					"version": "~> 3.0.2",
 				},
+				"aws": map[string]interface{}{
+					"source":  "hashicorp/aws",
+					"version": "~> 4.0",
+				},
 			},
 			RequiredVersion: ">= 1.1.0",
 		},
 		Provider: map[string]interface{}{
-			"azurerm": map[string]interface{}{
-				"features": map[string]interface{}{},
-			},
+			"azurerm": azureProviderConfig,
+			"aws":     awsProviderConfig,
 		},
 		Module: map[string]ModuleData{
 			recipeName: {
@@ -155,7 +192,7 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 	// Convert the Terraform config to JSON
 	jsonData, err := json.MarshalIndent(tfConfig, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Error marshalling JSON: %w", err)
+		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
 	// Write the JSON data to a file in the working directory
@@ -164,14 +201,137 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 	configFilePath := fmt.Sprintf("%s/main.tf.json", workingDir)
 	file, err := os.Create(configFilePath)
 	if err != nil {
-		return fmt.Errorf("Error creating file: %w", err)
+		return fmt.Errorf("error creating file: %w", err)
 	}
 	defer file.Close()
 
 	_, err = file.Write(jsonData)
 	if err != nil {
-		return fmt.Errorf("Error writing to file: %w", err)
+		return fmt.Errorf("error writing to file: %w", err)
 	}
 
 	return nil
+}
+
+// Returns the Terraform provider configuration for Azure provider.
+func (d *terraformDriver) buildAzureProviderConfig(scope string) (map[string]interface{}, error) {
+	subscriptionID, _, err := parseAzureScope(scope)
+	if err != nil {
+		return nil, err
+	}
+
+	credentials, err := d.fetchAzureCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	azureConfig := map[string]interface{}{
+		"subscription_id": subscriptionID,
+		"client_id":       credentials.ClientID,
+		"client_secret":   credentials.ClientSecret,
+		"tenant_id":       credentials.TenantID,
+	}
+
+	return azureConfig, nil
+}
+
+// Returns the Terraform provider configuration for AWS provider.
+func (d *terraformDriver) buildAWSProviderConfig(scope string) (map[string]interface{}, error) {
+	account, region, err := parseAWSScope(scope)
+	if err != nil {
+		return nil, err
+	}
+
+	credentials, err := d.fetchAWSCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	awsConfig := map[string]interface{}{
+		"region":              region,
+		"allowed_account_ids": []string{account},
+		"access_key":          credentials.AccessKeyID,
+		"secret_key":          credentials.SecretAccessKey,
+	}
+
+	return awsConfig, nil
+}
+
+func parseAzureScope(scope string) (subscriptionID string, resourceGroup string, err error) {
+	parsedScope, err := resources.Parse(scope)
+	if err != nil {
+		return "", "", fmt.Errorf("error parsing Azure scope: %w", err)
+	}
+
+	for _, segment := range parsedScope.ScopeSegments() {
+		if segment.Type == resources.SubscriptionsSegment {
+			subscriptionID = segment.Name
+		}
+
+		if segment.Type == resources.ResourceGroupsSegment {
+			resourceGroup = segment.Name
+		}
+	}
+
+	return
+}
+
+func parseAWSScope(scope string) (account string, region string, err error) {
+	parsedScope, err := resources.Parse(scope)
+	if err != nil {
+		return "", "", fmt.Errorf("error parsing AWS scope: %w", err)
+	}
+
+	for _, segment := range parsedScope.ScopeSegments() {
+		if segment.Type == resources.AccountsSegment {
+			account = segment.Name
+		}
+
+		if segment.Type == resources.RegionsSegment {
+			region = segment.Name
+		}
+	}
+	return
+}
+
+func (d *terraformDriver) fetchAzureCredentials() (*credentials.AzureCredential, error) {
+	secretProvider := provider.NewSecretProvider(provider.SecretProviderOptions{
+		Provider: provider.TypeKubernetesSecret,
+	})
+	azureCredentialProvider, err := credentials.NewAzureCredentialProvider(secretProvider, d.UcpConn, &tokencredentials.AnonymousCredential{})
+	if err != nil {
+		return nil, fmt.Errorf("error creating Azure credential provider: %w", err)
+	}
+
+	credentials, err := azureCredentialProvider.Fetch(context.Background(), credentials.AzureCloud, defaultCredential)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching Azure credentials: %w", err)
+	}
+
+	if credentials.ClientID == "" || credentials.ClientSecret == "" || credentials.TenantID == "" {
+		return nil, errors.New("Azure credentials are required to create Azure resources through Recipe. Use `rad credential register azure` to register Azure credentials.")
+	}
+
+	return credentials, nil
+}
+
+func (d *terraformDriver) fetchAWSCredentials() (*credentials.AWSCredential, error) {
+	secretProvider := provider.NewSecretProvider(provider.SecretProviderOptions{
+		Provider: provider.TypeKubernetesSecret,
+	})
+	awsCredentialProvider, err := credentials.NewAWSCredentialProvider(secretProvider, d.UcpConn, &tokencredentials.AnonymousCredential{})
+	if err != nil {
+		return nil, fmt.Errorf("error creating AWS credential provider: %w", err)
+	}
+
+	credentials, err := awsCredentialProvider.Fetch(context.Background(), credentials.AWSPublic, defaultCredential)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching AWS credentials: %w", err)
+	}
+
+	if credentials.AccessKeyID == "" || credentials.SecretAccessKey == "" {
+		return nil, errors.New("AWS credentials are required to create AWS resources through Recipe. Use `rad credential register aws` to register AWS credentials.")
+	}
+
+	return credentials, nil
 }

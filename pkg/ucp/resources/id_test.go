@@ -1047,3 +1047,37 @@ func Test_Type(t *testing.T) {
 		})
 	}
 }
+
+func Test_ParseProviderScope(t *testing.T) {
+	values := []struct {
+		desc                  string
+		scope                 string
+		expectedScopeSegments []ScopeSegment
+	}{
+		{
+			desc:  "Azure provider resource group",
+			scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+			expectedScopeSegments: []ScopeSegment{
+				{Type: "subscriptions", Name: "test-sub"},
+				{Type: "resourceGroups", Name: "test-rg"},
+			},
+		},
+		{
+			desc:  "AWS provider region",
+			scope: "/planes/aws/aws/accounts/000/regions/us-east-1",
+			expectedScopeSegments: []ScopeSegment{
+				{Type: "aws", Name: "aws"},
+				{Type: "accounts", Name: "000"},
+				{Type: "regions", Name: "us-east-1"},
+			},
+		},
+	}
+
+	for _, tt := range values {
+		t.Run(tt.desc, func(t *testing.T) {
+			rID, err := Parse(tt.scope)
+			require.NoError(t, err)
+			require.Equal(t, rID.scopeSegments, tt.expectedScopeSegments)
+		})
+	}
+}

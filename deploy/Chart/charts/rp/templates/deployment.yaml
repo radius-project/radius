@@ -72,7 +72,7 @@ spec:
           configMap:
             name: appcore-rp-config
         - name: terraform
-            emptyDir: {}
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

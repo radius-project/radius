@@ -480,7 +480,7 @@
       "description": "Properties of a Recipe linked to an Environment.",
       "properties": {
         "templateKind": {
-          "description": "Format of the template provided by the recipe. Currenlty only Bicep and Terraform templates are supported.",
+          "description": "Format of the template provided by the recipe. Currently only Bicep and Terraform templates are supported.",
           "type": "string"
         },
         "templatePath": {
