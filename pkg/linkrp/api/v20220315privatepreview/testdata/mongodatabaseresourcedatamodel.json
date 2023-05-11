@@ -25,7 +25,7 @@
         },
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "disableRecipe": true,
+        "resourceProvisioning": "manual",
         "host": "testAccount1.mongo.cosmos.azure.com",
         "port": 10255,
         "secrets": {

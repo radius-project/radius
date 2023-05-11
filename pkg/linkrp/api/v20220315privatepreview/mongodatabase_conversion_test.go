@@ -7,6 +7,7 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -85,11 +86,12 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
 			require.Equal(t, int32(10255), convertedResource.Properties.Port)
 		}
-		if versionedResource.Properties.DisableRecipe == nil {
+		if versionedResource.Properties.ResourceProvisioning == nil {
 			require.Equal(t, payload.recipe, convertedResource.Properties.Recipe)
+			require.Equal(t, linkrp.ResourceProvisioningRecipe, convertedResource.Properties.ResourceProvisioning)
 		} else {
 			require.Equal(t, linkrp.LinkRecipe{}, convertedResource.Properties.Recipe)
-			require.Equal(t, *versionedResource.Properties.DisableRecipe, convertedResource.Properties.DisableRecipe)
+			require.Equal(t, linkrp.ResourceProvisioningManual, convertedResource.Properties.ResourceProvisioning)
 			require.Equal(t, payload.resources, convertedResource.Properties.Resources)
 			if convertedResource.Properties.Secrets.ConnectionString != "" {
 				require.Equal(t, *versionedResource.Properties.Secrets.ConnectionString, convertedResource.Properties.Secrets.ConnectionString)
@@ -106,33 +108,23 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 }
 
 func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
-	// TODO: fix tests 
-	// testset := []string{"mongodatabaseresource_invalidmode.json", "mongodatabaseresource_invalidmode2.json", "mongodatabaseresource_invalidmode3.json"}
-	// for _, payload := range testset {
-	// 	// arrange
-	// 	rawPayload := loadTestData(payload)
-	// 	versionedResource := &MongoDatabaseResource{}
-	// 	err := json.Unmarshal(rawPayload, versionedResource)
-	// 	require.NoError(t, err)
-	// 	var expectedErr v1.ErrClientRP
-	// 	if payload == "mongodatabaseresource_invalidmode.json" {
-	// 		expectedErr.Code = "BadRequest"
-	// 		expectedErr.Message = "Unsupported mode abc"
-	// 	}
-	// 	if payload == "mongodatabaseresource_invalidmode2.json" {
-	// 		expectedErr.Code = "BadRequest"
-	// 		expectedErr.Message = "resource is a required property for mode \"resource\""
-	// 	}
-	// 	if payload == "mongodatabaseresource_invalidmode3.json" {
-	// 		expectedErr.Code = "BadRequest"
-	// 		expectedErr.Message = "recipe is a required property for mode \"recipe\""
-	// 	}
-	// 	if payload == "mongodatabaseresource_invalidmode4.json" {
-	// 		expectedErr.Code = "BadRequest"
-	// 		expectedErr.Message = "rhost and port are required properties for mode \"values\""
-	// 	}
-	// 	_, err = versionedResource.ConvertTo()
-	// 	require.Equal(t, &expectedErr, err)
+	testset := []string{"mongodatabaseresource-invalidresprovisioning.json", "mongodatabaseresource-missinginputs.json"}
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		versionedResource := &MongoDatabaseResource{}
+		err := json.Unmarshal(rawPayload, versionedResource)
+		require.NoError(t, err)
+		if payload == "mongodatabaseresource-invalidresprovisioning.json" {
+			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+			_, err = versionedResource.ConvertTo()
+			require.Equal(t, &expectedErr, err)
+		}
+		if payload == "mongodatabaseresource-missinginputs.json" {
+			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
+			_, err = versionedResource.ConvertTo()
+			require.Equal(t, &expectedErr, err)
+		}
 	}
 }
 
@@ -177,10 +169,10 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
 
-		if resource.Properties.DisableRecipe == false {
+		if resource.Properties.ResourceProvisioning == "" {
 			require.Equal(t, payload.recipe, *versionedResource.Properties.Recipe)
 		} else {
-			require.Equal(t, resource.Properties.DisableRecipe, *versionedResource.Properties.DisableRecipe)
+			require.Equal(t, ResourceProvisioningManual, *versionedResource.Properties.ResourceProvisioning)
 			require.Equal(t, Recipe{Name: to.Ptr(""), Parameters: nil}, *versionedResource.Properties.Recipe)
 			require.Equal(t, resource.Properties.Host, *versionedResource.Properties.Host)
 			require.Equal(t, resource.Properties.Port, *versionedResource.Properties.Port)

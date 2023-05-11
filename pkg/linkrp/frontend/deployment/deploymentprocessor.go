@@ -500,7 +500,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 		basicResource = &obj.Properties.BasicResourceProperties
 		recipe.Name = obj.Properties.Recipe.Name
 		recipe.Parameters = obj.Properties.Recipe.Parameters
-
 	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		basicResource = &obj.Properties.BasicResourceProperties

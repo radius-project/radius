@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprstatestores"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -37,10 +36,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 	}
 
 	radiusResourceModel := []RadiusResourceModel{
-		{
-			ResourceType: linkrp.MongoDatabasesResourceType,
-			Renderer:     &mongodatabases.Renderer{},
-		},
 		{
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Renderer:     &sqldatabases.Renderer{},
@@ -113,14 +108,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler:        handlers.NewARMHandler(arm),
-			SecretValueTransformer: &mongodatabases.AzureTransformer{},
-		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,

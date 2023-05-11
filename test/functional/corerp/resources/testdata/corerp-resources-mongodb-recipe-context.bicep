@@ -22,7 +22,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     recipes: {
       'Applications.Link/mongoDatabases':{
-        mongodb: {
+        default: {
           templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/context/mongodatabases/azure:1.0' 
         }
       }
@@ -74,9 +74,5 @@ resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' =
   properties: {
     application: app.id
     environment: env.id
-    mode: 'recipe'
-    recipe: {
-      name: 'mongodb'
-    }
   }
 }

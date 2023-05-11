@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/kubernetesmetadata"
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
@@ -175,13 +174,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 	azureOutputResourceModel := []OutputResourceModel{
 		// Azure CosmosDB and Azure Redis models are consumed by deployment processor to fetch secrets for container dependencies.
 		// Any new SecretValueTransformer for a link should be added here to support connections from container.
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			SecretValueTransformer: &mongodatabases.AzureTransformer{},
-		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,

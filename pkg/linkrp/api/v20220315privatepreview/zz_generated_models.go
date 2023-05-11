@@ -561,9 +561,6 @@ type MongoDatabaseProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Whether or not to disable the use of a recipe
-	DisableRecipe *bool `json:"disableRecipe,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -572,6 +569,9 @@ type MongoDatabaseProperties struct {
 
 	// The recipe used to automatically deploy underlying infrastructure for the rediscaches link
 	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// List of the resource IDs that support the redis resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
@@ -1267,51 +1267,6 @@ func (r *ResourceDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprSt
 		Mode: r.Mode,
 		ProvisioningState: r.ProvisioningState,
 		ComponentName: r.ComponentName,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// ResourceMongoDatabaseProperties - MongoDatabase Properties for Mode Resource
-type ResourceMongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
-func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,

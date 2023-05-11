@@ -6,10 +6,7 @@
 package v20220315privatepreview
 
 import (
-	"fmt"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -41,15 +38,9 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	v := src.Properties
 
 	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
-	var found bool
-	for _, k := range PossibleResourceProvisioningValues() {
-		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	err := verifyProvisioningValue(converted.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
 
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
@@ -63,7 +54,7 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 			Password:         to.String(v.Secrets.Password),
 		}
 	}
-	manualInputs := verifyManualInputs(*v)
+	manualInputs := verifyManualInputs(v.ResourceProvisioning, v.Host, v.Port)
 	if manualInputs != nil {
 		return nil, manualInputs
 	}
@@ -123,13 +114,4 @@ func (src *RedisCacheSecrets) ConvertTo() (v1.DataModelInterface, error) {
 		Password:         to.String(src.Password),
 	}
 	return converted, nil
-}
-
-func verifyManualInputs(properties RedisCacheProperties) error {
-	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
-		if properties.Host == nil || properties.Port == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
-		}
-	}
-	return nil
 }
