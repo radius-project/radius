@@ -53,7 +53,7 @@ func setDefault() (string, string) {
 }
 
 func GetRecipeRegistry() string {
-	defaultRecipeRegistry := os.Getenv("DOCKER_REGISTRY")
+	defaultRecipeRegistry := os.Getenv("RECIPE_REGISTRY")
 	if defaultRecipeRegistry == "" {
 		defaultRecipeRegistry = "radiusdev.azurecr.io"
 	}
@@ -61,7 +61,7 @@ func GetRecipeRegistry() string {
 }
 
 func GetRecipeVersion() string {
-	defaultVersion := os.Getenv("RECIPE_TAG_VERSION")
+	defaultVersion := os.Getenv("REL_VERSION")
 	if defaultVersion == "" {
 		defaultVersion = "latest"
 	}
