@@ -2,7 +2,7 @@
 
 The recipes in this folder are published as part of the PR process to:
 
-> `radiusdev.azurecr.io/test/functional/corerp/<filename>:pr-<pr-number>`
+> `radiusdev.azurecr.io/test/functional/corerp/recipes/<filename>:pr-<pr-number>`
 
 This is important because it allows us to make changes to the recipes, and test them in the same PR that contains the change.
 

@@ -29,14 +29,12 @@ const (
 )
 
 func GetMagpieImage() string {
-	setDefault()
 	defaultDockerReg, imageTag := setDefault()
 	magpieImage := "magpieimage=" + defaultDockerReg + "/magpiego:" + imageTag
 	return magpieImage
 }
 
 func GetMagpieTag() string {
-	setDefault()
 	_, imageTag := setDefault()
 	magpietag := "magpietag=" + imageTag
 	return magpietag
@@ -52,6 +50,22 @@ func setDefault() (string, string) {
 		imageTag = "latest"
 	}
 	return defaultDockerReg, imageTag
+}
+
+func GetRecipeRegistry() string {
+	defaultRecipeRegistry := os.Getenv("DOCKER_REGISTRY")
+	if defaultRecipeRegistry == "" {
+		defaultRecipeRegistry = "radiusdev.azurecr.io"
+	}
+	return "registry=" + defaultRecipeRegistry
+}
+
+func GetRecipeVersion() string {
+	defaultVersion := os.Getenv("RECIPE_TAG_VERSION")
+	if defaultVersion == "" {
+		defaultVersion = "latest"
+	}
+	return "version=" + defaultVersion
 }
 
 // GetHostnameForHTTPProxy finds the fqdn set on the root HTTPProxy of the specified application

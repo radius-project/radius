@@ -6,6 +6,10 @@ param sub string = subscription().subscriptionId
 
 param magpieimage string 
 
+param registry string 
+
+param version string
+
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-environment-recipes-env'
   location: 'global'
@@ -23,7 +27,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/daprStateStores':{
         daprstatestore: {
-          templatePath: 'radiusdev.azurecr.io/recipes/daprstatestores/azure:1.0' 
+          templatePath: '${registry}/test/functional/corerp/recipes/dapr_state_store_recipe:${version}' 
         }
       }
     }
