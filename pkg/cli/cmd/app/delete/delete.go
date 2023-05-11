@@ -30,8 +30,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "delete",
-		Short: "Delete RAD application",
-		Long:  "Delete the specified RAD application deployed in the default environment",
+		Short: "Delete Radius application",
+		Long:  "Delete the specified Radius application deployed in the default environment",
 		Example: `
 # Delete current application
 rad app delete

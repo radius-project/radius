@@ -26,8 +26,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "show",
-		Short: "Show application details",
-		Long:  `Show application details. Shows the user's default application (if configured) by default.`,
+		Short: "Show Radius application details",
+		Long:  `Show Radius application details. Shows the user's default application (if configured) by default.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
 # Show current application
