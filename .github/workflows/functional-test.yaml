@@ -111,7 +111,7 @@ jobs:
         with:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
-          hide: true
+          hide_and_recreate: true
           hide_classify: 'OUTDATED'
           message: |
             ## Radius functional test overview
@@ -460,18 +460,6 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@v6
-        if: failure() && github.event_name == 'schedule'
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: 'Scheduled functional test failure - ${{ matrix.name }} ',
-              body: '${{ matrix.name }} functional tests failed. Please check [the action run](' + process.env.ACTION_LINK + ') for more details.'
-              labels: ['bug']
-            })
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         run: |
@@ -481,3 +469,21 @@ jobs:
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes \
             --no-wait
+  report-failure:
+    name: Report test failure
+    needs: [tests]
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    if: failure() && github.event_name == 'schedule'
+    steps:
+      - name: Create failure issue for failing scheduled run
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Scheduled functional test failed - Run ID: ' + context.runId,
+              body: '## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](' + process.env.ACTION_LINK + ').'
+              labels: ['bug']
+            })
