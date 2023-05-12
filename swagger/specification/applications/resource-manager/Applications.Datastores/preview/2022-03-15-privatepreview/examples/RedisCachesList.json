@@ -1,0 +1,63 @@
+{
+    "parameters": {
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "api-version": "2022-03-15-privatepreview"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "value": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis0",
+              "name": "redis0",
+              "type": "Applications.Datastores/redisCaches",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "mode": "resource",
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
+                "username": "username"
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis0",
+              "name": "redis0",
+              "type": "Applications.Datastores/redisCaches",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "mode": "recipe",
+                "recipe": {
+                  "name": "redis",
+                  "parameters": {
+                    "port": 2334
+                  }
+                }               
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis1",
+              "name": "redis1",
+              "type": "Applications.Datastores/redisCaches",
+              "location": "global",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+                "mode": "values",
+                "host":"myrediscache.redis.cache.windows.net",
+                "port":6380,
+                "username": "username"
+              }
+            }
+          ],
+          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        }
+      }
+    }
+  }
+  

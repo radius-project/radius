@@ -76,6 +76,11 @@ generate-rad-datastoresrp-client: generate-node-installed generate-autorest-inst
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/messagingrp/api/README.md --tag=messaging-2022-03-15-privatepreview
 
+.PHONY: generate-rad-daprrp-client
+generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
+	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	autorest pkg/daprrp/api/README.md --tag=dapr-2022-03-15-privatepreview
+
 .PHONY: generate-rad-ucp-client
 generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"

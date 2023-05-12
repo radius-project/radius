@@ -1,0 +1,67 @@
+{
+  "parameters": {
+    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo0",
+            "name": "mongo0",
+            "type": "Applications.Datastores/mongoDatabases",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "mode": "resource",
+              "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db",
+              "database": "mongo0"
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Datastores/mongoDatabases/mongo1",
+            "name": "mongo1",
+            "type": "Applications.Datastores/mongoDatabases",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "mode":"values",
+              "host": "testAccount1.mongo.cosmos.azure.com",
+              "port": 10255,
+              "database": "mongo0",
+              "secrets": {
+                "username": "testUser",
+                "password": "testPassword",
+                "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
+              }
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Datastores/mongoDatabases/mongo1",
+            "name": "mongo1",
+            "type": "Applications.Datastores/mongoDatabases",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "mode":"recipe",
+              "recipe": {
+                "name": "cosmosdb",
+                "parameters":{
+                  "foo":"bar"
+                }
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Datastores/mongoDatabases?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

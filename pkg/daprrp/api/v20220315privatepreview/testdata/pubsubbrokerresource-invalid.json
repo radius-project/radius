@@ -1,0 +1,9 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/pubSub0",
+    "name": "pubSub0",
+    "type": "Applications.Dapr/pubSubBrokers",
+    "properties": {
+        "mode": "resource",
+        "resource": 12345
+    }
+}

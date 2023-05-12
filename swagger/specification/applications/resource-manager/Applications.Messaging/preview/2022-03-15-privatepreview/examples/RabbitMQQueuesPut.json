@@ -1,0 +1,58 @@
+{
+    "parameters": {
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "rabbitMQMessageQueueName": "rabbitmq0",
+      "api-version": "2022-03-15-privatepreview",
+      "RabbitMQMessageQueueParameters": {
+        "location": "West US",
+        "properties": {
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "mode": "values",
+            "queue": "rabbitmq0",
+            "secrets": {
+              "connectionString": "connection://string"
+            }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
+          "name": "rabbitmq0",
+          "type": "Applications.Messaging/rabbitMQQueues",
+          "location": "West US",
+          "properties": {
+            "provisioningState": "Succeeded",
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "mode": "values",
+            "queue": "rabbitmq0",
+            "secrets": {
+              "connectionString": "connection://string"
+            }
+          }
+        }
+      },
+      "201": {
+        "body": {
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Messaging/rabbitMQQueues/rabbitmq1",
+          "name": "rabbitmq1",
+          "type": "Applications.Messaging/rabbitMQQueues",
+          "location": "West US",
+          "properties": {
+            "provisioningState": "Succeeded",
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "mode": "values",
+            "queue": "rabbitmq0",
+            "secrets": {
+              "connectionString": "connection://string"
+            }
+          }
+        }
+      }
+    }
+  }
+  

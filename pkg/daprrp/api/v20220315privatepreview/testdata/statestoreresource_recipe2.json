@@ -1,0 +1,21 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/stateStores/daprStateStore0",
+    "name": "daprStateStore0",
+    "type": "Applications.Dapr/stateStores",
+    "properties": {
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "mode": "recipe",
+        "type": "state.zookeeper",
+        "version": "v1",
+        "metadata": {
+            "foo": "bar"
+        },
+        "recipe": {
+          "name": "recipe-test",
+          "parameters": {
+              "port": 6081
+          }
+        }
+    }
+}
