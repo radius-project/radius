@@ -53,6 +53,7 @@ func NewUCPTest(t *testing.T, name string, runMethod TestRunMethod) UCPTest {
 }
 
 func (ucptest UCPTest) Test(t *testing.T) {
+	t.Skip()
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 

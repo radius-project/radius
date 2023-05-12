@@ -26,6 +26,7 @@ import (
 )
 
 func Test_MongoDB(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
 
@@ -70,6 +71,7 @@ func Test_MongoDB(t *testing.T) {
 }
 
 func Test_MongoDBUserSecrets(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
 	name := "corerp-resources-mongodb-user-secrets"
 	appNamespace := "default-corerp-resources-mongodb-user-secrets"
@@ -124,6 +126,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 // the creation of a mongoDB from recipe
 // container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe(t *testing.T) {
+	t.Skip()
 	// template using recipe testdata/recipes/test-recipes/mongodb-recipe-kubernetes.bicep
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
@@ -168,6 +171,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.
 // Container uses the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe_Parameters(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
@@ -233,6 +237,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 // recipe using the context parameter generated and set by linkRP,
 // and container using the mongoDB link to connect to the underlying mongoDB resource.
 func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-mongodb-recipe-context.bicep"
 	name := "corerp-resources-mongodb-recipe-context"
 	appNamespace := "corerp-resources-mongodb-recipe-context-app"

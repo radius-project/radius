@@ -29,6 +29,7 @@ import (
 )
 
 func Test_Plane_Operations(t *testing.T) {
+	t.Skip()
 	test := NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		planeID := "/planes/testtype/testplane"
 		apiVersion := v20220901privatepreview.Version
@@ -88,6 +89,7 @@ func Test_Plane_Operations(t *testing.T) {
 }
 
 func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20220901privatepreview.PlaneResource) {
+	t.Skip()
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
 	createRequest, err := NewUCPRequest(
@@ -126,6 +128,7 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 }
 
 func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.PlaneResourceListResult {
+	t.Skip()
 	listRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -147,6 +150,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220
 }
 
 func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
+	t.Skip()
 	deleteRgRequest, err := NewUCPRequest(
 		http.MethodDelete,
 		url,

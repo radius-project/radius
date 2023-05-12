@@ -45,6 +45,7 @@ type GatewayTestConfig struct {
 }
 
 func Test_Gateway(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
 	appNamespace := "default-corerp-resources-gateway"

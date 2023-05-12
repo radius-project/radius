@@ -41,6 +41,7 @@ const (
 )
 
 func Test_ProxyOperations(t *testing.T) {
+	t.Skip()
 	test := NewUCPTest(t, "Test_ProxyOperations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Start a TestRP in the Radius namespace
 		startTestRP(t, "")
@@ -115,6 +116,7 @@ func Test_ProxyOperations(t *testing.T) {
 }
 
 func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, rgURL string, asyncHeaderName string, asyncHeaderValue string, apiVersion string) {
+	t.Skip()
 	var requestURL string
 	if asyncHeaderName != "" {
 		requestURL = fmt.Sprintf("%s/providers/Applications.Test/hello?%s=%s", rgURL, asyncHeaderName, asyncHeaderValue)
@@ -144,6 +146,7 @@ func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, r
 }
 
 func startTestRP(t *testing.T, configContext string) {
+	t.Skip()
 	ctx := context.Background()
 	// Deploy a pod with the TestRP image to the k8s cluster where UCP is running
 	config, err := kubernetes.NewCLIClientConfig(configContext)

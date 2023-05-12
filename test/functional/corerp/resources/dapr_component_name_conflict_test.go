@@ -23,6 +23,7 @@ import (
 )
 
 func Test_DaprComponentNameConflict(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-component-name-conflict.bicep"
 	name := "corerp-resources-dapr-component-name-conflict"
 

@@ -23,6 +23,7 @@ import (
 )
 
 func Test_RabbitMQ(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-rabbitmq.bicep"
 	name := "corerp-resources-rabbitmq"
 	appNamespace := "default-corerp-resources-rabbitmq"

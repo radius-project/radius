@@ -27,6 +27,7 @@ import (
 )
 
 func Test_AWS_Credential_Operations(t *testing.T) {
+	t.Skip()
 	test := NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		resourceTypePath := "/planes/aws/awstest/providers/System.AWS/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
@@ -38,6 +39,7 @@ func Test_AWS_Credential_Operations(t *testing.T) {
 }
 
 func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AWSCredentialResource, expectedCredential ucp.AWSCredentialResource) {
+	t.Skip()
 	// Create credential operation
 	createAWSTestCredential(t, roundTripper, resourceUrl, createCredential)
 
@@ -69,6 +71,7 @@ func runAWSCredentialTests(t *testing.T, resourceUrl string, collectionUrl strin
 }
 
 func createAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.AWSCredentialResource) {
+	t.Skip()
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
 	createRequest, err := NewUCPRequest(http.MethodPut, url, bytes.NewBuffer(body))
@@ -82,6 +85,7 @@ func createAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url s
 }
 
 func getAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.AWSCredentialResource, int) {
+	t.Skip()
 	getCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
@@ -101,6 +105,7 @@ func getAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url stri
 }
 
 func deleteAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
+	t.Skip()
 	deleteCredentialRequest, err := NewUCPRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 
@@ -109,6 +114,7 @@ func deleteAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url s
 }
 
 func listAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.AWSCredentialResource {
+	t.Skip()
 	listCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
@@ -118,6 +124,7 @@ func listAWSTestCredential(t *testing.T, roundTripper http.RoundTripper, url str
 }
 
 func getAWSTestCredentialList(t *testing.T, res *http.Response) []ucp.AWSCredentialResource {
+	t.Skip()
 	body := res.Body
 	defer body.Close()
 

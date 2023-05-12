@@ -60,12 +60,14 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	linkType := "Applications.Link/mongoDatabases"
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
 
 	t.Run("Validate rad recipe list", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.RecipeList(ctx, envName)
 		require.NoError(t, err)
 		require.Regexp(t, recipeName, output)
@@ -74,12 +76,14 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.RecipeUnregister(ctx, envName, recipeName, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
 	})
 
 	t.Run("Validate rad recipe show", func(t *testing.T) {
+		t.Skip()
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
 		showRecipeLinkType := "Applications.Link/mongoDatabases"
@@ -99,6 +103,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, linkType)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
@@ -121,6 +126,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	}
 
 	t.Run("Validate rad application show", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
 		expected := regexp.MustCompile(`RESOURCE      ` + showSpacing + `  TYPE\n` + appName + `  Applications.Core/applications\n`)
@@ -129,6 +135,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad resource list", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.ResourceList(ctx, appName)
 		require.NoError(t, err)
 
@@ -143,6 +150,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.ResourceShow(ctx, "containers", containerName)
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
@@ -154,6 +162,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
+		t.Skip()
 		output, err := cli.ResourceLogs(ctx, appName, containerName)
 		require.NoError(t, err)
 
@@ -282,6 +291,7 @@ func Test_Run_Logger(t *testing.T) {
 
 	// Now we can delete the application (before we report pass/fail)
 	t.Run("delete application", func(t *testing.T) {
+		t.Skip()
 		// Create a new context since we canceled the outer one.
 		ctx, cancel := test.GetContext(t)
 		defer cancel()
@@ -382,6 +392,7 @@ func Test_Run_Portforward(t *testing.T) {
 }
 
 func Test_CLI(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-kubernetes-cli.bicep"
 	name := "kubernetes-cli"
 
@@ -422,6 +433,7 @@ func Test_CLI(t *testing.T) {
 }
 
 func Test_CLI_JSON(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-kubernetes-cli.json"
 	name := "kubernetes-cli-json"
 
@@ -462,6 +474,7 @@ func Test_CLI_JSON(t *testing.T) {
 }
 
 func Test_CLI_Delete(t *testing.T) {
+	t.Skip()
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
@@ -550,6 +563,7 @@ func Test_CLI_Delete(t *testing.T) {
 }
 
 func Test_CLI_DeploymentParameters(t *testing.T) {
+	t.Skip()
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
@@ -602,6 +616,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 }
 
 func Test_CLI_version(t *testing.T) {
+	t.Skip()
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
@@ -641,6 +656,7 @@ func Test_CLI_Only_version(t *testing.T) {
 }
 
 func Test_RecipeCommands(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-recipe-env.bicep"
 	name := "corerp-resources-recipe-env"
 

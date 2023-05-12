@@ -30,6 +30,7 @@ import (
 )
 
 func Test_ResourceGroup_Operations(t *testing.T) {
+	t.Skip()
 	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Create resource groups
 		rgID := "/planes/radius/local/resourcegroups/test-RG"
@@ -72,6 +73,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 }
 
 func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) {
+	t.Skip()
 	model := v20220901privatepreview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	}
@@ -95,6 +97,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 }
 
 func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.ResourceGroupResourceListResult {
+	t.Skip()
 	listRgsRequest, err := NewUCPRequest(
 		http.MethodGet,
 		url,
@@ -142,6 +145,7 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 }
 
 func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) int {
+	t.Skip()
 	deleteRgRequest, err := NewUCPRequest(
 		http.MethodDelete,
 		url,

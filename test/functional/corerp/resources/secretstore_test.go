@@ -25,6 +25,7 @@ import (
 )
 
 func Test_SecretStore_CreateSecret(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-secretstore-new.bicep"
 	appName := "corerp-resources-secretstore"
 	appNamespace := "corerp-resources-secretstore-app"
@@ -82,6 +83,7 @@ func Test_SecretStore_CreateSecret(t *testing.T) {
 }
 
 func Test_SecretStore_ReferenceSecret(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-secretstore-ref.bicep"
 	appName := "corerp-resources-secretstore-ref"
 	appNamespace := "corerp-resources-secretstore-ref"

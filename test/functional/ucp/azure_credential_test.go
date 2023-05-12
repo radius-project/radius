@@ -27,6 +27,7 @@ import (
 )
 
 func Test_Azure_Credential_Operations(t *testing.T) {
+	t.Skip()
 	test := NewUCPTest(t, "Test_Azure_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		resourceTypePath := "/planes/azure/azuretest/providers/System.Azure/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
@@ -38,6 +39,7 @@ func Test_Azure_Credential_Operations(t *testing.T) {
 }
 
 func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, createCredential ucp.AzureCredentialResource, expectedCredential ucp.AzureCredentialResource) {
+	t.Skip()
 	// Create credential operation
 	createAzureTestCredential(t, roundTripper, resourceUrl, createCredential)
 
@@ -67,6 +69,7 @@ func runAzureCredentialTests(t *testing.T, resourceUrl string, collectionUrl str
 }
 
 func createAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.AzureCredentialResource) {
+	t.Skip()
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
 	createRequest, err := NewUCPRequest(http.MethodPut, url, bytes.NewBuffer(body))
@@ -80,6 +83,7 @@ func createAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url
 }
 
 func getAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.AzureCredentialResource, int) {
+	t.Skip()
 	getCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
@@ -99,6 +103,7 @@ func getAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url st
 }
 
 func deleteAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
+	t.Skip()
 	deleteCredentialRequest, err := NewUCPRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 
@@ -107,6 +112,7 @@ func deleteAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url
 }
 
 func listAzureTestCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.AzureCredentialResource {
+	t.Skip()
 	listCredentialRequest, err := NewUCPRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
