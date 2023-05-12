@@ -61,7 +61,7 @@ func GetRecipeRegistry() string {
 }
 
 func GetRecipeVersion() string {
-	defaultVersion := os.Getenv("REL_VERSION")
+	defaultVersion := os.Getenv("RECIPE_TAG_VERSION")
 	if defaultVersion == "" {
 		defaultVersion = "latest"
 	}
