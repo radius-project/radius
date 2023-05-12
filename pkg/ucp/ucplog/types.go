@@ -5,7 +5,7 @@
 
 package ucplog
 
-// LoggingOptions represents the logger.
+// LoggingOptionsss represents the logger.
 type LoggingOptions struct {
 	Json  bool   `yaml:"json"`
 	Level string `yaml:"level"`
