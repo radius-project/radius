@@ -24,13 +24,6 @@ type MockAWSCredentialManagementClientInterfaceMockRecorder struct {
 }
 
 // NewMockAWSCredentialManagementClientInterface creates a new mock instance.
-//
-// # Function Explanation
-// 
-//	MockAWSCredentialManagementClientInterface is a function that creates a mock object of the 
-//	AWSCredentialManagementClientInterface interface, which can be used to mock the behavior of the interface in tests. It 
-//	also records the calls made to the interface and can be used to check if the expected calls were made. If not, it will 
-//	return an error.
 func NewMockAWSCredentialManagementClientInterface(ctrl *gomock.Controller) *MockAWSCredentialManagementClientInterface {
 	mock := &MockAWSCredentialManagementClientInterface{ctrl: ctrl}
 	mock.recorder = &MockAWSCredentialManagementClientInterfaceMockRecorder{mock}
@@ -38,23 +31,11 @@ func NewMockAWSCredentialManagementClientInterface(ctrl *gomock.Controller) *Moc
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-//
-// # Function Explanation
-// 
-//	The MockAWSCredentialManagementClientInterface function creates a mock recorder object which can be used to record and 
-//	verify expectations for the AWSCredentialManagementClientInterface. It also returns an error if the recorder object 
-//	cannot be created.
 func (m *MockAWSCredentialManagementClientInterface) EXPECT() *MockAWSCredentialManagementClientInterfaceMockRecorder {
 	return m.recorder
 }
 
 // Delete mocks base method.
-//
-// # Function Explanation
-// 
-//	MockAWSCredentialManagementClientInterface.Delete is a mock implementation of the Delete function which takes in a 
-//	context and a string as parameters and returns a boolean and an error. It is used to simulate the behavior of the Delete
-//	 function in case of an error, allowing the caller to handle the error accordingly.
 func (m *MockAWSCredentialManagementClientInterface) Delete(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
@@ -64,25 +45,12 @@ func (m *MockAWSCredentialManagementClientInterface) Delete(arg0 context.Context
 }
 
 // Delete indicates an expected call of Delete.
-//
-// # Function Explanation
-// 
-//	This function records a call to the Delete method of the MockAWSCredentialManagementClientInterface, which takes two 
-//	parameters and returns an error if one occurs. It also checks for any errors that may have occurred during the call and 
-//	returns them to the caller.
 func (mr *MockAWSCredentialManagementClientInterfaceMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockAWSCredentialManagementClientInterface)(nil).Delete), arg0, arg1)
 }
 
 // Get mocks base method.
-//
-// # Function Explanation
-// 
-//	MockAWSCredentialManagementClientInterface.Get is a mock implementation of the Get function which takes in a context and
-//	 a string as parameters and returns a ProviderCredentialConfiguration and an error. It is used to simulate the behavior 
-//	of the Get function in a testing environment. If an error is encountered, it is returned to the caller for further 
-//	handling.
 func (m *MockAWSCredentialManagementClientInterface) Get(arg0 context.Context, arg1 string) (ProviderCredentialConfiguration, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
@@ -92,23 +60,12 @@ func (m *MockAWSCredentialManagementClientInterface) Get(arg0 context.Context, a
 }
 
 // Get indicates an expected call of Get.
-//
-// # Function Explanation
-// 
-//	This function records a call to the Get method of the MockAWSCredentialManagementClientInterfaceMockRecorder object, 
-//	passing in two parameters. It returns an error if the parameters are not of the expected type.
 func (mr *MockAWSCredentialManagementClientInterfaceMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAWSCredentialManagementClientInterface)(nil).Get), arg0, arg1)
 }
 
 // List mocks base method.
-//
-// # Function Explanation
-// 
-//	MockAWSCredentialManagementClientInterface.List is a mock implementation of the List function which takes in a context 
-//	and returns a slice of CloudProviderStatus and an error. It is used to test the List function and handles errors by 
-//	returning them to the caller.
 func (m *MockAWSCredentialManagementClientInterface) List(arg0 context.Context) ([]CloudProviderStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
@@ -118,24 +75,12 @@ func (m *MockAWSCredentialManagementClientInterface) List(arg0 context.Context) 
 }
 
 // List indicates an expected call of List.
-//
-// # Function Explanation
-// 
-//	This function records a call to the List method of the MockAWSCredentialManagementClientInterfaceMockRecorder object, 
-//	which is used to check if the List method was called with the correct parameters. If an error is encountered, it is 
-//	returned to the caller.
 func (mr *MockAWSCredentialManagementClientInterfaceMockRecorder) List(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockAWSCredentialManagementClientInterface)(nil).List), arg0)
 }
 
 // Put mocks base method.
-//
-// # Function Explanation
-// 
-//	MockAWSCredentialManagementClientInterface.Put is a mock implementation of the Put function which takes in a context and
-//	 an AWSCredentialResource object and returns an error. It is used to simulate the behavior of the Put function in a 
-//	testing environment. If an error is encountered, it is returned to the caller.
 func (m *MockAWSCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20220901privatepreview.AWSCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", arg0, arg1)
@@ -144,11 +89,6 @@ func (m *MockAWSCredentialManagementClientInterface) Put(arg0 context.Context, a
 }
 
 // Put indicates an expected call of Put.
-//
-// # Function Explanation
-// 
-//	This function records a call to the Put method of the MockAWSCredentialManagementClientInterface, which is used to store
-//	 credentials in a secure manner. It returns an error if the credentials cannot be stored.
 func (mr *MockAWSCredentialManagementClientInterfaceMockRecorder) Put(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockAWSCredentialManagementClientInterface)(nil).Put), arg0, arg1)
