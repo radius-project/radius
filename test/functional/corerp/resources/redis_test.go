@@ -134,3 +134,34 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_TerraformRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-recipe.bicep"
+	name := "tf-recipe-app"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "tf-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "tf-recipe",
+						Type: validation.RedisCachesResource,
+						App:  name,
+					},
+				},
+			},
+			SkipObjectValidation: true,
+		},
+	})
+
+	test.Test(t)
+}

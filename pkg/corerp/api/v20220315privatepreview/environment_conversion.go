@@ -139,6 +139,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
 					Parameters:   recipeDetails.Parameters,
 				}
+
+				// Temporary check until we make templateKind required.
+				if recipeDetails.TemplateKind != "" {
+					recipes[resourceType][recipeName].TemplateKind = to.Ptr(recipeDetails.TemplateKind)
+				}
 			}
 		}
 		dst.Properties.Recipes = recipes
