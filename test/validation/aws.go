@@ -7,7 +7,6 @@ package validation
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
@@ -112,8 +111,8 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 }
 
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
-	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
-	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	accessKey := "AKIA34S5APOTKOJFBBYV"                           //os.Getenv("AWS_ACCESS_KEY_ID")
+	secretAccessKey := "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" //os.Getenv("AWS_SECRET_ACCESS_KEY")
 	sessionToken := ""
 	region := "us-west-2"
 
