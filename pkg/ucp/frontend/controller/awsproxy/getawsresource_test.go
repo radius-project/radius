@@ -115,7 +115,7 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewGetAWSResource(ctrl.Options{
 		AWSOptions: ctrl.AWSOptions{
@@ -143,7 +143,7 @@ func Test_GetAWSResource_SmithyError(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
 		Err: &smithyhttp.ResponseError{
 			Err: &smithy.GenericAPIError{
 				Code:    "NotFound",

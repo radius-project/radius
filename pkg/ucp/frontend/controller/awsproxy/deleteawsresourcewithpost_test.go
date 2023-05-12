@@ -168,7 +168,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   aws.String(testResource.AWSResourceType),
 		Identifier: aws.String("abc|xyz"),
-	}).Return(
+	}, gomock.Any()).Return(
 		&cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
