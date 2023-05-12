@@ -24,12 +24,6 @@ type MockCredentialManagementClientMockRecorder struct {
 }
 
 // NewMockCredentialManagementClient creates a new mock instance.
-//
-// # Function Explanation
-// 
-//	MockCredentialManagementClient is a function that creates a MockCredentialManagementClient object, which is used to mock
-//	 the behavior of a CredentialManagementClient for testing purposes. It records the expected behavior of the 
-//	CredentialManagementClient and returns an error if the actual behavior does not match the expected behavior.
 func NewMockCredentialManagementClient(ctrl *gomock.Controller) *MockCredentialManagementClient {
 	mock := &MockCredentialManagementClient{ctrl: ctrl}
 	mock.recorder = &MockCredentialManagementClientMockRecorder{mock}
@@ -37,22 +31,11 @@ func NewMockCredentialManagementClient(ctrl *gomock.Controller) *MockCredentialM
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-//
-// # Function Explanation
-// 
-//	MockCredentialManagementClient's EXPECT() function creates and returns a MockCredentialManagementClientMockRecorder 
-//	object which can be used to set expectations for the function's behavior and to check for errors.
 func (m *MockCredentialManagementClient) EXPECT() *MockCredentialManagementClientMockRecorder {
 	return m.recorder
 }
 
 // Delete mocks base method.
-//
-// # Function Explanation
-// 
-//	MockCredentialManagementClient.Delete is a mock function that takes in a context and a string and returns a boolean and 
-//	an error. It is used to simulate the behavior of the actual Delete function and allows callers to handle errors that may
-//	 occur.
 func (m *MockCredentialManagementClient) Delete(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
@@ -62,23 +45,12 @@ func (m *MockCredentialManagementClient) Delete(arg0 context.Context, arg1 strin
 }
 
 // Delete indicates an expected call of Delete.
-//
-// # Function Explanation
-// 
-//	This function records a call to the Delete method of the MockCredentialManagementClient, which is used to delete a 
-//	credential from the system. It returns an error if the call fails.
 func (mr *MockCredentialManagementClientMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockCredentialManagementClient)(nil).Delete), arg0, arg1)
 }
 
 // Get mocks base method.
-//
-// # Function Explanation
-// 
-//	MockCredentialManagementClient.Get is a mock function that takes in a context and a string and returns a 
-//	ProviderCredentialConfiguration and an error. It is used to simulate the behavior of a real function and allows callers 
-//	to handle errors gracefully.
 func (m *MockCredentialManagementClient) Get(arg0 context.Context, arg1 string) (ProviderCredentialConfiguration, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
@@ -88,23 +60,12 @@ func (m *MockCredentialManagementClient) Get(arg0 context.Context, arg1 string) 
 }
 
 // Get indicates an expected call of Get.
-//
-// # Function Explanation
-// 
-//	This function records a call to the Get method of the MockCredentialManagementClient, which takes in two parameters and 
-//	returns an error if the call fails.
 func (mr *MockCredentialManagementClientMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockCredentialManagementClient)(nil).Get), arg0, arg1)
 }
 
 // List mocks base method.
-//
-// # Function Explanation
-// 
-//	MockCredentialManagementClient.List is a mock implementation of the List function which takes in a context and returns a
-//	 slice of CloudProviderStatus objects and an error. It uses the controller to call the List function and returns the 
-//	results of the call. If an error is encountered, it is returned to the caller.
 func (m *MockCredentialManagementClient) List(arg0 context.Context) ([]CloudProviderStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
@@ -114,24 +75,12 @@ func (m *MockCredentialManagementClient) List(arg0 context.Context) ([]CloudProv
 }
 
 // List indicates an expected call of List.
-//
-// # Function Explanation
-// 
-//	This function records a call to the List method of the MockCredentialManagementClient, which takes in an argument and 
-//	returns an error if the call fails. The error handling allows the caller to handle any errors that may occur when 
-//	calling the List method.
 func (mr *MockCredentialManagementClientMockRecorder) List(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockCredentialManagementClient)(nil).List), arg0)
 }
 
 // PutAWS mocks base method.
-//
-// # Function Explanation
-// 
-//	MockCredentialManagementClient.PutAWS is a mock implementation of the PutAWS function which allows callers to test their
-//	 code without making actual calls to the service. It takes in a context and an AWSCredentialResource object and returns 
-//	an error if one occurs.
 func (m *MockCredentialManagementClient) PutAWS(arg0 context.Context, arg1 v20220901privatepreview.AWSCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PutAWS", arg0, arg1)
@@ -140,22 +89,12 @@ func (m *MockCredentialManagementClient) PutAWS(arg0 context.Context, arg1 v2022
 }
 
 // PutAWS indicates an expected call of PutAWS.
-//
-// # Function Explanation
-// 
-//	This function records a call to the PutAWS method of the MockCredentialManagementClient, passing in two parameters. If 
-//	an error occurs, it will be returned to the caller.
 func (mr *MockCredentialManagementClientMockRecorder) PutAWS(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutAWS", reflect.TypeOf((*MockCredentialManagementClient)(nil).PutAWS), arg0, arg1)
 }
 
 // PutAzure mocks base method.
-//
-// # Function Explanation
-// 
-//	MockCredentialManagementClient.PutAzure is a mock implementation of the PutAzure function which allows callers to 
-//	simulate errors and control the return values. It returns an error if one is encountered, otherwise it returns nil.
 func (m *MockCredentialManagementClient) PutAzure(arg0 context.Context, arg1 v20220901privatepreview.AzureCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PutAzure", arg0, arg1)
@@ -164,11 +103,6 @@ func (m *MockCredentialManagementClient) PutAzure(arg0 context.Context, arg1 v20
 }
 
 // PutAzure indicates an expected call of PutAzure.
-//
-// # Function Explanation
-// 
-//	This function records a call to the PutAzure method of the MockCredentialManagementClient, passing in two parameters. If
-//	 an error occurs, it will be returned to the caller.
 func (mr *MockCredentialManagementClientMockRecorder) PutAzure(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutAzure", reflect.TypeOf((*MockCredentialManagementClient)(nil).PutAzure), arg0, arg1)

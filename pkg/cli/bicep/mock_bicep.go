@@ -22,12 +22,6 @@ type MockInterfaceMockRecorder struct {
 }
 
 // NewMockInterface creates a new mock instance.
-//
-// # Function Explanation
-// 
-//	MockInterface is a function that creates a new MockInterface object with a given controller, and sets the recorder to a 
-//	new MockInterfaceMockRecorder object. It also handles any errors that may occur during the creation of the MockInterface
-//	 object.
 func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 	mock := &MockInterface{ctrl: ctrl}
 	mock.recorder = &MockInterfaceMockRecorder{mock}
@@ -35,22 +29,11 @@ func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-//
-// # Function Explanation
-// 
-//	MockInterface's EXPECT() function creates and returns a MockInterfaceMockRecorder object which can be used to set 
-//	expectations on the MockInterface's methods. If any of the expectations are not met, an error will be returned.
 func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // PrepareTemplate mocks base method.
-//
-// # Function Explanation
-// 
-//	MockInterface.PrepareTemplate is a function that mocks the PrepareTemplate function, allowing callers to mock the return
-//	 values of the function. It takes in a string and returns a map of interfaces and an error. If an error is returned, the
-//	 caller should handle it accordingly.
 func (m *MockInterface) PrepareTemplate(arg0 string) (map[string]interface{}, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PrepareTemplate", arg0)
@@ -60,11 +43,6 @@ func (m *MockInterface) PrepareTemplate(arg0 string) (map[string]interface{}, er
 }
 
 // PrepareTemplate indicates an expected call of PrepareTemplate.
-//
-// # Function Explanation
-// 
-//	This function records a call to the PrepareTemplate method of the MockInterface with the given argument, and returns an 
-//	error if the call fails. The error is useful for callers of this function to debug any issues.
 func (mr *MockInterfaceMockRecorder) PrepareTemplate(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareTemplate", reflect.TypeOf((*MockInterface)(nil).PrepareTemplate), arg0)

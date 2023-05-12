@@ -26,12 +26,6 @@ type MockApplicationsManagementClientMockRecorder struct {
 }
 
 // NewMockApplicationsManagementClient creates a new mock instance.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient is a function that creates a new MockApplicationsManagementClient object, which is used
-//	 to mock the behavior of an ApplicationsManagementClient. It records the calls made to it and returns an error if the 
-//	expected calls are not made.
 func NewMockApplicationsManagementClient(ctrl *gomock.Controller) *MockApplicationsManagementClient {
 	mock := &MockApplicationsManagementClient{ctrl: ctrl}
 	mock.recorder = &MockApplicationsManagementClientMockRecorder{mock}
@@ -39,22 +33,11 @@ func NewMockApplicationsManagementClient(ctrl *gomock.Controller) *MockApplicati
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient's EXPECT() function creates and returns a MockApplicationsManagementClientMockRecorder 
-//	object which can be used to set expectations on the MockApplicationsManagementClient object. It also handles any errors 
-//	that may occur during the creation of the MockApplicationsManagementClientMockRecorder object.
 func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementClientMockRecorder {
 	return m.recorder
 }
 
 // CreateApplicationIfNotFound mocks base method.
-//
-// # Function Explanation
-// 
-//	This function, CreateApplicationIfNotFound, creates an application resource if it does not already exist, and returns an
-//	 error if it fails.
 func (m *MockApplicationsManagementClient) CreateApplicationIfNotFound(arg0 context.Context, arg1 string, arg2 v20220315privatepreview.ApplicationResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateApplicationIfNotFound", arg0, arg1, arg2)
@@ -63,22 +46,12 @@ func (m *MockApplicationsManagementClient) CreateApplicationIfNotFound(arg0 cont
 }
 
 // CreateApplicationIfNotFound indicates an expected call of CreateApplicationIfNotFound.
-//
-// # Function Explanation
-// 
-//	This function records a call to the CreateApplicationIfNotFound function, which checks if an application exists and 
-//	creates it if it doesn't. If an error occurs, it is returned to the caller.
 func (mr *MockApplicationsManagementClientMockRecorder) CreateApplicationIfNotFound(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApplicationIfNotFound", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateApplicationIfNotFound), arg0, arg1, arg2)
 }
 
 // CreateEnvironment mocks base method.
-//
-// # Function Explanation
-// 
-//	This function "CreateEnvironment" creates an environment in the Applications Management service, and returns a boolean 
-//	indicating success or failure, along with an error if one occurs.
 func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2 string, arg3 *v20220315privatepreview.EnvironmentProperties) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEnvironment", arg0, arg1, arg2, arg3)
@@ -88,23 +61,12 @@ func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Contex
 }
 
 // CreateEnvironment indicates an expected call of CreateEnvironment.
-//
-// # Function Explanation
-// 
-//	This function records a call to the CreateEnvironment method of the MockApplicationsManagementClient, passing in the 
-//	given arguments, and returns a call object for error handling.
 func (mr *MockApplicationsManagementClientMockRecorder) CreateEnvironment(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateEnvironment), arg0, arg1, arg2, arg3)
 }
 
 // CreateOrUpdateApplication mocks base method.
-//
-// # Function Explanation
-// 
-//	The MockApplicationsManagementClient.CreateOrUpdateApplication function mocks the behavior of the real 
-//	CreateOrUpdateApplication function, allowing callers to test their code without making real API calls. It returns an 
-//	error if the call fails.
 func (m *MockApplicationsManagementClient) CreateOrUpdateApplication(arg0 context.Context, arg1 string, arg2 v20220315privatepreview.ApplicationResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdateApplication", arg0, arg1, arg2)
@@ -113,22 +75,12 @@ func (m *MockApplicationsManagementClient) CreateOrUpdateApplication(arg0 contex
 }
 
 // CreateOrUpdateApplication indicates an expected call of CreateOrUpdateApplication.
-//
-// # Function Explanation
-// 
-//	This function records a call to the CreateOrUpdateApplication function of the MockApplicationsManagementClient, which is
-//	 used to create or update an application. It also handles any errors that may occur during the call.
 func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateApplication), arg0, arg1, arg2)
 }
 
 // CreateUCPGroup mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.CreateUCPGroup is a function that creates a resource group in Azure using the given 
-//	parameters. It returns a boolean indicating success or failure and an error if one occurs.
 func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20220901privatepreview.ResourceGroupResource) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUCPGroup", arg0, arg1, arg2, arg3, arg4)
@@ -138,24 +90,12 @@ func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, 
 }
 
 // CreateUCPGroup indicates an expected call of CreateUCPGroup.
-//
-// # Function Explanation
-// 
-//	This function records a call to the CreateUCPGroup method of the MockApplicationsManagementClient, which is used to 
-//	create a new user-defined group. It returns an error if the call fails, allowing the caller to handle the error 
-//	accordingly.
 func (mr *MockApplicationsManagementClientMockRecorder) CreateUCPGroup(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateUCPGroup), arg0, arg1, arg2, arg3, arg4)
 }
 
 // DeleteApplication mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.DeleteApplication is a mock function that allows callers to simulate the deletion of an
-//	 application and returns a boolean and an error. If an error is encountered, it is returned to the caller for further 
-//	handling.
 func (m *MockApplicationsManagementClient) DeleteApplication(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteApplication", arg0, arg1)
@@ -165,24 +105,12 @@ func (m *MockApplicationsManagementClient) DeleteApplication(arg0 context.Contex
 }
 
 // DeleteApplication indicates an expected call of DeleteApplication.
-//
-// # Function Explanation
-// 
-//	This function records a call to the DeleteApplication function of the MockApplicationsManagementClient, which takes in 
-//	two parameters and returns an error if the call fails. The recorded call is used to verify that the DeleteApplication 
-//	function was called with the expected parameters.
 func (mr *MockApplicationsManagementClientMockRecorder) DeleteApplication(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteApplication), arg0, arg1)
 }
 
 // DeleteEnv mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.DeleteEnv is a function that attempts to delete an environment from the 
-//	ApplicationsManagementClient. It returns a boolean indicating success or failure and an error if one occurs. Callers 
-//	should check the error to determine if the delete was successful.
 func (m *MockApplicationsManagementClient) DeleteEnv(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteEnv", arg0, arg1)
@@ -192,22 +120,12 @@ func (m *MockApplicationsManagementClient) DeleteEnv(arg0 context.Context, arg1 
 }
 
 // DeleteEnv indicates an expected call of DeleteEnv.
-//
-// # Function Explanation
-// 
-//	This function records a call to the DeleteEnv function of the MockApplicationsManagementClient, which is used to delete 
-//	an environment. It also checks for any errors that may occur during the call and returns them to the caller.
 func (mr *MockApplicationsManagementClientMockRecorder) DeleteEnv(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEnv", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteEnv), arg0, arg1)
 }
 
 // DeleteResource mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.DeleteResource is a mock function that allows callers to simulate the behavior of the 
-//	real DeleteResource function, and returns a boolean and an error to indicate the success or failure of the operation.
 func (m *MockApplicationsManagementClient) DeleteResource(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteResource", arg0, arg1, arg2)
@@ -217,23 +135,12 @@ func (m *MockApplicationsManagementClient) DeleteResource(arg0 context.Context, 
 }
 
 // DeleteResource indicates an expected call of DeleteResource.
-//
-// # Function Explanation
-// 
-//	This function records a call to the DeleteResource function of the MockApplicationsManagementClient, which is used to 
-//	delete a resource from the ApplicationsManagementClient. It returns an error if the call fails.
 func (mr *MockApplicationsManagementClientMockRecorder) DeleteResource(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResource), arg0, arg1, arg2)
 }
 
 // DeleteUCPGroup mocks base method.
-//
-// # Function Explanation
-// 
-//	This function "DeleteUCPGroup" is used to delete a user-created group from an application. It returns a boolean 
-//	indicating success or failure, and an error if one occurs. If an error is encountered, the boolean will be false and the
-//	 error should be handled by the caller.
 func (m *MockApplicationsManagementClient) DeleteUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUCPGroup", arg0, arg1, arg2, arg3)
@@ -243,22 +150,12 @@ func (m *MockApplicationsManagementClient) DeleteUCPGroup(arg0 context.Context, 
 }
 
 // DeleteUCPGroup indicates an expected call of DeleteUCPGroup.
-//
-// # Function Explanation
-// 
-//	This function records a call to the DeleteUCPGroup function, which deletes a user-created product group, and returns an 
-//	error if the call fails.
 func (mr *MockApplicationsManagementClientMockRecorder) DeleteUCPGroup(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteUCPGroup), arg0, arg1, arg2, arg3)
 }
 
 // GetEnvDetails mocks base method.
-//
-// # Function Explanation
-// 
-//	The MockApplicationsManagementClient.GetEnvDetails function calls the controller to get the EnvironmentResource and any 
-//	potential errors. If an error is returned, it is propagated to the caller.
 func (m *MockApplicationsManagementClient) GetEnvDetails(arg0 context.Context, arg1 string) (v20220315privatepreview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEnvDetails", arg0, arg1)
@@ -268,25 +165,12 @@ func (m *MockApplicationsManagementClient) GetEnvDetails(arg0 context.Context, a
 }
 
 // GetEnvDetails indicates an expected call of GetEnvDetails.
-//
-// # Function Explanation
-// 
-//	This function records a call to the GetEnvDetails method of the MockApplicationsManagementClient, passing in two 
-//	arguments. It returns an error if the arguments are not of the expected type. The callers of this function should handle
-//	 the error accordingly.
 func (mr *MockApplicationsManagementClientMockRecorder) GetEnvDetails(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvDetails", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetEnvDetails), arg0, arg1)
 }
 
 // ListAllResourcesByApplication mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListAllResourcesByApplication is a function that takes in a context and an application 
-//	name and returns a slice of GenericResources and an error. It mocks the behavior of the actual 
-//	ListAllResourcesByApplication function, allowing callers to test their code without relying on the actual function. If 
-//	an error occurs, it will be returned to the caller, allowing them to handle it appropriately.
 func (m *MockApplicationsManagementClient) ListAllResourcesByApplication(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllResourcesByApplication", arg0, arg1)
@@ -296,24 +180,12 @@ func (m *MockApplicationsManagementClient) ListAllResourcesByApplication(arg0 co
 }
 
 // ListAllResourcesByApplication indicates an expected call of ListAllResourcesByApplication.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListAllResourcesByApplication function, which takes in two parameters and returns an
-//	 error if the call fails. It also checks for any errors that may have occurred during the call.
 func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesByApplication(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesByApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesByApplication), arg0, arg1)
 }
 
 // ListAllResourcesByEnvironment mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListAllResourcesByEnvironment is a function that mocks the 
-//	ListAllResourcesByEnvironment function from the ApplicationsManagementClient interface. It takes in a context and a 
-//	string and returns a slice of GenericResource objects and an error. If an error occurs, it will be returned to the 
-//	caller for further handling.
 func (m *MockApplicationsManagementClient) ListAllResourcesByEnvironment(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllResourcesByEnvironment", arg0, arg1)
@@ -323,23 +195,12 @@ func (m *MockApplicationsManagementClient) ListAllResourcesByEnvironment(arg0 co
 }
 
 // ListAllResourcesByEnvironment indicates an expected call of ListAllResourcesByEnvironment.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListAllResourcesByEnvironment function, which takes in two parameters and returns an
-//	 error if the call fails. It also helps with error handling, allowing callers to identify and debug any issues that may 
-//	arise.
 func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesByEnvironment(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesByEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesByEnvironment), arg0, arg1)
 }
 
 // ListAllResourcesByType mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListAllResourcesByType is a function that calls a controller to list all resources of a
-//	 given type, and returns the resources as a slice of GenericResource objects, or an error if one occurs.
 func (m *MockApplicationsManagementClient) ListAllResourcesByType(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllResourcesByType", arg0, arg1)
@@ -349,24 +210,12 @@ func (m *MockApplicationsManagementClient) ListAllResourcesByType(arg0 context.C
 }
 
 // ListAllResourcesByType indicates an expected call of ListAllResourcesByType.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListAllResourcesByType function, which takes in two parameters and returns an error 
-//	if the call fails. It also checks for any errors that may have occurred during the call.
 func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesByType(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesByType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesByType), arg0, arg1)
 }
 
 // ListAllResourcesOfTypeInApplication mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListAllResourcesOfTypeInApplication is a function that mocks the behavior of the 
-//	ApplicationsManagementClient.ListAllResourcesOfTypeInApplication function. It takes in a context, a string and another 
-//	string and returns a slice of GenericResource objects and an error. If an error occurs, it will be returned to the 
-//	caller.
 func (m *MockApplicationsManagementClient) ListAllResourcesOfTypeInApplication(arg0 context.Context, arg1, arg2 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllResourcesOfTypeInApplication", arg0, arg1, arg2)
@@ -376,24 +225,12 @@ func (m *MockApplicationsManagementClient) ListAllResourcesOfTypeInApplication(a
 }
 
 // ListAllResourcesOfTypeInApplication indicates an expected call of ListAllResourcesOfTypeInApplication.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListAllResourcesOfTypeInApplication function, which is used to list all resources of
-//	 a given type in an application. It also checks for any errors that may occur during the call and returns them to the 
-//	caller.
 func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesOfTypeInApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesOfTypeInApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesOfTypeInApplication), arg0, arg1, arg2)
 }
 
 // ListAllResourcesOfTypeInEnvironment mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListAllResourcesOfTypeInEnvironment is a function that mocks the behavior of a real 
-//	function, allowing it to be tested. It takes in a context, a resource type and an environment, and returns a slice of 
-//	GenericResources and an error. If an error is returned, the caller should handle it accordingly.
 func (m *MockApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(arg0 context.Context, arg1, arg2 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllResourcesOfTypeInEnvironment", arg0, arg1, arg2)
@@ -403,23 +240,12 @@ func (m *MockApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(a
 }
 
 // ListAllResourcesOfTypeInEnvironment indicates an expected call of ListAllResourcesOfTypeInEnvironment.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListAllResourcesOfTypeInEnvironment function, which is used to list all resources of
-//	 a given type in an environment. It also checks for any errors that may occur during the call and returns them to the 
-//	caller.
 func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesOfTypeInEnvironment(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesOfTypeInEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesOfTypeInEnvironment), arg0, arg1, arg2)
 }
 
 // ListApplications mocks base method.
-//
-// # Function Explanation
-// 
-//	This function, ListApplications, retrieves a list of ApplicationResource objects from an external source and returns 
-//	them, or an error if something went wrong.
 func (m *MockApplicationsManagementClient) ListApplications(arg0 context.Context) ([]v20220315privatepreview.ApplicationResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListApplications", arg0)
@@ -429,23 +255,12 @@ func (m *MockApplicationsManagementClient) ListApplications(arg0 context.Context
 }
 
 // ListApplications indicates an expected call of ListApplications.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListApplications function with the given argument, and returns an error if the call 
-//	fails. This allows callers of this function to handle any errors that may occur.
 func (mr *MockApplicationsManagementClientMockRecorder) ListApplications(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListApplications", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListApplications), arg0)
 }
 
 // ListEnvironmentsAll mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListEnvironmentsAll is a function that calls the ListEnvironmentsAll method of the 
-//	MockApplicationsManagementClient object, passing in a context. It returns a slice of EnvironmentResource objects and an 
-//	error, which should be checked by the caller to ensure the call was successful.
 func (m *MockApplicationsManagementClient) ListEnvironmentsAll(arg0 context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEnvironmentsAll", arg0)
@@ -455,23 +270,12 @@ func (m *MockApplicationsManagementClient) ListEnvironmentsAll(arg0 context.Cont
 }
 
 // ListEnvironmentsAll indicates an expected call of ListEnvironmentsAll.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListEnvironmentsAll method of the MockApplicationsManagementClient, passing in the 
-//	given argument. It returns an error if the argument is not of the expected type. The call is recorded so that it can be 
-//	used to verify that the method was called correctly.
 func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsAll(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironmentsAll", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironmentsAll), arg0)
 }
 
 // ListEnvironmentsInResourceGroup mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListEnvironmentsInResourceGroup is a function that calls the controller to list all the
-//	 environment resources in a resource group. It returns a slice of environment resources and an error if one occurs.
 func (m *MockApplicationsManagementClient) ListEnvironmentsInResourceGroup(arg0 context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEnvironmentsInResourceGroup", arg0)
@@ -481,23 +285,12 @@ func (m *MockApplicationsManagementClient) ListEnvironmentsInResourceGroup(arg0 
 }
 
 // ListEnvironmentsInResourceGroup indicates an expected call of ListEnvironmentsInResourceGroup.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListEnvironmentsInResourceGroup function, which is used to list the environments in 
-//	a given resource group. It also checks for any errors that may occur during the call and returns them to the caller.
 func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsInResourceGroup(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironmentsInResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironmentsInResourceGroup), arg0)
 }
 
 // ListUCPGroup mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ListUCPGroup is a function that makes a call to the Azure API to list the Resource 
-//	Group Resources associated with a given subscription and resource group. It returns a slice of ResourceGroupResource 
-//	objects and an error if one occurs.
 func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, arg1, arg2 string) ([]v20220901privatepreview.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUCPGroup", arg0, arg1, arg2)
@@ -507,25 +300,12 @@ func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, ar
 }
 
 // ListUCPGroup indicates an expected call of ListUCPGroup.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ListUCPGroup function, which is used to list the UCP groups in the 
-//	ApplicationsManagementClient. It also checks for any errors that may occur during the call and returns them to the 
-//	caller.
 func (mr *MockApplicationsManagementClientMockRecorder) ListUCPGroup(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListUCPGroup), arg0, arg1, arg2)
 }
 
 // ShowApplication mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ShowApplication is a mock implementation of the 
-//	ApplicationsManagementClient.ShowApplication function which takes in a context and a string and returns an 
-//	ApplicationResource and an error. It is used to simulate the behaviour of the real function and allows for testing of 
-//	code that calls it. If an error is encountered, it is returned to the caller.
 func (m *MockApplicationsManagementClient) ShowApplication(arg0 context.Context, arg1 string) (v20220315privatepreview.ApplicationResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowApplication", arg0, arg1)
@@ -535,23 +315,12 @@ func (m *MockApplicationsManagementClient) ShowApplication(arg0 context.Context,
 }
 
 // ShowApplication indicates an expected call of ShowApplication.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ShowApplication method of the MockApplicationsManagementClient, passing in two 
-//	parameters and returning a gomock.Call object. If an error occurs, it will be returned to the caller.
 func (mr *MockApplicationsManagementClientMockRecorder) ShowApplication(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowApplication), arg0, arg1)
 }
 
 // ShowRecipe mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ShowRecipe is a mock implementation of the ShowRecipe function which takes in a 
-//	context, a string and a Recipe object and returns an EnvironmentRecipeProperties object and an error. It calls the 
-//	ctrl.Call function to return the values and handles any errors that may occur.
 func (m *MockApplicationsManagementClient) ShowRecipe(arg0 context.Context, arg1 string, arg2 v20220315privatepreview.Recipe) (v20220315privatepreview.EnvironmentRecipeProperties, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowRecipe", arg0, arg1, arg2)
@@ -561,22 +330,12 @@ func (m *MockApplicationsManagementClient) ShowRecipe(arg0 context.Context, arg1
 }
 
 // ShowRecipe indicates an expected call of ShowRecipe.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ShowRecipe method of the MockApplicationsManagementClient, which takes in three 
-//	parameters and returns an error if the call fails.
 func (mr *MockApplicationsManagementClientMockRecorder) ShowRecipe(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowRecipe", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowRecipe), arg0, arg1, arg2)
 }
 
 // ShowResource mocks base method.
-//
-// # Function Explanation
-// 
-//	MockApplicationsManagementClient.ShowResource is a function that makes a call to an external resource and returns a 
-//	GenericResource object or an error if the call fails. It handles errors by returning them to the caller.
 func (m *MockApplicationsManagementClient) ShowResource(arg0 context.Context, arg1, arg2 string) (generated.GenericResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowResource", arg0, arg1, arg2)
@@ -586,24 +345,12 @@ func (m *MockApplicationsManagementClient) ShowResource(arg0 context.Context, ar
 }
 
 // ShowResource indicates an expected call of ShowResource.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ShowResource function of the MockApplicationsManagementClient, which is used to 
-//	handle errors when calling the function. It also checks the types of the parameters passed in and returns an error if 
-//	they are incorrect.
 func (mr *MockApplicationsManagementClientMockRecorder) ShowResource(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowResource), arg0, arg1, arg2)
 }
 
 // ShowUCPGroup mocks base method.
-//
-// # Function Explanation
-// 
-//	This function "ShowUCPGroup" makes an API call to retrieve a ResourceGroupResource object and returns it along with any 
-//	errors that may have occurred. It handles errors by returning them to the caller, allowing them to handle the error as 
-//	needed.
 func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (v20220901privatepreview.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowUCPGroup", arg0, arg1, arg2, arg3)
@@ -613,11 +360,6 @@ func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, ar
 }
 
 // ShowUCPGroup indicates an expected call of ShowUCPGroup.
-//
-// # Function Explanation
-// 
-//	This function records a call to the ShowUCPGroup method of the MockApplicationsManagementClient, which is used to handle
-//	 errors when calling the method. It returns an error if the parameters are invalid.
 func (mr *MockApplicationsManagementClientMockRecorder) ShowUCPGroup(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowUCPGroup), arg0, arg1, arg2, arg3)
