@@ -70,7 +70,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	// Create Terraform installation directory
 	installDir := filepath.Join(installDirRoot, util.NormalizeStringToLower(recipe.ResourceID), uuid.NewString())
 	logger.Info(fmt.Sprintf("Creating Terraform install directory: %q", installDir))
-	if err := os.MkdirAll(installDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(installDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create directory for terraform installation for resource %q: %w", recipe.ResourceID, err)
 	}
 	defer func() {
@@ -103,7 +103,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	// Create working directory for Terraform execution
 	workingDir := filepath.Join(workingDirRoot, util.NormalizeStringToLower(recipe.ResourceID), uuid.NewString())
 	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
-	if err = os.MkdirAll(workingDir, os.ModePerm); err != nil {
+	if err = os.MkdirAll(workingDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create working directory for terraform execution for Radius resource %q. %w", recipe.ResourceID, err)
 	}
 	defer func() {
@@ -167,11 +167,11 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, recipeName, templatePath string, providers datamodel.Providers) error {
 	// TODO setting provider data for both AWS and Azure until we implement a way to pass this in.
 	// This should be set based on the provider needed by the recipe/source module and not just Azure/AWS providers.
-	azureProviderConfig, err := d.buildAzureProviderConfig(providers.Azure.Scope)
+	azureProviderConfig, err := d.buildAzureProviderConfig(ctx, providers.Azure.Scope)
 	if err != nil {
 		return err
 	}
-	awsProviderConfig, err := d.buildAWSProviderConfig(providers.AWS.Scope)
+	awsProviderConfig, err := d.buildAWSProviderConfig(ctx, providers.AWS.Scope)
 	if err != nil {
 		return err
 	}
@@ -234,7 +234,9 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 
 // Returns the Terraform provider configuration for Azure provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
-func (d *terraformDriver) buildAzureProviderConfig(scope string) (map[string]interface{}, error) {
+func (d *terraformDriver) buildAzureProviderConfig(ctx context.Context, scope string) (map[string]interface{}, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	subscriptionID, _, err := parseAzureScope(scope)
 	if err != nil {
 		return nil, err
@@ -244,6 +246,7 @@ func (d *terraformDriver) buildAzureProviderConfig(scope string) (map[string]int
 	if err != nil {
 		return nil, err
 	}
+	logger.Info(fmt.Sprintf("Fetched Azure credentials for client id %q", credentials.ClientID))
 
 	azureConfig := map[string]interface{}{
 		"subscription_id": subscriptionID,
@@ -257,7 +260,8 @@ func (d *terraformDriver) buildAzureProviderConfig(scope string) (map[string]int
 
 // Returns the Terraform provider configuration for AWS provider.
 // https://registry.terraform.io/providers/hashicorp/aws/latest/docs
-func (d *terraformDriver) buildAWSProviderConfig(scope string) (map[string]interface{}, error) {
+func (d *terraformDriver) buildAWSProviderConfig(ctx context.Context, scope string) (map[string]interface{}, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	if scope == "" {
 		return map[string]interface{}{}, nil
 	}
@@ -271,6 +275,7 @@ func (d *terraformDriver) buildAWSProviderConfig(scope string) (map[string]inter
 	if err != nil {
 		return nil, err
 	}
+	logger.Info(fmt.Sprintf("Fetched AWS credentials for client id %q", credentials.AccessKeyID))
 
 	awsConfig := map[string]interface{}{
 		"region":              region,
