@@ -2,6 +2,10 @@ import radius as radius
 
 param scope string = resourceGroup().id
 
+param registry string 
+
+param version string
+
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-environment-value-backed-recipe-env'
   location: 'global'
@@ -19,7 +23,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/redisCaches':{
         rediscache: {
-          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/valuebacked/rediscaches/azure:1.0' 
+          templatePath: '${registry}/test/functional/corerp/recipes/redis-recipe-value-backed:${version}' 
         }
       }
     }

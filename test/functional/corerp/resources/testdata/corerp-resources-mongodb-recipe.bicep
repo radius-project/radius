@@ -4,6 +4,10 @@ param rg string = resourceGroup().name
 
 param sub string = subscription().subscriptionId
 
+param registry string 
+
+param version string
+
 param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
@@ -23,7 +27,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/mongoDatabases':{
         mongodb: {
-          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/valuebacked/mongodatabases/kubernetes:1.0'
+          templatePath: '${registry}/test/functional/corerp/recipes/mongodb-recipe-kubernetes:${version}'
         }
       }
     }
