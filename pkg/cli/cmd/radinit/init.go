@@ -207,8 +207,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			for _, env := range environments {
 				if strings.EqualFold("default", *env.Name) {
 					r.EnvName = "default"
+					break
 				}
-				break
 			}
 		}
 
