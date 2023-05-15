@@ -8,6 +8,7 @@ package secretstores
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -33,6 +34,10 @@ const (
 	testSecretID  = testRootScope + "/Applications.Core/secretStores/secret0"
 	testEnvID     = testRootScope + "/Applications.Core/environments/env0"
 	testAppID     = testRootScope + "/Applications.Core/applications/app0"
+
+	testFileCertValueFrom = "secretstores_datamodel_cert_valuefrom.json"
+	testFileCertValue     = "secretstores_datamodel_cert_value.json"
+	testFileGenericValue  = "secretstores_datamodel_generic.json"
 )
 
 func TestGetNamespace(t *testing.T) {
@@ -44,7 +49,7 @@ func TestGetNamespace(t *testing.T) {
 	}
 
 	t.Run("application-scoped", func(t *testing.T) {
-		secret := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		secret := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		secret.Properties.Application = testAppID
 		appData := testutil.MustGetTestData[any]("app_datamodel.json")
 
@@ -59,7 +64,7 @@ func TestGetNamespace(t *testing.T) {
 	})
 
 	t.Run("environment-scoped", func(t *testing.T) {
-		secret := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		secret := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		secret.Properties.Application = ""
 		secret.Properties.Environment = testEnvID
 
@@ -75,7 +80,7 @@ func TestGetNamespace(t *testing.T) {
 	})
 
 	t.Run("non-kubernetes platform", func(t *testing.T) {
-		secret := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		secret := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		secret.Properties.Application = ""
 		secret.Properties.Environment = testEnvID
 		envData := testutil.MustGetTestData[any]("env_nonk8s_datamodel.json")
@@ -111,6 +116,12 @@ func TestFromResourceID(t *testing.T) {
 			err:        nil,
 		},
 		{
+			resourceID: "",
+			ns:         "",
+			name:       "",
+			err:        nil,
+		},
+		{
 			resourceID: "namespace/name",
 			ns:         "namespace",
 			name:       "name",
@@ -139,12 +150,95 @@ func TestFromResourceID(t *testing.T) {
 	}
 }
 
-func TestValidateRequest(t *testing.T) {
+func TestGetOrDefaultType(t *testing.T) {
+	tests := []struct {
+		in  datamodel.SecretType
+		out datamodel.SecretType
+		err error
+	}{
+		{
+			in:  datamodel.SecretTypeNone,
+			out: datamodel.SecretTypeGeneric,
+			err: nil,
+		}, {
+			in:  datamodel.SecretTypeCert,
+			out: datamodel.SecretTypeCert,
+			err: nil,
+		}, {
+			in:  datamodel.SecretTypeGeneric,
+			out: datamodel.SecretTypeGeneric,
+			err: nil,
+		}, {
+			in:  "invalid",
+			out: "invalid",
+			err: errors.New("'invalid' is invalid secret type"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(string(tc.in), func(t *testing.T) {
+			actual, err := getOrDefaultType(tc.in)
+			if tc.err != nil {
+				require.ErrorContains(t, err, tc.err.Error())
+			} else {
+				require.Equal(t, tc.out, actual)
+			}
+		})
+	}
+}
+
+func TestGetOrDefaultEncoding(t *testing.T) {
+	tests := []struct {
+		secretType datamodel.SecretType
+		inenc      datamodel.SecretValueEncoding
+		outenc     datamodel.SecretValueEncoding
+		err        error
+	}{
+		{
+			secretType: datamodel.SecretTypeCert,
+			inenc:      datamodel.SecretValueEncodingBase64,
+			outenc:     datamodel.SecretValueEncodingBase64,
+			err:        nil,
+		}, {
+			secretType: datamodel.SecretTypeCert,
+			inenc:      datamodel.SecretValueEncodingRaw,
+			err:        errors.New("certificate type doesn't support raw"),
+		}, {
+			secretType: datamodel.SecretTypeGeneric,
+			inenc:      datamodel.SecretValueEncodingRaw,
+			outenc:     datamodel.SecretValueEncodingRaw,
+			err:        nil,
+		}, {
+			secretType: datamodel.SecretTypeGeneric,
+			inenc:      datamodel.SecretValueEncodingBase64,
+			outenc:     datamodel.SecretValueEncodingBase64,
+			err:        nil,
+		}, {
+			secretType: datamodel.SecretTypeGeneric,
+			inenc:      "invalid",
+			err:        errors.New("invalid is the invalid encoding type"),
+		},
+	}
+
+	for _, tc := range tests {
+		name := fmt.Sprintf("%s - type: %s", tc.inenc, tc.secretType)
+		t.Run(name, func(t *testing.T) {
+			actual, err := getOrDefaultEncoding(tc.secretType, tc.inenc)
+			if tc.err != nil {
+				require.ErrorContains(t, err, tc.err.Error())
+			} else {
+				require.Equal(t, tc.outenc, actual)
+			}
+		})
+	}
+}
+
+func TestValidateAndMutateRequest(t *testing.T) {
 	t.Run("default type is generic", func(t *testing.T) {
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		newResource.Properties.Type = ""
 
-		resp, err := ValidateRequest(context.TODO(), newResource, nil, nil)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, nil)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
@@ -153,34 +247,34 @@ func TestValidateRequest(t *testing.T) {
 	})
 
 	t.Run("new resource, but referencing valueFrom", func(t *testing.T) {
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		newResource.Properties.Resource = ""
-		resp, err := ValidateRequest(context.TODO(), newResource, nil, nil)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, nil)
 		require.NoError(t, err)
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.True(t, r.Body.Error.Message == "data[tls.crt] must not set valueFrom." ||
-			r.Body.Error.Message == "data[tls.key] must not set valueFrom.")
+		require.True(t, r.Body.Error.Message == "$.properties.data[tls.crt].Value must be given to create the secret." ||
+			r.Body.Error.Message == "$.properties.data[tls.key].Value must be given to create the secret.")
 	})
 
 	t.Run("update the existing resource - type not matched", func(t *testing.T) {
-		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		oldResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		oldResource.Properties.Type = datamodel.SecretTypeGeneric
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
-		resp, err := ValidateRequest(context.TODO(), newResource, oldResource, nil)
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, oldResource, nil)
 		require.NoError(t, err)
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.Equal(t, "type cannot be changed.", r.Body.Error.Message)
+		require.Equal(t, "$.properties.type cannot change from 'generic' to 'certificate'.", r.Body.Error.Message)
 	})
 
 	t.Run("inherit resource id from existing resource", func(t *testing.T) {
-		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		oldResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		newResource.Properties.Resource = ""
-		resp, err := ValidateRequest(context.TODO(), newResource, oldResource, nil)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, oldResource, nil)
 
 		// assert
 		require.NoError(t, err)
@@ -190,43 +284,8 @@ func TestValidateRequest(t *testing.T) {
 }
 
 func TestUpsertSecret(t *testing.T) {
-	t.Run("create new secret with the specified resource", func(t *testing.T) {
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel_value.json")
-		newResource.Properties.Resource = "default/secret"
-
-		opt := &controller.Options{
-			KubeClient: k8sutil.NewFakeKubeClient(nil),
-		}
-
-		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
-		require.NoError(t, err)
-		require.Nil(t, resp)
-
-		// assert
-		ksecret := &corev1.Secret{}
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "secret"}, ksecret)
-		require.NoError(t, err)
-		require.Equal(t, "dGxzLmtleS1wcmlrZXkK", string(ksecret.Data["tls.crt"]))
-		require.Equal(t, "dGxzLmNlcnQK", string(ksecret.Data["tls.key"]))
-		require.Equal(t, rpv1.OutputResource{
-			LocalID: "Secret",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     resourcekinds.Secret,
-					Provider: resourcemodel.ProviderKubernetes,
-				},
-				Data: resourcemodel.KubernetesIdentity{
-					Kind:       resourcekinds.Secret,
-					APIVersion: "v1",
-					Name:       "secret",
-					Namespace:  "default",
-				},
-			},
-		}, newResource.Properties.Status.OutputResources[0])
-	})
-
 	t.Run("not found referenced key", func(t *testing.T) {
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -244,12 +303,12 @@ func TestUpsertSecret(t *testing.T) {
 
 		// assert
 		r := resp.(*rest.BadRequestResponse)
-		require.True(t, r.Body.Error.Message == "default/letsencrypt-prod does not have key, tls.crt." ||
-			r.Body.Error.Message == "default/letsencrypt-prod does not have key, tls.key.")
+		require.True(t, r.Body.Error.Message == "'default/letsencrypt-prod' resource does not have key, 'tls.crt'." ||
+			r.Body.Error.Message == "'default/letsencrypt-prod' resource does not have key, 'tls.key'.")
 	})
 
 	t.Run("add secret values to the existing secret store", func(t *testing.T) {
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel_value.json")
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValue)
 		newResource.Properties.Resource = "default/secret"
 
 		ksecret := &corev1.Secret{
@@ -278,37 +337,9 @@ func TestUpsertSecret(t *testing.T) {
 		require.Equal(t, "private key value", string(actual.Data["private.key"]))
 	})
 
-	t.Run("disallow to use secret key name unmatched with valueFrom", func(t *testing.T) {
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
-		newResource.Properties.Data["diffkey"] = &datamodel.SecretStoreDataValue{
-			ValueFrom: &datamodel.SecretStoreDataValueFrom{Name: "key"},
-		}
-
-		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{
-				"tls.key": []byte("key"),
-				"tls.crt": []byte("cert"),
-			},
-		}
-		opt := &controller.Options{
-			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
-		}
-
-		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
-		require.NoError(t, err)
-
-		// assert
-		r := resp.(*rest.BadRequestResponse)
-		require.Equal(t, "diffkey key name must be same as valueFrom.name key.", r.Body.Error.Message)
-	})
-
 	t.Run("inherit old resource id", func(t *testing.T) {
-		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		oldResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		newResource.Properties.Resource = ""
 
 		opt := &controller.Options{
@@ -322,7 +353,7 @@ func TestUpsertSecret(t *testing.T) {
 		require.Equal(t, oldResource.Properties.Resource, newResource.Properties.Resource)
 	})
 
-	t.Run("create new resource", func(t *testing.T) {
+	t.Run("create new generic resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		sc := store.NewMockStorageClient(ctrl)
 
@@ -332,7 +363,7 @@ func TestUpsertSecret(t *testing.T) {
 			Data: *appData,
 		}, nil)
 
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValue)
 		newResource.Properties.Resource = ""
 
 		opt := &controller.Options{
@@ -340,11 +371,36 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:    k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := UpsertSecret(context.TODO(), newResource, nil, opt)
+		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
+		_, err = UpsertSecret(context.TODO(), newResource, nil, opt)
 		require.NoError(t, err)
 
 		// assert
 		require.Equal(t, "app0-ns/secret0", newResource.Properties.Resource)
+		ksecret := &corev1.Secret{}
+
+		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "app0-ns", Name: "secret0"}, ksecret)
+		require.NoError(t, err)
+
+		require.Equal(t, "dGxzLmNydA==", string(ksecret.Data["tls.crt"]))
+		require.Equal(t, "dGxzLmNlcnQK", string(ksecret.Data["tls.key"]))
+		require.Equal(t, "MTAwMDAwMDAtMTAwMC0xMDAwLTAwMDAtMDAwMDAwMDAwMDAw", string(ksecret.Data["servicePrincipalPassword"]))
+		require.Equal(t, rpv1.OutputResource{
+			LocalID: "Secret",
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     resourcekinds.Secret,
+					Provider: resourcemodel.ProviderKubernetes,
+				},
+				Data: resourcemodel.KubernetesIdentity{
+					Kind:       resourcekinds.Secret,
+					APIVersion: "v1",
+					Name:       "secret0",
+					Namespace:  "app0-ns",
+				},
+			},
+		}, newResource.Properties.Status.OutputResources[0])
 	})
 
 	t.Run("create new resource when namespace is missing", func(t *testing.T) {
@@ -357,9 +413,9 @@ func TestUpsertSecret(t *testing.T) {
 			Data: *appData,
 		}, nil)
 
-		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		oldResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		oldResource.Properties.Resource = "app0-ns/secret0"
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		newResource.Properties.Resource = "secret0"
 
 		opt := &controller.Options{
@@ -367,7 +423,9 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:    k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
+		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
+		_, err = UpsertSecret(context.TODO(), newResource, oldResource, opt)
 		require.NoError(t, err)
 
 		// assert
@@ -384,9 +442,9 @@ func TestUpsertSecret(t *testing.T) {
 			Data: *appData,
 		}, nil)
 
-		oldResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		oldResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		oldResource.Properties.Resource = "app0-ns/secret0"
-		newResource := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 		newResource.Properties.Resource = "secret1"
 
 		opt := &controller.Options{
@@ -394,6 +452,8 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:    k8sutil.NewFakeKubeClient(nil),
 		}
 
+		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
 		resp, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
 		require.NoError(t, err)
 
@@ -406,7 +466,7 @@ func TestUpsertSecret(t *testing.T) {
 
 func TestDeleteSecret(t *testing.T) {
 	t.Run("delete secret created by Radius", func(t *testing.T) {
-		res := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -431,7 +491,7 @@ func TestDeleteSecret(t *testing.T) {
 	})
 
 	t.Run("not delete secret unless secret resource has radius label", func(t *testing.T) {
-		res := testutil.MustGetTestData[datamodel.SecretStore]("secretstores_datamodel.json")
+		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{

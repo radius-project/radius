@@ -40,21 +40,12 @@ func NewDefaultClusterOptions() ClusterOptions {
 		chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
 	}
 
-	tag := version.Channel()
-	if version.IsEdgeChannel() {
-		tag = "latest"
-	}
-
 	return ClusterOptions{
 		Contour: ContourOptions{
 			ChartVersion: ContourChartDefaultVersion,
 		},
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
-			Tag:          tag,
-			AppCoreTag:   tag,
-			UCPTag:       tag,
-			DETag:        tag,
 		},
 	}
 }
@@ -71,40 +62,6 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.ChartPath = cliOptions.Radius.ChartPath
 	}
 
-	if cliOptions.Radius.Image != "" {
-		options.Radius.Image = cliOptions.Radius.Image
-	}
-
-	if cliOptions.Radius.Tag != "" {
-		options.Radius.Tag = cliOptions.Radius.Tag
-	}
-
-	if cliOptions.Radius.AppCoreImage != "" {
-		options.Radius.AppCoreImage = cliOptions.Radius.AppCoreImage
-	}
-
-	if cliOptions.Radius.AppCoreTag != "" {
-		options.Radius.AppCoreTag = cliOptions.Radius.AppCoreTag
-	}
-
-	if cliOptions.Radius.UCPImage != "" {
-		options.Radius.UCPImage = cliOptions.Radius.UCPImage
-	}
-
-	if cliOptions.Radius.UCPTag != "" {
-		options.Radius.UCPTag = cliOptions.Radius.UCPTag
-	}
-
-	if cliOptions.Radius.PublicEndpointOverride != "" {
-		options.Radius.PublicEndpointOverride = cliOptions.Radius.PublicEndpointOverride
-	}
-
-	if cliOptions.Radius.AzureProvider != nil {
-		options.Radius.AzureProvider = cliOptions.Radius.AzureProvider
-	}
-	if cliOptions.Radius.AWSProvider != nil {
-		options.Radius.AWSProvider = cliOptions.Radius.AWSProvider
-	}
 	if len(cliOptions.Radius.Values) > 0 {
 		options.Radius.Values = cliOptions.Radius.Values
 	}

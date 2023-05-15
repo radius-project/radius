@@ -140,7 +140,7 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource")
 			}
 
-			if secretStore.Properties.Type != "certificate" {
+			if secretStore.Properties.Type != datamodel.SecretTypeCert {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource with type certificate")
 			}
 

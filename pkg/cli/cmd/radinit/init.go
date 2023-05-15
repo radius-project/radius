@@ -408,6 +408,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		// create the providers scope to the environment and register credentials at provider plane
+		if len(providerList) > 0 {
+			r.Output.LogInfo("Configuring cloud providers...")
+		}
 		providers, err := cmd.CreateEnvProviders(providerList)
 		if err != nil {
 			return err
@@ -421,7 +424,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
 		}
 
-		r.Output.LogInfo("Configuring Cloud providers")
 		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, &envProperties)
 		if err != nil || !isEnvCreated {
 			return &cli.FriendlyError{Message: "Failed to create radius environment"}
@@ -449,7 +451,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, []interface{}{r.AzureCloudProvider, r.AwsCloudProvider})
+	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -519,9 +521,7 @@ func (r *Runner) getAWSCredential() ucp.AWSCredentialResource {
 func installRadius(ctx context.Context, r *Runner) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
-			Reinstall:     r.Reinstall,
-			AzureProvider: r.AzureCloudProvider,
-			AWSProvider:   r.AwsCloudProvider,
+			Reinstall: r.Reinstall,
 		},
 	}
 

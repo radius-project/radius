@@ -28,7 +28,7 @@ Usage:
   rad [command]
 
 Available Commands:
-  deploy      Deploy a RAD application
+  deploy      Deploy a Radius application
   env         Manage environments
   expose      Expose local port
   help        Help about any command

@@ -11,7 +11,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 // Interface is the interface for executing Bicep deployments in the CLI.
@@ -32,17 +31,11 @@ type Options struct {
 	// Template should contain a parsed ARM-JSON template.
 	Template map[string]any
 
-	// ApplicationID is the resource ID of the application. If provided, will be used as configuration for the Radius provider.
-	ApplicationID string
-
-	// EnvironmentID is the resource ID of the environment. If provided, will be used as configuration for the Radius provider.
-	EnvironmentID string
-
 	// Workspace is the workspace to use for deployment.
 	Workspace workspaces.Workspace
 
-	// Providers are the cloud providers configured on the env for deployment
-	Providers *datamodel.Providers
+	// Providers are cloud and radius providers configured on the env for deployment
+	Providers *clients.Providers
 
 	// ProgressText is a message displayed on the console when deployment begins.
 	ProgressText string

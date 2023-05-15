@@ -1,20 +1,16 @@
 # Running Radius functional tests
 
-You can find the functional tests under `./test/functional`. A functional tests (in our terminology) is a test that interacts with real hosting enviroments (Azure, Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
+You can find the functional tests under `./test/functional`. A functional test (in our terminology) is a test that interacts with real hosting enviroments (Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
 
 These tests verify whether:
 
-- That Radius environments can be created successfully.
+- That Radius environment can be created successfully.
 - That Bicep templates of sample applications ca be deployed to the Radius environment. 
 
-These run on Azure Radius environments (also called Radius test clusters) that are managed dynamically as part of the test process.
-
-Note that these tests require the Radius environment to be associated with "default" kubernetes namespace. 
-Since an environment "env-name"'s default namespace is "env-name", we should explicitly supply  --namespace "default" flag during the test Radius environment creation.
 
 ## Running via GitHub workflow
 
-These tests automatically run for every PR in the `azure-pipelines.yml` github workflow.
+These tests automatically run for every PR in the `functional-tests.yml` github workflow.
 
 We do not run these tests for commits to `main` or tags since they might block the build if they fail.
 
@@ -22,22 +18,37 @@ We do not run these tests for commits to `main` or tags since they might block t
 
 For each PR we run the following set of steps:
 
-- Create a new test environment.
-- Run deployment tests.
-- Delete the environment.
+- Build Radius and publish test assets
+- For each group of tests:
+  - Create a Kubernetes cluster and install the build
+  - Run tests
+  - Delete any cloud resources that were created
+
+We have a separate scheduled job (`purge-test-resources.yaml`) that will delete cloud resources that are left behind. This can happen when the test run is cancelled or times out.
 
 ## Configuration
 
-These tests use your local Kubernetes credentials, and Radius environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a dev scenario.
+These tests use your local Kubernetes credentials, and Radius environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a real user scenario. This way we test a setup that is close to what users will have in the real world.
 
-The tests use our product functionality (the Radius config file) to configure the environment.
+As much as possible, the tests use product functionality such as the Radius CLI configuration and local KubeConfig to detect settings.
 
 ## Running the tests locally
 
-1. Create an environment
-2. Place `rad` on your path
-3. Make sure `rad-bicep` is downloaded (`rad bicep download`)
-4. Run:
+### Prerequisites
+
+1. Place `rad` on your path
+2. Make sure `rad-bicep` is downloaded (`rad bicep download`)
+3. Create a container registry (must be Azure Container Registry for now)
+4. Log-in to the container registry `az acr login -n <registry-name>`
+5. Publish test recipes by running `RECIPE_REGISTRY=<registry-name>.azurecr.io make publish-test-recipes`
+6. Create a Radius environment with `rad init` and specify the default namespace
+
+> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
+> test failures.
+
+### Run 
+
+1. Run:
 
     ```sh
         .{workspace}/radius/test/executeCoreRPFunctionalTest.sh
@@ -48,7 +59,13 @@ When you're running locally with this configuration, the tests will use your loc
     make test-functional-corerp
  ```
 
-You can also run/debug individual tests from VSCode
+You can also run/debug individual tests from VSCode.
+
+### Tips
+
+> 💡 If you make changes to recipes, make sure to re-run the *publish test recipe* step from prerequisites.
+
+> 💡 If you make changes to the `rad` CLI make sure to copy it to your path. 
 
 ### Seeing log output
 

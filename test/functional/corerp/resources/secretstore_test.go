@@ -6,11 +6,14 @@
 package resource_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_SecretStore_CreateSecret(t *testing.T) {
@@ -32,14 +35,37 @@ func Test_SecretStore_CreateSecret(t *testing.T) {
 						Type: validation.SecretStoresResource,
 						App:  appName,
 					},
+					{
+						Name: "appsecret",
+						Type: validation.SecretStoresResource,
+						App:  appName,
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sSecretForResource(appName, "appcert"),
+						validation.NewK8sSecretForResource(appName, "appsecret"),
 					},
 				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
+				secret, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, "appcert", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				for _, key := range []string{"tls.key", "tls.crt"} {
+					_, ok := secret.Data[key]
+					require.True(t, ok)
+				}
+
+				secret, err = test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, "appsecret", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				for _, key := range []string{"servicePrincipalPassword", "appId", "tenantId"} {
+					_, ok := secret.Data[key]
+					require.True(t, ok)
+				}
 			},
 		},
 	})

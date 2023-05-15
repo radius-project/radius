@@ -25,8 +25,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
 		Use:     "switch",
-		Short:   "Switch the default RAD application",
-		Long:    "Switches the default RAD application",
+		Short:   "Switch the default Radius application",
+		Long:    "Switches the default Radius application",
 		Args:    cobra.MaximumNArgs(1),
 		Example: `rad app switch newApplication`,
 		RunE:    framework.RunCommand(runner),

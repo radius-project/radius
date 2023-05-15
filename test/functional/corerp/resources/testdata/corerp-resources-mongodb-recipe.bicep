@@ -23,7 +23,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/mongoDatabases':{
         mongodb: {
-          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0' 
+          templatePath: 'radiusdev.azurecr.io/recipes/functionaltest/valuebacked/mongodatabases/kubernetes:1.0'
         }
       }
     }
