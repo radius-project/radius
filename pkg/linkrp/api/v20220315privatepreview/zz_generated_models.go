@@ -570,13 +570,13 @@ type MongoDatabaseProperties struct {
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the rediscaches link
+	// The recipe used to automatically deploy underlying infrastructure for the MongoDB link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// List of the resource IDs that support the redis resource
+	// List of the resource IDs that support the MongoDB resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secrets values provided for the resource

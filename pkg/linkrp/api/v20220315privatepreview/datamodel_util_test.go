@@ -206,6 +206,7 @@ func TestToResourceProvisiongDataModel(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, tt.datamodel, sc)
+		require.NoError(t, err)
 	}
 }
 

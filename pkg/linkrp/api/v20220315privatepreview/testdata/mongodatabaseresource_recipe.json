@@ -11,6 +11,7 @@
               "foo":"bar"
             }
         },
+        "resourceProvisioning": "recipe",
         "host": "testAccount1.mongo.cosmos.azure.com",
         "port": 10255
     }

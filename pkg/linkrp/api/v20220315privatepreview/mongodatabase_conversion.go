@@ -48,8 +48,8 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 	v := src.Properties
 
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
-	err := verifyProvisioningValue(converted.Properties.ResourceProvisioning)
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(v.ResourceProvisioning)
 	if err != nil {
 		return nil, err
 	}
@@ -67,9 +67,9 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 
-	manualInputs := verifyManualInputs(v.ResourceProvisioning, v.Host, v.Port)
-	if manualInputs != nil {
-		return nil, manualInputs
+	err = verifyManualInputs(v.ResourceProvisioning, v.Host, v.Port)
+	if err != nil {
+		return nil, err
 	}
 	return converted, nil
 }

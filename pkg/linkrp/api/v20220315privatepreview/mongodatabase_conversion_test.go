@@ -89,7 +89,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
 			require.Equal(t, int32(10255), convertedResource.Properties.Port)
 		}
-		if versionedResource.Properties.ResourceProvisioning == nil {
+		if versionedResource.Properties.ResourceProvisioning == nil || *versionedResource.Properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningRecipe) {
 			require.Equal(t, payload.recipe, convertedResource.Properties.Recipe)
 			require.Equal(t, linkrp.ResourceProvisioningRecipe, convertedResource.Properties.ResourceProvisioning)
 		} else {

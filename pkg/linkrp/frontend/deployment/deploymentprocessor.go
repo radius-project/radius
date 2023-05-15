@@ -506,11 +506,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rpv1.BasicResourceProperties, recipe linkrp.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		obj := resource.(*datamodel.MongoDatabase)
-		basicResource = &obj.Properties.BasicResourceProperties
-		recipe.Name = obj.Properties.Recipe.Name
-		recipe.Parameters = obj.Properties.Recipe.Parameters
 	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		basicResource = &obj.Properties.BasicResourceProperties
@@ -519,8 +514,10 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(linkrp.RedisCachesResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		basicResource = &obj.Properties.BasicResourceProperties
-		recipe.Name = obj.Properties.Recipe.Name
-		recipe.Parameters = obj.Properties.Recipe.Parameters
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
+		}
 	case strings.ToLower(linkrp.ExtendersResourceType):
 		obj := resource.(*datamodel.Extender)
 		basicResource = &obj.Properties.BasicResourceProperties
