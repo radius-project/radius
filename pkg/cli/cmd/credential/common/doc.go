@@ -9,9 +9,8 @@ package common
 // The newlines are intentional, don't make changes without looking at the formatting.
 const LongDescriptionBlurb = `
 
-Radius cloud provider integrations enable Radius to deploy cloud resources using Bicep, and for Radius
-environments and links to integrate with those cloud resources. Radius also stores credentials for
-use when accessing cloud resources.
+Radius cloud providers enable Radius environments to deploy and integrate with cloud resources (Azure, AWS).
+The Radius control-plane stores credentials for use when accessing cloud resources.
 
 Cloud providers are configured per-Radius-installation. Configuration commands will use the current workspace
 or the workspace specified by '--workspace' to configure Radius. Modifications to cloud provider configuration

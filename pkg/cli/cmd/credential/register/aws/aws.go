@@ -29,13 +29,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "aws",
-		Short: "Register (Add or update) AWS cloud provider credential for a Radius installation.",
-		Long: `Register (Add or update) AWS cloud provider credential for a Radius installation..
+		Short: "Register (add or update) AWS cloud provider credential for a Radius installation.",
+		Long: `Register (add or update) AWS cloud provider credential for a Radius installation.
 
-This command is intended for scripting or advanced use-cases. See 'rad init' for a user-friendly way
-to configure these settings.
-
-Radius will use the provided IAM credential for all interations with AWS. 
+Radius will use a provided IAM access key and secret access key for deploying and interacting with AWS resources.
+The provided IAM role must have any applicable resource role(s) in order to create or manage resources.
+		
+Updates to the AWS credential can take up to 30 seconds to fully refresh.
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for AWS with IAM authentication

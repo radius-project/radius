@@ -30,19 +30,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "azure",
-		Short: "Register (Add or update) Azure cloud provider credential for a Radius installation.",
-		Long: `Register (Add or update) Azure cloud provider credential for a Radius installation..
+		Short: "Register (add or update) Azure cloud provider credential for a Radius installation.",
+		Long: `Register (add or update) Azure cloud provider credential for a Radius installation.
 
-This command is intended for scripting or advanced use-cases. See 'rad init' for a user-friendly way
-to configure these settings.
+Radius will use a provided Azure Active Directory service principal for deploying and interacting with Azure resources.
+The provided service principal must have the Contributor or Owner role assigned any target scopes (subscription or resource group) in order to create or manage resources.
 
-Radius will use the provided service principal for all interations with Azure, including Bicep deployment, 
-Radius environments, and Radius links. 
-
-Radius will use the provided subscription and resource group as the default target scope for Bicep deployment.
-The provided service principal must have the Contributor or Owner role assigned for the provided resource group
-in order to create or manage resources contained in the group. The resource group should be created before
-calling 'rad credential register azure'.
+Updates to the Azure credential can take up to 30 seconds to fully refresh.
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication
