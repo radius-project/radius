@@ -242,8 +242,7 @@ jobs:
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
-      RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
-      RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+      RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -438,6 +437,8 @@ jobs:
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          RECIPE_TAG_VERSION: ${{ env.RECIPE_TAG_VERSION }}
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3
