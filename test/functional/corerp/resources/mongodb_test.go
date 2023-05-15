@@ -120,10 +120,9 @@ func Test_MongoDB_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
 	appNamespace := "corerp-resources-mongodb-recipe-app"
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -163,7 +162,6 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
 	appNamespace := "corerp-resources-mongodb-devrecipe-app"
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -220,7 +218,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -285,7 +283,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
