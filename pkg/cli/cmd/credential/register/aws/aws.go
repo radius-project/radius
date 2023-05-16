@@ -29,13 +29,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "aws",
-		Short: "Register (add or update) AWS cloud provider credential for a Radius installation.",
-		Long: `Register (add or update) AWS cloud provider credential for a Radius installation.
+		Short: "Register (Add or update) AWS cloud provider credential for a Radius installation.",
+		Long: `Register (Add or update) AWS cloud provider credential for a Radius installation..
 
-Radius will use a provided IAM access key and secret access key for deploying and interacting with AWS resources.
-The provided IAM role must have any applicable resource role(s) in order to create or manage resources.
-		
-Updates to the AWS credential can take up to 30 seconds to fully refresh.
+This command is intended for scripting or advanced use-cases. See 'rad init' for a user-friendly way
+to configure these settings.
+
+Radius will use the provided IAM credential for all interations with AWS. 
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for AWS with IAM authentication
@@ -122,7 +122,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad credential register aws` command.
 func (r *Runner) Run(ctx context.Context) error {
 
-	r.Output.LogInfo("Configuring credential for cloud provider %q for Radius installation %q...", "aws", r.Workspace.FmtConnection())
+	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "aws", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("Successfully Configured credential for cloud provider %q", "aws")
+	r.Output.LogInfo("Successfully registered credential for %q cloud provider. Tokens may take up to 30 seconds to refresh.", "aws")
 
 	return nil
 }
