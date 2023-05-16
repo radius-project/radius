@@ -26,6 +26,10 @@ type DeployErrorExecutor struct {
 	Template          string
 	Parameters        []string
 	ExpectedErrorCode string
+
+	// Application sets the `--application` command-line parameter. This is needed in cases where
+	// the application is not defined in bicep.
+	Application string
 }
 
 func NewDeployErrorExecutor(template string, errCode string, parameters ...string) *DeployErrorExecutor {
@@ -35,6 +39,11 @@ func NewDeployErrorExecutor(template string, errCode string, parameters ...strin
 		Parameters:        parameters,
 		ExpectedErrorCode: errCode,
 	}
+}
+
+func (d *DeployErrorExecutor) WithApplication(application string) *DeployErrorExecutor {
+	d.Application = application
+	return d
 }
 
 func (d *DeployErrorExecutor) GetDescription() string {
@@ -48,7 +57,7 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
+	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
 	var cliErr *radcli.CLIError

@@ -129,11 +129,11 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
-					Format: "Configuring credential for cloud provider %q for Radius installation %q...",
+					Format: "Registering credential for %q cloud provider in Radius installation %q...",
 					Params: []any{"aws", "Kubernetes (context=my-context)"},
 				},
 				output.LogOutput{
-					Format: "Successfully Configured credential for cloud provider %q",
+					Format: "Successfully registered credential for %q cloud provider. Tokens may take up to 30 seconds to refresh.",
 					Params: []any{"aws"},
 				},
 			}

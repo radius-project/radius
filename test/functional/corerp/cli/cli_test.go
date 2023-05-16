@@ -470,7 +470,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with non empty resources", func(t *testing.T) {
 		t.Logf("deploying %s from file %s", appName, templateWithResources)
 
-		err = cli.Deploy(ctx, templateFilePathWithResources, functional.GetMagpieImage())
+		err = cli.Deploy(ctx, templateFilePathWithResources, appName, functional.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
@@ -489,7 +489,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with empty resources", func(t *testing.T) {
 		t.Logf("deploying %s from file %s", appNameEmptyResources, templateEmptyResources)
 
-		err = cli.Deploy(ctx, templateFilePathEmptyResources)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources, appNameEmptyResources)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
 		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
@@ -504,7 +504,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with resources not associated with any application", func(t *testing.T) {
 		t.Logf("deploying from file %s", templateWithResources)
 
-		err := cli.Deploy(ctx, templateFilePathWithResources, functional.GetMagpieImage())
+		err := cli.Deploy(ctx, templateFilePathWithResources, appName, functional.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
@@ -523,7 +523,7 @@ func Test_CLI_Delete(t *testing.T) {
 		require.NoErrorf(t, err, "failed to delete application %s", appName)
 
 		t.Logf("deploying from file %s", templateEmptyResources)
-		err = cli.Deploy(ctx, templateFilePathEmptyResources)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources, appName)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
 		err = cli.ApplicationDelete(ctx, appNameEmptyResources)

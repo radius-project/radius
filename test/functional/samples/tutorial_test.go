@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -28,7 +29,7 @@ import (
 )
 
 const (
-	remotePort   = 8080
+	remotePort   = 3000
 	retries      = 3
 	retryTimeout = 1 * time.Minute
 	retryBackoff = 1 * time.Second
@@ -38,24 +39,21 @@ var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("RADIUS_SAMPLES_REPO
 
 // Test process must run with RADIUS_SAMPLES_REPO_ROOT env var set to samples repo absolute path
 // You can set the variables used by vscode codelens (e.g. 'debug test', 'run test') using 'go.testEnvVars' in vscode settings.json
-// Ex: export RADIUS_SAMPLES_REPO_ROOT=/home/uname/src/samples
-func Test_TutorialSampleMongoContainer(t *testing.T) {
+// Ex: export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=/home/uname/src/samples
+func Test_FirstApplicationSample(t *testing.T) {
 	if !samplesRepoEnvVarSet {
-		t.Skipf("Skip samples test execution, to enable you must set env var RADIUS_SAMPLES_REPO_ROOT to the absolute path of the project-radius/samples repository")
-	} else {
-		// Workaround for go-lint. I just want to disable the test :(
-		t.Skip("This test is temporarily disabled while we're making updates to the tutorial. This will be fixed again by release time.", samplesRepoAbsPath, samplesRepoAbsPath)
+		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
 	}
 
 	cwd, _ := os.Getwd()
 	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepoAbsPath)
-	template := filepath.Join(relPathSamplesRepo, "tutorial/app.bicep")
-	appName := "webapp"
-	appNamespace := "default-webapp"
+	template := filepath.Join(relPathSamplesRepo, "demo/app.bicep")
+	appName := "demo"
+	appNamespace := "default-demo"
 
 	test := corerp.NewCoreRPTest(t, appName, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template),
+			Executor: step.NewDeployExecutor(template).WithApplication(appName),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -63,54 +61,37 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "frontend",
+						Name: "demo",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "http-route",
-						Type: validation.HttpRoutesResource,
-					},
-					{
-						Name: "public",
-						Type: validation.GatewaysResource,
-					},
-					{
 						Name: "db",
-						Type: validation.MongoDatabasesResource,
+						Type: validation.RedisCachesResource,
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
-				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, appName)
-				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
-
-				// Set up pod port-forwarding for contour-envoy
+				// Set up pod port-forwarding for the pod
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-					err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, remotePort)
+					selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, "demo")
+					err := testWithPortForward(t, ctx, ct, appNamespace, selector, remotePort)
 					if err != nil {
-						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+						t.Logf("Failed to test pod via portforward with error: %s", err)
 					} else {
 						// Successfully ran tests
 						return
 					}
 				}
 
-				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
+				require.Fail(t, fmt.Sprintf("tests failed after %d retries", retries))
 			},
-			// TODO: validation of k8s resources created by mongo-container is blocked by https://github.com/Azure/bicep-extensibility/issues/88
 			// TODO: validation of k8s resources blocked by https://github.com/project-radius/radius/issues/4689
 			K8sOutputResources: []unstructured.Unstructured{},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(appName, "frontend"),
-						validation.NewK8sHTTPProxyForResource(appName, "public"),
-						validation.NewK8sHTTPProxyForResource(appName, "http-route"),
-						validation.NewK8sServiceForResource(appName, "http-route"),
+						validation.NewK8sPodForResource(appName, "demo"),
 					},
 				},
 			},
@@ -120,7 +101,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort int) error {
+func testWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, namespace string, container string, remotePort int) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
@@ -130,7 +111,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	// errorChan will contain any errors created from initializing the port-forwarding session
 	errorChan := make(chan error)
 
-	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
+	go functional.ExposePod(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, namespace, container, remotePort, stopChan, portChan, errorChan)
 	defer close(stopChan)
 
 	select {
@@ -139,9 +120,10 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	case localPort := <-portChan:
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		t.Logf("Portforward session active at %s", baseURL)
+		hostname := "localhost"
 
 		// Test base endpoint, i.e., base URL returns a 200
-		_, err := sendGetRequest(t, hostname, baseURL, "", 200)
+		_, err := sendGetRequest(t, "hostname", baseURL, "", 200)
 		if err != nil {
 			return err
 		}

@@ -199,8 +199,12 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
-					Format: "Configuring credential for cloud provider %q for Radius installation %q...",
+					Format: "Registering credential for %q cloud provider in Radius installation %q...",
 					Params: []any{"azure", "Kubernetes (context=my-context)"},
+				},
+				output.LogOutput{
+					Format: "Successfully registered credential for %q cloud provider. Tokens may take up to 30 seconds to refresh.",
+					Params: []any{"azure"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

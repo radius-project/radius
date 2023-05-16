@@ -69,7 +69,7 @@ func (err *CLIError) GetFirstErrorCode() string {
 }
 
 // Deploy runs the rad deploy command.
-func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters ...string) error {
+func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, application string, parameters ...string) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
 		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
@@ -78,6 +78,10 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	args := []string{
 		"deploy",
 		templateFilePath,
+	}
+
+	if application != "" {
+		args = append(args, "--application", application)
 	}
 
 	for _, parameter := range parameters {
