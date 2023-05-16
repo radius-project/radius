@@ -7,6 +7,7 @@ ARG TARGETARCH
 WORKDIR /
 
 COPY ./linux_${TARGETARCH:-amd64}/release/appcore-rp /
+COPY ./gitbinary/git /usr/local/bin/
 
 USER 65532:65532
 
