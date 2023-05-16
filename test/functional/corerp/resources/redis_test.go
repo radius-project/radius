@@ -95,3 +95,34 @@ func Test_RedisRecipe(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_RedisDefaultRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-redis-default-recipe.bicep"
+	name := "corerp-resources-redis-default-recipe"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-default-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "rds-default-recipe",
+						Type: validation.RedisCachesResource,
+						App:  name,
+					},
+				},
+			},
+			SkipObjectValidation: true,
+		},
+	})
+
+	test.Test(t)
+}

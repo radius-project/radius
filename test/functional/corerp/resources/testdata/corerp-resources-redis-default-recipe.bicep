@@ -7,13 +7,13 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-recipe-env'
+  name: 'corerp-resources-environment-default-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-recipe-env' 
+      namespace: 'corerp-resources-environment-default-recipe-env'
     }
     providers: {
       azure: {
@@ -23,7 +23,6 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/redisCaches':{
         default: {
-          templateKind: 'bicep'
           templatePath: '${registry}/test/functional/corerp/recipes/redis-recipe-value-backed:${version}' 
         }
       }
@@ -32,7 +31,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-redis-recipe'
+  name: 'corerp-resources-redis-default-recipe'
   location: 'global'
   properties: {
     environment: env.id
@@ -46,13 +45,10 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
-  name: 'rds-recipe'
+  name: 'rds-default-recipe'
   location: 'global'
   properties: {
     environment: env.id
     application: app.id
-    recipe: {
-      name: 'rediscache'
-    }
   }
 }
