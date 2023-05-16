@@ -12,6 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", convertedResource.Properties.Resource)
 			require.Equal(t, "myrediscache.redis.cache.windows.net", convertedResource.Properties.Host)
 			require.Equal(t, int32(10255), convertedResource.Properties.Port)
-			require.Equal(t, datamodel.LinkModeResource, convertedResource.Properties.Mode)
+			require.Equal(t, linkrpdm.LinkModeResource, convertedResource.Properties.Mode)
 			if payload == "rediscacheresource.json" {
 				require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
 				require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
@@ -56,14 +57,14 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "myrediscache.redis.cache.windows.net", convertedResource.Properties.Host)
 				require.Equal(t, int32(10255), convertedResource.Properties.Port)
 			}
-			require.Equal(t, datamodel.LinkModeRecipe, convertedResource.Properties.Mode)
+			require.Equal(t, linkrpdm.LinkModeRecipe, convertedResource.Properties.Mode)
 		case *ValuesRedisCacheProperties:
 			require.Equal(t, "myrediscache.redis.cache.windows.net", *v.Host)
 			require.Equal(t, int32(10255), *v.Port)
 			require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
 			require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
 			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-			require.Equal(t, datamodel.LinkModeValues, convertedResource.Properties.Mode)
+			require.Equal(t, linkrpdm.LinkModeValues, convertedResource.Properties.Mode)
 		}
 	}
 }

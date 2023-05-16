@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -19,7 +20,7 @@ type RabbitMQQueue struct {
 	Properties RabbitMQQueueProperties `json:"properties"`
 
 	// messagingMetadata represents internal DataModel properties common to all portable resource types.
-	LinkMetadata
+	linkrpdm.LinkMetadata
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
@@ -48,7 +49,7 @@ type RabbitMQQueueProperties struct {
 	Queue   string            `json:"queue"`
 	Recipe  linkrp.LinkRecipe `json:"recipe,omitempty"`
 	Secrets RabbitMQSecrets   `json:"secrets,omitempty"`
-	Mode    LinkMode          `json:"mode,omitempty"`
+	Mode    linkrpdm.LinkMode `json:"mode,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
@@ -17,7 +18,7 @@ type MongoDatabase struct {
 	v1.BaseResource
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
+	linkrpdm.LinkMetadata
 
 	// Properties is the properties of the resource.
 	Properties MongoDatabaseProperties `json:"properties"`
@@ -30,7 +31,7 @@ type MongoDatabaseProperties struct {
 	MongoDatabaseRecipeProperties
 	MongoDatabaseValuesProperties
 	Secrets MongoDatabaseSecrets `json:"secrets,omitempty"`
-	Mode    LinkMode             `json:"mode"`
+	Mode    linkrpdm.LinkMode    `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource

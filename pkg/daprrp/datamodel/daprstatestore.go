@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
@@ -20,7 +21,7 @@ type DaprStateStore struct {
 	Properties DaprStateStoreProperties `json:"properties"`
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
+	linkrpdm.LinkMetadata
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
@@ -56,7 +57,7 @@ func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
 type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Mode     LinkMode          `json:"mode,omitempty"`
+	Mode     linkrpdm.LinkMode `json:"mode,omitempty"`
 	Metadata map[string]any    `json:"metadata,omitempty"`
 	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
 	Resource string            `json:"resource,omitempty"`

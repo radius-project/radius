@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
@@ -23,7 +24,7 @@ type RedisCache struct {
 	Properties RedisCacheProperties `json:"properties"`
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
+	linkrpdm.LinkMetadata
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
@@ -95,7 +96,7 @@ type RedisCacheProperties struct {
 	RedisResourceProperties
 	RedisRecipeProperties
 	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
-	Mode    LinkMode          `json:"mode"`
+	Mode    linkrpdm.LinkMode `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource

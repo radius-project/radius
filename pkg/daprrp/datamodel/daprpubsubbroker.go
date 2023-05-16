@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -19,7 +20,7 @@ type DaprPubSubBroker struct {
 	Properties DaprPubSubBrokerProperties `json:"properties"`
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
+	linkrpdm.LinkMetadata
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
@@ -47,7 +48,7 @@ type DaprPubSubBrokerProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
 	Topic    string            `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
-	Mode     LinkMode          `json:"mode"`
+	Mode     linkrpdm.LinkMode `json:"mode"`
 	Metadata map[string]any    `json:"metadata,omitempty"`
 	Recipe   linkrp.LinkRecipe `json:"recipe"`
 	Resource string            `json:"resource,omitempty"`

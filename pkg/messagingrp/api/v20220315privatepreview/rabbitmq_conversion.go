@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -43,14 +44,14 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 			return nil, v1.NewClientErrInvalidRequest("queue is a required property for mode 'values'")
 		}
 		converted.Properties.Queue = to.String(v.Queue)
-		converted.Properties.Mode = datamodel.LinkModeValues
+		converted.Properties.Mode = linkrpdm.LinkModeValues
 	case *RecipeRabbitMQQueueProperties:
 		if v.Recipe == nil {
 			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Queue = to.String(v.Queue)
-		converted.Properties.Mode = datamodel.LinkModeRecipe
+		converted.Properties.Mode = linkrpdm.LinkModeRecipe
 	default:
 		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRabbitMQQueueProperties().Mode))
 	}
@@ -76,7 +77,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Location = to.Ptr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	switch rabbitmq.Properties.Mode {
-	case datamodel.LinkModeValues:
+	case linkrpdm.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ValuesRabbitMQQueueProperties{
 			Status: &ResourceStatus{
@@ -88,7 +89,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 			Mode:              &mode,
 			Queue:             to.Ptr(rabbitmq.Properties.Queue),
 		}
-	case datamodel.LinkModeRecipe:
+	case linkrpdm.LinkModeRecipe:
 		mode := "recipe"
 		var recipe *Recipe
 		recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)

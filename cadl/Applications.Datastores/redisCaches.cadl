@@ -14,8 +14,6 @@ import "@cadl-lang/openapi";
 import "../customRootScope.cadl";
 import "../aksrootscope.cadl";
 
-// import "./main.cadl";
-
 using Cadl.Http;
 using Cadl.Rest;
 using Cadl.Versioning;

@@ -72,7 +72,7 @@ generate-rad-datastoresrp-client: generate-node-installed generate-autorest-inst
 	autorest pkg/datastoresrp/api/README.md --tag=datastores-2022-03-15-privatepreview
 
 .PHONY: generate-rad-messagingrp-client
-generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
+generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/messagingrp/api/README.md --tag=messaging-2022-03-15-privatepreview
 

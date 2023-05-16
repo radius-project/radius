@@ -10,8 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-
-	// ver "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -42,7 +41,7 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	switch v := src.Properties.(type) {
 	case *ResourceMongoDatabaseProperties:
 		if v.Resource == nil {
-			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
+			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", linkrpdm.LinkModeResource))
 		}
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Host = to.String(v.Host)
@@ -55,10 +54,10 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 				Password:         to.String(v.Secrets.Password),
 			}
 		}
-		converted.Properties.Mode = datamodel.LinkModeResource
+		converted.Properties.Mode = linkrpdm.LinkModeResource
 	case *ValuesMongoDatabaseProperties:
 		if v.Host == nil || v.Port == nil {
-			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
+			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", linkrpdm.LinkModeValues))
 		}
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
@@ -70,10 +69,10 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 				Password:         to.String(v.Secrets.Password),
 			}
 		}
-		converted.Properties.Mode = datamodel.LinkModeValues
+		converted.Properties.Mode = linkrpdm.LinkModeValues
 	case *RecipeMongoDatabaseProperties:
 		if v.Recipe == nil {
-			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
+			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", linkrpdm.LinkModeRecipe))
 		}
 		converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
@@ -81,7 +80,7 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Database = to.String(v.Database)
-		converted.Properties.Mode = datamodel.LinkModeRecipe
+		converted.Properties.Mode = linkrpdm.LinkModeRecipe
 		if v.Secrets != nil {
 			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
 				ConnectionString: to.String(v.Secrets.ConnectionString),
@@ -110,7 +109,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 
 	switch mongo.Properties.Mode {
-	case datamodel.LinkModeResource:
+	case linkrpdm.LinkModeResource:
 		mode := "resource"
 		dst.Properties = &ResourceMongoDatabaseProperties{
 			Mode:     &mode,
@@ -125,7 +124,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Environment:       to.Ptr(mongo.Properties.Environment),
 			Application:       to.Ptr(mongo.Properties.Application),
 		}
-	case datamodel.LinkModeValues:
+	case linkrpdm.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ValuesMongoDatabaseProperties{
 			Mode:     &mode,
@@ -139,7 +138,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Environment:       to.Ptr(mongo.Properties.Environment),
 			Application:       to.Ptr(mongo.Properties.Application),
 		}
-	case datamodel.LinkModeRecipe:
+	case linkrpdm.LinkModeRecipe:
 		mode := "recipe"
 		dst.Properties = &RecipeMongoDatabaseProperties{
 			Mode:     &mode,

@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	// ver "github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -47,14 +47,14 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Database = to.String(v.Database)
 		converted.Properties.Server = to.String(v.Server)
-		converted.Properties.Mode = datamodel.LinkModeResource
+		converted.Properties.Mode = linkrpdm.LinkModeResource
 	case *ValuesSQLDatabaseProperties:
 		if v.Database == nil || v.Server == nil {
 			return nil, v1.NewClientErrInvalidRequest("database/server are required properties for mode 'values'")
 		}
 		converted.Properties.Database = to.String(v.Database)
 		converted.Properties.Server = to.String(v.Server)
-		converted.Properties.Mode = datamodel.LinkModeValues
+		converted.Properties.Mode = linkrpdm.LinkModeValues
 	case *RecipeSQLDatabaseProperties:
 		if v.Recipe == nil {
 			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
@@ -62,7 +62,7 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Database = to.String(v.Database)
 		converted.Properties.Server = to.String(v.Server)
-		converted.Properties.Mode = datamodel.LinkModeRecipe
+		converted.Properties.Mode = linkrpdm.LinkModeRecipe
 	default:
 		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetSQLDatabaseProperties().Mode))
 	}
@@ -83,7 +83,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Location = to.Ptr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
 	switch sql.Properties.Mode {
-	case datamodel.LinkModeResource:
+	case linkrpdm.LinkModeResource:
 		mode := "resource"
 		dst.Properties = &ResourceSQLDatabaseProperties{
 			Status: &ResourceStatus{
@@ -97,7 +97,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Database:          to.Ptr(sql.Properties.Database),
 			Server:            to.Ptr(sql.Properties.Server),
 		}
-	case datamodel.LinkModeValues:
+	case linkrpdm.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ValuesSQLDatabaseProperties{
 			Status: &ResourceStatus{
@@ -110,7 +110,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Database:          to.Ptr(sql.Properties.Database),
 			Server:            to.Ptr(sql.Properties.Server),
 		}
-	case datamodel.LinkModeRecipe:
+	case linkrpdm.LinkModeRecipe:
 		mode := "recipe"
 		var recipe *Recipe
 		recipe = fromRecipeDataModel(sql.Properties.Recipe)

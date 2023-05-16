@@ -5,6 +5,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -38,7 +39,7 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		if v.Recipe == nil {
 			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
-		converted.Properties.Mode = datamodel.LinkModeRecipe
+		converted.Properties.Mode = linkrpdm.LinkModeRecipe
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Type = to.String(v.Type)
@@ -47,7 +48,7 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		if v.Resource == nil {
 			return nil, v1.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
-		converted.Properties.Mode = datamodel.LinkModeResource
+		converted.Properties.Mode = linkrpdm.LinkModeResource
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
@@ -56,7 +57,7 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, v1.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
-		converted.Properties.Mode = datamodel.LinkModeValues
+		converted.Properties.Mode = linkrpdm.LinkModeValues
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
@@ -81,7 +82,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 
 	switch daprStateStore.Properties.Mode {
-	case datamodel.LinkModeRecipe:
+	case linkrpdm.LinkModeRecipe:
 		mode := "recipe"
 		dst.Properties = &RecipeDaprStateStoreProperties{
 			Status: &ResourceStatus{
@@ -97,7 +98,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 			Version:           to.Ptr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
-	case datamodel.LinkModeResource:
+	case linkrpdm.LinkModeResource:
 		mode := "resource"
 		dst.Properties = &ResourceDaprStateStoreProperties{
 			Status: &ResourceStatus{
@@ -111,7 +112,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 			Resource:          to.Ptr(daprStateStore.Properties.Resource),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
-	case datamodel.LinkModeValues:
+	case linkrpdm.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ValuesDaprStateStoreProperties{
 			Status: &ResourceStatus{

@@ -10,6 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -45,7 +46,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Mode = datamodel.LinkModeValues
+		converted.Properties.Mode = linkrpdm.LinkModeValues
 	case *RecipeDaprSecretStoreProperties:
 		if v.Recipe == nil {
 			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
@@ -54,7 +55,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Mode = datamodel.LinkModeRecipe
+		converted.Properties.Mode = linkrpdm.LinkModeRecipe
 	default:
 		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetDaprSecretStoreProperties().Mode))
 	}
@@ -75,7 +76,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 	dst.Location = to.Ptr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	switch daprSecretStore.Properties.Mode {
-	case datamodel.LinkModeValues:
+	case linkrpdm.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ValuesDaprSecretStoreProperties{
 			Status: &ResourceStatus{
@@ -90,7 +91,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 			Metadata:          daprSecretStore.Properties.Metadata,
 			ComponentName:     to.Ptr(daprSecretStore.Properties.ComponentName),
 		}
-	case datamodel.LinkModeRecipe:
+	case linkrpdm.LinkModeRecipe:
 		mode := "recipe"
 		var recipe *Recipe
 		recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)

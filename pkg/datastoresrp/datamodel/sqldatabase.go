@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -19,7 +20,7 @@ type SqlDatabase struct {
 	Properties SqlDatabaseProperties `json:"properties"`
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
+	linkrpdm.LinkMetadata
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
@@ -49,5 +50,5 @@ type SqlDatabaseProperties struct {
 	Resource string            `json:"resource,omitempty"`
 	Database string            `json:"database,omitempty"`
 	Server   string            `json:"server,omitempty"`
-	Mode     LinkMode          `json:"mode,omitempty"`
+	Mode     linkrpdm.LinkMode `json:"mode,omitempty"`
 }

@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	//ver "github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -41,9 +41,9 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	switch v := src.Properties.(type) {
 	case *ResourceRedisCacheProperties:
 		if v.Resource == nil {
-			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
+			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", linkrpdm.LinkModeResource))
 		}
-		converted.Properties.Mode = datamodel.LinkModeResource
+		converted.Properties.Mode = linkrpdm.LinkModeResource
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
@@ -56,12 +56,12 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 		}
 	case *RecipeRedisCacheProperties:
 		if v.Recipe == nil {
-			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
+			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", linkrpdm.LinkModeRecipe))
 		}
 		converted.Properties.RedisRecipeProperties = datamodel.RedisRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
 		}
-		converted.Properties.Mode = datamodel.LinkModeRecipe
+		converted.Properties.Mode = linkrpdm.LinkModeRecipe
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Username = to.String(v.Username)
@@ -73,9 +73,9 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 		}
 	case *ValuesRedisCacheProperties:
 		if v.Host == nil || v.Port == nil {
-			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
+			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", linkrpdm.LinkModeValues))
 		}
-		converted.Properties.Mode = datamodel.LinkModeValues
+		converted.Properties.Mode = linkrpdm.LinkModeValues
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Username = to.String(v.Username)
@@ -105,7 +105,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Location = to.Ptr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	switch redis.Properties.Mode {
-	case datamodel.LinkModeResource:
+	case linkrpdm.LinkModeResource:
 		mode := "resource"
 		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
@@ -120,7 +120,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 			Environment:       to.Ptr(redis.Properties.Environment),
 			Application:       to.Ptr(redis.Properties.Application),
 		}
-	case datamodel.LinkModeValues:
+	case linkrpdm.LinkModeValues:
 		mode := "values"
 		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
@@ -134,7 +134,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 			Environment:       to.Ptr(redis.Properties.Environment),
 			Application:       to.Ptr(redis.Properties.Application),
 		}
-	case datamodel.LinkModeRecipe:
+	case linkrpdm.LinkModeRecipe:
 		mode := "recipe"
 		dst.Properties = &RecipeRedisCacheProperties{
 			Mode:     &mode,
