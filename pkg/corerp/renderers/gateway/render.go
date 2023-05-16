@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,15 +29,25 @@ type Renderer struct {
 
 // GetDependencyIDs fetches all the httproutes used by the gateway
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
-	// Need all httproutes that are used by this gateway
 	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
 		return nil, nil, v1.ErrInvalidModelConversion
 	}
 	gtwyProperties := gateway.Properties
-	// Get all httproutes that are used by this gateway
+
+	// Get all httpRoutes that are used by this gateway
 	for _, httpRoute := range gtwyProperties.Routes {
 		resourceID, err := resources.ParseResource(httpRoute.Destination)
+		if err != nil {
+			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
+		}
+
+		radiusResourceIDs = append(radiusResourceIDs, resourceID)
+	}
+
+	// Get secretStore resource ID from certificateFrom property
+	if gtwyProperties.TLS != nil && gtwyProperties.TLS.CertificateFrom != "" {
+		resourceID, err := resources.ParseResource(gtwyProperties.TLS.CertificateFrom)
 		if err != nil {
 			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
@@ -68,7 +79,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	} else if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	} else {
-		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port)
+		isHttps := gateway.Properties.TLS != nil && (gateway.Properties.TLS.SSLPassthrough || gateway.Properties.TLS.CertificateFrom != "")
+		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port, isHttps)
 	}
 
 	gatewayObject, err := MakeGateway(ctx, options, gateway, gateway.Name, applicationName, hostname)
@@ -99,20 +111,76 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
 func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
 	includes := []contourv1.Include{}
-	sslPassthrough := false
+	dependencies := options.Dependencies
 
 	if len(gateway.Properties.Routes) < 1 {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
+	sslPassthrough := false
+	var contourTLSConfig *contourv1.TLS
 	if gateway.Properties.TLS != nil {
-		if !gateway.Properties.TLS.SSLPassthrough {
-			return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("only sslPassthrough is supported for TLS currently")
-		} else {
-			sslPassthrough = true
+		sslPassthrough = gateway.Properties.TLS.SSLPassthrough
+
+		if gateway.Properties.TLS.CertificateFrom != "" {
+			secretStoreResourceId := gateway.Properties.TLS.CertificateFrom
+			secretStoreResource, ok := dependencies[secretStoreResourceId]
+			if !ok {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+			}
+
+			referencedResource := dependencies[secretStoreResourceId].Resource
+			if !strings.EqualFold(referencedResource.ResourceTypeName(), datamodel.SecretStoreResourceType) {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource")
+			}
+
+			// Validate the secretStore resource: it must be of type certificate and have tls.crt and tls.key
+			secretStore, ok := referencedResource.(*datamodel.SecretStore)
+			if !ok {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource")
+			}
+
+			if secretStore.Properties.Type != datamodel.SecretTypeCert {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource with type certificate")
+			}
+
+			if secretStore.Properties.Data["tls.crt"] == nil {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource with tls.crt")
+			}
+
+			if secretStore.Properties.Data["tls.key"] == nil {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource with tls.key")
+			}
+
+			// Get the name and namespace of the Kubernetes secret resource from the secretStore OutputResources
+			if secretStoreResource.OutputResources == nil {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+			}
+
+			secretResource := secretStoreResource.OutputResources[rpv1.LocalIDSecret].Data
+			secretResourceData, ok := secretResource.(map[string]any)
+			if !ok {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+			}
+
+			secretName, ok := secretResourceData["name"]
+			if !ok {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+			}
+
+			secretNamespace, ok := secretResourceData["namespace"]
+			if !ok {
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+			}
+
+			contourTLSConfig = &contourv1.TLS{
+				SecretName:             fmt.Sprintf("%s/%s", secretNamespace, secretName),
+				MinimumProtocolVersion: string(gateway.Properties.TLS.MinimumProtocolVersion),
+			}
 		}
 	}
 
+	// If SSL Passthrough is enabled, then we can only have one route
 	if sslPassthrough && len(gateway.Properties.Routes) > 1 {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
 	}
@@ -151,6 +219,7 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 
 	virtualHost := &contourv1.VirtualHost{
 		Fqdn: virtualHostname,
+		TLS:  contourTLSConfig,
 	}
 
 	var tcpProxy *contourv1.TCPProxy
@@ -361,12 +430,17 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 	return baseHostname, nil
 }
 
-// getPublicEndpoint adds http:// and the port (if it exists) to the given hostname
-func getPublicEndpoint(hostname string, port string) string {
+// getPublicEndpoint adds http:// or https:// and the port (if it exists) to the given hostname
+func getPublicEndpoint(hostname string, port string, isHttps bool) string {
 	authority := hostname
 	if port != "" {
 		authority = net.JoinHostPort(hostname, port)
 	}
 
-	return fmt.Sprintf("http://%s", authority)
+	scheme := "http"
+	if isHttps {
+		scheme = "https"
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, authority)
 }

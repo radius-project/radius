@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package gateway
+package gateways
 
 const (
 	ResourceTypeName = "Applications.Core/gateways"

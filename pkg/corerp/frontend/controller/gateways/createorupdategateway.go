@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package gateway
+package gateways
 
 import (
 	"context"
@@ -47,6 +47,7 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, w http.ResponseWriter, 
 	if err != nil {
 		return nil, err
 	}
+
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
@@ -57,6 +58,10 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	if r, err := rp_frontend.PrepareRadiusResource(ctx, newResource, old, e.Options()); r != nil || err != nil {
+		return r, err
+	}
+
+	if r, err := ValidateAndMutateRequest(ctx, newResource, old, e.Options()); r != nil || err != nil {
 		return r, err
 	}
 

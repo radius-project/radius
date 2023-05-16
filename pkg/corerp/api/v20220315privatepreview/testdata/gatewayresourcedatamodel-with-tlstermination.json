@@ -37,6 +37,10 @@
                 "replacePrefix": "myreplaceprefix"
             }
         ],
+        "tls": {
+            "certificateFrom": "secretname",
+            "minimumProtocolVersion": "1.2"
+        },
         "url": "http://myprefix.myapp.mydomain.com"
     }
 }

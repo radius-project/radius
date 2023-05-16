@@ -395,6 +395,9 @@
 
 ## GatewayPropertiesTls
 ### Properties
+* **certificateFrom**: string: Declares which Kubernetes TLS secret will be used.
+* **hostname**: string: Hostname
+* **minimumProtocolVersion**: '1.2' | '1.3': TLS minimum protocol version (defaults to 1.2).
 * **sslPassthrough**: bool: If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 
 ## TrackedResourceTags
