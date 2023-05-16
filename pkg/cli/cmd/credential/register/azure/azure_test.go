@@ -204,7 +204,7 @@ func Test_Run(t *testing.T) {
 				},
 				output.LogOutput{
 					Format: "Successfully registered credential for %q cloud provider. Tokens may take up to 30 seconds to refresh.",
-					Params: []any{"aws"},
+					Params: []any{"azure"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
