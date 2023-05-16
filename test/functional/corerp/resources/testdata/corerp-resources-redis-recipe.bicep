@@ -57,5 +57,8 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   properties: {
     environment: env.id
     application: app.id
+    recipe: {
+      name: 'rediscache'
+    }
   }
 }
