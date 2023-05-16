@@ -36,10 +36,12 @@ func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := context.Background()
 
 	bucketName := generateS3BucketName()
+	fmt.Println("bucket name is " + bucketName)
 	setupTestAWSResource(t, ctx, bucketName)
 
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
+
 		require.NoError(t, err)
 
 		// Construct resource collection url
@@ -47,11 +49,13 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
 		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20220901privatepreview.Version)
+		fmt.Println("delete url is " + deleteURL)
 		deleteRequestBody := map[string]any{
 			"properties": map[string]any{
 				"BucketName": bucketName,
 			},
 		}
+		fmt.Print("delete request body is ", deleteRequestBody)
 		deleteBody, err := json.Marshal(deleteRequestBody)
 		require.NoError(t, err)
 
@@ -64,6 +68,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 
 		// Get the operation status url from the Azure-Asyncoperation header
 		deleteResponseCompletionUrl := deleteResponse.Header["Azure-Asyncoperation"][0]
+		fmt.Println("delete response completion url is " + deleteResponseCompletionUrl)
 		getRequest, err := http.NewRequest(http.MethodGet, deleteResponseCompletionUrl, nil)
 		require.NoError(t, err)
 		maxRetries := 100
