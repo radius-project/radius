@@ -3,11 +3,8 @@ FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:latest
 ARG TARGETPLATFORM
 ARG TARGETARCH
 
-# Install ca-certificates
-RUN apk --no-cache add ca-certificates
-
-# Install Git (required for Terraform module downloads)
-RUN apk --no-cache add git
+# Install ca-certificates and Git (required for Terraform module downloads)
+RUN apk --no-cache add ca-certificates git
 
 # Create non-root user
 RUN addgroup -g 65532 rpuser && \
