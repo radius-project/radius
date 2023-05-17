@@ -218,7 +218,6 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 	if err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
-
 	logger.Info(fmt.Sprintf("Generated JSON!!! %s", jsonData))
 
 	// Write the JSON data to a file in the working directory
