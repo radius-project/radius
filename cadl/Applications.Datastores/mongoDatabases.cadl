@@ -21,14 +21,8 @@ using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
 using OpenAPI;
 
-
-@service({
-  title: "Applications.Datastores Management APIs",
-  version: "2022-03-15-privatepreview",
-})
-@doc("REST APIs for Applications.Datastores/mongoDatabases")
-@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Datastores;
+
 @doc("MongoDatabase portable resource")
 model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
   @doc("The name of the MongoDatabase portable resource")

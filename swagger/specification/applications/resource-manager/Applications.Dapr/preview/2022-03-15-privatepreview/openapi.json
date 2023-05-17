@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Dapr Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST API for Applications.Dapr/stateStores",
+    "description": "REST APIs for Applications.Dapr",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -39,6 +39,9 @@
     }
   },
   "tags": [
+    {
+      "name": "Operations"
+    },
     {
       "name": "DaprPubSubBroker"
     },
@@ -607,6 +610,37 @@
           "final-state-via": "azure-async-operation"
         },
         "x-ms-long-running-operation": true
+      }
+    },
+    "/providers/Applications.Dapr/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "Operations_List",
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
       }
     }
   },

@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Datastores Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST APIs for Applications.Datastores/redisCaches",
+    "description": "REST APIs for Applications.Datastores",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -40,10 +40,10 @@
   },
   "tags": [
     {
-      "name": "MongoDatabases"
+      "name": "Operations"
     },
     {
-      "name": "Operations"
+      "name": "MongoDatabases"
     },
     {
       "name": "SqlDatabases"

@@ -21,14 +21,7 @@ using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
 using OpenAPI;
 
-@service({
-  title: "Applications.Dapr Management APIs",
-  version: "2022-03-15-privatepreview",
-})
-@doc("REST API for Applications.Dapr/stateStores")
-@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Dapr;
-
 
 @doc("Dapr StateStore Properties for Mode Resource")
 model ResourceDaprStateStoreProperties extends DaprStateStoreProperties {

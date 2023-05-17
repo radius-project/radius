@@ -3,6 +3,8 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
 import "./mongoDatabases.cadl";
 import "./sqlDatabases.cadl";
 import "./redisCaches.cadl";
@@ -10,4 +12,16 @@ import "@cadl-lang/openapi";
 import "../common.cadl";
 
 using OpenAPI;
+using Cadl.Versioning;
+using Azure.ResourceManager;
 
+@armProviderNamespace
+@service({
+  title: "Applications.Datastores Management APIs",
+  version: "2022-03-15-privatepreview",
+})
+@doc("REST APIs for Applications.Datastores")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
+namespace Applications.Datastores;
+
+interface Operations extends Azure.ResourceManager.Operations {}
