@@ -140,16 +140,19 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 	if err := tf.Init(ctx); err != nil {
 		return fmt.Errorf("terraform init failure. Radius resource %q. %w", resourceID, err)
 	}
+	logger.Info("Terraform init completed")
 
 	// Apply Terraform configuration
 	if err := tf.Apply(ctx); err != nil {
 		return fmt.Errorf("terraform apply failure. Radius resource %q. %w", resourceID, err)
 	}
+	logger.Info("Terraform Apply completed")
 
 	tfState, err := tf.Show(ctx)
 	if err != nil {
 		return err
 	}
+	logger.Info("Terraform show completed")
 	for k, m := range tfState.Values.Outputs {
 		logger.Info(fmt.Sprintf("Terraform output: %s", k))
 		logger.Info(fmt.Sprintf("Terraform output: %s", m.Value))
@@ -165,6 +168,8 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 // on the JSON syntax for Terraform configuration.
 // templatePath is the path to the Terraform module source, e.g. "Azure/cosmosdb/azurerm".
 func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, recipeName, templatePath string, providers datamodel.Providers) error {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	// TODO setting provider data for both AWS and Azure until we implement a way to pass this in.
 	// This should be set based on the provider needed by the recipe/source module and not just Azure/AWS providers.
 	azureProviderConfig, err := d.buildAzureProviderConfig(ctx, providers.Azure.Scope)
@@ -200,7 +205,7 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 			"aws":     awsProviderConfig,
 		},
 		Module: map[string]ModuleData{
-			recipeName: {
+			"cosmosdb": {
 				Source:     templatePath,
 				Version:    "1.0.0", // TODO determine how to pass this in.
 				Parameters: generateInputParameters(resourceGroup),
@@ -213,6 +218,8 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 	if err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
+
+	logger.Info(fmt.Sprintf("Generated JSON!!! %s", jsonData))
 
 	// Write the JSON data to a file in the working directory
 	// JSON configuration syntax for Terraform requires the file to be named with .tf.json suffix.
