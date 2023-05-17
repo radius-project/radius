@@ -9,7 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ------------------------------------------------------------.
+# ------------------------------------------------------------
 
 # go-install-tool will 'go install' any package $2 if it is missing from $1
 define go-install-tool
