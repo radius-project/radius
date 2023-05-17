@@ -224,9 +224,6 @@ jobs:
         uses: docker/setup-buildx-action@v2
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-      - name: Build Git binary
-        run: |
-          make build-git
       - name: Push container images (latest)
         run: |
           make docker-test-image-build && make docker-test-image-push
