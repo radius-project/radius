@@ -35,3 +35,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     }
   }
 }
+
+output result object = {
+  values: {
+    host: '${account.name}.mongo.cosmos.azure.com'
+    port: 443
+  }
+}
