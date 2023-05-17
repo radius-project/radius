@@ -1,4 +1,6 @@
-FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:latest
+# Note: Using Alpine image to enable Git installation for Terraform module downloads.
+# Switch to distroless when Terraform execution is moved to a separate container.
+FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:3.18
 
 ARG TARGETPLATFORM
 ARG TARGETARCH
