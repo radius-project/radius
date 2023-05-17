@@ -36,6 +36,18 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/environments' (ReadOnly, DeployTimeConstant): The resource type
 
+## Resource Applications.Core/extenders@2022-03-15-privatepreview
+* **Valid Scope(s)**: Unknown
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [ExtenderProperties](#extenderproperties) (Required): Extender link properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly, WriteOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Core/extenders' (ReadOnly, DeployTimeConstant): The resource type
+
 ## Resource Applications.Core/gateways@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
@@ -88,6 +100,11 @@
 * **Resource**: Applications.Core/secretStores
 * **ApiVersion**: 2022-03-15-privatepreview
 * **Output**: [SecretStoreListSecretsResult](#secretstorelistsecretsresult)
+
+## Function listSecrets (Applications.Core/extenders@2022-03-15-privatepreview)
+* **Resource**: Applications.Core/extenders
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [ExtenderSecrets](#extendersecrets)
 
 ## ApplicationProperties
 ### Properties
@@ -370,6 +387,26 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
+## ExtenderProperties
+### Properties
+* **application**: string (Required): Specifies the resource id of the application
+* **environment**: string: The resource id of the environment linked to the resource
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### Additional Properties
+* **Additional Properties Type**: any
+
+## ExtenderSecrets
+### Properties
+### Additional Properties
+* **Additional Properties Type**: any
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
 ## GatewayProperties
 ### Properties
 * **application**: string (Required): Specifies the resource id of the application
@@ -520,4 +557,9 @@
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
+
+## ExtenderSecrets
+### Properties
+### Additional Properties
+* **Additional Properties Type**: any
 
