@@ -1,0 +1,10 @@
+{
+    "location": "West US",
+    "properties": {
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/invalid",
+        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+        "database": "testDatabase",
+        "server": "testAccount1.sql.cosmos.azure.com",
+        "mode": "resource"
+    }
+}

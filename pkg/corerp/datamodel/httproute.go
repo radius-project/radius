@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const HTTPRouteResourceType = "Applications.Core/httpRoutes"
+
 // HTTPRoute represents HTTPRoute resource.
 type HTTPRoute struct {
 	v1.BaseResource
@@ -22,7 +24,7 @@ type HTTPRoute struct {
 
 // ResourceTypeName returns the qualified name of the resource
 func (h *HTTPRoute) ResourceTypeName() string {
-	return "Applications.Core/httpRoutes"
+	return HTTPRouteResourceType
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.

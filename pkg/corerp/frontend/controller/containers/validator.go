@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// ValidateRequest validates and mutate the incoming request.
+// ValidateAndMutateRequest validates and mutates the incoming request.
 func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.ContainerResource, oldResource *datamodel.ContainerResource, options *controller.Options) (rest.Response, error) {
 	if newResource.Properties.Identity != nil {
 		return rest.NewBadRequestResponse("User-defined identity in Applications.Core/containers is not supported."), nil

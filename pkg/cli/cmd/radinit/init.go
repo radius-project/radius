@@ -194,22 +194,21 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// If there are any existing environments and we're not reinstalling, ask to use
 	// one of those first.
 	//
-	// "reinstall" repreresents the the user-intent to reconfigure cloud providers,
-	// we also need to force re-creation of the envionment to do that, so we don't want
+	// "reinstall" represents the the user-intent to reconfigure cloud providers,
+	// we also need to force re-creation of the environment to do that, so we don't want
 	// to reuse an existing one.
 	if len(environments) > 0 && !r.Reinstall {
 
 		// In dev mode, we take the default without asking if it's an option.
 		//
-		// The best way to accomplish that is to run SelectedExistingEnvironment in non-interactive mode
-		// first, and then try again interactively if we get no results.
+		// The best way to accomplish that is to check if there's an environment named "default"
+		// If not, we prompt the user for an input of remaining options
 		if r.Dev {
-			r.EnvName, err = SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
-			if err != nil {
-				if errors.Is(err, &prompt.ErrExitConsole{}) {
-					return &cli.FriendlyError{Message: err.Error()}
+			for _, env := range environments {
+				if strings.EqualFold("default", *env.Name) {
+					r.EnvName = "default"
+					break
 				}
-				return err
 			}
 		}
 

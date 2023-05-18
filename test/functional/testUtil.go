@@ -49,7 +49,13 @@ func setDefault() (string, string) {
 	if imageTag == "" {
 		imageTag = "latest"
 	}
+
 	return defaultDockerReg, imageTag
+}
+
+type ProxyMetadata struct {
+	Hostname string
+	Status   string
 }
 
 func GetRecipeRegistry() string {
@@ -68,21 +74,24 @@ func GetRecipeVersion() string {
 	return "version=" + defaultVersion
 }
 
-// GetHostnameForHTTPProxy finds the fqdn set on the root HTTPProxy of the specified application
-func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, namespace, application string) (string, error) {
+// GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status (e.g. "Valid", "Invalid")
+func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, namespace, application string) (*ProxyMetadata, error) {
 	httpproxies, err := GetHTTPProxyList(ctx, client, namespace, application)
 	if err != nil {
-		return "", fmt.Errorf("could not retrieve list of cluster HTTPProxies: %w", err)
+		return nil, fmt.Errorf("could not retrieve list of cluster HTTPProxies: %w", err)
 	}
 
 	for _, httpProxy := range httpproxies.Items {
 		if httpProxy.Spec.VirtualHost != nil {
 			// Found a root proxy
-			return httpProxy.Spec.VirtualHost.Fqdn, nil
+			return &ProxyMetadata{
+				Hostname: httpProxy.Spec.VirtualHost.Fqdn,
+				Status:   httpProxy.Status.Description,
+			}, nil
 		}
 	}
 
-	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
+	return nil, fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
 // GetHTTPProxyList returns a list of HTTPProxies for the specified application
@@ -107,18 +116,21 @@ func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespa
 
 // ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan
 func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
-	serviceName := "contour-envoy"
-	label := "app.kubernetes.io/component=envoy"
+	selector := "app.kubernetes.io/component=envoy"
+	ExposePod(t, ctx, client, config, RadiusSystemNamespace, selector, remotePort, stopChan, portChan, errorChan)
+}
 
-	// Get the backing pod of the Ingress Service
-	pods, err := client.CoreV1().Pods(RadiusSystemNamespace).List(ctx, metav1.ListOptions{LabelSelector: label, Limit: 1})
+// ExposePod creates a port-forward session and sends the (assigned) local port to portChan
+func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, namespace string, selector string, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
+	// Find matching pods
+	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector, Limit: 1})
 	if err != nil {
 		errorChan <- err
 		return
 	}
 
 	if len(pods.Items) == 0 {
-		errorChan <- fmt.Errorf("no pods exist for service: %s", serviceName)
+		errorChan <- fmt.Errorf("no pods exist for selector: %s", selector)
 		return
 	}
 
@@ -127,7 +139,7 @@ func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, con
 	// Create API Server URL using pod name
 	url := client.CoreV1().RESTClient().Post().
 		Resource("pods").
-		Namespace(RadiusSystemNamespace).
+		Namespace(pod.Namespace).
 		Name(pod.Name).
 		SubResource("portforward").URL()
 

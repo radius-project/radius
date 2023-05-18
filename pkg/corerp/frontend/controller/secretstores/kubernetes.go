@@ -253,6 +253,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	// In order to get the secret data, we need to get the actual secret location from output resource.
 	newResource.Properties.Status.OutputResources = []rpv1.OutputResource{
 		{
+			LocalID: rpv1.LocalIDSecret,
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &resourcemodel.ResourceType{
 					Type:     resourcekinds.Secret,

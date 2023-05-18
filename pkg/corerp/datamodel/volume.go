@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const VolumeResourceType = "Applications.Core/volumes"
+
 const (
 	// AzureKeyVaultVolume represents the resource of azure keyvault volume.
 	AzureKeyVaultVolume string = "azure.com.keyvault"
@@ -28,7 +30,7 @@ type VolumeResource struct {
 
 // ResourceTypeName returns the qualified name of the resource
 func (h *VolumeResource) ResourceTypeName() string {
-	return "Applications.Core/volumes"
+	return VolumeResourceType
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.

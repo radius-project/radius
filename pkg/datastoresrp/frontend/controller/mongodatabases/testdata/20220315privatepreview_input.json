@@ -1,0 +1,16 @@
+{
+    "location": "West US",
+    "properties": {
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "mode": "resource",
+        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db",
+        "host": "testAccount1.mongo.cosmos.azure.com",
+        "port": 10255,
+        "secrets": {
+          "username": "testUser",
+          "password": "testPassword",
+          "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
+        }
+    }
+}

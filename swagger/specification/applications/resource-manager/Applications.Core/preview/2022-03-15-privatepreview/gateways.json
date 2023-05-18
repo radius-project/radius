@@ -358,6 +358,27 @@
             "sslPassthrough": {
               "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.",
               "type": "boolean"
+            },
+            "hostname": {
+              "description": "Hostname",
+              "type": "string"
+            },
+            "minimumProtocolVersion": {
+              "description": "TLS minimum protocol version (defaults to 1.2).",
+              "type": "string",
+              "enum": [
+                 "1.2",
+                 "1.3"
+              ],
+              "default": "1.2",
+              "x-ms-enum": {
+                  "name": "TlsMinVersion",
+                   "modelAsString": false
+               }
+            },
+            "certificateFrom": {
+              "description": "Declares which Kubernetes TLS secret will be used.",
+              "type": "string"
             }
           }
         },

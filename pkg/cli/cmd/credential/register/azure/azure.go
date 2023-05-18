@@ -136,7 +136,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// 1) Update server-side to add/change credentials
 	// 2) Update local config (all matching workspaces) to remove the scope
 
-	r.Output.LogInfo("Configuring credential for cloud provider %q for Radius installation %q...", "azure", r.Workspace.FmtConnection())
+	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "azure", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -162,5 +162,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	r.Output.LogInfo("Successfully registered credential for %q cloud provider. Tokens may take up to 30 seconds to refresh.", "azure")
+
 	return nil
 }

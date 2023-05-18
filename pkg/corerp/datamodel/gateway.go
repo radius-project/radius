@@ -10,6 +10,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const GatewayResourceType = "Applications.Core/gateways"
+
 // Gateway represents Gateway resource.
 type Gateway struct {
 	v1.BaseResource
@@ -22,7 +24,7 @@ type Gateway struct {
 
 // ResourceTypeName returns the qualified name of the resource
 func (g *Gateway) ResourceTypeName() string {
-	return "Applications.Core/gateways"
+	return GatewayResourceType
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
@@ -71,5 +73,42 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - Declare TLS information for the Gateway.
 type GatewayPropertiesTLS struct {
-	SSLPassthrough bool `json:"sslPassthrough,omitempty"`
+	SSLPassthrough         bool                      `json:"sslPassthrough,omitempty"`
+	Hostname               string                    `json:"hostname,omitempty"`
+	MinimumProtocolVersion MinimumTLSProtocolVersion `json:"minimumProtocolVersion,omitempty"`
+	CertificateFrom        string                    `json:"certificateFrom,omitempty"`
+}
+
+// IsValid returns whether or not the supplied MinimumTLSProtocolVersion is supported.
+func (m MinimumTLSProtocolVersion) IsValid() bool {
+	s := ValidMinimumTLSProtocolVersions()
+	for _, v := range s {
+		if v == m {
+			return true
+		}
+	}
+	return false
+}
+
+// IsEqualTo returns whether or not two MinimumTLSProtocolVersions are equal.
+func (m MinimumTLSProtocolVersion) IsEqualTo(minumumTLSProtocolVersion MinimumTLSProtocolVersion) bool {
+	return m == minumumTLSProtocolVersion
+}
+
+// MinimumTLSProtocolVersion represents the minimum TLS protocol version supported by the Gateway.
+type MinimumTLSProtocolVersion string
+
+const (
+	// TLS 1.2
+	TLSMinVersion12 MinimumTLSProtocolVersion = "1.2"
+	// TLS 1.3
+	TLSMinVersion13 MinimumTLSProtocolVersion = "1.3"
+)
+
+// ValidMinimumTLSProtocolVersions returns a list of valid MinimumTLSProtocolVersions.
+func ValidMinimumTLSProtocolVersions() []MinimumTLSProtocolVersion {
+	return []MinimumTLSProtocolVersion{
+		TLSMinVersion12,
+		TLSMinVersion13,
+	}
 }

@@ -21,7 +21,10 @@
                 }
               ],    
               "tls":{
-                "sslPassthrough": false
+                "sslPassthrough": false,
+                "hostname": "myapp.radapp.dev",
+                "minimumProtocolVersion": "1.2",
+                "certificateFrom": "myapp-tls-cert"
               }
             }
           },
@@ -39,7 +42,10 @@
                 }
               ],    
               "tls":{
-                "sslPassthrough": false
+                "sslPassthrough": false,
+                "hostname": "myapp.radapp.dev",
+                "minimumProtocolVersion": "1.2",
+                "certificateFrom": "myapp-tls-cert"
               }
             }
           }

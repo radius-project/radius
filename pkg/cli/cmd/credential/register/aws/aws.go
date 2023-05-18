@@ -122,7 +122,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad credential register aws` command.
 func (r *Runner) Run(ctx context.Context) error {
 
-	r.Output.LogInfo("Configuring credential for cloud provider %q for Radius installation %q...", "aws", r.Workspace.FmtConnection())
+	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "aws", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("Successfully Configured credential for cloud provider %q", "aws")
+	r.Output.LogInfo("Successfully registered credential for %q cloud provider. Tokens may take up to 30 seconds to refresh.", "aws")
 
 	return nil
 }

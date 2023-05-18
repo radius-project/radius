@@ -269,7 +269,31 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad init --dev chooses existing environment",
+			Name:          "rad init --dev chooses existing environment without default",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// Configure an existing environment - this will be chosen automatically
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.Ptr("myenv"),
+					},
+				})
+				initExistingEnvironmentSelection(mocks.Prompter, "myenv")
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "rad init --dev chooses existing environment with default",
 			Input:         []string{"--dev"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -287,7 +311,6 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("default"),
 					},
 				})
-				initExistingEnvironmentSelection(mocks.Prompter, "default")
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},

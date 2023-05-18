@@ -710,6 +710,124 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
+// ExtenderList - Object that includes an array of Extender and a possible link for next set
+type ExtenderList struct {
+	// The link used to fetch the next page of Extender list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of Extender resources
+	Value []*ExtenderResponseResource `json:"value,omitempty"`
+}
+
+// ExtenderProperties - Extender link properties
+type ExtenderProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]interface{}
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
+	// The secret values for the given Extender resource
+	Secrets map[string]interface{} `json:"secrets,omitempty"`
+
+	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// ExtenderResource - Extender link
+type ExtenderResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
+	// REQUIRED; Extender link properties
+	Properties *ExtenderProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// ExtenderResponseProperties - Extender link properties
+type ExtenderResponseProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]interface{}
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
+	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// ExtenderResponseResource - Extender link
+type ExtenderResponseResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
+	// REQUIRED; Extender link properties
+	Properties *ExtenderResponseProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// ExtendersClientCreateOrUpdateOptions contains the optional parameters for the ExtendersClient.CreateOrUpdate method.
+type ExtendersClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersClientDeleteOptions contains the optional parameters for the ExtendersClient.Delete method.
+type ExtendersClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersClientGetOptions contains the optional parameters for the ExtendersClient.Get method.
+type ExtendersClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersClientListByRootScopeOptions contains the optional parameters for the ExtendersClient.ListByRootScope method.
+type ExtendersClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersClientListSecretsOptions contains the optional parameters for the ExtendersClient.ListSecrets method.
+type ExtendersClientListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
@@ -773,6 +891,15 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - TLS configuration for the Gateway.
 type GatewayPropertiesTLS struct {
+	// Declares which Kubernetes TLS secret will be used.
+	CertificateFrom *string `json:"certificateFrom,omitempty"`
+
+	// Hostname
+	Hostname *string `json:"hostname,omitempty"`
+
+	// TLS minimum protocol version (defaults to 1.2).
+	MinimumProtocolVersion *TLSMinVersion `json:"minimumProtocolVersion,omitempty"`
+
 	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 	SSLPassthrough *bool `json:"sslPassthrough,omitempty"`
 }

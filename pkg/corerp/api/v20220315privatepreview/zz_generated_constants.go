@@ -210,6 +210,22 @@ func PossibleSecretValueEncodingValues() []SecretValueEncoding {
 	}
 }
 
+// TLSMinVersion - TLS minimum protocol version (defaults to 1.2).
+type TLSMinVersion string
+
+const (
+	TLSMinVersionOne2 TLSMinVersion = "1.2"
+	TLSMinVersionOne3 TLSMinVersion = "1.3"
+)
+
+// PossibleTLSMinVersionValues returns the possible values for the TLSMinVersion const type.
+func PossibleTLSMinVersionValues() []TLSMinVersion {
+	return []TLSMinVersion{	
+		TLSMinVersionOne2,
+		TLSMinVersionOne3,
+	}
+}
+
 // VolumePermission - Container read/write access to the volume
 type VolumePermission string
 

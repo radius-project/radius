@@ -24,7 +24,7 @@ import (
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
-	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateway"
+	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateways"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
 	secret_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/secretstores"
 	vol_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/volumes"

@@ -1,0 +1,60 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+using OpenAPI;
+
+@doc("Basic properties of a Radius resource.")
+model BasicResourceProperties {
+  @doc("Status of a resource.")
+  @visibility("read")
+  status?: ResourceStatus;
+
+  @doc("Fully qualified resource ID for the environment that the link is linked to")
+  environment: string;
+
+  @doc("Fully qualified resource ID for the application that the link is consumed by")
+  application?: Application
+}
+
+@doc("Basic properties of a Dapr component object.")
+model BasicDaprResourceProperties extends BasicResourceProperties{
+  @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
+  @visibility("read")
+  componentName?: string;
+}
+
+@doc("Status of a resource.")
+model ResourceStatus {
+  @doc("Properties of an output resource")
+  @extension("x-ms-identifiers", [])
+  outputResources?: OutputResource[];
+}
+
+@doc("Properties of an output resource.")
+model OutputResource {}
+
+@doc("Fully qualified resource ID for the application that the link is consumed by")
+scalar Application extends string;
+
+@doc("Provisioning state of the link at the time the operation was called")
+enum ProvisioningState {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
+
+@doc("The recipe used to automatically deploy underlying infrastructure for a link")
+model Recipe{
+  @doc("The name of the recipe within the environment to use")
+  name: string;
+  @doc("Key/value parameters to pass into the recipe at deployment")
+  parameters?: Parameters;
+}
+@doc("Key/value parameters to pass into the recipe at deployment")
+model Parameters{}

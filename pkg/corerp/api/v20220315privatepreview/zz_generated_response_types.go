@@ -89,6 +89,32 @@ type EnvironmentsClientUpdateResponse struct {
 	EnvironmentResource
 }
 
+// ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.CreateOrUpdate.
+type ExtendersClientCreateOrUpdateResponse struct {
+	ExtenderResponseResource
+}
+
+// ExtendersClientDeleteResponse contains the response from method ExtendersClient.Delete.
+type ExtendersClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
+type ExtendersClientGetResponse struct {
+	ExtenderResponseResource
+}
+
+// ExtendersClientListByRootScopeResponse contains the response from method ExtendersClient.ListByRootScope.
+type ExtendersClientListByRootScopeResponse struct {
+	ExtenderList
+}
+
+// ExtendersClientListSecretsResponse contains the response from method ExtendersClient.ListSecrets.
+type ExtendersClientListSecretsResponse struct {
+	// The secret values for the given Extender resource
+	Value map[string]interface{}
+}
+
 // GatewaysClientCreateOrUpdateResponse contains the response from method GatewaysClient.CreateOrUpdate.
 type GatewaysClientCreateOrUpdateResponse struct {
 	GatewayResource

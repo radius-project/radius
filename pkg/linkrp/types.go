@@ -83,6 +83,17 @@ const (
 	RabbitMQMessageQueuesResourceType = "Applications.Link/rabbitMQMessageQueues"
 	RedisCachesResourceType           = "Applications.Link/redisCaches"
 	SqlDatabasesResourceType          = "Applications.Link/sqlDatabases"
+
+	/* The following are new temporary resource type names. These values will replace the above resource type names after
+	testing for the new namespaces is completed. (https://github.com/project-radius/radius/issues/3499)
+	*/
+	N_DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
+	N_DaprSecretStoresResourceType  = "Applications.Dapr/secretStores"
+	N_DaprStateStoresResourceType   = "Applications.Dapr/stateStores"
+	N_RabbitMQQueuesResourceType    = "Applications.Messaging/rabbitMQQueues"
+	N_MongoDatabasesResourceType    = "Applications.Datastores/mongoDatabases"
+	N_RedisCachesResourceType       = "Applications.Datastores/redisCaches"
+	N_SqlDatabasesResourceType      = "Applications.Datastores/sqlDatabases"
 )
 
 // ResourceProvisioning specifies how the resource should be managed
