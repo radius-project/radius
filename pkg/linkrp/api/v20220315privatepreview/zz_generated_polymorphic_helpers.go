@@ -117,25 +117,3 @@ func unmarshalRabbitMQMessageQueuePropertiesClassification(rawMsg json.RawMessag
 	return b, json.Unmarshal(rawMsg, b)
 }
 
-func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b SQLDatabasePropertiesClassification
-	switch m["mode"] {
-	case "recipe":
-		b = &RecipeSQLDatabaseProperties{}
-	case "resource":
-		b = &ResourceSQLDatabaseProperties{}
-	case "values":
-		b = &ValuesSQLDatabaseProperties{}
-	default:
-		b = &SQLDatabaseProperties{}
-	}
-	return b, json.Unmarshal(rawMsg, b)
-}
-

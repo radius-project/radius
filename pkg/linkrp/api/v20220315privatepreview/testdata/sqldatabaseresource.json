@@ -1,20 +1,73 @@
-{
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0",
-    "name": "sql0",
-    "type": "Applications.Link/sqlDatabases",
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "azure.sql.database",
-                "Provider": "azure"
-              }
-            }]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
-        "mode": "resource"
+[
+    {
+        "description":"sqldatabaseresource_recipe",
+        "payload":{
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0",
+            "name": "sql0",
+            "type": "Applications.Link/sqlDatabases",
+            "properties": {
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+                "recipe": {
+                    "name": "sql-test",
+                    "parameters":{
+                        "foo":"bar"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "description":"sqldatabaseresource",
+        "payload":{
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0",
+            "name": "sql0",
+            "type": "Applications.Link/sqlDatabases",
+            "properties": {
+                "status": {
+                    "outputResources": [{
+                      "LocalID": "Deployment",
+                      "ResourceType": {
+                        "Type": "azure.sql.database",
+                        "Provider": "azure"
+                      }
+                    }]
+                },
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+                "resourceProvisioning":"manual",
+                "resources": [
+                    {
+                        "id":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+                    }
+                ],
+                "database": "testDatabase",
+                "server":"testAccount1.sql.cosmos.azure.com"
+            }
+        }
+    },
+    {
+        "description":"sqldatabaseresource",
+        "payload":{
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0",
+            "name": "sql0",
+            "type": "Applications.Link/sqlDatabases",
+            "properties": {
+                "status": {
+                    "outputResources": [{
+                    "LocalID": "Deployment",
+                    "ResourceType": {
+                        "Type": "azure.sql.database",
+                        "Provider": "azure"
+                    }
+                    }]
+                },
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+                "resourceProvisioning":"manual",
+                "database": "testDatabase",
+                "server": "testAccount1.sql.cosmos.azure.com"
+            }
+        }
     }
-}
+]

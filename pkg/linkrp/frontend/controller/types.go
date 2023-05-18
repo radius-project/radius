@@ -18,6 +18,11 @@ var (
 	// AsyncDeleteMongoDatabaseTimeout is the timeout for async delete mongo database
 	AsyncDeleteMongoDatabaseTimeout = time.Duration(15) * time.Minute
 
+	// AsyncCreateOrUpdateSqlTimeout is the timeout for async create or update sql database
+	AsyncCreateOrUpdateSqlDatabaseTimeout = time.Duration(10) * time.Minute
+	// AsyncDeleteSqlDatabaseTimeout is the timeout for async delete sql database
+	AsyncDeleteSqlDatabaseTimeout = time.Duration(15) * time.Minute
+
 	// AsyncCreateOrUpdateRedisCacheTimeout is the timeout for async create or update redis cache
 	AsyncCreateOrUpdateRedisCacheTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteRedisCacheTimeout is the timeout for async delete redis cache

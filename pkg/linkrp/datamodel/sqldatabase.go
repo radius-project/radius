@@ -11,6 +11,14 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+// Recipe returns the recipe for the SqlDatabase
+func (sql *SqlDatabase) Recipe() *linkrp.LinkRecipe {
+	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
+	return &sql.Properties.Recipe
+}
+
 // SqlDatabase represents SqlDatabase link resource.
 type SqlDatabase struct {
 	v1.BaseResource
@@ -45,9 +53,9 @@ func (sql *SqlDatabase) ResourceTypeName() string {
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
 	rpv1.BasicResourceProperties
-	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
-	Resource string            `json:"resource,omitempty"`
-	Database string            `json:"database,omitempty"`
-	Server   string            `json:"server,omitempty"`
-	Mode     LinkMode          `json:"mode,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Database             string                      `json:"database,omitempty"`
+	Server               string                      `json:"server,omitempty"`
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
 }

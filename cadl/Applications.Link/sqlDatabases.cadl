@@ -33,52 +33,27 @@ using OpenAPI;
 namespace Applications.Link;
 
 interface Operations extends Azure.ResourceManager.Operations {}
-
-@doc("SqlDatabase Properties for Mode Resource")
-model ResourceSqlDatabaseProperties extends SqlDatabaseProperties{
-  @doc("How to build the Sql database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "resource";
-
-  @doc("Fully qualified resource ID of a supported resource with Sql API to use for this link")
-  resource: string;
-
-  @doc("The name of the Sql database.")
-  database?: string;
-
-  @doc("The fully qualified domain name of the Sql database.")
-  server?: string;
-}
-@doc("SqlDatabase Properties for Mode Values")
-model ValuesSqlDatabaseProperties extends SqlDatabaseProperties{
-  @doc("How to build the Sql database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
-  
-  @doc("The name of the Sql database.")
-  database: string;
-
-  @doc("The fully qualified domain name of the Sql database.")
-  server: string;
-}
-@doc("SqlDatabase Properties for Mode Recipe")
-model RecipeSqlDatabaseProperties extends SqlDatabaseProperties{
-  @doc("How to build the Sql database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "recipe";
-
-  @doc("The recipe used to automatically deploy underlying infrastructure for the sqldatabases link")
-  recipe: Recipe;
-
-  @doc("The name of the Sql database.")
-  database?: string;
-
-  @doc("The fully qualified domain name of the Sql database.")
-  server?: string;
-}
 @doc("SqlDatabase properties")
-@discriminator("mode")
 model SqlDatabaseProperties extends BasicResourceProperties {
   @doc("Provisioning state of the Sql database link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
+
+  @doc("The name of the Sql database.")
+  database?: string;
+
+  @doc("The fully qualified domain name of the Sql database.")
+  server?: string;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the sqldatabases link")
+  recipe?: Recipe;
+
+  @doc("List of the resource IDs that support the SqlDatabase resource")
+  resources?: ResourceReference[];
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
+
 }
 
 @doc("SqlDatabase link")

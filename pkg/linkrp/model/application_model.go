@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/sdk"
 
@@ -40,10 +39,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Renderer:     &mongodatabases.Renderer{},
-		},
-		{
-			ResourceType: linkrp.SqlDatabasesResourceType,
-			Renderer:     &sqldatabases.Renderer{},
 		},
 		{
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
@@ -124,20 +119,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewARMHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureSqlServer,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewARMHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureSqlServerDatabase,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
