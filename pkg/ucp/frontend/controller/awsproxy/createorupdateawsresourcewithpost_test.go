@@ -107,7 +107,6 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_UpdateAWSResourceWithPost(t *testing.T) {
-	t.Skip()
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
