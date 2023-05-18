@@ -169,7 +169,12 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 }
 
 func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error) {
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
+	// Some deployments are initiated by LinkRP. Therefore, we need to filter for deployments
+	// initiated by CoreRP only.
+	deploymentOptions := informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
+		opts.LabelSelector = kubernetes.LabelDeployedBy + "=" + kubernetes.CoreRP
+	})
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()), deploymentOptions)
 
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{

@@ -472,6 +472,9 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	outputResources = append(outputResources, *roleBinding)
 	deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDKubernetesRoleBinding})
 
+	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
+	labels[kubernetes.LabelDeployedBy] = kubernetes.CoreRP
+
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -480,7 +483,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.NormalizeResourceName(resource.Name),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
+			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
