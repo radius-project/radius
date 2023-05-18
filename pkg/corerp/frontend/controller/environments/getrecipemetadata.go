@@ -72,6 +72,7 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 	}
 
 	ret := datamodel.EnvironmentRecipeProperties{
+		TemplateKind: recipeProperties.TemplateKind,
 		TemplatePath: recipeProperties.TemplatePath,
 		Parameters:   recipeParams,
 	}

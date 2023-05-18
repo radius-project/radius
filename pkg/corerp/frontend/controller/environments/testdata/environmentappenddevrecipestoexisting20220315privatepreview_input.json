@@ -9,11 +9,13 @@
     "recipes": {
       "Applications.Link/redisCaches":{
         "redis": {
+          "templateKind": "bicep",
           "templatePath": "radiusdev.azurecr.io/redis:1.0"
         }
       },
       "Applications.Link/sqlDatabases":{
         "sql": {
+          "templateKind": "bicep",
           "templatePath": "radiusdev.azurecr.io/sql:1.0"
         }
       }     

@@ -19,6 +19,7 @@
     "recipes": {
       "Applications.Link/mongoDatabases":{
         "cosmos-recipe": {
+          "templateKind": "bicep",
           "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
           "parameters":{
             "throughput": 400
@@ -27,6 +28,7 @@
       },
       "Applications.Link/redisCaches":{
         "redis-recipe": {
+          "templateKind": "bicep",
           "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscaches"
         }
       }

@@ -24,6 +24,7 @@ func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) e
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
+	dst.TemplateKind = to.Ptr(recipe.TemplateKind)
 	dst.TemplatePath = to.Ptr(recipe.TemplatePath)
 	dst.Parameters = recipe.Parameters
 	return nil

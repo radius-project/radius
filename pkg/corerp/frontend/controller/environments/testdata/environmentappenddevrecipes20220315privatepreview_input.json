@@ -9,6 +9,7 @@
         "recipes": {
             "Applications.Link/redisCaches":{
                 "redis": {
+                    "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/redis:1.0"
                 }
             }

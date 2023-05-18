@@ -9,6 +9,7 @@
         "recipes": {
             "Applications.Link/mongoDatabases":{
                 "mongo-azure": {
+                    "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/test/mongo:1.0"
                 }
             }
