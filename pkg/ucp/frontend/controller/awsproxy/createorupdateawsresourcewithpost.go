@@ -203,15 +203,3 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.basePath)
 	return resp, nil
 }
-
-func CloudControlRegionOption(region string) func(*cloudcontrol.Options) {
-	return func(o *cloudcontrol.Options) {
-		o.Region = region
-	}
-}
-
-func CloudFormationWithRegionOption(region string) func(*cloudformation.Options) {
-	return func(o *cloudformation.Options) {
-		o.Region = region
-	}
-}
