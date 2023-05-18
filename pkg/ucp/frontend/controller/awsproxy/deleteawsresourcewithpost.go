@@ -48,25 +48,12 @@ func NewDeleteAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controll
 func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	region, err := readRegionFromRequest(req.URL.Path, p.basePath)
-	if err != nil {
-		e := v1.ErrorResponse{
-			Error: v1.ErrorDetails{
-				Code:    v1.CodeInvalid,
-				Message: "failed to read region from request path",
-			},
-		}
-
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return *errResponse, nil
 	}
 
-	cloudControlOpts := []func(*cloudcontrol.Options){}
-	cloudControlOpts = append(cloudControlOpts, CCWithRegion(region))
-
+	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
 		e := v1.ErrorResponse{
@@ -78,7 +65,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	cloudFormationOpts := []func(*cloudformation.Options){CFWithRegion(region)}
+	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
 	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),

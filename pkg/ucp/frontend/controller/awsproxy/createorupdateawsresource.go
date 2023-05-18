@@ -50,24 +50,13 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
-	region, err := readRegionFromRequest(req.URL.Path, p.basePath)
-	if err != nil {
-		e := v1.ErrorResponse{
-			Error: v1.ErrorDetails{
-				Code:    v1.CodeInvalid,
-				Message: "failed to read region from request path",
-			},
-		}
-
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return *errResponse, nil
 	}
 
 	body := map[string]any{}
-	err = decoder.Decode(&body)
+	err := decoder.Decode(&body)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -77,10 +66,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 
 		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return response, nil
 	}
 
 	properties := map[string]any{}
@@ -92,8 +78,8 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
-	cloudControlOpts := []func(*cloudcontrol.Options){CCWithRegion(region)}
-	cloudFormationOpts := []func(*cloudformation.Options){CFWithRegion(region)}
+	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
+	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
 
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
