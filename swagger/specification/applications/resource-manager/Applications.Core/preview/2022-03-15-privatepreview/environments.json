@@ -499,7 +499,6 @@
         }
       },
       "required": [
-        "templateKind",
         "templatePath"
       ]
     },

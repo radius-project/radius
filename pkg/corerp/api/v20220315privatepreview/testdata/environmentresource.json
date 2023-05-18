@@ -31,6 +31,12 @@
           "templateKind": "bicep",
           "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscaches"
         }
+      },
+      "Applications.Link/daprStateStores":{
+        "statestore-recipe": {
+          "templateKind": "terraform",
+          "templatePath": "Azure/storage/azurerm"
+        }
       }
     },
     "extensions": [

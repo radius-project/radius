@@ -120,6 +120,12 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/rediscaches",
 							},
 						},
+						linkrp.DaprStateStoresResourceType: {
+							"statestore-recipe": datamodel.EnvironmentRecipeProperties{
+								TemplateKind: recipes.TemplateKindTerraform,
+								TemplatePath: "Azure/storage/azurerm",
+							},
+						},
 					},
 					Extensions: getTestKubernetesMetadataExtensions(t),
 				},
