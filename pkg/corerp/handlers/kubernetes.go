@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -110,6 +111,8 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	readinessCh := make(chan bool, 1)
 	watchErrorCh := make(chan error, 1)
 	go func() {
@@ -132,6 +135,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 
 		return nil, fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 	case <-readinessCh:
+		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Marking the deployment as complete", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	case <-watchErrorCh:
 		return nil, err
@@ -177,12 +181,7 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 }
 
 func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error) {
-	// Some deployments are initiated by LinkRP. Therefore, we need to filter for deployments
-	// initiated by CoreRP only.
-	deploymentOptions := informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-		opts.LabelSelector = kubernetes.LabelDeployedBy + "=" + kubernetes.CoreRP
-	})
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()), deploymentOptions)
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -190,6 +189,12 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 			obj, ok := new_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
+				return
+			}
+
+			// There might be parallel deployments in progress, we need to make sure we are watching the right one
+			if obj.Name != item.GetName() {
+				return
 			}
 
 			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
@@ -198,10 +203,17 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 			old, ok := old_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("old deployment object is not of appsv1.Deployment type")
+				return
 			}
 			new, ok := new_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("new deployment object not of appsv1.Deployment type")
+				return
+			}
+
+			// There might be parallel deployments in progress, we need to make sure we are watching the right one
+			if new.Name != item.GetName() {
+				return
 			}
 			if old.ResourceVersion != new.ResourceVersion {
 				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
@@ -219,12 +231,15 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 }
 
 func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment, readinessCh chan<- bool) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	for _, c := range obj.Status.Conditions {
 		// check for complete deployment condition
+		logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s", obj.Name, obj.Namespace, c.Type, c.Status, c.Reason))
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
 		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
 			// ObservedGeneration should be updated to latest generation to avoid stale replicas
 			if obj.Status.ObservedGeneration >= obj.Generation {
+				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", obj.Name, obj.Namespace))
 				readinessCh <- true
 			}
 		}

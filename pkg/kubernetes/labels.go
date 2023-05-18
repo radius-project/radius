@@ -28,7 +28,6 @@ const (
 	LabelPartOf             = "app.kubernetes.io/part-of"
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
-	LabelDeployedBy         = "app.kubernetes.io/deployed-by"
 
 	// TODO: Are we removing this too?
 	LabelManagedByRadiusRP = "radius-rp"
@@ -36,8 +35,6 @@ const (
 	// TODO: Are we removing this too?
 	FieldManager = "radius-rp"
 	ControlPlane = "radius-control-plane"
-
-	CoreRP = "appcore-rp"
 
 	AnnotationSecretHash = "radius.dev/secret-hash"
 	RadiusDevPrefix      = "radius.dev/"
