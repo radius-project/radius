@@ -20,7 +20,7 @@ ifeq ($(GOOS),windows)
 endif
 
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 	
 .PHONY: generate-cadl-installed
 generate-cadl-installed:
