@@ -58,6 +58,9 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
+					if !isValidTemplateKind(*recipeDetails.TemplateKind) {
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid template kind: %q", *recipeDetails.TemplateKind))
+					}
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
 						TemplateKind: to.String(recipeDetails.TemplateKind),
 						TemplatePath: to.String(recipeDetails.TemplatePath),

@@ -10,6 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"golang.org/x/exp/slices"
@@ -123,4 +124,8 @@ func isValidLinkType(link string) bool {
 		linkrp.SqlDatabasesResourceType,
 	}
 	return slices.Contains(linkTypes, link)
+}
+
+func isValidTemplateKind(link string) bool {
+	return slices.Contains(recipes.SupportedTemplateKind, link)
 }

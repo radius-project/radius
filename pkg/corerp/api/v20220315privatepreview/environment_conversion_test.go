@@ -222,6 +222,10 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			filename: "environmentresource-invalid-linktype.json",
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid link type: \"Applications.Link/pubsub\""},
 		},
+		{
+			filename: "environmentresource-invalid-templatekind.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind: \"helm\""},
+		},
 	}
 
 	for _, tt := range conversionTests {
@@ -236,6 +240,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 
 			if tt.err != nil {
 				require.ErrorIs(t, err, tt.err)
+				require.Equal(t, tt.err.Error(), err.Error())
 			} else {
 				require.NoError(t, err)
 				ct := dm.(*datamodel.Environment)

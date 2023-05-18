@@ -75,6 +75,10 @@ const (
 	TemplateKindTerraform = "terraform"
 )
 
+var (
+	SupportedTemplateKind = []string{TemplateKindBicep, TemplateKindTerraform}
+)
+
 type ErrRecipeNotFound struct {
 	Name        string
 	Environment string
