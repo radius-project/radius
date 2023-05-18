@@ -113,6 +113,10 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 									"throughput": float64(400),
 								},
 							},
+							"terraform-recipe": datamodel.EnvironmentRecipeProperties{
+								TemplateKind: recipes.TemplateKindTerraform,
+								TemplatePath: "Azure/cosmosdb/azurerm",
+							},
 						},
 						linkrp.RedisCachesResourceType: {
 							"redis-recipe": datamodel.EnvironmentRecipeProperties{
