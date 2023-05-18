@@ -8,8 +8,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"sort"
 	"testing"
 
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -250,8 +248,6 @@ func Test_Render_Basic(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
-	labels[kubernetes.LabelDeployedBy] = kubernetes.CoreRP
-	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 	matchLabels := kubernetes.MakeSelectorLabels(applicationName, resource.Name)
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -270,8 +266,8 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
-		assertMapsEqual(t, labels, deployment.Labels)
-		require.Equal(t, podLabels, deployment.Spec.Template.Labels)
+		require.Equal(t, labels, deployment.Labels)
+		require.Equal(t, labels, deployment.Spec.Template.Labels)
 		require.Equal(t, matchLabels, deployment.Spec.Selector.MatchLabels)
 
 		// See https://github.com/project-radius/radius/issues/3002
@@ -329,8 +325,6 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
-	labels[kubernetes.LabelDeployedBy] = kubernetes.CoreRP
-	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 	matchLabels := kubernetes.MakeSelectorLabels(applicationName, resource.Name)
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -349,8 +343,8 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
-		assertMapsEqual(t, labels, deployment.Labels)
-		require.Equal(t, podLabels, deployment.Spec.Template.Labels)
+		require.Equal(t, labels, deployment.Labels)
+		require.Equal(t, labels, deployment.Spec.Template.Labels)
 		require.Equal(t, matchLabels, deployment.Spec.Selector.MatchLabels)
 
 		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
@@ -443,7 +437,6 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
-	labels[kubernetes.LabelDeployedBy] = kubernetes.CoreRP
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 	podLabels["radius.dev/route-httproutes-a"] = "true"
 
@@ -455,7 +448,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		container := deployment.Spec.Template.Spec.Containers[0]
 
 		// Labels are somewhat specialized when a route is involved
-		assertMapsEqual(t, labels, deployment.Labels)
+		require.Equal(t, labels, deployment.Labels)
 		require.Equal(t, podLabels, deployment.Spec.Template.Labels)
 
 		require.Len(t, container.Ports, 1)
@@ -1470,37 +1463,4 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 
 		require.Equal(t, expectedLivenessProbe, container.LivenessProbe)
 	})
-}
-
-func assertMapsEqual(t *testing.T, expected, actual map[string]string) {
-	// Get the keys of both maps
-	expectedKeys := make([]string, 0, len(expected))
-	for k := range expected {
-		expectedKeys = append(expectedKeys, k)
-	}
-	actualKeys := make([]string, 0, len(actual))
-	for k := range actual {
-		actualKeys = append(actualKeys, k)
-	}
-
-	// Sort the keys
-	sort.Strings(expectedKeys)
-	sort.Strings(actualKeys)
-
-	// Compare the lengths of the maps
-	if len(expected) != len(actual) {
-		t.Errorf("Maps have different lengths")
-	}
-
-	// Compare the sorted keys
-	if !reflect.DeepEqual(expectedKeys, actualKeys) {
-		t.Errorf("Map keys are different")
-	}
-
-	// Compare the values for each key
-	for _, k := range expectedKeys {
-		if expected[k] != actual[k] {
-			t.Errorf("Maps are different")
-		}
-	}
 }
