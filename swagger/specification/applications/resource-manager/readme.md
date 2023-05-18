@@ -51,6 +51,7 @@ input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/containers.json
   - Applications.Core/preview/2022-03-15-privatepreview/volumes.json
   - Applications.Core/preview/2022-03-15-privatepreview/secretstores.json
+  - Applications.Core/preview/2022-03-15-privatepreview/extenders.json
 ```
 
 ### Tag: package-link-2022-03-15-privatepreview
@@ -61,6 +62,30 @@ These settings apply only when `--tag=package-link-2022-03-15-privatepreview` is
 input-file:
   - Applications.Link/preview/2022-03-15-privatepreview/openapi.json
   - Applications.Link/preview/2022-03-15-privatepreview/extenders.json
+```
+### Tag: package-dapr-2022-03-15-privatepreview
+
+These settings apply only when `--tag=package-dapr-2022-03-15-privatepreview` is specified on the command line.
+
+``` yaml $(tag) == 'package-dapr-2022-03-15-privatepreview'
+input-file:
+  - Applications.Dapr/preview/2022-03-15-privatepreview/openapi.json
+```
+### Tag: package-datastores-2022-03-15-privatepreview
+
+These settings apply only when `--tag=package-datastores-2022-03-15-privatepreview` is specified on the command line.
+
+``` yaml $(tag) == 'package-datastores-2022-03-15-privatepreview'
+input-file:
+  - Applications.Datastores/preview/2022-03-15-privatepreview/openapi.json
+```
+### Tag: package-messaging-2022-03-15-privatepreview
+
+These settings apply only when `--tag=package-messaging-2022-03-15-privatepreview` is specified on the command line.
+
+``` yaml $(tag) == 'package-messaging-2022-03-15-privatepreview'
+input-file:
+  - Applications.Messaging/preview/2022-03-15-privatepreview/openapi.json
 ```
 
 # Code Generation

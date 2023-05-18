@@ -1,0 +1,37 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+    "name": "mongo0",
+    "type": "Applications.Datastores/mongoDatabases",
+    "systemData": {
+        "createdBy": "fakeid@live.com",
+        "createdByType": "User",
+        "createdAt": "2021-09-24T19:09:54.2403864Z",
+        "lastModifiedBy": "fakeid@live.com",
+        "lastModifiedByType": "User",
+        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+    },
+    "tags": {
+        "env": "dev"
+    },
+    "properties": {
+        "status": {
+            "outputResources": [{
+              "LocalID": "AzureCosmosAccount",
+              "ResourceType": {
+                "Type": "azure.cosmosdb.mongo",
+                "Provider": "azure"
+              }
+            }]
+        },
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "mode": "values",
+        "host": "testAccount1.mongo.cosmos.azure.com",
+        "port": 10255,
+        "secrets": {
+          "username": "testUser",
+          "password": "testPassword",
+          "connectionString": "test-connection-string"
+        }
+    }
+}

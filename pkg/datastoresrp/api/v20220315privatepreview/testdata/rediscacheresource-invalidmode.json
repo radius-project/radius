@@ -1,0 +1,8 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/redisCaches/redis0",
+    "name": "redis0",
+    "type": "Applications.Datastores/redisCaches",
+    "properties": {
+        "mode": "abc"
+    }
+}
