@@ -38,7 +38,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-redis-recipe-app'
+          namespace: 'corerp-resources-redis-default-recipe-app'
       }
     ]
   }
