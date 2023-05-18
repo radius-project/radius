@@ -69,8 +69,6 @@ type RecipeOutput struct {
 }
 
 const (
-	DriverBicep = "bicep"
-
 	TemplateKindBicep     = "bicep"
 	TemplateKindTerraform = "terraform"
 )
