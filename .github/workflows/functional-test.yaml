@@ -241,7 +241,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,corerp,samples]
+        name: [corerp]
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}

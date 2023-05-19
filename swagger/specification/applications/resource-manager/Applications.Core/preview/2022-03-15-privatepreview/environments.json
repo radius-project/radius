@@ -481,7 +481,7 @@
           "type": "string"
         },
         "templatePath": {
-          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported for Bicep and public Terraform registries are supported for Terraform.",
+          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
           "type": "string"
         },
         "parameters": {
