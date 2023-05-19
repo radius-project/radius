@@ -58,9 +58,9 @@ type TerraformDefinition struct {
 }
 
 type ModuleData struct {
-	Source     string                 `json:"source"`
-	Version    string                 `json:"version"`
-	Parameters map[string]interface{} `json:",inline"`
+	Source     string `json:"source"`
+	Version    string `json:"version"`
+	Parameters map[string]interface{}
 }
 
 func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.Metadata, definition recipes.Definition) (*recipes.RecipeOutput, error) {
@@ -207,11 +207,13 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 		Module: map[string]ModuleData{
 			"cosmosdb": {
 				Source:     templatePath,
-				Version:    "1.0.0", // TODO determine how to pass this in.
+				Version:    "1.0.0",
 				Parameters: generateInputParameters(resourceGroup),
 			},
 		},
 	}
+
+	// tfConfig.Module["cosmosdb"] = generateModuleData(templatePath, resourceGroup)
 
 	// Convert the Terraform config to JSON
 	jsonData, err := json.MarshalIndent(tfConfig, "", "  ")
@@ -371,6 +373,46 @@ func (d *terraformDriver) fetchAWSCredentials() (*credentials.AWSCredential, err
 
 	return credentials, nil
 }
+
+// TODO hardcoded parameters for testing. Pending integration with parameters provided by the operator and developer
+/*
+func generateModuleData(source, resourceGroup string) ModuleData {
+	moduleData := ModuleData{
+		Source:                source,
+		Version:               "1.0.0",
+		"cosmos_account_name": "tf-test",
+		"cosmos_api":          "mongo",
+		"mongo_dbs": map[string]interface{}{
+			"one": map[string]interface{}{
+				"db_name":           "tf-test-db",
+				"db_throughput":     400,
+				"db_max_throughput": nil,
+			},
+		},
+		"mongo_db_collections": map[string]interface{}{
+			"one": map[string]interface{}{
+				"collection_name":           "tf-test-collection",
+				"db_name":                   "dbautoscale",
+				"default_ttl_seconds":       "2592000",
+				"shard_key":                 "MyShardKey",
+				"collection_throughout":     400,
+				"collection_max_throughput": nil,
+				"analytical_storage_ttl":    nil,
+				"indexes": map[string]interface{}{
+					"indexone": map[string]interface{}{
+						"mongo_index_keys":   []interface{}{"_id"},
+						"mongo_index_unique": true,
+					},
+				},
+			},
+		},
+		"location":            "westus2",
+		"resource_group_name": resourceGroup,
+	}
+
+	return moduleData
+}
+*/
 
 // TODO hardcoded for testing. Pending integration with parameters provided by the operator and developer
 func generateInputParameters(resourceGroup string) map[string]interface{} {
