@@ -135,7 +135,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 
 		return nil, fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 	case <-readinessCh:
-		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Marking the deployment as complete", item.GetName(), item.GetNamespace()))
+		logger.Info(fmt.Sprintf("Marking deployment %s in namespace %s as complete", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	case <-watchErrorCh:
 		return nil, err
@@ -234,12 +234,12 @@ func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context,
 	logger := ucplog.FromContextOrDiscard(ctx)
 	for _, c := range obj.Status.Conditions {
 		// check for complete deployment condition
-		logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s", obj.Name, obj.Namespace, c.Type, c.Status, c.Reason))
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
 		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
+			logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s", obj.Name, obj.Namespace, c.Type, c.Status, c.Reason))
 			// ObservedGeneration should be updated to latest generation to avoid stale replicas
 			if obj.Status.ObservedGeneration >= obj.Generation {
-				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", obj.Name, obj.Namespace))
+				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
 				readinessCh <- true
 			}
 		}
