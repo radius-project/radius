@@ -550,14 +550,14 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
+	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep
+	TemplateKind *string `json:"templateKind,omitempty"`
+
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string `json:"templatePath,omitempty"`
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
-
-	// Format of the template provided by the recipe. Allowed values: bicep
-	TemplateKind *string `json:"templateKind,omitempty"`
 }
 
 // EnvironmentResource - Application environment.
