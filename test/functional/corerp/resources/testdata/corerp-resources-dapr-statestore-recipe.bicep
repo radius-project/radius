@@ -27,6 +27,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/daprStateStores':{
         daprstatestore: {
+          templateKind: 'bicep'
           templatePath: '${registry}/test/functional/corerp/recipes/dapr_state_store_recipe:${version}' 
         }
       }
