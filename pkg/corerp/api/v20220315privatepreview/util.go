@@ -126,6 +126,6 @@ func isValidLinkType(link string) bool {
 	return slices.Contains(linkTypes, link)
 }
 
-func isValidTemplateKind(link string) bool {
-	return slices.Contains(recipes.SupportedTemplateKind, link)
+func isValidTemplateKind(templateKind string) bool {
+	return slices.Contains(recipes.SupportedTemplateKind, templateKind)
 }

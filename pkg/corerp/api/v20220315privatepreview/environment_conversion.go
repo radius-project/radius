@@ -56,18 +56,14 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
-					// Temporary check until we make templateKind required and enum in the schema
-					var templateKind = "bicep"
-					if recipeDetails.TemplateKind != nil {
-						templateKind = *recipeDetails.TemplateKind
-					}
-
-					if !isValidTemplateKind(templateKind) {
-						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid template kind: %q", *recipeDetails.TemplateKind))
+					// TODO: Allowed format hard coded to Bicep in the error until Terraform support is officially imlemented.
+					// This check shouldn't be needed once we define an enum for templateKind in the schema.
+					if recipeDetails.TemplateKind == nil || !isValidTemplateKind(*recipeDetails.TemplateKind) {
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("invalid template kind. Allowed formats: \"bicep\"")
 					}
 
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
-						TemplateKind: templateKind,
+						TemplateKind: *recipeDetails.TemplateKind,
 						TemplatePath: to.String(recipeDetails.TemplatePath),
 						Parameters:   recipeDetails.Parameters,
 					}
