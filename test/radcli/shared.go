@@ -127,7 +127,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 
 			err = cmd.ValidateArgs(cmd.Flags().Args())
 			if err != nil && testcase.ExpectedValid {
-				require.NoError(t, err, "validation should have failed but it passed")
+				require.NoError(t, err, "validation should have passed but it failed")
 			} else if err != nil {
 				// We expected this to fail, so it's OK if it does. No need to run Validate.
 				return
@@ -135,7 +135,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 
 			err = validateRequiredFlags(cmd)
 			if err != nil && testcase.ExpectedValid {
-				require.NoError(t, err, "validation should have failed but it passed")
+				require.NoError(t, err, "validation should have passed but it failed")
 			} else if err != nil {
 				// We expected this to fail, so it's OK if it does. No need to run Validate.
 				return
