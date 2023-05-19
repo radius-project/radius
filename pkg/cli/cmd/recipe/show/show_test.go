@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -81,80 +82,141 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Show recipes details", func(t *testing.T) {
-		t.Run("Success", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-
-			envRecipe := v20220315privatepreview.EnvironmentRecipeProperties{
-				TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
-				Parameters: map[string]any{
-					"throughput": map[string]any{
-						"type":     "float64",
-						"maxValue": float64(800),
-					},
-					"sku": map[string]any{
-						"type": "string",
-					},
+	t.Run("Show recipes details - Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		envRecipe := v20220315privatepreview.EnvironmentRecipeProperties{
+			TemplateKind: to.Ptr(types.TemplateKindBicep),
+			TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+			Parameters: map[string]any{
+				"throughput": map[string]any{
+					"type":     "float64",
+					"maxValue": float64(800),
 				},
-			}
-			recipe := Recipe{
-				Name:         "cosmosDB",
-				LinkType:     linkrp.MongoDatabasesResourceType,
-				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			}
-			recipeParams := []RecipeParameter{
-				{
-					Name:         "throughput",
-					Type:         "float64",
-					MaxValue:     "800",
-					MinValue:     "-",
-					DefaultValue: "-",
+				"sku": map[string]any{
+					"type": "string",
 				},
-				{
-					Name:         "sku",
-					Type:         "string",
-					MaxValue:     "-",
-					MinValue:     "-",
-					DefaultValue: "-",
+			},
+		}
+		recipe := types.EnvironmentRecipe{
+			Name:         "cosmosDB",
+			LinkType:     linkrp.MongoDatabasesResourceType,
+			TemplateKind: types.TemplateKindBicep,
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+		}
+		recipeParams := []RecipeParameter{
+			{
+				Name:         "throughput",
+				Type:         "float64",
+				MaxValue:     "800",
+				MinValue:     "-",
+				DefaultValue: "-",
+			},
+			{
+				Name:         "sku",
+				Type:         "string",
+				MaxValue:     "-",
+				MinValue:     "-",
+				DefaultValue: "-",
+			},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(envRecipe, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			Format:            "table",
+			RecipeName:        "cosmosDB",
+			LinkType:          linkrp.MongoDatabasesResourceType,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipe,
+				Options: objectformats.GetEnvironmentRecipesTableFormat(),
+			},
+			output.LogOutput{
+				Format: "",
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipeParams,
+				Options: objectformats.GetRecipeParamsTableFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("Show recipe details - empty template kind", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		envRecipe := v20220315privatepreview.EnvironmentRecipeProperties{
+			TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+			Parameters: map[string]any{
+				"throughput": map[string]any{
+					"type":     "float64",
+					"maxValue": float64(800),
 				},
-			}
+			},
+		}
+		recipe := types.EnvironmentRecipe{
+			Name:         "cosmosDB",
+			LinkType:     linkrp.MongoDatabasesResourceType,
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+		}
+		recipeParams := []RecipeParameter{
+			{
+				Name:         "throughput",
+				Type:         "float64",
+				MaxValue:     "800",
+				MinValue:     "-",
+				DefaultValue: "-",
+			},
+		}
 
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().
-				ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(envRecipe, nil).Times(1)
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(envRecipe, nil).Times(1)
 
-			outputSink := &output.MockOutput{}
+		outputSink := &output.MockOutput{}
 
-			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         &workspaces.Workspace{},
-				Format:            "table",
-				RecipeName:        "cosmosDB",
-				LinkType:          linkrp.MongoDatabasesResourceType,
-			}
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			Format:            "table",
+			RecipeName:        "cosmosDB",
+			LinkType:          linkrp.MongoDatabasesResourceType,
+		}
 
-			err := runner.Run(context.Background())
-			require.NoError(t, err)
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
 
-			expected := []any{
-				output.FormattedOutput{
-					Format:  "table",
-					Obj:     recipe,
-					Options: objectformats.GetRecipeTableFormat(),
-				},
-				output.LogOutput{
-					Format: "",
-				},
-				output.FormattedOutput{
-					Format:  "table",
-					Obj:     recipeParams,
-					Options: objectformats.GetRecipeParamsTableFormat(),
-				},
-			}
-			require.Equal(t, expected, outputSink.Writes)
-
-		})
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipe,
+				Options: objectformats.GetEnvironmentRecipesTableFormat(),
+			},
+			output.LogOutput{
+				Format: "",
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipeParams,
+				Options: objectformats.GetRecipeParamsTableFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
 	})
 }

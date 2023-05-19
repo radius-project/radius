@@ -186,6 +186,10 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 				JSONPath: "{ .LinkType }",
 			},
 			{
+				Heading:  "TEMPLATE KIND",
+				JSONPath: "{ .TemplateKind }",
+			},
+			{
 				Heading:  "TEMPLATE",
 				JSONPath: "{ .TemplatePath }",
 			},
@@ -219,25 +223,6 @@ func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 			{
 				Heading:  "PROVIDERS",
 				JSONPath: "{ .Providers }",
-			},
-		},
-	}
-}
-
-func GetRecipeTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "RECIPE NAME",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "TYPE",
-				JSONPath: "{ .LinkType }",
-			},
-			{
-				Heading:  "TEMPLATE",
-				JSONPath: "{ .TemplatePath }",
 			},
 		},
 	}
