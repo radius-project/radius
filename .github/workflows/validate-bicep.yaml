@@ -60,7 +60,7 @@ jobs:
           ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep-corerp
           chmod +x rad-bicep-corerp
           ./rad-bicep-corerp --version
-#      - name: Verify Bicep files
-#        run: ./build/validate-bicep.sh
-#        env:
-#          BICEP_PATH: .
+      - name: Verify Bicep files
+        run: ./build/validate-bicep.sh
+        env:
+          BICEP_PATH: .

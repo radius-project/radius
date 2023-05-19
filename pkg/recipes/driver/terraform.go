@@ -49,7 +49,8 @@ type terraformDriver struct {
 type TerraformConfig struct {
 	Terraform TerraformDefinition    `json:"terraform"`
 	Provider  map[string]interface{} `json:"provider"`
-	Module    map[string]ModuleData  `json:"module"`
+	Module    map[string]interface{} `json:"module"`
+	// Module    map[string]ModuleData  `json:"module"`
 }
 
 type TerraformDefinition struct {
@@ -57,11 +58,11 @@ type TerraformDefinition struct {
 	RequiredVersion   string                 `json:"required_version"`
 }
 
-type ModuleData struct {
-	Source     string `json:"source"`
-	Version    string `json:"version"`
-	Parameters map[string]interface{}
-}
+// type ModuleData struct {
+// 	Source  string `json:"source"`
+// 	Version string `json:"version"`
+// 	// Parameters map[string]interface{}
+// }
 
 func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.Metadata, definition recipes.Definition) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
@@ -137,17 +138,20 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 	}
 
 	// Initialize Terraform
+	logger.Info("Starting Terraform init")
 	if err := tf.Init(ctx); err != nil {
 		return fmt.Errorf("terraform init failure. Radius resource %q. %w", resourceID, err)
 	}
 	logger.Info("Terraform init completed")
 
 	// Apply Terraform configuration
+	logger.Info("Starting Terraform apply")
 	if err := tf.Apply(ctx); err != nil {
 		return fmt.Errorf("terraform apply failure. Radius resource %q. %w", resourceID, err)
 	}
 	logger.Info("Terraform Apply completed")
 
+	logger.Info("Starting Terraform show")
 	tfState, err := tf.Show(ctx)
 	if err != nil {
 		return err
@@ -169,19 +173,19 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 // templatePath is the path to the Terraform module source, e.g. "Azure/cosmosdb/azurerm".
 func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, recipeName, templatePath string, providers datamodel.Providers) error {
 	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("Generating Terraform JSON config for recipe %q", recipeName))
 
 	// TODO setting provider data for both AWS and Azure until we implement a way to pass this in.
 	// This should be set based on the provider needed by the recipe/source module and not just Azure/AWS providers.
-	azureProviderConfig, err := d.buildAzureProviderConfig(ctx, providers.Azure.Scope)
+	subscriptionID, resourceGroup, err := parseAzureScope(providers.Azure.Scope)
+	if err != nil {
+		return err
+	}
+	azureProviderConfig, err := d.buildAzureProviderConfig(ctx, subscriptionID)
 	if err != nil {
 		return err
 	}
 	awsProviderConfig, err := d.buildAWSProviderConfig(ctx, providers.AWS.Scope)
-	if err != nil {
-		return err
-	}
-
-	_, resourceGroup, err := parseAzureScope(providers.Azure.Scope)
 	if err != nil {
 		return err
 	}
@@ -204,16 +208,18 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 			"azurerm": azureProviderConfig,
 			"aws":     awsProviderConfig,
 		},
-		Module: map[string]ModuleData{
-			"cosmosdb": {
-				Source:     templatePath,
-				Version:    "1.0.0",
-				Parameters: generateInputParameters(resourceGroup),
-			},
+		Module: map[string]interface{}{
+			"cosmosdb": generateModuleData(ctx, templatePath, resourceGroup),
 		},
+		// Module: map[string]ModuleData{
+		// 	"cosmosdb": {
+		// 		Source:     templatePath,
+		// 		Version:    "1.0.0",
+		// 		Parameters: generateInputParameters(resourceGroup),
+		// 	},
+		// },
 	}
-
-	// tfConfig.Module["cosmosdb"] = generateModuleData(templatePath, resourceGroup)
+	// tfConfig.Module["cosmosdb"] = generateModuleData(ctx, templatePath, resourceGroup)
 
 	// Convert the Terraform config to JSON
 	jsonData, err := json.MarshalIndent(tfConfig, "", "  ")
@@ -242,13 +248,8 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 
 // Returns the Terraform provider configuration for Azure provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
-func (d *terraformDriver) buildAzureProviderConfig(ctx context.Context, scope string) (map[string]interface{}, error) {
+func (d *terraformDriver) buildAzureProviderConfig(ctx context.Context, subscriptionID string) (map[string]interface{}, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-
-	subscriptionID, _, err := parseAzureScope(scope)
-	if err != nil {
-		return nil, err
-	}
 
 	credentials, err := d.fetchAzureCredentials()
 	if err != nil {
@@ -375,11 +376,13 @@ func (d *terraformDriver) fetchAWSCredentials() (*credentials.AWSCredential, err
 }
 
 // TODO hardcoded parameters for testing. Pending integration with parameters provided by the operator and developer
-/*
-func generateModuleData(source, resourceGroup string) ModuleData {
-	moduleData := ModuleData{
-		Source:                source,
-		Version:               "1.0.0",
+func generateModuleData(ctx context.Context, source, resourceGroup string) map[string]interface{} {
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("Generating module data for source %q", source))
+
+	moduleData := map[string]interface{}{
+		"source":              source,
+		"version":             "1.0.0",
 		"cosmos_account_name": "tf-test",
 		"cosmos_api":          "mongo",
 		"mongo_dbs": map[string]interface{}{
@@ -412,9 +415,9 @@ func generateModuleData(source, resourceGroup string) ModuleData {
 
 	return moduleData
 }
-*/
 
 // TODO hardcoded for testing. Pending integration with parameters provided by the operator and developer
+/*
 func generateInputParameters(resourceGroup string) map[string]interface{} {
 	parameters := map[string]interface{}{
 		"cosmos_account_name": "tf-test",
@@ -449,3 +452,4 @@ func generateInputParameters(resourceGroup string) map[string]interface{} {
 
 	return parameters
 }
+*/
