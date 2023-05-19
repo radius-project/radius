@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -50,6 +51,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.TemplatePath))
+		require.Equal(t, recipes.TemplateKindBicep, string(*versioned.TemplateKind))
 		require.Equal(t, expectedOutput, versioned.Parameters)
 	})
 }

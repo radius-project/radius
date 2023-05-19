@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/linkrp"
+	recipe "github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
@@ -162,7 +163,8 @@ var getDevRecipes = func(ctx context.Context) (map[string]map[string]datamodel.E
 							return fmt.Errorf("error occurred while finding highest version for repo %s - %s", repoPath, err.Error())
 						}
 						recipes[linkType] = map[string]datamodel.EnvironmentRecipeProperties{
-							name: datamodel.EnvironmentRecipeProperties{
+							name: {
+								TemplateKind: recipe.TemplateKindBicep, // TODO revisit how do we plan to support dev recipes for multiple formats
 								TemplatePath: repoPath + ":" + fmt.Sprintf("%.1f", version),
 							},
 						}

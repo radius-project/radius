@@ -558,6 +558,9 @@ type EnvironmentRecipeProperties struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Format of the template provided by the recipe. Allowed values: bicep
+	TemplateKind *string `json:"templateKind,omitempty"`
 }
 
 // EnvironmentResource - Application environment.

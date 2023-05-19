@@ -23,6 +23,7 @@
         "recipes": {
             "Applications.Link/sqlDatabases":{
                 "sql": {
+                    "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/sql:1.0"
                 }
             }

@@ -23,19 +23,23 @@
     "recipes": {
       "Applications.Link/mongoDatabases":{
         "mongo-azure": {        
+          "templateKind": "bicep",
           "templatePath": "radius.azurecr.io/recipes/mongodatabases/azure:1.0"
         }
       },
       "Applications.Link/redisCaches":{
         "redis": {
+          "templateKind": "bicep",
           "templatePath": "radiusdev.azurecr.io/redis:1.0"
         },
         "redis-kubernetes": {
+          "templateKind": "bicep",
           "templatePath": "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"
         }
       },      
       "Applications.Link/sqlDatabases":{
-        "sql": {         
+        "sql": {      
+          "templateKind": "bicep",   
           "templatePath": "radiusdev.azurecr.io/sql:1.0"
         }
       }

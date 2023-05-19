@@ -894,6 +894,7 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 func (e EnvironmentRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "parameters", e.Parameters)
+	populate(objectMap, "templateKind", e.TemplateKind)
 	populate(objectMap, "templatePath", e.TemplatePath)
 	return json.Marshal(objectMap)
 }
@@ -909,6 +910,9 @@ func (e *EnvironmentRecipeProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "parameters":
 				err = unpopulate(val, "Parameters", &e.Parameters)
+				delete(rawMsg, key)
+		case "templateKind":
+				err = unpopulate(val, "TemplateKind", &e.TemplateKind)
 				delete(rawMsg, key)
 		case "templatePath":
 				err = unpopulate(val, "TemplatePath", &e.TemplatePath)

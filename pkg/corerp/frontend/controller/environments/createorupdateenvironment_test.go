@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -403,11 +404,13 @@ var mockgetDevRecipes = func(ctx context.Context) (map[string]map[string]datamod
 	recipes := map[string]map[string]datamodel.EnvironmentRecipeProperties{
 		linkrp.RedisCachesResourceType: {
 			"redis-kubernetes": {
+				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "radius.azurecr.io/recipes/rediscaches/kubernetes:1.0",
 			},
 		},
 		linkrp.MongoDatabasesResourceType: {
 			"mongo-azure": {
+				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "radius.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 		},
@@ -630,14 +633,17 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 					linkrp.RedisCachesResourceType: {
 						"redis": {
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:1.0"),
 						},
 						"redis-kubernetes": {
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("radius.azurecr.io/recipes/rediscaches/kubernetes:1.0"),
 						},
 					},
 					linkrp.MongoDatabasesResourceType: {
 						"mongo-azure": {
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("radius.azurecr.io/recipes/mongodatabases/azure:1.0"),
 						},
 					},

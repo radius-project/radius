@@ -69,7 +69,12 @@ type RecipeOutput struct {
 }
 
 const (
-	DriverBicep = "bicep"
+	TemplateKindBicep     = "bicep"
+	TemplateKindTerraform = "terraform"
+)
+
+var (
+	SupportedTemplateKind = []string{TemplateKindBicep, TemplateKindTerraform}
 )
 
 type ErrRecipeNotFound struct {
