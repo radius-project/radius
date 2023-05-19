@@ -96,13 +96,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.AzureCosmosDBMongo,
-		// 		Provider: resourcemodel.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewARMHandler(arm),
-		// },
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
