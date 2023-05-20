@@ -116,7 +116,8 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	readinessCh := make(chan bool, 1)
 	watchErrorCh := make(chan error, 1)
 	go func() {
-		handler.watchUntilReady(ctx, &item, readinessCh, watchErrorCh)
+		informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
+		handler.WatchUntilReady(ctx, informerFactory, &item, readinessCh, watchErrorCh, nil)
 	}()
 
 	select {
@@ -180,9 +181,7 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 	return unstructured.Unstructured{Object: c}, nil
 }
 
-func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error) {
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
-
+func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error, eventHandlerInvokedCh chan struct{}) {
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new_obj any) {
@@ -195,6 +194,11 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 			// There might be parallel deployments in progress, we need to make sure we are watching the right one
 			if obj.Name != item.GetName() {
 				return
+			}
+
+			// This channel is used only by test code to signal that the deployment is being watched
+			if eventHandlerInvokedCh != nil {
+				eventHandlerInvokedCh <- struct{}{}
 			}
 
 			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
@@ -215,6 +219,12 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 			if new.Name != item.GetName() {
 				return
 			}
+
+			// This channel is used only by test code to signal that the deployment is being watched
+			if eventHandlerInvokedCh != nil {
+				eventHandlerInvokedCh <- struct{}{}
+			}
+
 			if old.ResourceVersion != new.ResourceVersion {
 				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
 			}
