@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/dimchansky/utfbom"
-	"github.com/mitchellh/go-homedir"
 )
 
 // Profile represents a Profile from the Azure CLI
@@ -50,7 +50,13 @@ func ProfilePath() (string, error) {
 	if cfgDir := configDir(); cfgDir != "" {
 		return filepath.Join(cfgDir, azureProfileJSON), nil
 	}
-	return homedir.Expand("~/.azure/" + azureProfileJSON)
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(homeDir, ".azure", azureProfileJSON), nil
 }
 
 // LoadProfile restores a Profile object from a file located at 'path'.
