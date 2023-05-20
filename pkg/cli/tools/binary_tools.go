@@ -13,8 +13,6 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/mitchellh/go-homedir"
-
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -38,7 +36,7 @@ func GetLocalFilepath(overrideEnvVarName string, binaryName string) (string, err
 		return override, nil
 	}
 
-	home, err := homedir.Dir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("could not find home directory: %v", err)
 	}

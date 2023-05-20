@@ -19,7 +19,6 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/gofrs/flock"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 
@@ -145,7 +144,7 @@ func getConfig(configFilePath string) (*viper.Viper, error) {
 
 		// This is extremely unlikely to fail on us. This would only happen
 		// if the user has no HOME (or USERPROFILE on Windows) directory.
-		home, err := homedir.Dir()
+		home, err := os.UserHomeDir()
 		if err != nil {
 			return nil, fmt.Errorf("failed to find the user's home directory: %w", err)
 		}
@@ -259,7 +258,7 @@ func GetConfigFilePath(v *viper.Viper) (string, error) {
 	if configFilePath == "" {
 		// This is extremely unlikely to fail on us. This would only happen
 		// if the user has no HOME (or USERPROFILE on Windows) directory.
-		home, err := homedir.Dir()
+		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("failed to find the user's home directory: %w", err)
 		}
