@@ -155,52 +155,6 @@ func Test_MongoDB_Recipe(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_MongoDB_Recipe validates:
-// the creation of a mongoDB from a devrecipe that is linked to the environment when created with useDevRecipes = true
-// the container using the mongoDB link to connect to the mongoDB resource
-func Test_MongoDB_DevRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
-	name := "corerp-resources-mongodb-devrecipe"
-	appNamespace := "corerp-resources-mongodb-devrecipe-app"
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
-					{
-						Name: "corerp-resources-environment-devrecipe-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: "corerp-resources-mongodb-devrecipe",
-						Type: validation.ApplicationsResource,
-						App:  name,
-					},
-					{
-						Name: "mongodb-devrecipe-app-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "mongo-devrecipe-db",
-						Type: validation.MongoDatabasesResource,
-						App:  name,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-devrecipe-app-ctnr"),
-					},
-				},
-			},
-		},
-	})
-
-	test.Test(t)
-}
-
 // Test_MongoDB_Recipe_Parameters validates the creation of a mongoDB from recipe with parameters passed by operator while linking recipe
 // and developer while creating the mongoDatabase link.
 // If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.

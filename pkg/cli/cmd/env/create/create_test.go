@@ -127,7 +127,7 @@ func Test_Run_Success(t *testing.T) {
 
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		testEnvProperties := &corerp.EnvironmentProperties{
-			UseDevRecipes: to.Ptr(true),
+			UseDevRecipes: to.Ptr(false),
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr("default"),
 			},
@@ -160,94 +160,6 @@ func Test_Run_Success(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
-	})
-}
-
-func Test_Run_SkipDevRecipes(t *testing.T) {
-	t.Run("Run env create tests", func(t *testing.T) {
-		t.Run("Success with set to true", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			testEnvProperties := &corerp.EnvironmentProperties{
-				UseDevRecipes: to.Ptr(false),
-				Compute: &corerp.KubernetesCompute{
-					Namespace: to.Ptr("default"),
-				},
-			}
-			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-				Return(true, nil).Times(1)
-
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-			workspace := &workspaces.Workspace{
-				Connection: map[string]any{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name: "defaultWorkspace",
-			}
-
-			runner := &Runner{
-				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				Output:              outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "default",
-				Namespace:           "default",
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-				SkipDevRecipes:      true,
-			}
-
-			err := runner.Run(context.Background())
-			require.NoError(t, err)
-		})
-
-		t.Run("Success with set to false", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			testEnvProperties := &corerp.EnvironmentProperties{
-				UseDevRecipes: to.Ptr(true),
-				Compute: &corerp.KubernetesCompute{
-					Namespace: to.Ptr("default"),
-				},
-			}
-			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-				Return(true, nil).Times(1)
-
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-			workspace := &workspaces.Workspace{
-				Connection: map[string]any{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name: "defaultWorkspace",
-			}
-
-			runner := &Runner{
-				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				Output:              outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "default",
-				Namespace:           "default",
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-				SkipDevRecipes:      false,
-			}
-
-			err := runner.Run(context.Background())
-			require.NoError(t, err)
-		})
 	})
 }
 
