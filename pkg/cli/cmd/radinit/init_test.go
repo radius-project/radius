@@ -644,10 +644,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Compute: &corerp.KubernetesCompute{
 					Namespace: to.Ptr("defaultNamespace"),
 				},
-				// This flag will be removed in the upcoming PR.
-				UseDevRecipes: to.Ptr(false),
-				Providers:     buildProviders(tc.azureProvider, tc.awsProvider),
-				Recipes:       tc.recipes,
+				Providers: buildProviders(tc.azureProvider, tc.awsProvider),
+				Recipes:   tc.recipes,
 			}
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).

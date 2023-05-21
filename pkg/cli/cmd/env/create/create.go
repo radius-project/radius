@@ -148,8 +148,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	envProperties := &corerp.EnvironmentProperties{
-		// Setting this to false to make sure that we only install the recipes with rad init --dev flag.
-		UseDevRecipes: to.Ptr(false),
 		Compute: &corerp.KubernetesCompute{
 			Namespace: to.Ptr(r.Namespace),
 		},

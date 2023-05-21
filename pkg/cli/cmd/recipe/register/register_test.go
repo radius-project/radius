@@ -7,6 +7,8 @@ package register
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -111,8 +113,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			UseDevRecipes: to.Ptr(true),
-			Recipes:       testRecipes,
+			Recipes: testRecipes,
 			Compute: &v20220315privatepreview.KubernetesCompute{
 				Namespace: to.Ptr("default"),
 			},
@@ -145,14 +146,108 @@ func Test_Run(t *testing.T) {
 			RecipeName:        "cosmosDB_new",
 		}
 
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Successfully linked recipe %q to environment %q ",
+				Params: []interface{}{
+					"cosmosDB_new",
+					"kind-kind",
+				},
+			},
+		}
+
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
+
+	t.Run("Register recipe Failure", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		testRecipes := map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+			linkrp.MongoDatabasesResourceType: {
+				"cosmosDB": {
+					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+				},
+			},
+		}
+
+		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+			Recipes: testRecipes,
+			Compute: &v20220315privatepreview.KubernetesCompute{
+				Namespace: to.Ptr("default"),
+			},
+		}
+
+		envResource := v20220315privatepreview.EnvironmentResource{
+			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:       to.Ptr("kind-kind"),
+			Type:       to.Ptr("applications.core/environments"),
+			Location:   to.Ptr(v1.LocationGlobal),
+			Properties: testEnvProperties,
+		}
+
+		expectedError := errors.New("failed to register recipe to the environment")
+		expectedErrorMessage := fmt.Sprintf("failed to register the recipe %s to the environment %s: %s", "cosmosDB_new",
+			"/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind", expectedError.Error())
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvDetails(gomock.Any(), gomock.Any()).
+			Return(envResource, nil).
+			Times(1)
+		appManagementClient.EXPECT().
+			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+			Return(false, expectedError).
+			Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			LinkType:          linkrp.MongoDatabasesResourceType,
+			RecipeName:        "cosmosDB_new",
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, err)
+		require.Equal(t, expectedErrorMessage, err.Error())
+	})
+
+	t.Run("Failure Getting Environment Details", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		expectedError := errors.New("failed to get environment details")
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvDetails(gomock.Any(), gomock.Any()).
+			Return(v20220315privatepreview.EnvironmentResource{}, expectedError).
+			Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			LinkType:          linkrp.MongoDatabasesResourceType,
+			RecipeName:        "cosmosDB_new",
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, err)
+		require.Equal(t, expectedError, err)
+	})
+
 	t.Run("Register recipe with parameters", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			UseDevRecipes: to.Ptr(true),
 			Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 				linkrp.MongoDatabasesResourceType: {
 					"cosmosDB": {
@@ -162,7 +257,9 @@ func Test_Run(t *testing.T) {
 				},
 			},
 			Compute: &v20220315privatepreview.KubernetesCompute{
-				Namespace: to.Ptr("default"),
+				Kind:       to.Ptr("kubernetes"),
+				Namespace:  to.Ptr("default"),
+				ResourceID: to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
 			},
 		}
 
@@ -194,14 +291,24 @@ func Test_Run(t *testing.T) {
 			Parameters:        map[string]map[string]any{},
 		}
 
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Successfully linked recipe %q to environment %q ",
+				Params: []interface{}{
+					"redis",
+					"kind-kind",
+				},
+			},
+		}
+
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
 
 	t.Run("Register recipe with no namespace", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			UseDevRecipes: to.Ptr(true),
 			Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 				linkrp.MongoDatabasesResourceType: {
 					"cosmosDB": {
@@ -237,9 +344,21 @@ func Test_Run(t *testing.T) {
 			RecipeName:        "cosmosDB_no_namespace",
 		}
 
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Successfully linked recipe %q to environment %q ",
+				Params: []interface{}{
+					"cosmosDB_no_namespace",
+					"kind-kind",
+				},
+			},
+		}
+
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
+
 	t.Run("Register the first recipe", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
@@ -276,7 +395,18 @@ func Test_Run(t *testing.T) {
 			RecipeName:        "redis",
 		}
 
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Successfully linked recipe %q to environment %q ",
+				Params: []interface{}{
+					"redis",
+					"kind-kind",
+				},
+			},
+		}
+
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
 }

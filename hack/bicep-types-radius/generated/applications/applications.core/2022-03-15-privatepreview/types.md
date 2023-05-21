@@ -331,7 +331,6 @@
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Specifies Recipes linked to the Environment.
-* **useDevRecipes**: bool: Flag to use radius owned recipes.
 
 ## EnvironmentExtension
 * **Discriminator**: kind
