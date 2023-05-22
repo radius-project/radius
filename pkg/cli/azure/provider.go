@@ -16,6 +16,11 @@ limitations under the License.
 
 package azure
 
+const (
+	// ProviderDisplayName is the text used in display for Azure.
+	ProviderDisplayName = "Azure"
+)
+
 // Provider specifies the properties required to configure Azure provider for cloud resources
 type Provider struct {
 	SubscriptionID   string

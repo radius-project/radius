@@ -51,7 +51,7 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 				break
 			}
 			res.Aws = &corerp.ProvidersAws{
-				Scope: to.Ptr("/planes/aws/aws/accounts/" + p.AccountId + "/regions/" + p.TargetRegion),
+				Scope: to.Ptr("/planes/aws/aws/accounts/" + p.AccountID + "/regions/" + p.Region),
 			}
 		case nil:
 			// skip nil provider

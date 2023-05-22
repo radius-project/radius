@@ -99,8 +99,8 @@ func Test_Run(t *testing.T) {
 
 		prompter := prompt.NewMockInterface(ctrl)
 		prompter.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
-			Return("yes", nil).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
 		runner := &Runner{
@@ -130,7 +130,7 @@ func Test_Run(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		prompter.EXPECT().
 			GetListInput(gomock.Any(), gomock.Any()).
-			Return("no", nil).
+			Return(prompt.ConfirmNo, nil).
 			Times(0)
 
 		runner := &Runner{
@@ -161,8 +161,8 @@ func Test_Run(t *testing.T) {
 
 		prompter := prompt.NewMockInterface(ctrl)
 		prompter.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
-			Return("no", nil).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			Return(prompt.ConfirmNo, nil).
 			Times(1)
 
 		runner := &Runner{
@@ -186,7 +186,7 @@ func Test_Run(t *testing.T) {
 
 		prompter := prompt.NewMockInterface(ctrl)
 		prompter.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 

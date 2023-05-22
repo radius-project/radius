@@ -49,9 +49,6 @@ type Workspace struct {
 	// Environment represents the default environment used for deployments of applications. This field is optional.
 	Environment string `json:"environment,omitempty" mapstructure:"environment" yaml:"environment,omitempty"`
 
-	// Registry represent a container registry to use for container image push/pull operations. This field is optional.
-	Registry *Registry `json:"registry,omitempty" mapstructure:"registry" yaml:"registry,omitempty"`
-
 	// Scope represents the default scope used for deployments of Radius resources. This field is optional.
 	Scope string `json:"scope,omitempty" mapstructure:"scope" yaml:"scope,omitempty"`
 
@@ -84,15 +81,3 @@ const (
 	// SourceUserConfig indicates that the workspace was loaded from per-user config.
 	SourceUserConfig = "userconfig"
 )
-
-// Registry represent the configuration for a container registry.
-type Registry struct {
-	// PushEndpoint is the endpoint used for push commands. For a local container registry this hostname
-	// is expected to be accessible from the host machine.
-	PushEndpoint string `json:"pushEndpoint,omitempty" mapstructure:"pushEndpoint" validate:"required" yaml:"pushEndpoint,omitempty"`
-
-	// PullEndpoint is the endpoing used to pull by the runtime. For a local container registry this hostname
-	// is expected to be accessible by the runtime. Can be the same as PushEndpoint if the registry has a routable
-	// address.
-	PullEndpoint string `json:"pullEndpoint,omitempty" mapstructure:"pullEndpoint" validate:"required" yaml:"pullEndpoint,omitempty"`
-}

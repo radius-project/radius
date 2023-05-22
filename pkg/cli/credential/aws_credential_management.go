@@ -116,7 +116,7 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 		providerList = append(providerList, credList...)
 	}
 
-	res := make([]CloudProviderStatus, 0)
+	res := []CloudProviderStatus{}
 	for _, provider := range providerList {
 		res = append(res, CloudProviderStatus{
 			Name:    *provider.Name,

@@ -19,6 +19,8 @@ package framework
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -29,7 +31,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +50,12 @@ type Factory interface {
 	GetKubernetesInterface() kubernetes.Interface
 	GetHelmInterface() helm.Interface
 	GetNamespaceInterface() namespace.Interface
-	GetSetupInterface() setup.Interface
+
+	// GetAWSClient returns the AWS Client.
+	GetAWSClient() aws.Client
+
+	// GetAzureClient returns the Azure Client.
+	GetAzureClient() azure.Client
 }
 
 type Impl struct {
@@ -65,7 +71,12 @@ type Impl struct {
 	KubernetesInterface kubernetes.Interface
 	HelmInterface       helm.Interface
 	NamespaceInterface  namespace.Interface
-	SetupInterface      setup.Interface
+
+	// AWSClient is the client for AWS.
+	AWSClient aws.Client
+
+	// AzureClient is the client for Azure.
+	AzureClient azure.Client
 }
 
 func (i *Impl) GetBicep() bicep.Interface {
@@ -122,8 +133,14 @@ func (i *Impl) GetNamespaceInterface() namespace.Interface {
 	return i.NamespaceInterface
 }
 
-func (i *Impl) GetSetupInterface() setup.Interface {
-	return i.SetupInterface
+// GetAWSClient returns the AWS Client.
+func (i *Impl) GetAWSClient() aws.Client {
+	return i.AWSClient
+}
+
+// GetAzureClient returns the Azure Client.
+func (i *Impl) GetAzureClient() azure.Client {
+	return i.AzureClient
 }
 
 type Runner interface {

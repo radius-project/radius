@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -69,7 +70,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				// We have a valid kubernetes context, but Radius is not installed
 				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(false, nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{Installed: false}, nil).Times(1)
 			},
 		},
 		{
@@ -83,7 +84,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				// We have a valid kubernetes context with Radius installed
 				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{Installed: true}, nil).Times(1)
 
 				// Resource group does not exist
 				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, errors.New("group does not exist")).Times(1)
@@ -100,7 +101,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				// We have a valid kubernetes context with Radius installed
 				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{Installed: true}, nil).Times(1)
 
 				// Resource group exists but environment does not
 				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
@@ -118,7 +119,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				// We have a valid kubernetes context with Radius installed
 				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{Installed: true}, nil).Times(1)
 
 				// Resource group and environment exist
 				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
