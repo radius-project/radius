@@ -11,7 +11,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -38,21 +37,30 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 		// act
 		versioned := &EnvironmentRecipeProperties{}
 		err = versioned.ConvertFrom(r)
-		expectedOutput := map[string]any{
-			"location": map[string]any{
-				"defaultValue": "[resourceGroup().location]",
-				"type":         "string",
-			},
-			"throughput": map[string]any{
-				"defaultValue": (float64(200)),
-				"maxValue":     (float64(400)),
-			},
-		}
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.TemplatePath))
-		require.Equal(t, recipes.TemplateKindBicep, string(*versioned.TemplateKind))
-		require.Equal(t, expectedOutput, versioned.Parameters)
+		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
+		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
+		require.Equal(t, r.Parameters, versioned.Parameters)
+	})
+}
+
+func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKind(t *testing.T) {
+	filename := "environmentrecipepropertiesdatamodel-missingtemplatekind.json"
+	t.Run(filename, func(t *testing.T) {
+		rawPayload := testutil.ReadFixture(filename)
+		r := &datamodel.EnvironmentRecipeProperties{}
+		err := json.Unmarshal(rawPayload, r)
+		require.NoError(t, err)
+
+		// act
+		versioned := &EnvironmentRecipeProperties{}
+		err = versioned.ConvertFrom(r)
+		// assert
+		require.NoError(t, err)
+		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
+		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
+		require.Equal(t, r.Parameters, versioned.Parameters)
 	})
 }
 

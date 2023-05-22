@@ -272,12 +272,13 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templatePath, linkType string) (string, error) {
+func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, linkType string) (string, error) {
 	args := []string{
 		"recipe",
 		"register",
 		recipeName,
 		"--environment", envName,
+		"--template-kind", templateKind,
 		"--template-path", templatePath,
 		"--link-type", linkType,
 	}

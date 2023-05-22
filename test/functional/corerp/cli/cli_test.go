@@ -48,10 +48,11 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	envName := test.Steps[0].CoreRPResources.Resources[0].Name
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
+	templateKind := "bicep"
 	linkType := "Applications.Link/mongoDatabases"
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
@@ -74,7 +75,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
 		showRecipeLinkType := "Applications.Link/mongoDatabases"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, showRecipeTemplate, showRecipeLinkType)
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 		output, err = cli.RecipeShow(ctx, envName, showRecipeName, linkType)
@@ -90,7 +91,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, linkType)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
 		output, err = cli.RecipeList(ctx, envName)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -132,13 +133,20 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	recipe := Recipe{
+
+	recipe := types.EnvironmentRecipe{
 		Name:         r.RecipeName,
 		LinkType:     r.LinkType,
 		TemplatePath: *recipeDetails.TemplatePath,
 	}
+	// Check to ensure backwards compatibility with existing environments.
+	// Remove this in next release once users have migrated their existing environments.
+	// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
+	if recipeDetails.TemplateKind != nil {
+		recipe.TemplateKind = *recipeDetails.TemplateKind
+	}
 
-	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetRecipeTableFormat())
+	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {
 		return err
 	}
@@ -196,10 +204,4 @@ type RecipeParameter struct {
 	Type         string      `json:"type,omitempty"`
 	MaxValue     string      `json:"maxValue,omitempty"`
 	MinValue     string      `json:"minValue,omitempty"`
-}
-
-type Recipe struct {
-	Name         string `json:"name,omitempty"`
-	LinkType     string `json:"linkType,omitempty"`
-	TemplatePath string `json:"templatePath,omitempty"`
 }

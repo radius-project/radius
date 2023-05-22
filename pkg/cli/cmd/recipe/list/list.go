@@ -10,6 +10,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -91,14 +92,22 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	var envRecipes []EnvironmentRecipe
+	var envRecipes []types.EnvironmentRecipe
 	for link, recipes := range envResource.Properties.Recipes {
 		for recipeName, recipeDetails := range recipes {
-			envRecipes = append(envRecipes, EnvironmentRecipe{
+			recipe := types.EnvironmentRecipe{
 				Name:         recipeName,
 				LinkType:     link,
 				TemplatePath: *recipeDetails.TemplatePath,
-			})
+			}
+			// Check to ensure backwards compatibility with existing environments.
+			// Remove this in next release once users have migrated their existing environments.
+			// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
+			if recipeDetails.TemplateKind != nil {
+				recipe.TemplateKind = *recipeDetails.TemplateKind
+			}
+
+			envRecipes = append(envRecipes, recipe)
 		}
 	}
 	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
@@ -107,10 +116,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-type EnvironmentRecipe struct {
-	Name         string `json:"name,omitempty"`
-	LinkType     string `json:"linkType,omitempty"`
-	TemplatePath string `json:"templatePath,omitempty"`
 }

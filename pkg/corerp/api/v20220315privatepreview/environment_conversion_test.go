@@ -234,7 +234,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-templatekind.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind: \"helm\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
+		},
+		{
+			filename: "environmentresource-missing-templatekind.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
 		},
 	}
 
@@ -310,6 +314,29 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConvertDataModelToVersioned_EmptyTemplateKind(t *testing.T) {
+	rawPayload := testutil.ReadFixture("environmentresourcedatamodelemptytemplatekind.json")
+	r := &datamodel.Environment{}
+	err := json.Unmarshal(rawPayload, r)
+	require.NoError(t, err)
+
+	// act
+	versioned := &EnvironmentResource{}
+	err = versioned.ConvertFrom(r)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, r.ID, string(*versioned.ID))
+	require.Equal(t, r.Name, string(*versioned.Name))
+	require.Equal(t, r.Type, string(*versioned.Type))
+	require.Equal(t, string(r.Properties.Compute.Kind), string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
+	require.Equal(t, r.Properties.Compute.KubernetesCompute.ResourceID, string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
+	require.Equal(t, len(r.Properties.Recipes), len(versioned.Properties.Recipes))
+	require.Equal(t, r.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplatePath, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplatePath))
+	require.Equal(t, r.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateKind, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateKind))
+	require.Equal(t, r.Properties.Providers.Azure.Scope, string(*versioned.Properties.Providers.Azure.Scope))
 }
 
 func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {

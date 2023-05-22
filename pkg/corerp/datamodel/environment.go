@@ -34,8 +34,8 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.
 type EnvironmentRecipeProperties struct {
-	TemplateKind string         `json:"templateKind,omitempty"`
-	TemplatePath string         `json:"templatePath,omitempty"`
+	TemplateKind string         `json:"templateKind"`
+	TemplatePath string         `json:"templatePath"`
 	Parameters   map[string]any `json:"parameters,omitempty"`
 }
 
