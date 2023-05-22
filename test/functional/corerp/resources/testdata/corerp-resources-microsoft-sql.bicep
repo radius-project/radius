@@ -59,7 +59,13 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     environment: environment
-    mode: 'resource'
-    resource: mssqlresourceid
+    resourceProvisioning: 'manual'
+    resources:[
+      {
+        id:mssqlresourceid
+      }
+    ]
+    database:'database-radiustest'
+    server:'mssql-radiustest.database.windows.net'
   }
 }
