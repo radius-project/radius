@@ -1,5 +1,4 @@
 import radius as radius
-
 @description('Specifies the location for resources.')
 param location string = 'global'
 
@@ -9,12 +8,6 @@ param magpieImage string
 @description('Specifies the port for the container resource.')
 param magpiePort int = 3000
 
-@description('Specifies the environment for resources.')
-param environment string = 'test'
-
-@description('Specifies the image for the sql container resource.')
-param sqlImage string = 'mcr.microsoft.com/mssql/server:2019-latest'
-
 @description('Specifies the port for the container resource.')
 param sqlPort int = 1433
 
@@ -23,11 +16,9 @@ param username string = 'sa'
 
 @description('Specifies the SQL password.')
 @secure()
-param password string = 'password'
+param password string = 'SQLPa$$w0rd'
 
-param scope string = resourceGroup().id
-
-param registry string
+param registry string 
 
 param version string
 
@@ -40,15 +31,14 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       resourceId: 'self'
       namespace: 'corerp-resources-environment-sql-recipe-env' 
     }
-    providers: {
-      azure: {
-        scope: scope
-      }
-    }
     recipes: {
       'Applications.Link/sqlDatabases':{
         default: {
           templatePath: '${registry}/test/functional/corerp/recipes/sqldb-recipe:${version}'
+          parameters: {
+            username: username
+            password: password
+          }
         }
       }
     }
@@ -59,7 +49,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-sqldb-recipe'
   location: location
   properties: {
-    environment: environment
+    environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
@@ -98,7 +88,6 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
   location: location
   properties: {
     application: app.id
-    environment: environment
+    environment: env.id
   }
 }
-

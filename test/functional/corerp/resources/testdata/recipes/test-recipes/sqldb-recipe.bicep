@@ -4,61 +4,62 @@ import kubernetes as kubernetes {
   namespace: context.runtime.kubernetes.namespace
 }
 @description('Specifies the SQL username.')
-param username string = 'admin'
+param username string
 
 @description('Specifies the SQL password.')
 @secure()
-param password string = 'password'
+param password string
 resource sql 'apps/Deployment@v1' = {
   metadata: {
-    name: 'sql-recipe-resource'
+    name: 'sql-${uniqueString(context.resource.id)}'
   }
   spec: {
     replicas: 1
     selector: {
       matchLabels: {
-        app: context.resource.name
+        app: 'sql-app'
+        resource: context.resource.name
       }
     }
     template: {
       metadata: {
         labels: {
-          app: context.resource.name
+          app: 'sql-app'
+          resource: context.resource.name
         }
       }
       spec: {
         containers: [
           {
-            name: 'mysql'
-            image: 'mysql'
+            name: 'sql'
+            image: 'mcr.microsoft.com/mssql/server:2022-latest'
             env: [
               {
                 name: 'MSSQL_SA_PASSWORD'
-                value: username
+                value: password
               }
               {
                 name: 'MSSQL_SA_USERNAME'
-                value: password
+                value: username
               }
               {
-                name: 'MYSQL_ROOT_PASSWORD'
-                value: password
+                name: 'ACCEPT_EULA'
+                value: 'Y'
               }
             ]
             resources: {
               requests: {
-                cpu: '200m'
-                memory: '1024Mi'
+                cpu: '300m'
+                memory: '512Mi'
               }
               limits: {
                 cpu: '450m'
-                memory: '1024Mi'
+                memory: '512Mi'
               }
             }
             ports: [
               {
                 containerPort: 1433
-                name: 'sql'
               }
             ]
           }
@@ -72,10 +73,7 @@ resource sql 'apps/Deployment@v1' = {
 @description('Configure back-end service')
 resource svc 'core/Service@v1' = {
   metadata: {
-    name: 'sql-recipe-svc'
-    labels: {
-      name: 'sql-recipe-svc'
-    }
+    name: 'sql-${uniqueString(context.resource.id)}'
   }
   spec: {
     type: 'ClusterIP'
@@ -85,7 +83,7 @@ resource svc 'core/Service@v1' = {
       }
     ]
     selector: {
-      app: 'sql'
+      app: 'sql-app'
       resource: context.resource.name
     }
   }
@@ -101,6 +99,6 @@ output result object = {
   ]
   values: {
     server: '${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'
-    database: 'mysql'
+    database: 'master'
   }
 }
