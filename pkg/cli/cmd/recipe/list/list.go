@@ -100,8 +100,9 @@ func (r *Runner) Run(ctx context.Context) error {
 				LinkType:     link,
 				TemplatePath: *recipeDetails.TemplatePath,
 			}
-			// TODO Check to ensure backwards compatibility with existing environments.
+			// Check to ensure backwards compatibility with existing environments.
 			// Remove this in next release once users have migrated their existing environments.
+			// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
 			if recipeDetails.TemplateKind != nil {
 				recipe.TemplateKind = *recipeDetails.TemplateKind
 			}
