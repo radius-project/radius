@@ -3,6 +3,6 @@
     "name": "redis0",
     "type": "Applications.Link/redisCaches",
     "properties": {
-        "mode": "abc"
+        "host": 12345
     }
 }

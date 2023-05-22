@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
@@ -182,13 +181,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Provider: resourcemodel.ProviderAzure,
 			},
 			SecretValueTransformer: &mongodatabases.AzureTransformer{},
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRedis,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			SecretValueTransformer: &rediscaches.AzureTransformer{},
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{

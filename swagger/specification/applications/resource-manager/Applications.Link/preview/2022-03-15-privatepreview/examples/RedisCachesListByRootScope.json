@@ -16,9 +16,10 @@
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
                 "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-                "mode": "resource",
-                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
-                "username": "username"
+                "resourceProvisioning": "manual",
+                "resources": [{"id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache"}], 
+                "host":"myrediscache.redis.cache.windows.net",
+                "port":6380
               }
             },
             {
@@ -30,7 +31,6 @@
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
                 "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-                "mode": "recipe",
                 "recipe": {
                   "name": "redis",
                   "parameters": {
@@ -48,7 +48,7 @@
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
                 "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
-                "mode": "values",
+                "resourceProvisioning": "manual",
                 "host":"myrediscache.redis.cache.windows.net",
                 "port":6380,
                 "username": "username"

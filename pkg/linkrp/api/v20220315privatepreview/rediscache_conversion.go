@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -20,7 +21,7 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 		BaseResource: v1.BaseResource{
 			InternalMetadata: v1.InternalMetadata{
 				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetRedisCacheProperties().ProvisioningState),
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 			TrackedResource: v1.TrackedResource{
 				ID:       to.String(src.ID),
@@ -32,61 +33,41 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.GetRedisCacheProperties().Environment),
-				Application: to.String(src.Properties.GetRedisCacheProperties().Application),
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
 			},
 		},
 	}
-	switch v := src.Properties.(type) {
-	case *ResourceRedisCacheProperties:
-		if v.Resource == nil {
-			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
+	v := src.Properties
+
+	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
+	var found bool
+	for _, k := range PossibleResourceProvisioningValues() {
+		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
+			found = true
+			break
 		}
-		converted.Properties.Mode = datamodel.LinkModeResource
-		converted.Properties.Resource = to.String(v.Resource)
-		converted.Properties.Host = to.String(v.Host)
-		converted.Properties.Port = to.Int32(v.Port)
-		converted.Properties.Username = to.String(v.Username)
-		if v.Secrets != nil {
-			converted.Properties.Secrets = datamodel.RedisCacheSecrets{
-				ConnectionString: to.String(v.Secrets.ConnectionString),
-				Password:         to.String(v.Secrets.Password),
-			}
-		}
-	case *RecipeRedisCacheProperties:
-		if v.Recipe == nil {
-			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
-		}
-		converted.Properties.RedisRecipeProperties = datamodel.RedisRecipeProperties{
-			Recipe: toRecipeDataModel(v.Recipe),
-		}
-		converted.Properties.Mode = datamodel.LinkModeRecipe
-		converted.Properties.Host = to.String(v.Host)
-		converted.Properties.Port = to.Int32(v.Port)
-		converted.Properties.Username = to.String(v.Username)
-		if v.Secrets != nil {
-			converted.Properties.Secrets = datamodel.RedisCacheSecrets{
-				ConnectionString: to.String(v.Secrets.ConnectionString),
-				Password:         to.String(v.Secrets.Password),
-			}
-		}
-	case *ValuesRedisCacheProperties:
-		if v.Host == nil || v.Port == nil {
-			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
-		}
-		converted.Properties.Mode = datamodel.LinkModeValues
-		converted.Properties.Host = to.String(v.Host)
-		converted.Properties.Port = to.Int32(v.Port)
-		converted.Properties.Username = to.String(v.Username)
-		if v.Secrets != nil {
-			converted.Properties.Secrets = datamodel.RedisCacheSecrets{
-				ConnectionString: to.String(v.Secrets.ConnectionString),
-				Password:         to.String(v.Secrets.Password),
-			}
-		}
-	default:
-		return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRedisCacheProperties().Mode))
 	}
+	if !found {
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	}
+
+	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+	converted.Properties.Resources = toResourcesDataModel(v.Resources)
+	converted.Properties.Host = to.String(v.Host)
+	converted.Properties.Port = to.Int32(v.Port)
+	converted.Properties.Username = to.String(v.Username)
+	if v.Secrets != nil {
+		converted.Properties.Secrets = datamodel.RedisCacheSecrets{
+			ConnectionString: to.String(v.Secrets.ConnectionString),
+			Password:         to.String(v.Secrets.Password),
+		}
+	}
+	manualInputs := verifyManualInputs(*v)
+	if manualInputs != nil {
+		return nil, manualInputs
+	}
+
 	return converted, nil
 }
 
@@ -103,54 +84,22 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.SystemData = fromSystemDataModel(redis.SystemData)
 	dst.Location = to.Ptr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
-	switch redis.Properties.Mode {
-	case datamodel.LinkModeResource:
-		mode := "resource"
-		dst.Properties = &ResourceRedisCacheProperties{
-			Mode:     &mode,
-			Resource: to.Ptr(redis.Properties.RedisResourceProperties.Resource),
-			Host:     to.Ptr(redis.Properties.Host),
-			Port:     to.Ptr(redis.Properties.Port),
-			Username: to.Ptr(redis.Properties.Username),
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(redis.Properties.Environment),
-			Application:       to.Ptr(redis.Properties.Application),
-		}
-	case datamodel.LinkModeValues:
-		mode := "values"
-		dst.Properties = &ResourceRedisCacheProperties{
-			Mode:     &mode,
-			Host:     to.Ptr(redis.Properties.Host),
-			Port:     to.Ptr(redis.Properties.Port),
-			Username: to.Ptr(redis.Properties.Username),
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(redis.Properties.Environment),
-			Application:       to.Ptr(redis.Properties.Application),
-		}
-	case datamodel.LinkModeRecipe:
-		mode := "recipe"
-		dst.Properties = &RecipeRedisCacheProperties{
-			Mode:     &mode,
-			Recipe:   fromRecipeDataModel(redis.Properties.Recipe),
-			Host:     to.Ptr(redis.Properties.Host),
-			Port:     to.Ptr(redis.Properties.Port),
-			Username: to.Ptr(redis.Properties.Username),
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(redis.Properties.Environment),
-			Application:       to.Ptr(redis.Properties.Application),
-		}
-	default:
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", redis.Properties.Mode))
+
+	dst.Properties = &RedisCacheProperties{
+		Recipe:               fromRecipeDataModel(redis.Properties.Recipe),
+		ResourceProvisioning: fromResourceProvisioningDataModel(redis.Properties.ResourceProvisioning),
+		Resources:            fromResourcesDataModel(redis.Properties.Resources),
+		Host:                 to.Ptr(redis.Properties.Host),
+		Port:                 to.Ptr(redis.Properties.Port),
+		Username:             to.Ptr(redis.Properties.Username),
+		Status: &ResourceStatus{
+			OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+		},
+		ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
+		Environment:       to.Ptr(redis.Properties.Environment),
+		Application:       to.Ptr(redis.Properties.Application),
 	}
+
 	return nil
 }
 
@@ -174,4 +123,13 @@ func (src *RedisCacheSecrets) ConvertTo() (v1.DataModelInterface, error) {
 		Password:         to.String(src.Password),
 	}
 	return converted, nil
+}
+
+func verifyManualInputs(properties RedisCacheProperties) error {
+	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
+		if properties.Host == nil || properties.Port == nil {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }
