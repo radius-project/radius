@@ -51,6 +51,10 @@ func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller,
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return errResponse, nil
+	}
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -64,10 +68,11 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
+	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
 	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
-	})
+	}, cloudFormationOpts...)
 	if err != nil {
 		return awserror.HandleAWSError(err)
 	}
@@ -84,11 +89,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
+	cloudcontrolOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	logger.Info("Fetching resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", awsResourceIdentifier)
 	response, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(awsResourceIdentifier),
-	})
+	}, cloudcontrolOpts...)
+
 	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.basePath, req.URL.Path), awsResourceIdentifier)), nil
 	} else if err != nil {

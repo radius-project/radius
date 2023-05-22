@@ -35,10 +35,6 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
-{{ if and .Values.provider .Values.provider.aws }}
-        - name: AWS_REGION
-          value: {{ .Values.provider.aws.region }}
-{{ end }}
         name: ucp
         ports:
         - containerPort: 9443
