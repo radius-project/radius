@@ -147,6 +147,8 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 		return err
 	}
 
+	// tf.SetLog("debug")
+
 	// Initialize Terraform
 	logger.Info("Starting Terraform init")
 	if err := tf.Init(ctx); err != nil {
@@ -154,12 +156,27 @@ func (d *terraformDriver) initAndApply(ctx context.Context, resourceID, workingD
 	}
 	logger.Info("Terraform init completed")
 
-	// Apply Terraform configuration
-	logger.Info("Starting Terraform apply")
-	if err := tf.Apply(ctx); err != nil {
+	tfApplyCh := make(chan error)
+	// Execute the Apply method in a separate goroutine
+	go func() {
+		// Apply Terraform configuration
+		logger.Info("Starting Terraform apply")
+		err := tf.Apply(ctx)
+		tfApplyCh <- err
+	}()
+	// Wait for the goroutine to complete and capture any error
+	err = <-tfApplyCh
+	if err != nil {
 		return fmt.Errorf("terraform apply failure. Radius resource %q. %w", resourceID, err)
 	}
 	logger.Info("Terraform Apply completed")
+
+	// Apply Terraform configuration
+	// logger.Info("Starting Terraform apply")
+	// if err := tf.Apply(ctx); err != nil {
+	// return fmt.Errorf("terraform apply failure. Radius resource %q. %w", resourceID, err)
+	// }
+	// logger.Info("Terraform Apply completed")
 
 	logger.Info("Starting Terraform show")
 	tfState, err := tf.Show(ctx)

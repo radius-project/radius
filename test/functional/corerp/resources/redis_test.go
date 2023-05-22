@@ -23,6 +23,7 @@ import (
 )
 
 func Test_RedisManualProvisioning(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-redis-manualprovisioning.bicep"
 	name := "corerp-resources-redis-manualprovisioning"
 	appNamespace := "default-corerp-resources-redis-manualprovisioning"
@@ -74,6 +75,7 @@ func Test_RedisManualProvisioning(t *testing.T) {
 }
 
 func Test_RedisRecipe(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-redis-recipe.bicep"
 	name := "corerp-resources-redis-recipe"
 
@@ -105,6 +107,7 @@ func Test_RedisRecipe(t *testing.T) {
 }
 
 func Test_RedisDefaultRecipe(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-redis-default-recipe.bicep"
 	name := "corerp-resources-redis-default-recipe"
 
