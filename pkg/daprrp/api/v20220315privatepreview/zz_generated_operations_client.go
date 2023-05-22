@@ -81,7 +81,7 @@ func (client *OperationsClient) NewListPager(options *OperationsClientListOption
 
 // listCreateRequest creates the List request.
 func (client *OperationsClient) listCreateRequest(ctx context.Context, options *OperationsClientListOptions) (*policy.Request, error) {
-	urlPath := "/providers/Applications.Datastores/operations"
+	urlPath := "/providers/Applications.Dapr/operations"
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
