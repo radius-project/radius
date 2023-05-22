@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strings"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -98,4 +100,34 @@ func readPropertiesFromBody(req *http.Request) (map[string]any, error) {
 func computeResourceID(id resources.ID, resourceID string) string {
 	computedID := strings.Split(id.String(), "/:")[0] + resources.SegmentSeparator + resourceID
 	return computedID
+}
+
+// Extract Region from  a URI like /apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-west-2/providers/...
+func readRegionFromRequest(path string, basePath string) (string, armrpc_rest.Response) {
+	path = strings.TrimPrefix(path, basePath)
+	resourceID, err := resources.Parse(path)
+	if err != nil {
+		errResponse := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path: invalid path",
+			},
+		}
+
+		response := armrpc_rest.NewBadRequestARMResponse(errResponse)
+		return "", response
+	}
+	region := resourceID.FindScope(resources.RegionsSegment)
+	if region == "" {
+		errResponse := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "failed to read region from request path: 'regions' not found",
+			},
+		}
+		response := armrpc_rest.NewBadRequestARMResponse(errResponse)
+		return "", response
+
+	}
+	return region, nil
 }

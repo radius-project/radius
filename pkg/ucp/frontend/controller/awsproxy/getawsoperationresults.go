@@ -26,6 +26,7 @@ var _ armrpc_controller.Controller = (*GetAWSOperationResults)(nil)
 type GetAWSOperationResults struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
@@ -35,15 +36,21 @@ func NewGetAWSOperationResults(opts ctrl.Options) (armrpc_controller.Controller,
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return errResponse, nil
+	}
+	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	response, err := p.awsOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
-	})
+	}, cloudControlOpts...)
+
 	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {

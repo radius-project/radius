@@ -41,7 +41,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]any{
 		"Name":                 testResource.ResourceName,
@@ -108,7 +108,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
@@ -154,9 +154,9 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
 		AWSOptions: ctrl.AWSOptions{
@@ -197,9 +197,9 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
 		Err: &smithyhttp.ResponseError{
 			Err: &smithy.GenericAPIError{
 				Code:    "NotFound",
@@ -267,7 +267,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]any{
 		"ClusterIdentifier": clusterIdentifierValue,
@@ -279,7 +279,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   aws.String(testResource.AWSResourceType),
 		Identifier: aws.String("abc|xyz"),
-	}).Return(
+	}, gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Identifier: aws.String(testResource.ResourceName),

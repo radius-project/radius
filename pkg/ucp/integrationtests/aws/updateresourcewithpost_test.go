@@ -40,7 +40,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 		Schema:   to.Ptr(string(serialized)),
 	}
 
-	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]any{
 		"Name":                 "testStream",

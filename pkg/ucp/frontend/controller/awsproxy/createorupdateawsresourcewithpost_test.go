@@ -29,7 +29,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 	testOptions := setupTest(t)
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudformation.DescribeTypeOutput{
 			TypeName: aws.String(testResource.AWSResourceType),
 			Schema:   aws.String(testResource.Schema),
@@ -115,7 +115,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]any{
 		"ClusterName": testResource.ResourceName,
@@ -217,7 +217,7 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]any{
 		"ClusterName": testResource.ResourceName,
@@ -313,7 +313,7 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.CreateResourceOutput{
@@ -392,7 +392,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
@@ -478,7 +478,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	}
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]any{
 		"ClusterIdentifier": clusterIdentifierValue,

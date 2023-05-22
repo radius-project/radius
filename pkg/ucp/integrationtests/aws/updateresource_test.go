@@ -53,7 +53,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 		Schema:   aws.String(string(serialized)),
 	}
 
-	cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		output := cloudcontrol.GetResourceOutput{

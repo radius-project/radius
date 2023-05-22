@@ -26,6 +26,7 @@ var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
 type GetAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewGetAWSResource creates a new GetAWSResource.
@@ -35,16 +36,22 @@ func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) 
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return errResponse, nil
+	}
 
+	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	response, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-	})
+	}, cloudControlOpts...)
 	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {

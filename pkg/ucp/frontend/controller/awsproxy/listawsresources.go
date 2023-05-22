@@ -26,6 +26,7 @@ var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
 type ListAWSResources struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewListAWSResources creates a new ListAWSResources.
@@ -35,16 +36,22 @@ func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return errResponse, nil
+	}
 
+	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	// TODO pagination
 	response, err := p.awsOptions.AWSCloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
-	})
+	}, cloudControlOpts...)
 	if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
