@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -177,10 +178,11 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 
 	// TODO setting provider data for both AWS and Azure until we implement a way to pass this in.
 	// This should be set based on the provider needed by the recipe/source module and not just Azure/AWS providers.
-	subscriptionID, resourceGroup, err := parseAzureScope(providers.Azure.Scope)
+	subscriptionID, resourceGroup, err := parseAzureScope(ctx, providers.Azure.Scope)
 	if err != nil {
 		return err
 	}
+	logger.Info(fmt.Sprintf("Parsed Azure scope subscription %s, resource group %s", subscriptionID, resourceGroup))
 	azureProviderConfig, err := d.buildAzureProviderConfig(ctx, subscriptionID)
 	if err != nil {
 		return err
@@ -262,6 +264,7 @@ func (d *terraformDriver) buildAzureProviderConfig(ctx context.Context, subscrip
 		"client_id":       credentials.ClientID,
 		"client_secret":   credentials.ClientSecret,
 		"tenant_id":       credentials.TenantID,
+		"features":        map[string]interface{}{},
 	}
 
 	return azureConfig, nil
@@ -296,18 +299,22 @@ func (d *terraformDriver) buildAWSProviderConfig(ctx context.Context, scope stri
 	return awsConfig, nil
 }
 
-func parseAzureScope(scope string) (subscriptionID string, resourceGroup string, err error) {
+func parseAzureScope(ctx context.Context, scope string) (subscriptionID string, resourceGroup string, err error) {
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("Parsing Azure scope %q", scope))
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
 		return "", "", fmt.Errorf("error parsing Azure scope: %w", err)
 	}
+	logger.Info(fmt.Sprintf("Parsed scope %v", parsedScope))
 
 	for _, segment := range parsedScope.ScopeSegments() {
-		if segment.Type == resources.SubscriptionsSegment {
+		logger.Info(fmt.Sprintf("Scope segment %v", segment))
+		if strings.EqualFold(segment.Type, resources.SubscriptionsSegment) {
 			subscriptionID = segment.Name
 		}
 
-		if segment.Type == resources.ResourceGroupsSegment {
+		if strings.EqualFold(segment.Type, resources.ResourceGroupsSegment) {
 			resourceGroup = segment.Name
 		}
 	}
@@ -378,7 +385,7 @@ func (d *terraformDriver) fetchAWSCredentials() (*credentials.AWSCredential, err
 // TODO hardcoded parameters for testing. Pending integration with parameters provided by the operator and developer
 func generateModuleData(ctx context.Context, source, resourceGroup string) map[string]interface{} {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Generating module data for source %q", source))
+	logger.Info(fmt.Sprintf("Generating module data for source %q and resource group %q", source, resourceGroup))
 
 	moduleData := map[string]interface{}{
 		"source":              source,
