@@ -75,12 +75,12 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	if err := os.MkdirAll(installDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create directory for terraform installation for resource %q: %w", recipe.ResourceID, err)
 	}
-	defer func() {
-		err := os.RemoveAll(installDir)
-		if err != nil {
-			logger.Error(err, "Failed to remove Terraform installation directory")
-		}
-	}()
+	// defer func() {
+	// 	err := os.RemoveAll(installDir)
+	// 	if err != nil {
+	// 		logger.Error(err, "Failed to remove Terraform installation directory")
+	// 	}
+	// }()
 
 	// Install Terraform
 	// Using latest version, revisit this if we want to use a specific version.
@@ -95,12 +95,12 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		return nil, fmt.Errorf("failed to install terraform for resource %q: %w", recipe.ResourceID, err)
 	}
 	// TODO check if anything else is needed to clean up Terraform installation.
-	defer func() {
-		err := installer.Remove(ctx)
-		if err != nil {
-			logger.Error(err, "Failed to remove Terraform installation")
-		}
-	}()
+	// defer func() {
+	// 	err := installer.Remove(ctx)
+	// 	if err != nil {
+	// 		logger.Error(err, "Failed to remove Terraform installation")
+	// 	}
+	// }()
 
 	// Create working directory for Terraform execution
 	workingDir := filepath.Join(workingDirRoot, util.NormalizeStringToLower(recipe.ResourceID), uuid.NewString())
@@ -108,12 +108,12 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	if err = os.MkdirAll(workingDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create working directory for terraform execution for Radius resource %q. %w", recipe.ResourceID, err)
 	}
-	defer func() {
-		err := os.RemoveAll(workingDir)
-		if err != nil {
-			logger.Error(err, "Failed to remove Terraform working directory")
-		}
-	}()
+	// defer func() {
+	// 	err := os.RemoveAll(workingDir)
+	// 	if err != nil {
+	// 		logger.Error(err, "Failed to remove Terraform working directory")
+	// 	}
+	// }()
 
 	// Generate Terraform json config in the working directory
 	// TODO scope should be passed based on the provider needed for the recipe. Hardcoding to Azure for now.
@@ -126,7 +126,16 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	}
 	logger.Info("Successfully deployed Terraform recipe")
 
-	return nil, nil
+	output := recipes.RecipeOutput{
+		Resources: []string{},
+		Secrets:   map[string]interface{}{},
+		Values: map[string]interface{}{
+			"host": "test-host",
+			"port": 1234,
+		},
+	}
+
+	return &output, nil
 }
 
 // Runs Terraform init and apply in the provided working directory.
@@ -178,15 +187,16 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 
 	// TODO setting provider data for both AWS and Azure until we implement a way to pass this in.
 	// This should be set based on the provider needed by the recipe/source module and not just Azure/AWS providers.
-	subscriptionID, resourceGroup, err := parseAzureScope(ctx, providers.Azure.Scope)
+	subscriptionID, resourceGroup, err := parseAzureScope(providers.Azure.Scope)
 	if err != nil {
 		return err
 	}
-	logger.Info(fmt.Sprintf("Parsed Azure scope subscription %s, resource group %s", subscriptionID, resourceGroup))
+
 	azureProviderConfig, err := d.buildAzureProviderConfig(ctx, subscriptionID)
 	if err != nil {
 		return err
 	}
+
 	awsProviderConfig, err := d.buildAWSProviderConfig(ctx, providers.AWS.Scope)
 	if err != nil {
 		return err
@@ -238,7 +248,7 @@ func (d *terraformDriver) generateJsonConfig(ctx context.Context, workingDir, re
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
-	defer file.Close()
+	// defer file.Close()
 
 	_, err = file.Write(jsonData)
 	if err != nil {
@@ -299,17 +309,13 @@ func (d *terraformDriver) buildAWSProviderConfig(ctx context.Context, scope stri
 	return awsConfig, nil
 }
 
-func parseAzureScope(ctx context.Context, scope string) (subscriptionID string, resourceGroup string, err error) {
-	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Parsing Azure scope %q", scope))
+func parseAzureScope(scope string) (subscriptionID string, resourceGroup string, err error) {
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
 		return "", "", fmt.Errorf("error parsing Azure scope: %w", err)
 	}
-	logger.Info(fmt.Sprintf("Parsed scope %v", parsedScope))
 
 	for _, segment := range parsedScope.ScopeSegments() {
-		logger.Info(fmt.Sprintf("Scope segment %v", segment))
 		if strings.EqualFold(segment.Type, resources.SubscriptionsSegment) {
 			subscriptionID = segment.Name
 		}
