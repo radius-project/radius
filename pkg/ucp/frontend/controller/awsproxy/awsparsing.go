@@ -117,7 +117,7 @@ func readRegionFromRequest(path string, basePath string) (string, armrpc_rest.Re
 		response := armrpc_rest.NewBadRequestARMResponse(errResponse)
 		return "", response
 	}
-	region := resourceID.FindScope("Regions")
+	region := resourceID.FindScope(resources.RegionsSegment)
 	if region == "" {
 		errResponse := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
