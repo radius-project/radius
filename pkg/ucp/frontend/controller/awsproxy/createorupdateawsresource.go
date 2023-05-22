@@ -52,7 +52,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	defer req.Body.Close()
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
 	if errResponse != nil {
-		return *errResponse, nil
+		return errResponse, nil
 	}
 
 	body := map[string]any{}

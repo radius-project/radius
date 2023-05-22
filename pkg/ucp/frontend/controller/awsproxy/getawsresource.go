@@ -44,7 +44,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
 	if errResponse != nil {
-		return *errResponse, nil
+		return errResponse, nil
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}

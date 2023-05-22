@@ -54,7 +54,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
 	if errResponse != nil {
-		return *errResponse, nil
+		return errResponse, nil
 	}
 
 	properties, err := readPropertiesFromBody(req)
