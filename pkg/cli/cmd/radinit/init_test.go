@@ -174,7 +174,46 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Cloud Provider (Reinstall)",
+			Name:          "Initialize with existing environment, choose existing, with Cloud Providers",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// Configure an existing environment - but then choose to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.Ptr("cool-existing-env"),
+						Properties: &corerp.EnvironmentProperties{
+							Providers: &corerp.Providers{
+								Azure: &corerp.ProvidersAzure{
+									Scope: to.Ptr("/subscriptions/123/resourceGroups/cool-rg"),
+								},
+								Aws: &corerp.ProvidersAws{
+									Scope: to.Ptr("/planes/aws/aws/accounts/123/regions/us-west-2"),
+								},
+							},
+						},
+					},
+				})
+				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
+
+				// No need to choose env settings since we're using existing
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Init Command With Azure Provider (Reinstall)",
 			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -484,32 +523,37 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 		expectedOutput []any
 	}{
 		{
-			name: "`rad init --dev` with Azure Provider",
-			dev:  true,
-			azureProvider: &azure.Provider{
-				SubscriptionID: "test-subscription",
-				ResourceGroup:  "test-rg",
-				ServicePrincipal: &azure.ServicePrincipal{
-					TenantID:     "test-tenantId",
-					ClientID:     "test-clientId",
-					ClientSecret: "test-clientSecret",
+			name:          "`rad init --dev` with recipes",
+			dev:           true,
+			azureProvider: nil,
+			awsProvider:   nil,
+			recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{
+				"Applications.Link/redisCaches": {
+					"default": {
+						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),
+					},
 				},
 			},
-			awsProvider: nil,
-			recipes:     map[string]map[string]*corerp.EnvironmentRecipeProperties{},
 			expectedOutput: []any{
 				output.LogOutput{
 					Format: "Creating environment %s...",
 					Params: []interface{}{"default"},
 				},
 				output.LogOutput{
-					Format: "Configuring cloud providers...",
-				},
-				output.LogOutput{
 					Format: "Installing dev recipes...",
 				},
+			},
+		},
+		{
+			name:          "`rad init --dev` w/o recipes",
+			dev:           true,
+			azureProvider: nil,
+			awsProvider:   nil,
+			recipes:       map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			expectedOutput: []any{
 				output.LogOutput{
-					Format: "Registering azure credentials",
+					Format: "Creating environment %s...",
+					Params: []interface{}{"default"},
 				},
 			},
 		},
@@ -537,33 +581,6 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				},
 				output.LogOutput{
 					Format: "Registering azure credentials",
-				},
-			},
-		},
-		{
-			name:          "`rad init --dev` with AWS Provider",
-			dev:           true,
-			azureProvider: nil,
-			awsProvider: &aws.Provider{
-				AccessKeyId:     "test-access-key",
-				SecretAccessKey: "test-secret-access",
-				TargetRegion:    "us-west-2",
-				AccountId:       "test-account-id",
-			},
-			recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{},
-			expectedOutput: []any{
-				output.LogOutput{
-					Format: "Creating environment %s...",
-					Params: []interface{}{"default"},
-				},
-				output.LogOutput{
-					Format: "Configuring cloud providers...",
-				},
-				output.LogOutput{
-					Format: "Installing dev recipes...",
-				},
-				output.LogOutput{
-					Format: "Registering aws credentials",
 				},
 			},
 		},
@@ -601,22 +618,6 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				output.LogOutput{
 					Format: "Creating environment %s...",
 					Params: []interface{}{"default"},
-				},
-			},
-		},
-		{
-			name:          "`rad init --dev` with no providers",
-			dev:           true,
-			azureProvider: nil,
-			awsProvider:   nil,
-			recipes:       map[string]map[string]*corerp.EnvironmentRecipeProperties{},
-			expectedOutput: []any{
-				output.LogOutput{
-					Format: "Creating environment %s...",
-					Params: []interface{}{"default"},
-				},
-				output.LogOutput{
-					Format: "Installing dev recipes...",
 				},
 			},
 		},
