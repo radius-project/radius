@@ -38,7 +38,8 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 
 output result object = {
   values: {
-    host: '${account.name}.mongo.cosmos.azure.com'
+    host: account.properties.documentEndpoint
     port: 443
+    database: account::dbinner.name
   }
 }
