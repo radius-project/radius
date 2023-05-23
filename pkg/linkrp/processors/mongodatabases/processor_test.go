@@ -226,6 +226,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, `validation returned multiple errors:
 
 the connection value "host" should be provided by the recipe, set '.properties.host' to provide a value manually
-the connection value "port" should be provided by the recipe, set '.properties.port' to provide a value manually`, err.Error())
+the connection value "port" should be provided by the recipe, set '.properties.port' to provide a value manually
+the connection value "database" should be provided by the recipe, set '.properties.database' to provide a value manually`, err.Error())
 	})
 }
