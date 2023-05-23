@@ -56,7 +56,7 @@ env:
 jobs:
   build:
     name: Build Radius for test
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -237,7 +237,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     strategy:
       fail-fast: true
       matrix:
@@ -361,7 +361,7 @@ jobs:
         run: |
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
-      - name: Download Bicep.
+      - name: Download Bicep
         run: |
           chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
