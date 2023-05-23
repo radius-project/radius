@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"testing"
 
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
@@ -116,6 +117,7 @@ func Test_processRepositories(t *testing.T) {
 			map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
+						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:0.20", DevRecipesRegistry)),
 					},
 				},
@@ -131,11 +133,13 @@ func Test_processRepositories(t *testing.T) {
 			map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
+						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:0.20", DevRecipesRegistry)),
 					},
 				},
 				"Applications.Link/mongoDatabases": {
 					"default": {
+						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/mongodatabases:0.20", DevRecipesRegistry)),
 					},
 				},
@@ -152,11 +156,13 @@ func Test_processRepositories(t *testing.T) {
 			map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
+						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:latest", DevRecipesRegistry)),
 					},
 				},
 				"Applications.Link/mongoDatabases": {
 					"default": {
+						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/mongodatabases:latest", DevRecipesRegistry)),
 					},
 				},

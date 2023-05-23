@@ -419,10 +419,13 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		var recipes map[string]map[string]*corerp.EnvironmentRecipeProperties
 		if r.Dev {
-			r.Output.LogInfo("Installing dev recipes...")
 			recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
 			if err != nil {
 				return err
+			}
+
+			if len(recipes) > 0 {
+				r.Output.LogInfo("Installing dev recipes...")
 			}
 		}
 
@@ -435,7 +438,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, &envProperties)
-		if err != nil || !isEnvCreated {
+		if err != nil {
+			return &cli.FriendlyError{Message: fmt.Sprintf("Failed to create radius environment with error %s", err)}
+		}
+		if !isEnvCreated {
 			return &cli.FriendlyError{Message: "Failed to create radius environment"}
 		}
 

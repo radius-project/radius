@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/to"
@@ -120,6 +121,7 @@ func processRepositories(repos []string, tag string) map[string]map[string]*core
 
 		recipes[linkType] = map[string]*corerp.EnvironmentRecipeProperties{
 			name: {
+				TemplateKind: to.Ptr(types.TemplateKindBicep),
 				TemplatePath: to.Ptr(repoPath + ":" + tag),
 			},
 		}
