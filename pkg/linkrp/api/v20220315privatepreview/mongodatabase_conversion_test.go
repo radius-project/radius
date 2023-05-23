@@ -36,10 +36,9 @@ func (f *fakeResource) ResourceTypeName() string {
 
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []struct {
-		filename       string
-		recipe         linkrp.LinkRecipe
-		overrideRecipe bool
-		resources      []*linkrp.ResourceReference
+		filename  string
+		recipe    linkrp.LinkRecipe
+		resources []*linkrp.ResourceReference
 	}{
 		{
 			// Opt-out with resources
@@ -53,9 +52,8 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			// Default recipe with overridden values
-			filename:       "mongodatabaseresource_recipe2.json",
-			recipe:         linkrp.LinkRecipe{Name: "", Parameters: nil},
-			overrideRecipe: true,
+			filename: "mongodatabaseresource_recipe2.json",
+			recipe:   linkrp.LinkRecipe{Name: "", Parameters: nil},
 		},
 		{
 			// Opt-out without resources
@@ -82,13 +80,8 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		if payload.overrideRecipe {
-			require.Equal(t, *versionedResource.Properties.Host, convertedResource.Properties.Host)
-			require.Equal(t, int32(*versionedResource.Properties.Port), convertedResource.Properties.Port)
-		} else {
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
-			require.Equal(t, int32(10255), convertedResource.Properties.Port)
-		}
+		require.Equal(t, *versionedResource.Properties.Host, convertedResource.Properties.Host)
+		require.Equal(t, int32(*versionedResource.Properties.Port), convertedResource.Properties.Port)
 		if versionedResource.Properties.ResourceProvisioning == nil || *versionedResource.Properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningRecipe) {
 			require.Equal(t, payload.recipe, convertedResource.Properties.Recipe)
 			require.Equal(t, linkrp.ResourceProvisioningRecipe, convertedResource.Properties.ResourceProvisioning)
@@ -183,8 +176,8 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, resource.Properties.Port, *versionedResource.Properties.Port)
 			require.ElementsMatch(t, payload.resources, versionedResource.Properties.Resources)
 			if resource.Properties.Status.OutputResources != nil {
-				require.Equal(t, "AzureCosmosAccount", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-				require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+				require.Equal(t, resource.Properties.Status.OutputResources[0].LocalID, versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+				require.Equal(t, resource.Properties.Status.OutputResources[0].ResourceType.Provider, versionedResource.Properties.Status.OutputResources[0]["Provider"])
 			}
 		}
 	}

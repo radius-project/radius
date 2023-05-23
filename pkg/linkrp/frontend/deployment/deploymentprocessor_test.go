@@ -83,7 +83,7 @@ var (
 	}
 )
 
-func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase) {
+func buildInputResourceMongo(resourceProvisioning string) (testResource datamodel.MongoDatabase) {
 	testResource = datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -100,7 +100,7 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 		},
 	}
 
-	if mode == modeRecipe {
+	if resourceProvisioning == modeRecipe {
 		testResource.Properties.Recipe = linkrp.LinkRecipe{
 			Name:       recipeName,
 			Parameters: recipeParams,
@@ -148,9 +148,9 @@ func buildInputResourceDaprStateStore(mode string) (testResource datamodel.DaprS
 	return
 }
 
-func buildOutputResourcesMongo(mode string) []rpv1.OutputResource {
+func buildOutputResourcesMongo(resourceProvisioning string) []rpv1.OutputResource {
 	radiusManaged := false
-	if mode == modeRecipe {
+	if resourceProvisioning == modeRecipe {
 		radiusManaged = true
 	}
 
@@ -266,10 +266,10 @@ func buildRendererOutputRedis() renderers.RendererOutput {
 	return rendererOutput
 }
 
-func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOutput) {
+func buildRendererOutputMongo(resourceProvisioning string) (rendererOutput renderers.RendererOutput) {
 	computedValues := map[string]renderers.ComputedValueReference{}
 	secretValues := map[string]rpv1.SecretValueReference{}
-	if mode == modeResource || mode == modeRecipe {
+	if resourceProvisioning == modeResource || resourceProvisioning == modeRecipe {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
 				LocalID:     rpv1.LocalIDAzureCosmosDBMongo,
@@ -287,7 +287,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 				ValueSelector: "/connectionStrings/0/connectionString",
 			},
 		}
-	} else if mode == modeValues {
+	} else if resourceProvisioning != "recipe" {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
 				Value: mongoLinkName,
@@ -302,7 +302,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	}
 
 	recipeData := linkrp.RecipeData{}
-	if mode == modeRecipe {
+	if resourceProvisioning == modeRecipe {
 		recipeData = linkrp.RecipeData{
 			RecipeProperties: linkrp.RecipeProperties{
 				LinkRecipe: linkrp.LinkRecipe{
@@ -319,7 +319,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	}
 
 	rendererOutput = renderers.RendererOutput{
-		Resources:      buildOutputResourcesMongo(mode),
+		Resources:      buildOutputResourcesMongo(resourceProvisioning),
 		SecretValues:   secretValues,
 		ComputedValues: computedValues,
 		RecipeData:     recipeData,
@@ -337,9 +337,9 @@ func buildRendererOutputDapr(mode string) (rendererOutput renderers.RendererOutp
 					Name:       recipeName,
 					Parameters: recipeParams,
 				},
-				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/dapr:v1",
 				EnvParameters: map[string]any{
-					"name": "account-mongo-db",
+					"name": "dapr-state-store",
 				},
 			},
 			APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
@@ -355,15 +355,20 @@ func buildRendererOutputDapr(mode string) (rendererOutput renderers.RendererOutp
 }
 
 func buildOutputResourcesDapr(mode string) []rpv1.OutputResource {
-	radiusManaged := true
+	radiusManaged := false
+	if mode == modeRecipe {
+		radiusManaged = true
+	}
+
+	accountResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.DaprStateStoreAzureStorage,
+		Provider: resourcemodel.ProviderAzure,
+	}
 
 	return []rpv1.OutputResource{
 		{
-			LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreAzureStorage,
-				Provider: resourcemodel.ProviderAzure,
-			},
+			LocalID:      rpv1.LocalIDDaprStateStoreAzureStorage,
+			ResourceType: accountResourceType,
 			Resource: map[string]string{
 				handlers.KubernetesNameKey:       daprLinkName,
 				handlers.KubernetesNamespaceKey:  "radius-test",
@@ -371,6 +376,13 @@ func buildOutputResourcesDapr(mode string) []rpv1.OutputResource {
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
 				handlers.ResourceName:            daprLinkName,
+			},
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &accountResourceType,
+				Data: resourcemodel.ARMIdentity{
+					ID:         cosmosMongoID,
+					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
+				},
 			},
 			RadiusManaged: &radiusManaged,
 		},
@@ -907,17 +919,14 @@ func Test_Deploy(t *testing.T) {
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
-		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(2).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
-		testRendererOutput := buildRendererOutputMongo(modeResource)
+		testRendererOutput := buildRendererOutputDapr(modeResource)
 
-		deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
+		deploymentOutput, err := dp.Deploy(ctx, daprLinkResourceID, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
-		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[1].Identity)
-		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", renderers.Host: testRendererOutput.ComputedValues[renderers.Host].Value}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy success with mongo recipe", func(t *testing.T) {
