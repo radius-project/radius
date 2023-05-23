@@ -67,8 +67,7 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 
-	err = verifyManualInputs(v.ResourceProvisioning, v.Host, v.Port)
-	if err != nil {
+	if err = converted.VerifyInputs(); err != nil {
 		return nil, err
 	}
 	return converted, nil

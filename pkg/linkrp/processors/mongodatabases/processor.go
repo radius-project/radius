@@ -25,7 +25,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDataba
 	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
-	validator.AddOptionalStringField(renderers.DatabaseNameValue, &resource.Properties.Database)
+	validator.AddRequiredStringField(renderers.DatabaseNameValue, &resource.Properties.Database)
 	validator.AddOptionalSecretField(renderers.UsernameStringValue, &resource.Properties.Secrets.Username)
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
 	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
@@ -51,8 +51,6 @@ func (p *Processor) computeConnectionString(resource *datamodel.MongoDatabase) s
 	}
 	connectionString = fmt.Sprintf("%s%s:%v", connectionString, resource.Properties.Host, resource.Properties.Port)
 
-	if resource.Properties.Database != "" {
-		connectionString = connectionString + "/" + resource.Properties.Database
-	}
+	connectionString = connectionString + "/" + resource.Properties.Database
 	return connectionString
 }

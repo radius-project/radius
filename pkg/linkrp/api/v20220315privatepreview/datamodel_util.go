@@ -155,13 +155,3 @@ func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference 
 	}
 	return resources
 }
-
-func verifyManualInputs(resourceProvisioning *ResourceProvisioning, host *string, port *int32) error {
-	// Verfiy that the inputs for manual resource provisioning are all provided
-	if resourceProvisioning != nil && *resourceProvisioning == ResourceProvisioningManual {
-		if host == nil || port == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
-		}
-	}
-	return nil
-}

@@ -17,6 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -62,6 +64,16 @@ type MongoDatabaseSecrets struct {
 
 func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 	return mongoSecrets == MongoDatabaseSecrets{}
+}
+
+// VerifyInputs checks that the inputs for manual resource provisioning are all provided
+func (mongodb *MongoDatabase) VerifyInputs() error {
+	if mongodb.Properties.ResourceProvisioning != "" && mongodb.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if mongodb.Properties.Host == "" || mongodb.Properties.Port == 0 || mongodb.Properties.Database == "" {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host, port, and database are required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.

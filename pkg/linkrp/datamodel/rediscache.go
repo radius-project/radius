@@ -18,6 +18,7 @@ package datamodel
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -93,6 +94,16 @@ func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
 
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
+}
+
+// VerifyInputs checks that the inputs for manual resource provisioning are all provided
+func (redisCache *RedisCache) VerifyInputs() error {
+	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if redisCache.Properties.Host == "" || redisCache.Properties.Port == 0 {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }
 
 type RedisCacheProperties struct {

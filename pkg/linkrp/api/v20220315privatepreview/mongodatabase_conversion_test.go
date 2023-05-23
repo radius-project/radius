@@ -125,7 +125,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 			require.Equal(t, &expectedErr, err)
 		}
 		if payload == "mongodatabaseresource-missinginputs.json" {
-			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
+			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host, port, and database are required when resourceProvisioning is %s", ResourceProvisioningManual)}
 			_, err = versionedResource.ConvertTo()
 			require.Equal(t, &expectedErr, err)
 		}

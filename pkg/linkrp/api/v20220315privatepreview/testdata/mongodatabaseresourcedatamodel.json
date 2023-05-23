@@ -28,6 +28,7 @@
         "resourceProvisioning": "manual",
         "host": "testAccount1.mongo.cosmos.azure.com",
         "port": 10255,
+        "database": "test-database",
         "secrets": {
           "username": "testUser",
           "password": "testPassword",

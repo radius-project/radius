@@ -65,11 +65,10 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 			Password:         to.String(v.Secrets.Password),
 		}
 	}
-	manualInputs := verifyManualInputs(v.ResourceProvisioning, v.Host, v.Port)
-	if manualInputs != nil {
-		return nil, manualInputs
-	}
 
+	if err = converted.VerifyInputs(); err != nil {
+		return nil, err
+	}
 	return converted, nil
 }
 
