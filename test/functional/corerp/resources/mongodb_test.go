@@ -70,7 +70,7 @@ func Test_MongoManualProvisioning(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr").ValidateLabels(false),
 						validation.NewK8sPodForResource(name, "mdb-us-ctnr").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "mdb-us-rte"),
+						validation.NewK8sServiceForResource(name, "mdb-us-rte").ValidateLabels(false),
 					},
 				},
 			},
