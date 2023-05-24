@@ -21,7 +21,6 @@ func Test_Process(t *testing.T) {
 	processor := Processor{}
 
 	const azureSqlResourceID = "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Sql/servers/mssql-radiustest/databases/database-radiustest"
-	const azureRedisResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis2"
 	const server = "sql.server"
 	const database = "database-radiustest"
 
