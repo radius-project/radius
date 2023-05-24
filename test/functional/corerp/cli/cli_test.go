@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -58,6 +59,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	templateKind := "bicep"
 	linkType := "Applications.Link/mongoDatabases"
+	file := "testdata/corerp-redis-recipe.bicep"
+	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-recipes/redis-recipe:%s", generateUniqueTag())
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, linkType)
@@ -96,6 +99,12 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Contains(t, output, "location")
 		require.Contains(t, output, "string")
 		require.Contains(t, output, "resourceGroup().location]")
+	})
+
+	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
+		output, err := cli.BicepPublish(ctx, file, target)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully published")
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
@@ -687,4 +696,11 @@ func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, option
 	// We don't care about the response for tests
 	_, err = appDeleteClient.Delete(ctx, applicationName, nil)
 	return err
+}
+
+func generateUniqueTag() string {
+	timestamp := time.Now().Unix()
+	random := rand.Intn(1000)
+	tag := fmt.Sprintf("test-%d-%d", timestamp, random)
+	return tag
 }

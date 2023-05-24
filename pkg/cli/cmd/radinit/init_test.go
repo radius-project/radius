@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
@@ -530,6 +531,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
+						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),
 					},
 				},

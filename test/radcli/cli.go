@@ -315,6 +315,18 @@ func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, link
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, error) {
+	args := []string{
+		"bicep",
+		"publish",
+		"--file",
+		file,
+		"--target",
+		target,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{
 		"version",
