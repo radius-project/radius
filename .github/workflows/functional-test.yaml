@@ -484,9 +484,9 @@ jobs:
             --no-wait
   report-failure:
     name: Report test failure
-    needs: [build, tests]
+    # needs: [build, tests]
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    if: failure() && github.event_name == 'schedule'
+    # if: failure() && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v6
@@ -496,7 +496,7 @@ jobs:
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: 'Scheduled functional test failed - Run ID: ' + context.runId,
-              body: '## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](' + process.env.ACTION_LINK + ').'
+              title: '[TEST] Scheduled functional test failed - Run ID: ' + context.runId,
+              body: '## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](' + process.env.ACTION_LINK + ').',
               labels: ['bug']
             })
