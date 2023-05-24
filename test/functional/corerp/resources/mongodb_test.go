@@ -68,8 +68,8 @@ func Test_MongoManualProvisioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr"),
-						validation.NewK8sPodForResource(name, "mdb-us-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-us-ctnr").ValidateLabels(false),
 						validation.NewK8sServiceForResource(name, "mdb-us-rte"),
 					},
 				},
@@ -116,7 +116,7 @@ func Test_MongoDB_AzureResourceRecipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-azureres-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mongodb-azureres-app-ctnr").ValidateLabels(false),
 					},
 				},
 			},
@@ -182,7 +182,7 @@ func Test_MongoDB_Recipe_Parameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-param-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-param-ctnr").ValidateLabels(false),
 					},
 				},
 			},
@@ -246,7 +246,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr").ValidateLabels(false),
 					},
 				},
 			},

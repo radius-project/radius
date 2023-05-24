@@ -224,10 +224,6 @@ func buildRendererOutputRedis() renderers.RendererOutput {
 			LocalID:       rpv1.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
-			Transformer: resourcemodel.ResourceType{
-				Provider: resourcemodel.ProviderAzure,
-				Type:     resourcekinds.AzureRedis,
-			},
 		},
 	}
 	recipeData := linkrp.RecipeData{
