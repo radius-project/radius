@@ -65,7 +65,7 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
     environment: environment
     server: sqlRoute.properties.hostname
     database: 'master'
-    mode: 'values'
+    resourceProvisioning: 'manual'
   }
 }
 
