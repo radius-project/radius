@@ -19,3 +19,11 @@ Please make sure you've  completed the relevant tasks for this PR, out of the fo
 * [ ] Adds necessary E2E tests for change
 * [ ] Unit tests passing
 * [ ] Extended the documentation / Created issue for it
+
+## Auto-generated summary
+
+<!--
+GitHub Copilot for docs will auto-generate a summary of the PR
+-->
+
+copilot:all
