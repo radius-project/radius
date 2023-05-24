@@ -1,23 +1,33 @@
-# This is an example of configuration file.
+# This configuration file is used in development when launching from VS Code.
+#
+# This configures the link RP to...
+#
+# - Use Kubernetes (namespace: radius-system) for storage and secrets
+# - Listen on port 8081
+# - Talk to UCP on port 9000
+# - Disables metrics and profiler
+#
 environment:
   name: Dev
   roleLocation: "global"
 storageProvider:
-  provider: "etcd"
-  etcd:
-    inmemory: true
+  provider: "apiserver"
+  apiserver:
+    context: ''
+    namespace: 'radius-system'
 queueProvider:
-  provider: inmemory
+  provider: "apiserver"
+  apiserver:
+    context: ''
+    namespace: 'radius-system'
 profilerProvider:
-  enabled: true
+  enabled: false
   port: 6060
 secretProvider:
-  provider: etcd
-  etcd:
-    inmemory: true
+  provider: "kubernetes"
 metricsProvider:
   prometheus:
-    enabled: true
+    enabled: false
     path: "/metrics"
     port: 9090
 featureFlags:
@@ -30,7 +40,9 @@ workerServer:
   maxOperationConcurrency: 3
   maxOperationRetryCount: 2
 ucp:
-  kind: kubernetes
+  kind: direct
+  direct:
+    endpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
 logging:
   level: "info"
   json: false

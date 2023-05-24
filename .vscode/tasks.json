@@ -1,0 +1,68 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Check for Deployment Engine",
+			"detail": "Checks if the Deployment Engine is cloned as a sibling to the radius repo",
+			"command": "bash",
+			"args": [
+				"-c",
+				"test -d ../deployment-engine/ || { echo >&2 \"The project-radius/deployment-engine is not cloned as a sibling to the radius repo. Please clone the project-radius/deployment-engine repo next to the Radius repo and try again.\"; exit 1; }"
+			],
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "none",
+			"presentation": {
+				"reveal": "silent",
+				"echo": false,
+				"close": true,
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Deployment Engine",
+			"detail": "Builds the Deployment Engine. This requires the project-radius/deployment engine repo to be cloned as a sibling to the project-radius/radius repo",
+			"dependsOn": ["Check for Deployment Engine"],
+			"command": "dotnet build",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine"
+			},
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal":"silent",
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build Radius (all)",
+			"detail": "Builds the Radius repository using make build",
+			"command": "make",
+			"type": "shell",
+			"args": [
+				"build"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group":{
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": "$gcc",
+			"presentation": {
+				"echo": true,
+				"reveal":"silent",
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			}
+		}
+	]
+}
