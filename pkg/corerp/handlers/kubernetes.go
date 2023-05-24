@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package handlers
 
@@ -17,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -102,10 +111,13 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	readinessCh := make(chan bool, 1)
 	watchErrorCh := make(chan error, 1)
 	go func() {
-		handler.watchUntilReady(ctx, &item, readinessCh, watchErrorCh)
+		informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
+		handler.WatchUntilReady(ctx, informerFactory, &item, readinessCh, watchErrorCh, nil)
 	}()
 
 	select {
@@ -124,6 +136,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 
 		return nil, fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 	case <-readinessCh:
+		logger.Info(fmt.Sprintf("Marking deployment %s in namespace %s as complete", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	case <-watchErrorCh:
 		return nil, err
@@ -168,15 +181,24 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 	return unstructured.Unstructured{Object: c}, nil
 }
 
-func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error) {
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
-
+func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error, eventHandlerInvokedCh chan struct{}) {
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new_obj any) {
 			obj, ok := new_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
+				return
+			}
+
+			// There might be parallel deployments in progress, we need to make sure we are watching the right one
+			if obj.Name != item.GetName() {
+				return
+			}
+
+			// This channel is used only by test code to signal that the deployment is being watched
+			if eventHandlerInvokedCh != nil {
+				eventHandlerInvokedCh <- struct{}{}
 			}
 
 			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
@@ -185,11 +207,24 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 			old, ok := old_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("old deployment object is not of appsv1.Deployment type")
+				return
 			}
 			new, ok := new_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("new deployment object not of appsv1.Deployment type")
+				return
 			}
+
+			// There might be parallel deployments in progress, we need to make sure we are watching the right one
+			if new.Name != item.GetName() {
+				return
+			}
+
+			// This channel is used only by test code to signal that the deployment is being watched
+			if eventHandlerInvokedCh != nil {
+				eventHandlerInvokedCh <- struct{}{}
+			}
+
 			if old.ResourceVersion != new.ResourceVersion {
 				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
 			}
@@ -206,12 +241,15 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 }
 
 func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment, readinessCh chan<- bool) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	for _, c := range obj.Status.Conditions {
 		// check for complete deployment condition
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
 		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
+			logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s", obj.Name, obj.Namespace, c.Type, c.Status, c.Reason))
 			// ObservedGeneration should be updated to latest generation to avoid stale replicas
 			if obj.Status.ObservedGeneration >= obj.Generation {
+				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
 				readinessCh <- true
 			}
 		}

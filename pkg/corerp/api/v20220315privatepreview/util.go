@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package v20220315privatepreview
 
@@ -10,6 +18,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"golang.org/x/exp/slices"
@@ -123,4 +132,8 @@ func isValidLinkType(link string) bool {
 		linkrp.SqlDatabasesResourceType,
 	}
 	return slices.Contains(linkTypes, link)
+}
+
+func isValidTemplateKind(templateKind string) bool {
+	return slices.Contains(recipes.SupportedTemplateKind, templateKind)
 }

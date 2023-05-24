@@ -27,6 +27,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/mongoDatabases' :{
         mongodb: {
+          templateKind: 'bicep'
           templatePath: '${registry}/test/functional/corerp/recipes/mongodb-recipe-parameter:${version}'
           parameters: {
             documentdbName: 'acnt-operator-${rg}'

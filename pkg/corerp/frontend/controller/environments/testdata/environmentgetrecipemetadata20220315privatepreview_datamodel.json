@@ -20,15 +20,16 @@
                 "namespace": "default"
             }
         },
-        "useDevRecipes": false,
         "recipes": {
             "Applications.Link/mongoDatabases":{
-                "mongo-parameters": {                    
+                "mongo-parameters": {
+                    "templateKind": "bicep",                  
                     "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
                   }
             },
             "Applications.Link/redisCache":{
                 "redis": {
+                    "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/redis:1.0"
                   }
             }

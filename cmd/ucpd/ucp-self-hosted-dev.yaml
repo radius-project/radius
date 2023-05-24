@@ -28,7 +28,7 @@ queueProvider:
 
 profilerProvider:
   enabled: true
-  port: 6060
+  port: 6061
 
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported

@@ -6,10 +6,10 @@
             "resourceId": "fakeid",
             "namespace": "default"
         },
-        "useDevRecipes": false,
         "recipes": {
             "Applications.Link/mongoDatabases":{
                 "mongo-azure": {
+                    "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
                     "parameters": {
                         "throughput": 400

@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package v20220315privatepreview
 
@@ -38,9 +46,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
-		Properties: datamodel.EnvironmentProperties{
-			UseDevRecipes: to.Bool(src.Properties.UseDevRecipes),
-		},
+		Properties: datamodel.EnvironmentProperties{},
 	}
 
 	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
@@ -58,7 +64,15 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
+					// Allowed format hard coded to Bicep in the error until Terraform support is officially implemented.
+					// This check shouldn't be needed once we define an enum for templateKind in the schema.
+					// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7940
+					if recipeDetails.TemplateKind == nil || !isValidTemplateKind(*recipeDetails.TemplateKind) {
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("invalid template kind. Allowed formats: \"bicep\"")
+					}
+
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
+						TemplateKind: *recipeDetails.TemplateKind,
 						TemplatePath: to.String(recipeDetails.TemplatePath),
 						Parameters:   recipeDetails.Parameters,
 					}
@@ -108,7 +122,6 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
-		UseDevRecipes:     to.Ptr(env.Properties.UseDevRecipes),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
@@ -122,6 +135,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 			recipes[resourceType] = map[string]*EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipe {
 				recipes[resourceType][recipeName] = &EnvironmentRecipeProperties{
+					TemplateKind: to.Ptr(recipeDetails.TemplateKind),
 					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
 					Parameters:   recipeDetails.Parameters,
 				}

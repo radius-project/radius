@@ -23,6 +23,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/redisCaches':{
         default: {
+<<<<<<< HEAD
+=======
+          templateKind: 'bicep'
+>>>>>>> main
           templatePath: '${registry}/test/functional/corerp/recipes/redis-recipe-value-backed:${version}' 
         }
       }
@@ -38,7 +42,11 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     extensions: [
       {
           kind: 'kubernetesNamespace'
+<<<<<<< HEAD
           namespace: 'corerp-resources-redis-recipe-app'
+=======
+          namespace: 'corerp-resources-redis-default-recipe-app'
+>>>>>>> main
       }
     ]
   }

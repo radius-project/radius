@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package resource_test
 
@@ -146,52 +154,6 @@ func Test_MongoDB_Recipe(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr").ValidateLabels(false),
 						validation.NewK8sPodForResource(name, "mongo-recipe-resource").ValidateLabels(false),
-					},
-				},
-			},
-		},
-	})
-
-	test.Test(t)
-}
-
-// Test_MongoDB_Recipe validates:
-// the creation of a mongoDB from a devrecipe that is linked to the environment when created with useDevRecipes = true
-// the container using the mongoDB link to connect to the mongoDB resource
-func Test_MongoDB_DevRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
-	name := "corerp-resources-mongodb-devrecipe"
-	appNamespace := "corerp-resources-mongodb-devrecipe-app"
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
-					{
-						Name: "corerp-resources-environment-devrecipe-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: "corerp-resources-mongodb-devrecipe",
-						Type: validation.ApplicationsResource,
-						App:  name,
-					},
-					{
-						Name: "mongodb-devrecipe-app-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "mongo-devrecipe-db",
-						Type: validation.MongoDatabasesResource,
-						App:  name,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-devrecipe-app-ctnr"),
 					},
 				},
 			},

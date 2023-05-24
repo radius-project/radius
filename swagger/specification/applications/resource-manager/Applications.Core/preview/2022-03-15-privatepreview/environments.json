@@ -417,10 +417,6 @@
           "$ref": "#/definitions/Providers",
           "description": "Cloud providers configuration for the environment."
         },
-        "useDevRecipes": {
-          "type": "boolean",
-          "description": "Flag to use radius owned recipes."
-        },
         "recipes": {
           "description": "Specifies Recipes linked to the Environment.",
           "additionalProperties": {
@@ -433,6 +429,7 @@
             {
               "Applications.Link/mongoDatabases": {
                 "default":{
+                  "templateKind": "bicep",
                   "templatePath":"br:sampleregistry.azureacr.io/radius/recipes/mongodb",
                   "parameters":{
                     "port":6060
@@ -479,6 +476,10 @@
     "EnvironmentRecipeProperties": {
       "description": "Properties of a Recipe linked to an Environment.",
       "properties": {
+        "templateKind": {
+          "description": "Format of the template provided by the recipe. Allowed values: bicep",
+          "type": "string"
+        },
         "templatePath": {
           "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
           "type": "string"
@@ -494,6 +495,7 @@
         }
       },
       "required": [
+        "templateKind",
         "templatePath"
       ]
     },

@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 // Contains support for automating the use of the rad CLI
 package radcli
@@ -263,7 +271,7 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) Recipelist(ctx context.Context, envName string) (string, error) {
+func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) {
 	args := []string{
 		"recipe",
 		"list",
@@ -272,12 +280,13 @@ func (cli *CLI) Recipelist(ctx context.Context, envName string) (string, error) 
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templatePath, linkType string) (string, error) {
+func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, linkType string) (string, error) {
 	args := []string{
 		"recipe",
 		"register",
 		recipeName,
 		"--environment", envName,
+		"--template-kind", templateKind,
 		"--template-path", templatePath,
 		"--link-type", linkType,
 	}
@@ -302,6 +311,18 @@ func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, link
 		recipeName,
 		"--link-type", linkType,
 		"--environment", envName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, error) {
+	args := []string{
+		"bicep",
+		"publish",
+		"--file",
+		file,
+		"--target",
+		target,
 	}
 	return cli.RunCommand(ctx, args)
 }

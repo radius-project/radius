@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package radinit
 
@@ -31,7 +39,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
@@ -66,7 +73,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("dev", false, "Setup Radius for development")
-	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
 	return cmd, runner
 }
 
@@ -80,6 +86,7 @@ type Runner struct {
 	Output              output.Interface
 	Prompter            prompt.Interface
 	SetupInterface      setup.Interface
+	DevRecipeClient     DevRecipeClient
 
 	Format                  string
 	AzureCloudProvider      *azure.Provider
@@ -93,7 +100,6 @@ type Runner struct {
 	ScaffoldApplication     bool
 	ScaffoldApplicationName string
 	ServicePrincipal        *azure.ServicePrincipal
-	SkipDevRecipes          bool
 	Workspace               *workspaces.Workspace
 	Dev                     bool
 }
@@ -109,6 +115,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
 		SetupInterface:      factory.GetSetupInterface(),
+		DevRecipeClient:     NewDevRecipeClient(),
 	}
 }
 
@@ -139,11 +146,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return &cli.FriendlyError{Message: err.Error()}
 		}
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
-	}
-
-	r.SkipDevRecipes, err = cmd.Flags().GetBool("skip-dev-recipes")
-	if err != nil {
-		return err
 	}
 
 	r.RadiusInstalled, err = r.HelmInterface.CheckRadiusInstall(r.KubeContext)
@@ -382,7 +384,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		//ignore the id of the resource group created
-		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, ucp.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil || !isGroupCreated {
@@ -391,7 +393,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 		// We'll remove this in the future.
-		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, ucp.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil {
@@ -415,16 +417,31 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
+		var recipes map[string]map[string]*corerp.EnvironmentRecipeProperties
+		if r.Dev {
+			recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(recipes) > 0 {
+				r.Output.LogInfo("Installing dev recipes...")
+			}
+		}
+
 		envProperties := corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
 				Namespace: to.Ptr(r.Namespace),
 			},
-			Providers:     &providers,
-			UseDevRecipes: to.Ptr(!r.SkipDevRecipes),
+			Providers: &providers,
+			Recipes:   recipes,
 		}
 
 		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, &envProperties)
-		if err != nil || !isEnvCreated {
+		if err != nil {
+			return &cli.FriendlyError{Message: fmt.Sprintf("Failed to create radius environment with error %s", err)}
+		}
+		if !isEnvCreated {
 			return &cli.FriendlyError{Message: "Failed to create radius environment"}
 		}
 

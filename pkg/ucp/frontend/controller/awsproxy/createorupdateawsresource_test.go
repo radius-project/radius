@@ -1,7 +1,17 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package awsproxy
 
 import (
@@ -108,6 +118,66 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.Equal(t, expectedResponseObject, actualResponseObject)
 }
 
+func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
+	testResource := CreateKinesisStreamTestResourceWithInvalidRegion(uuid.NewString())
+	testOptions := setupTest(t)
+
+	requestBody := map[string]any{
+		"properties": map[string]any{
+			"RetentionPeriodHours": 178,
+			"ShardCount":           3,
+		},
+	}
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
+		AWSOptions: ctrl.AWSOptions{
+			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		},
+		Options: armrpc_controller.Options{
+			StorageClient: testOptions.StorageClient,
+		},
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
+	request.Host = testHost
+	request.URL.Host = testHost
+	request.URL.Scheme = testScheme
+
+	require.NoError(t, err)
+
+	ctx := testutil.ARMTestContextFromRequest(request)
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	err = actualResponse.Apply(ctx, w, request)
+	require.NoError(t, err)
+
+	res := w.Result()
+	require.Equal(t, http.StatusBadRequest, res.StatusCode)
+
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+
+	expectedResponseObject := map[string]interface{}{
+		"error": map[string]interface{}{
+			"code":    "BadRequest",
+			"message": "failed to read region from request path: 'regions' not found",
+		},
+	}
+
+	actualResponseObject := map[string]any{}
+	err = json.Unmarshal(body, &actualResponseObject)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedResponseObject, actualResponseObject)
+}
+
 func Test_UpdateAWSResource(t *testing.T) {
 	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
@@ -130,7 +200,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 
 	testOptions := setupTest(t)
 
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
@@ -224,7 +294,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 
 	testOptions := setupTest(t)
 
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{

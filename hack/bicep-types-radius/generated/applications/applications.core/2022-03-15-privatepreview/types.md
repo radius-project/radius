@@ -331,7 +331,6 @@
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Specifies Recipes linked to the Environment.
-* **useDevRecipes**: bool: Flag to use radius owned recipes.
 
 ## EnvironmentExtension
 * **Discriminator**: kind
@@ -380,6 +379,7 @@
 ## EnvironmentRecipeProperties
 ### Properties
 * **parameters**: any: Any object
+* **templateKind**: string (Required): Format of the template provided by the recipe. Allowed values: bicep
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 
 ## TrackedResourceTags

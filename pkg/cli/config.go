@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package cli
 
@@ -19,7 +27,6 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/gofrs/flock"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 
@@ -145,7 +152,7 @@ func getConfig(configFilePath string) (*viper.Viper, error) {
 
 		// This is extremely unlikely to fail on us. This would only happen
 		// if the user has no HOME (or USERPROFILE on Windows) directory.
-		home, err := homedir.Dir()
+		home, err := os.UserHomeDir()
 		if err != nil {
 			return nil, fmt.Errorf("failed to find the user's home directory: %w", err)
 		}
@@ -259,7 +266,7 @@ func GetConfigFilePath(v *viper.Viper) (string, error) {
 	if configFilePath == "" {
 		// This is extremely unlikely to fail on us. This would only happen
 		// if the user has no HOME (or USERPROFILE on Windows) directory.
-		home, err := homedir.Dir()
+		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("failed to find the user's home directory: %w", err)
 		}

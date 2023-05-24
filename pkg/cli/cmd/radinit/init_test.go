@@ -1,13 +1,22 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package radinit
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
@@ -165,7 +175,46 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Cloud Provider (Reinstall)",
+			Name:          "Initialize with existing environment, choose existing, with Cloud Providers",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// Configure an existing environment - but then choose to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.Ptr("cool-existing-env"),
+						Properties: &corerp.EnvironmentProperties{
+							Providers: &corerp.Providers{
+								Azure: &corerp.ProvidersAzure{
+									Scope: to.Ptr("/subscriptions/123/resourceGroups/cool-rg"),
+								},
+								Aws: &corerp.ProvidersAws{
+									Scope: to.Ptr("/planes/aws/aws/accounts/123/regions/us-west-2"),
+								},
+							},
+						},
+					},
+				})
+				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
+
+				// No need to choose env settings since we're using existing
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Init Command With Azure Provider (Reinstall)",
 			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -465,208 +514,223 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Run_InstallAndCreateEnvironment_WithAzureProvider_WithRecipes(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-	configFileInterface.EXPECT().
-		ConfigFromContext(context.Background()).
-		Return(nil).Times(1)
-
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appManagementClient.EXPECT().
-		CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
-		Return(true, nil).Times(1)
-	appManagementClient.EXPECT().
-		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-		Return(true, nil).Times(1)
-	skipRecipes := false
-	testEnvProperties := &corerp.EnvironmentProperties{
-		Compute: &corerp.KubernetesCompute{
-			Namespace: to.Ptr("defaultNamespace"),
+func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
+	testCases := []struct {
+		name           string
+		dev            bool
+		azureProvider  *azure.Provider
+		awsProvider    *aws.Provider
+		recipes        map[string]map[string]*corerp.EnvironmentRecipeProperties
+		expectedOutput []any
+	}{
+		{
+			name:          "`rad init --dev` with recipes",
+			dev:           true,
+			azureProvider: nil,
+			awsProvider:   nil,
+			recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{
+				"Applications.Link/redisCaches": {
+					"default": {
+						TemplateKind: to.Ptr(types.TemplateKindBicep),
+						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),
+					},
+				},
+			},
+			expectedOutput: []any{
+				output.LogOutput{
+					Format: "Creating environment %s...",
+					Params: []interface{}{"default"},
+				},
+				output.LogOutput{
+					Format: "Installing dev recipes...",
+				},
+			},
 		},
-		UseDevRecipes: to.Ptr(!skipRecipes),
-		Providers: &corerp.Providers{
-			Azure: &corerp.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/test-subscription/resourceGroups/test-rg"),
+		{
+			name:          "`rad init --dev` w/o recipes",
+			dev:           true,
+			azureProvider: nil,
+			awsProvider:   nil,
+			recipes:       map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			expectedOutput: []any{
+				output.LogOutput{
+					Format: "Creating environment %s...",
+					Params: []interface{}{"default"},
+				},
+			},
+		},
+		{
+			name: "`rad init` with Azure Provider",
+			dev:  false,
+			azureProvider: &azure.Provider{
+				SubscriptionID: "test-subscription",
+				ResourceGroup:  "test-rg",
+				ServicePrincipal: &azure.ServicePrincipal{
+					TenantID:     "test-tenantId",
+					ClientID:     "test-clientId",
+					ClientSecret: "test-clientSecret",
+				},
+			},
+			awsProvider: nil,
+			recipes:     nil,
+			expectedOutput: []any{
+				output.LogOutput{
+					Format: "Creating environment %s...",
+					Params: []interface{}{"default"},
+				},
+				output.LogOutput{
+					Format: "Configuring cloud providers...",
+				},
+				output.LogOutput{
+					Format: "Registering azure credentials",
+				},
+			},
+		},
+		{
+			name:          "`rad init` with AWS Provider",
+			dev:           false,
+			azureProvider: nil,
+			awsProvider: &aws.Provider{
+				AccessKeyId:     "test-access-key",
+				SecretAccessKey: "test-secret-access",
+				TargetRegion:    "us-west-2",
+				AccountId:       "test-account-id",
+			},
+			recipes: nil,
+			expectedOutput: []any{
+				output.LogOutput{
+					Format: "Creating environment %s...",
+					Params: []interface{}{"default"},
+				},
+				output.LogOutput{
+					Format: "Configuring cloud providers...",
+				},
+				output.LogOutput{
+					Format: "Registering aws credentials",
+				},
+			},
+		},
+		{
+			name:          "`rad init` with no providers",
+			dev:           false,
+			azureProvider: nil,
+			awsProvider:   nil,
+			recipes:       nil,
+			expectedOutput: []any{
+				output.LogOutput{
+					Format: "Creating environment %s...",
+					Params: []interface{}{"default"},
+				},
 			},
 		},
 	}
-	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-		Return(true, nil).Times(1)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+			configFileInterface.EXPECT().
+				ConfigFromContext(context.Background()).
+				Return(nil).
+				Times(1)
 
-	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
-	credentialManagementClient.EXPECT().
-		PutAzure(context.Background(), gomock.Any()).
-		Return(nil).Times(1)
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
+				Return(true, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
+				Return(true, nil).
+				Times(1)
 
-	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
-		Return(nil).Times(1)
+			devRecipeClient := NewMockDevRecipeClient(ctrl)
+			if tc.dev {
+				devRecipeClient.EXPECT().
+					GetDevRecipes(context.Background()).
+					Return(tc.recipes, nil).
+					Times(1)
+			}
 
-	outputSink := &output.MockOutput{}
+			testEnvProperties := &corerp.EnvironmentProperties{
+				Compute: &corerp.KubernetesCompute{
+					Namespace: to.Ptr("defaultNamespace"),
+				},
+				Providers: buildProviders(tc.azureProvider, tc.awsProvider),
+				Recipes:   tc.recipes,
+			}
+			appManagementClient.EXPECT().
+				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
+				Return(true, nil).
+				Times(1)
 
-	helmInterface := helm.NewMockInterface(ctrl)
-	helmInterface.EXPECT().
-		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
-		Return(true, nil).Times(1)
+			credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
+			if tc.azureProvider != nil {
+				credentialManagementClient.EXPECT().
+					PutAzure(context.Background(), gomock.Any()).
+					Return(nil).
+					Times(1)
+			}
+			if tc.awsProvider != nil {
+				credentialManagementClient.EXPECT().
+					PutAWS(context.Background(), gomock.Any()).
+					Return(nil).
+					Times(1)
+			}
 
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{
-			ApplicationsManagementClient: appManagementClient,
-			CredentialManagementClient:   credentialManagementClient,
-		},
-		ConfigFileInterface: configFileInterface,
-		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-		HelmInterface:       helmInterface,
-		Output:              outputSink,
-		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
-		KubeContext:         "kind-kind",
-		EnvName:             "default",
-		Namespace:           "defaultNamespace",
-		RadiusInstalled:     true, // We're testing the reinstall case
-		Reinstall:           true,
-		SkipDevRecipes:      skipRecipes,
-		AzureCloudProvider: &azure.Provider{
-			SubscriptionID: "test-subscription",
-			ResourceGroup:  "test-rg",
-			ServicePrincipal: &azure.ServicePrincipal{
-				TenantID:     "test-tenantId",
-				ClientID:     "test-clientId",
-				ClientSecret: "test-clientSecret",
-			},
-		},
+			configFileInterface.EXPECT().
+				EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
+				Return(nil).
+				Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			helmInterface := helm.NewMockInterface(ctrl)
+			helmInterface.EXPECT().
+				InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+				Return(true, nil).
+				Times(1)
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{
+					ApplicationsManagementClient: appManagementClient,
+					CredentialManagementClient:   credentialManagementClient,
+				},
+				ConfigFileInterface: configFileInterface,
+				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+				HelmInterface:       helmInterface,
+				Output:              outputSink,
+				Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
+				KubeContext:         "kind-kind",
+				EnvName:             "default",
+				Namespace:           "defaultNamespace",
+				RadiusInstalled:     true,
+				Reinstall:           true,
+				AzureCloudProvider:  tc.azureProvider,
+				AwsCloudProvider:    tc.awsProvider,
+				Dev:                 tc.dev,
+				DevRecipeClient:     devRecipeClient,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+		})
 	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
 }
 
-func Test_Run_InstallAndCreateEnvironment_WithAWSProvider(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-	configFileInterface.EXPECT().
-		ConfigFromContext(context.Background()).
-		Return(nil).Times(1)
-
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appManagementClient.EXPECT().
-		CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
-		Return(true, nil).Times(1)
-	appManagementClient.EXPECT().
-		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-		Return(true, nil).Times(1)
-	testEnvProperties := &corerp.EnvironmentProperties{
-		Compute: &corerp.KubernetesCompute{
-			Namespace: to.Ptr("defaultNamespace"),
-		},
-		UseDevRecipes: to.Ptr(true),
-		Providers: &corerp.Providers{
-			Aws: &corerp.ProvidersAws{
-				Scope: to.Ptr("/planes/aws/aws/accounts/test-account-id/regions/us-west-2"),
-			},
-		},
+func buildProviders(azureProvider *azure.Provider, awsProvider *aws.Provider) *corerp.Providers {
+	providers := &corerp.Providers{}
+	if azureProvider != nil {
+		providers.Azure = &corerp.ProvidersAzure{
+			Scope: to.Ptr(fmt.Sprintf("/subscriptions/%s/resourceGroups/%s", azureProvider.SubscriptionID, azureProvider.ResourceGroup)),
+		}
 	}
-	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-		Return(true, nil).Times(1)
-
-	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
-	credentialManagementClient.EXPECT().
-		PutAWS(context.Background(), gomock.Any()).
-		Return(nil).Times(1)
-
-	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
-		Return(nil).Times(1)
-
-	outputSink := &output.MockOutput{}
-
-	helmInterface := helm.NewMockInterface(ctrl)
-	helmInterface.EXPECT().
-		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
-		Return(true, nil).Times(1)
-
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{
-			ApplicationsManagementClient: appManagementClient,
-			CredentialManagementClient:   credentialManagementClient,
-		},
-		ConfigFileInterface: configFileInterface,
-		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-		HelmInterface:       helmInterface,
-		Output:              outputSink,
-		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
-		KubeContext:         "kind-kind",
-		EnvName:             "default",
-		Namespace:           "defaultNamespace",
-		RadiusInstalled:     true, // We're testing the reinstall case
-		Reinstall:           true,
-		AwsCloudProvider: &aws.Provider{
-			AccessKeyId:     "test-access-key",
-			SecretAccessKey: "test-secret-access",
-			TargetRegion:    "us-west-2",
-			AccountId:       "test-account-id",
-		},
+	if awsProvider != nil {
+		providers.Aws = &corerp.ProvidersAws{
+			Scope: to.Ptr(fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s", awsProvider.AccountId, awsProvider.TargetRegion)),
+		}
 	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-}
-
-func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider_WithSkipRecipes(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-	configFileInterface.EXPECT().
-		ConfigFromContext(context.Background()).
-		Return(nil).Times(1)
-
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appManagementClient.EXPECT().
-		CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
-		Return(true, nil).Times(1)
-	appManagementClient.EXPECT().
-		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-		Return(true, nil).Times(1)
-	skipRecipes := true
-	testEnvProperties := &corerp.EnvironmentProperties{
-		Compute: &corerp.KubernetesCompute{
-			Namespace: to.Ptr("defaultNamespace"),
-		},
-		UseDevRecipes: to.Ptr(!skipRecipes),
-		Providers:     &corerp.Providers{},
-	}
-	appManagementClient.EXPECT().
-		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-		Return(true, nil).Times(1)
-
-	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
-		Return(nil).Times(1)
-
-	outputSink := &output.MockOutput{}
-
-	helmInterface := helm.NewMockInterface(ctrl)
-	helmInterface.EXPECT().
-		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
-		Return(true, nil).Times(1)
-
-	runner := &Runner{
-		ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		ConfigFileInterface: configFileInterface,
-		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-		HelmInterface:       helmInterface,
-		Output:              outputSink,
-		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
-		KubeContext:         "kind-kind",
-		SkipDevRecipes:      skipRecipes,
-		RadiusInstalled:     false,
-		Namespace:           "defaultNamespace",
-		EnvName:             "default",
-	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
+	return providers
 }
 
 func Test_Run_InstalledRadiusExistingEnvironment(t *testing.T) {

@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package register
 
@@ -36,13 +44,13 @@ You can specify parameters using the '--parameter' flag ('-p' for short). Parame
 		`,
 		Example: `
 # Add a recipe to an environment
-rad recipe register cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases
 		
 # Specify a parameter
-rad recipe register cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
 		
 # specify multiple parameters using a JSON parameter file
-rad recipe register cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -52,6 +60,8 @@ rad recipe register cosmosdb -e env_name -w workspace --template-path template_p
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
+	cmd.Flags().String("template-kind", "", "specify the kind for the template provided by the recipe.")
+	_ = cmd.MarkFlagRequired("template-kind")
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-path")
 	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
@@ -67,6 +77,7 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
+	TemplateKind      string
 	TemplatePath      string
 	LinkType          string
 	RecipeName        string
@@ -97,10 +108,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environment
 
-	templatePath, err := requireTemplatePath(cmd)
+	templateKind, templatePath, err := requireRecipeProperties(cmd)
 	if err != nil {
 		return err
 	}
+	r.TemplateKind = templateKind
 	r.TemplatePath = templatePath
 
 	linkType, err := cli.RequireLinkType(cmd)
@@ -125,6 +137,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -134,6 +147,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	envResource, err := client.GetEnvDetails(ctx, r.Workspace.Environment)
 	if err != nil {
 		return err
@@ -145,6 +159,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	properties := &corerp.EnvironmentRecipeProperties{
+		TemplateKind: &r.TemplateKind,
 		TemplatePath: &r.TemplatePath,
 		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 	}
@@ -166,11 +181,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func requireTemplatePath(cmd *cobra.Command) (string, error) {
-	templatePath, err := cmd.Flags().GetString("template-path")
+func requireRecipeProperties(cmd *cobra.Command) (templateKind, templatePath string, err error) {
+	templateKind, err = cmd.Flags().GetString("template-kind")
 	if err != nil {
-		return templatePath, err
+		return "", "", err
 	}
-	return templatePath, nil
 
+	templatePath, err = cmd.Flags().GetString("template-path")
+	if err != nil {
+		return "", "", err
+	}
+
+	return templateKind, templatePath, nil
 }

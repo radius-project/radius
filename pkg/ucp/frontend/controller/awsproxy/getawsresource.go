@@ -1,7 +1,17 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package awsproxy
 
 import (
@@ -26,6 +36,7 @@ var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
 type GetAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
+	basePath   string
 }
 
 // NewGetAWSResource creates a new GetAWSResource.
@@ -35,16 +46,22 @@ func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) 
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
+		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return errResponse, nil
+	}
 
+	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	response, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-	})
+	}, cloudControlOpts...)
 	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {

@@ -1,6 +1,14 @@
 # ------------------------------------------------------------
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
+# Copyright 2023 The Radius Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # ------------------------------------------------------------
 
 name: Functional tests
@@ -48,7 +56,7 @@ env:
 jobs:
   build:
     name: Build Radius for test
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -229,7 +237,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     strategy:
       fail-fast: true
       matrix:
@@ -353,7 +361,7 @@ jobs:
         run: |
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
-      - name: Download Bicep.
+      - name: Download Bicep
         run: |
           chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -399,6 +407,8 @@ jobs:
           rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          
+          az acr login -n ${{ env.CACHE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true

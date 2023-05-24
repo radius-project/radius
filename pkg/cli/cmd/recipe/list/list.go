@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package list
 
@@ -10,6 +18,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -91,14 +100,22 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	var envRecipes []EnvironmentRecipe
+	var envRecipes []types.EnvironmentRecipe
 	for link, recipes := range envResource.Properties.Recipes {
 		for recipeName, recipeDetails := range recipes {
-			envRecipes = append(envRecipes, EnvironmentRecipe{
+			recipe := types.EnvironmentRecipe{
 				Name:         recipeName,
 				LinkType:     link,
 				TemplatePath: *recipeDetails.TemplatePath,
-			})
+			}
+			// Check to ensure backwards compatibility with existing environments.
+			// Remove this in next release once users have migrated their existing environments.
+			// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
+			if recipeDetails.TemplateKind != nil {
+				recipe.TemplateKind = *recipeDetails.TemplateKind
+			}
+
+			envRecipes = append(envRecipes, recipe)
 		}
 	}
 	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
@@ -107,10 +124,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-type EnvironmentRecipe struct {
-	Name         string `json:"name,omitempty"`
-	LinkType     string `json:"linkType,omitempty"`
-	TemplatePath string `json:"templatePath,omitempty"`
 }

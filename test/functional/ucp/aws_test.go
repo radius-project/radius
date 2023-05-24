@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package ucp
 
@@ -22,6 +30,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -143,10 +152,12 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
 
+	cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
+
 	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 		TypeName:     &awsS3BucketResourceType,
 		DesiredState: awsgo.String(string(desiredStateBytes)),
-	})
+	}, cloudControlOpts...)
 	require.NoError(t, err)
 	waitForSuccess(t, ctx, awsClient, response.ProgressEvent.RequestToken)
 
@@ -156,7 +167,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsS3BucketResourceType,
-		})
+		}, cloudControlOpts...)
 		if aws.IsAWSResourceNotFoundError(err) {
 			return
 		}
@@ -164,7 +175,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsS3BucketResourceType,
-		})
+		}, cloudControlOpts...)
 		require.NoError(t, err)
 
 		// Ignoring status of delete since AWS command fails if the resource does not already exist

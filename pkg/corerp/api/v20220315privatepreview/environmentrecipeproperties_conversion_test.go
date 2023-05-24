@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package v20220315privatepreview
 
@@ -37,20 +45,30 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 		// act
 		versioned := &EnvironmentRecipeProperties{}
 		err = versioned.ConvertFrom(r)
-		expectedOutput := map[string]any{
-			"location": map[string]any{
-				"defaultValue": "[resourceGroup().location]",
-				"type":         "string",
-			},
-			"throughput": map[string]any{
-				"defaultValue": (float64(200)),
-				"maxValue":     (float64(400)),
-			},
-		}
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.TemplatePath))
-		require.Equal(t, expectedOutput, versioned.Parameters)
+		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
+		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
+		require.Equal(t, r.Parameters, versioned.Parameters)
+	})
+}
+
+func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKind(t *testing.T) {
+	filename := "environmentrecipepropertiesdatamodel-missingtemplatekind.json"
+	t.Run(filename, func(t *testing.T) {
+		rawPayload := testutil.ReadFixture(filename)
+		r := &datamodel.EnvironmentRecipeProperties{}
+		err := json.Unmarshal(rawPayload, r)
+		require.NoError(t, err)
+
+		// act
+		versioned := &EnvironmentRecipeProperties{}
+		err = versioned.ConvertFrom(r)
+		// assert
+		require.NoError(t, err)
+		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
+		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
+		require.Equal(t, r.Parameters, versioned.Parameters)
 	})
 }
 

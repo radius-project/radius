@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package resource_test
 
@@ -11,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -48,29 +57,36 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	envName := test.Steps[0].CoreRPResources.Resources[0].Name
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
+	templateKind := "bicep"
 	linkType := "Applications.Link/mongoDatabases"
+	file := "testdata/corerp-redis-recipe.bicep"
+	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-recipes/redis-recipe:%s", generateUniqueTag())
+
 	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
+
 	t.Run("Validate rad recipe list", func(t *testing.T) {
-		output, err := cli.Recipelist(ctx, envName)
+		output, err := cli.RecipeList(ctx, envName)
 		require.NoError(t, err)
 		require.Regexp(t, recipeName, output)
 		require.Regexp(t, linkType, output)
 		require.Regexp(t, recipeTemplate, output)
 	})
+
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
 		output, err := cli.RecipeUnregister(ctx, envName, recipeName, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
 	})
+
 	t.Run("Validate rad recipe show", func(t *testing.T) {
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
 		showRecipeLinkType := "Applications.Link/mongoDatabases"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, showRecipeTemplate, showRecipeLinkType)
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 		output, err = cli.RecipeShow(ctx, envName, showRecipeName, linkType)
@@ -85,11 +101,17 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Contains(t, output, "resourceGroup().location]")
 	})
 
+	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
+		output, err := cli.BicepPublish(ctx, file, target)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully published")
+	})
+
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, linkType)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
-		output, err = cli.Recipelist(ctx, envName)
+		output, err = cli.RecipeList(ctx, envName)
 		require.NoError(t, err)
 		require.Regexp(t, recipeTemplate, output)
 	})
@@ -674,4 +696,11 @@ func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, option
 	// We don't care about the response for tests
 	_, err = appDeleteClient.Delete(ctx, applicationName, nil)
 	return err
+}
+
+func generateUniqueTag() string {
+	timestamp := time.Now().Unix()
+	random := rand.Intn(1000)
+	tag := fmt.Sprintf("test-%d-%d", timestamp, random)
+	return tag
 }

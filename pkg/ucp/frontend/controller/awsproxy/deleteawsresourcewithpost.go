@@ -1,7 +1,17 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package awsproxy
 
 import (
@@ -48,7 +58,12 @@ func NewDeleteAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controll
 func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	if errResponse != nil {
+		return errResponse, nil
+	}
 
+	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
 		e := v1.ErrorResponse{
@@ -60,10 +75,11 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
+	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
 	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
-	})
+	}, cloudFormationOpts...)
 	if err != nil {
 		return awserror.HandleAWSError(err)
 	}
@@ -76,7 +92,6 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 				Message: err.Error(),
 			},
 		}
-
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
@@ -84,7 +99,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(awsResourceIdentifier),
-	})
+	}, cloudControlOpts...)
 	if err != nil {
 		if awsclient.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil

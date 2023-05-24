@@ -15,10 +15,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/mongoDatabases':{
         recipe1: {
+          templateKind: 'bicep'
           templatePath: 'testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1' 
         }
       }
     }
-    useDevRecipes: true
   }
 }

@@ -1,7 +1,15 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package awsproxy
 
@@ -72,6 +80,16 @@ func CreateKinesisStreamTestResource(resourceName string) *AWSTestResource {
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
+func CreateKinesisStreamTestResourceWithInvalidRegion(resourceName string) *AWSTestResource {
+	resourceType := AWSKinesisStreamResourceType
+	awsResourceType := AWSKinesisStreamAWSResourceType
+	provider := "AWS.Kinesis"
+	arn := fmt.Sprintf("arn:aws:kinesis:us-west-2:123456789012:stream:%s", resourceName)
+	typeSchema := getMockKinesisStreamResourceTypeSchema()
+
+	return CreateAWSTestResourceWithInvalidRegion(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
+}
+
 func CreateMemoryDBClusterTestResource(resourceName string) *AWSTestResource {
 	resourceType := AWSMemoryDBClusterResourceType
 	awsResourceType := AWSMemoryDBClusterAWSResourceType
@@ -110,6 +128,28 @@ func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider
 		OperationStatusesPath: fmt.Sprintf("/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/%s/locations/us-west-2/operationStatuses/2345678", resourceType),
 		LocationHeader:        fmt.Sprintf("http://localhost:5000/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/%s/locations/global/operationResults/79b9f0da-4882-4dc8-a367-6fd3bc122ded", provider),
 		AzureAsyncOpHeader:    fmt.Sprintf("http://localhost:5000/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/%s/locations/global/operationStatuses/79b9f0da-4882-4dc8-a367-6fd3bc122ded", provider),
+		Schema:                schema,
+	}
+}
+
+func CreateAWSTestResourceWithInvalidRegion(resourceType, awsResourceType, resourceName, provider, arn string, typeSchema map[string]any) *AWSTestResource {
+	serialized, err := json.Marshal(typeSchema)
+	if err != nil {
+		return nil
+	}
+	schema := string(serialized)
+
+	return &AWSTestResource{
+		ResourceType:          resourceType,
+		AWSResourceType:       awsResourceType,
+		ResourceName:          resourceName,
+		ARN:                   arn,
+		CollectionPath:        fmt.Sprintf("/planes/aws/aws/accounts/1234567/providers/%s", resourceType),
+		SingleResourcePath:    fmt.Sprintf("/planes/aws/aws/accounts/1234567/providers/%s/%s", resourceType, resourceName),
+		OperationResultsPath:  fmt.Sprintf("/planes/aws/aws/accounts/1234567/providers/%s/locations/us-west-2/operationResults/1234567", resourceType),
+		OperationStatusesPath: fmt.Sprintf("/planes/aws/aws/accounts/1234567/providers/%s/locations/us-west-2/operationStatuses/2345678", resourceType),
+		LocationHeader:        fmt.Sprintf("http://localhost:5000/planes/aws/aws/accounts/1234567/providers/%s/locations/global/operationResults/79b9f0da-4882-4dc8-a367-6fd3bc122ded", provider),
+		AzureAsyncOpHeader:    fmt.Sprintf("http://localhost:5000/planes/aws/aws/accounts/1234567/providers/%s/locations/global/operationStatuses/79b9f0da-4882-4dc8-a367-6fd3bc122ded", provider),
 		Schema:                schema,
 	}
 }
