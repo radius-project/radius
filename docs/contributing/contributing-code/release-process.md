@@ -150,13 +150,19 @@ If sample validation passes, we can start the process of creating the final rele
 
 1. Update the project-radius/samples repository to point to latest release
 
-   ```
-   git checkout edge
-   git pull origin edge
-   git checkout -b v0.16
-   git pull origin v0.16
-   git push origin v0.16
-   ```
+  1. Create 0.16 and point to the latest  
+      ```
+      git checkout edge
+      git pull origin edge
+      git checkout -b v0.16
+      git pull origin v0.16
+      git push origin v0.16
+      ```
+  1. Within .devcontainer/devcontainer.json
+      - Change the 'RADIUS_VERSION' to 'edge'
+
+  1. Within .devcontainer/Dockerfile
+      - Change the Bicep extension url to 'https://radiuspublic.blob.core.windows.net/tools/vscode-extensibility/stable/rad-vscode-bicep.vsix'
 
 ### Post release sanity check
 
