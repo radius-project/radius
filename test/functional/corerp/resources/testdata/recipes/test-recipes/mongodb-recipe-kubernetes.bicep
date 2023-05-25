@@ -93,7 +93,7 @@ output result object = {
 
   }
   secrets: {
-    connectionString: 'mongodb://${username}:${password}@${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local:27017'
+    connectionString: 'mongodb://${username}:${password}@${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local:27017/${context.resource.name}'
     username: username
     password: password
   }
