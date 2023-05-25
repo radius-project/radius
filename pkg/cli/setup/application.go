@@ -30,7 +30,6 @@ param application string
 
 resource demo 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'demo'
-  location: 'global'
   properties: {
     application: application
     container: {
@@ -43,11 +42,11 @@ resource demo 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
   }
 }
-`  // Trailing newline intentional.
+` // Trailing newline intentional.
 
 	radYamlTemplate = `workspace:
   application: %q
-`  // Trailing newline intentional.
+` // Trailing newline intentional.
 )
 
 // ScaffoldApplication creates a working sample application in the provided directory
