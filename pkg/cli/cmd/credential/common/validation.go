@@ -21,7 +21,8 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/validation"
+	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/azure"
 )
 
 // Used in tests
@@ -31,7 +32,7 @@ const (
 )
 
 var (
-	supportedProviders = []string{validation.AzureCloudProvider, validation.AWSCloudProvider}
+	supportedProviders = []string{azure.ProviderDisplayName, aws.ProviderDisplayName}
 )
 
 func ValidateCloudProviderName(name string) error {

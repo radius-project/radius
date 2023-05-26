@@ -356,8 +356,6 @@ func SaveConfig(v *viper.Viper) error {
 		return fmt.Errorf("failed to write config to '%s': %w", configFilePath, err)
 	}
 
-	fmt.Printf("Successfully wrote configuration to %v\n", configFilePath)
-
 	return nil
 }
 

@@ -16,10 +16,22 @@ limitations under the License.
 
 package aws
 
-// Provider specifies the properties required to configure Azure provider for cloud resources
+const (
+	// ProviderDisplayName is the text used in display for AWS.
+	ProviderDisplayName = "AWS"
+)
+
+// Provider specifies the properties required to configure AWS provider for cloud resources.
 type Provider struct {
-	AccessKeyId     string
+	// AccessKeyID is the access key id for the AWS account.
+	AccessKeyID string
+
+	// SecretAccessKey is the secret access key for the AWS account.
 	SecretAccessKey string
-	TargetRegion    string
-	AccountId       string
+
+	// Region is the AWS region to use.
+	Region string
+
+	// AccountID is the AWS account id.
+	AccountID string
 }

@@ -152,8 +152,8 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
-			Return("yes", nil).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
+			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -198,8 +198,8 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
-			Return("no", nil).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
+			Return(prompt.ConfirmNo, nil).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -275,7 +275,7 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 

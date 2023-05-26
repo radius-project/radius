@@ -145,8 +145,8 @@ func Test_Run(t *testing.T) {
 
 			prompter := prompt.NewMockInterface(ctrl)
 			prompter.EXPECT().
-				GetListInput([]string{"No", "Yes"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
-				Return("no", nil).
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+				Return(prompt.ConfirmNo, nil).
 				Times(1)
 
 			runner := &Runner{
@@ -178,7 +178,7 @@ func Test_Run(t *testing.T) {
 		outputSink := &output.MockOutput{}
 		prompter := prompt.NewMockInterface(ctrl)
 		prompter.EXPECT().
-			GetListInput([]string{"No", "Yes"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 

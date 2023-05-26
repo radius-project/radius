@@ -105,7 +105,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !r.Confirmation {
 		confirmed, err := prompt.YesOrNoPrompt(
 			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName),
-			"no",
+			prompt.ConfirmNo,
 			r.InputPrompter)
 		if err != nil {
 			if errors.Is(err, &prompt.ErrExitConsole{}) {

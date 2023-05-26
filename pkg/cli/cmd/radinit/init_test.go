@@ -20,10 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -33,7 +35,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
-	"github.com/project-radius/radius/pkg/cli/cmd/validation"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -41,7 +42,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
@@ -54,6 +54,23 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	config := radcli.LoadConfigWithWorkspace(t)
+
+	azureProvider := azure.Provider{
+		SubscriptionID: "test-subscription-id",
+		ResourceGroup:  "test-resource-group",
+		ServicePrincipal: &azure.ServicePrincipal{
+			ClientID:     "test-client-id",
+			ClientSecret: "test-client-secret",
+			TenantID:     "test-tenant-id",
+		},
+	}
+
+	awsProvider := aws.Provider{
+		Region:          "test-region",
+		AccessKeyID:     "test-access-key-id",
+		SecretAccessKey: "test-secret-access-key",
+		AccountID:       "test-account-id",
+	}
 
 	testcases := []radcli.ValidateInput{
 		{
@@ -69,20 +86,21 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
 
 				// Use default env name and namespace
-				initEnvNamePrompt(mocks.Prompter)
-				initNamespacePrompt(mocks.Prompter)
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
@@ -104,14 +122,16 @@ func Test_Validate(t *testing.T) {
 				// We do not check for existing environments if Radius is not installed
 
 				// Use default env name and namespace
-				initEnvNamePrompt(mocks.Prompter)
-				initNamespacePrompt(mocks.Prompter)
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
@@ -127,7 +147,6 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
 
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
@@ -135,17 +154,19 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("cool-existing-env"),
 					},
 				})
-				initExistingEnvironmentSelection(mocks.Prompter, SelectExistingEnvironmentCreateSentinel)
+				initExistingEnvironmentSelection(mocks.Prompter, selectExistingEnvironmentCreateSentinel)
 
 				// Use default env name and namespace
-				initEnvNamePrompt(mocks.Prompter)
-				initNamespacePrompt(mocks.Prompter)
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
@@ -161,7 +182,6 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
 
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
@@ -175,6 +195,8 @@ func Test_Validate(t *testing.T) {
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
@@ -190,7 +212,6 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
 
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
@@ -214,10 +235,12 @@ func Test_Validate(t *testing.T) {
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
-			Name:          "Init Command With Azure Provider (Reinstall)",
+			Name:          "Init Command With Azure Cloud Provider",
 			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -230,26 +253,60 @@ func Test_Validate(t *testing.T) {
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
 
-				// Reinstall
-				initRadiusReinstallYes(mocks.Prompter)
-
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
 
 				// Choose default name and namespace
-				initEnvNamePrompt(mocks.Prompter)
-				initNamespacePrompt(mocks.Prompter)
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
 
 				// Add azure provider
 				initAddCloudProviderPromptYes(mocks.Prompter)
-				initSelectCloudProvider(mocks.Prompter, "Azure")
-				initParseCloudProvider(mocks.Setup, mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, azure.ProviderDisplayName)
+				setAzureCloudProvider(mocks.Prompter, mocks.AzureClient, azureProvider)
 
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
+			},
+		},
+		{
+			Name:          "Init Command With AWS Cloud Provider",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// Choose default name and namespace
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
+
+				// Add azure provider
+				initAddCloudProviderPromptYes(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, aws.ProviderDisplayName)
+				setAWSCloudProvider(mocks.Prompter, mocks.AWSClient, awsProvider)
+
+				// Don't add any other cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
@@ -266,7 +323,6 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
 
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
@@ -281,6 +337,8 @@ func Test_Validate(t *testing.T) {
 				// Create Application
 				setScaffoldApplicationPromptYes(mocks.Prompter)
 				setApplicationNamePrompt(mocks.Prompter, "valid")
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
@@ -437,7 +495,6 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
@@ -459,13 +516,12 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
 
 				// Choose default name and cancel out of namespace prompt
-				initEnvNamePrompt(mocks.Prompter)
+				initEnvNamePrompt(mocks.Prompter, "default")
 				initNamespacePromptError(mocks.Prompter)
 			},
 		},
@@ -482,21 +538,21 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
-				// Reinstall radius to configure cloud provider
-				initRadiusReinstallYes(mocks.Prompter)
-				initAddCloudProviderPromptYes(mocks.Prompter)
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
 
 				// Choose default name and namespace
-				initEnvNamePrompt(mocks.Prompter)
-				initNamespacePrompt(mocks.Prompter)
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
+
 				// Oops! I don't need to add cloud provider, navigate back to reinstall prompt
-				initSelectCloudProvider(mocks.Prompter, "[back]")
-				initAddCloudProviderPromptNo(mocks.Prompter)
+				initAddCloudProviderPromptYes(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, confirmCloudProviderBackNavigationSentinel)
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
 			},
 		},
 		{
@@ -539,28 +595,14 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					},
 				},
 			},
-			expectedOutput: []any{
-				output.LogOutput{
-					Format: "Creating environment %s...",
-					Params: []interface{}{"default"},
-				},
-				output.LogOutput{
-					Format: "Installing dev recipes...",
-				},
-			},
 		},
 		{
-			name:          "`rad init --dev` w/o recipes",
-			dev:           true,
-			azureProvider: nil,
-			awsProvider:   nil,
-			recipes:       map[string]map[string]*corerp.EnvironmentRecipeProperties{},
-			expectedOutput: []any{
-				output.LogOutput{
-					Format: "Creating environment %s...",
-					Params: []interface{}{"default"},
-				},
-			},
+			name:           "`rad init --dev` w/o recipes",
+			dev:            true,
+			azureProvider:  nil,
+			awsProvider:    nil,
+			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			expectedOutput: []any{},
 		},
 		{
 			name: "`rad init` with Azure Provider",
@@ -574,59 +616,54 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					ClientSecret: "test-clientSecret",
 				},
 			},
-			awsProvider: nil,
-			recipes:     nil,
-			expectedOutput: []any{
-				output.LogOutput{
-					Format: "Creating environment %s...",
-					Params: []interface{}{"default"},
-				},
-				output.LogOutput{
-					Format: "Configuring cloud providers...",
-				},
-				output.LogOutput{
-					Format: "Registering azure credentials",
-				},
+			awsProvider:    nil,
+			recipes:        nil,
+			expectedOutput: []any{},
+		},
+		{
+			name:          "`rad init --dev` with AWS Provider",
+			dev:           true,
+			azureProvider: nil,
+			awsProvider: &aws.Provider{
+				AccessKeyID:     "test-access-key",
+				SecretAccessKey: "test-secret-access",
+				Region:          "us-west-2",
+				AccountID:       "test-account-id",
 			},
+			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			expectedOutput: []any{},
 		},
 		{
 			name:          "`rad init` with AWS Provider",
 			dev:           false,
 			azureProvider: nil,
 			awsProvider: &aws.Provider{
-				AccessKeyId:     "test-access-key",
+				AccessKeyID:     "test-access-key",
 				SecretAccessKey: "test-secret-access",
-				TargetRegion:    "us-west-2",
-				AccountId:       "test-account-id",
+				Region:          "us-west-2",
+				AccountID:       "test-account-id",
 			},
-			recipes: nil,
-			expectedOutput: []any{
-				output.LogOutput{
-					Format: "Creating environment %s...",
-					Params: []interface{}{"default"},
-				},
-				output.LogOutput{
-					Format: "Configuring cloud providers...",
-				},
-				output.LogOutput{
-					Format: "Registering aws credentials",
-				},
-			},
+			recipes:        nil,
+			expectedOutput: []any{},
 		},
 		{
-			name:          "`rad init` with no providers",
-			dev:           false,
-			azureProvider: nil,
-			awsProvider:   nil,
-			recipes:       nil,
-			expectedOutput: []any{
-				output.LogOutput{
-					Format: "Creating environment %s...",
-					Params: []interface{}{"default"},
-				},
-			},
+			name:           "`rad init` with no providers",
+			dev:            false,
+			azureProvider:  nil,
+			awsProvider:    nil,
+			recipes:        nil,
+			expectedOutput: []any{},
+		},
+		{
+			name:           "`rad init --dev` with no providers",
+			dev:            true,
+			azureProvider:  nil,
+			awsProvider:    nil,
+			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			expectedOutput: []any{},
 		},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -693,6 +730,31 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Return(true, nil).
 				Times(1)
 
+			prompter := prompt.NewMockInterface(ctrl)
+			setProgressHandler(prompter)
+
+			options := initOptions{
+				Cluster: clusterOptions{
+					Install: true,
+					Context: "kind-kind",
+				},
+				Environment: environmentOptions{
+					Create:    true,
+					Name:      "default",
+					Namespace: "defaultNamespace",
+				},
+				CloudProviders: cloudProviderOptions{
+					Azure: tc.azureProvider,
+					AWS:   tc.awsProvider,
+				},
+				Recipes: recipePackOptions{
+					DevRecipes: tc.dev,
+				},
+				Application: applicationOptions{
+					Scaffold: false,
+				},
+			}
+
 			runner := &Runner{
 				ConnectionFactory: &connections.MockFactory{
 					ApplicationsManagementClient: appManagementClient,
@@ -702,21 +764,22 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
 				HelmInterface:       helmInterface,
 				Output:              outputSink,
-				Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
-				KubeContext:         "kind-kind",
-				EnvName:             "default",
-				Namespace:           "defaultNamespace",
-				RadiusInstalled:     true,
-				Reinstall:           true,
-				AzureCloudProvider:  tc.azureProvider,
-				AwsCloudProvider:    tc.awsProvider,
-				Dev:                 tc.dev,
+				Prompter:            prompter,
 				DevRecipeClient:     devRecipeClient,
+				Options:             &options,
+				Workspace: &workspaces.Workspace{
+					Name: "default",
+				},
 			}
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+
+			if len(tc.expectedOutput) == 0 {
+				require.Len(t, outputSink.Writes, 0)
+			} else {
+				require.Equal(t, tc.expectedOutput, outputSink.Writes)
+			}
 		})
 	}
 }
@@ -730,103 +793,10 @@ func buildProviders(azureProvider *azure.Provider, awsProvider *aws.Provider) *c
 	}
 	if awsProvider != nil {
 		providers.Aws = &corerp.ProvidersAws{
-			Scope: to.Ptr(fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s", awsProvider.AccountId, awsProvider.TargetRegion)),
+			Scope: to.Ptr(fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s", awsProvider.AccountID, awsProvider.Region)),
 		}
 	}
 	return providers
-}
-
-func Test_Run_InstalledRadiusExistingEnvironment(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-	configFileInterface.EXPECT().
-		ConfigFromContext(context.Background()).
-		Return(nil).Times(1)
-
-	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
-		Return(nil).Times(1)
-
-	outputSink := &output.MockOutput{}
-
-	runner := &Runner{
-		ConnectionFactory:   &connections.MockFactory{},
-		ConfigFileInterface: configFileInterface,
-		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-		Output:              outputSink,
-		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
-		KubeContext:         "kind-kind",
-		RadiusInstalled:     true,
-		EnvName:             "default",
-		ExistingEnvironment: true,
-	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-}
-
-func Test_Run_InstalledRadiusExistingEnvironment_CreateApplication(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-	configFileInterface.EXPECT().
-		ConfigFromContext(context.Background()).
-		Return(nil).Times(1)
-
-	configFileInterface.EXPECT().
-		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
-		Return(nil).Times(1)
-
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appManagementClient.EXPECT().
-		CreateApplicationIfNotFound(context.Background(), "cool-application", gomock.Any()).
-		Return(nil).Times(1)
-
-	outputSink := &output.MockOutput{}
-
-	runner := &Runner{
-		ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		ConfigFileInterface:     configFileInterface,
-		ConfigHolder:            &framework.ConfigHolder{ConfigFilePath: "filePath"},
-		Output:                  outputSink,
-		Workspace:               &workspaces.Workspace{Name: "defaultWorkspace"},
-		KubeContext:             "kind-kind",
-		RadiusInstalled:         true,
-		EnvName:                 "default",
-		ExistingEnvironment:     true,
-		ScaffoldApplication:     true,
-		ScaffoldApplicationName: "cool-application",
-	}
-
-	// Sandbox the command in a temp directory so we can do file-creation
-	wd, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = os.Chdir(wd) // Restore when test is done
-	})
-
-	directory := t.TempDir()
-	err = os.Chdir(directory)
-	require.NoError(t, err)
-
-	err = runner.Run(context.Background())
-	require.NoError(t, err)
-
-	// For init, just test that these files were created. The setup code that creates them tests
-	// them in detail.
-	require.FileExists(t, filepath.Join(directory, "app.bicep"))
-	require.FileExists(t, filepath.Join(directory, ".rad", "rad.yaml"))
-}
-
-func initParseCloudProvider(setup *setup.MockInterface, prompter *prompt.MockInterface) {
-	setup.EXPECT().ParseAzureProviderArgs(gomock.Any(), true, prompter).Return(&azure.Provider{
-		SubscriptionID: "test-subscription",
-		ResourceGroup:  "test-rg",
-		ServicePrincipal: &azure.ServicePrincipal{
-			ClientID:     gomock.Any().String(),
-			ClientSecret: gomock.Any().String(),
-			TenantID:     gomock.Any().String(),
-		},
-	}, nil)
 }
 
 func initGetKubeContextSuccess(kubernestesMock *kubernetes.MockInterface) {
@@ -855,68 +825,73 @@ func getTestKubeConfig() *api.Config {
 
 func initKubeContextWithKind(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), selectKubeContextPrompt).
+		GetListInput(gomock.Any(), selectClusterPrompt).
 		Return("kind-kind", nil).Times(1)
 }
 
 func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), selectKubeContextPrompt).
+		GetListInput(gomock.Any(), selectClusterPrompt).
 		Return("", errors.New("cannot read selection")).Times(1)
 }
 
 func initKubeContextWithInterruptSignal(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), selectKubeContextPrompt).
+		GetListInput(gomock.Any(), selectClusterPrompt).
 		Return("", &prompt.ErrExitConsole{}).Times(1)
 }
 
-func initRadiusReinstallNo(prompter *prompt.MockInterface) {
+func initEnvNamePrompt(prompter *prompt.MockInterface, name string) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), confirmReinstallRadiusPrompt).
-		Return("No", nil).Times(1)
-}
-
-func initRadiusReinstallYes(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetListInput(gomock.Any(), confirmReinstallRadiusPrompt).
-		Return("Yes", nil).Times(1)
-}
-
-func initEnvNamePrompt(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetTextInput(validation.EnterEnvironmentNamePrompt, gomock.Any()).
-		Return("default", nil).Times(1)
+		GetTextInput(enterEnvironmentNamePrompt, gomock.Any()).
+		Return(name, nil).Times(1)
 }
 
 func initEnvNamePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(validation.EnterEnvironmentNamePrompt, gomock.Any()).
+		GetTextInput(enterEnvironmentNamePrompt, gomock.Any()).
 		Return("", errors.New("unable to read prompt")).Times(1)
 }
 
-func initNamespacePrompt(prompter *prompt.MockInterface) {
+func initNamespacePrompt(prompter *prompt.MockInterface, namespace string) {
 	prompter.EXPECT().
-		GetTextInput(EnterNamespacePrompt, gomock.Any()).
-		Return("default", nil).Times(1)
+		GetTextInput(enterNamespacePrompt, gomock.Any()).
+		Return(namespace, nil).Times(1)
 }
 
 func initNamespacePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetTextInput(EnterNamespacePrompt, gomock.Any()).
+		GetTextInput(enterNamespacePrompt, gomock.Any()).
 		Return("", errors.New("Unable to read namespace")).Times(1)
 }
 
+var _ gomock.Matcher = &cloudProviderPromptMatcher{}
+
+type cloudProviderPromptMatcher struct {
+}
+
+// Matches implements gomock.Matcher
+func (*cloudProviderPromptMatcher) Matches(x interface{}) bool {
+	return x == confirmCloudProviderPrompt || x == confirmCloudProviderAdditionalPrompt
+}
+
+// String implements gomock.Matcher
+func (*cloudProviderPromptMatcher) String() string {
+	return fmt.Sprintf("Matches either: %s or %s", confirmCloudProviderPrompt, confirmCloudProviderAdditionalPrompt)
+}
+
 func initAddCloudProviderPromptNo(prompter *prompt.MockInterface) {
+	// We show a different prompt the second time with different phrasing.
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), confirmCloudProviderPrompt).
-		Return("No", nil).Times(1)
+		GetListInput(gomock.Any(), &cloudProviderPromptMatcher{}).
+		Return(prompt.ConfirmNo, nil).Times(1)
 }
 
 func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
+	// We show a different prompt the second time with different phrasing.
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), confirmCloudProviderPrompt).
-		Return("Yes", nil).Times(1)
+		GetListInput(gomock.Any(), &cloudProviderPromptMatcher{}).
+		Return(prompt.ConfirmYes, nil).Times(1)
 }
 
 func initSelectCloudProvider(prompter *prompt.MockInterface, value string) {
@@ -928,13 +903,13 @@ func initSelectCloudProvider(prompter *prompt.MockInterface, value string) {
 func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {
 	helmMock.EXPECT().
 		CheckRadiusInstall(gomock.Any()).
-		Return(true, nil).Times(1)
+		Return(helm.InstallState{Installed: true, Version: "test-version"}, nil).Times(1)
 }
 
 func initHelmMockRadiusNotInstalled(helmMock *helm.MockInterface) {
 	helmMock.EXPECT().
 		CheckRadiusInstall(gomock.Any()).
-		Return(false, nil).Times(1)
+		Return(helm.InstallState{Installed: false}, nil).Times(1)
 }
 
 func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClient, environments []corerp.EnvironmentResource) {
@@ -945,24 +920,192 @@ func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClien
 
 func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), SelectExistingEnvironmentPrompt).
+		GetListInput(gomock.Any(), selectExistingEnvironmentPrompt).
 		Return(choice, nil).Times(1)
 }
 
 func setScaffoldApplicationPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmSetupApplicationPrompt).
-		Return("No", nil).Times(1)
+		Return(prompt.ConfirmNo, nil).Times(1)
 }
 
 func setScaffoldApplicationPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmSetupApplicationPrompt).
-		Return("Yes", nil).Times(1)
+		Return(prompt.ConfirmYes, nil).Times(1)
 }
 
 func setApplicationNamePrompt(prompter *prompt.MockInterface, applicationName string) {
 	prompter.EXPECT().
-		GetTextInput(enterApplicationName, gomock.Any()).
+		GetTextInput(enterApplicationNamePrompt, gomock.Any()).
 		Return(applicationName, nil).Times(1)
+}
+
+func setAWSRegionPrompt(prompter *prompt.MockInterface, region string) {
+	prompter.EXPECT().
+		GetTextInput(enterAWSRegionPrompt, gomock.Any()).
+		Return(region, nil).Times(1)
+}
+
+func setAWSAccessKeyIDPrompt(prompter *prompt.MockInterface, accessKeyID string) {
+	prompter.EXPECT().
+		GetTextInput(enterAWSIAMAcessKeyIDPrompt, gomock.Any()).
+		Return(accessKeyID, nil).Times(1)
+}
+
+func setAWSSecretAccessKeyPrompt(prompter *prompt.MockInterface, secretAccessKey string) {
+	prompter.EXPECT().
+		GetTextInput(enterAWSIAMSecretAccessKeyPrompt, gomock.Any()).
+		Return(secretAccessKey, nil).Times(1)
+}
+
+func setAWSCallerIdentity(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, result *sts.GetCallerIdentityOutput) {
+	client.EXPECT().
+		GetCallerIdentity(gomock.Any(), region, accessKeyID, secretAccessKey).
+		Return(result, nil).
+		Times(1)
+}
+
+// setAWSCloudProvider sets up mocks that will configure an AWS cloud provider.
+func setAWSCloudProvider(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
+	setAWSRegionPrompt(prompter, provider.Region)
+	setAWSAccessKeyIDPrompt(prompter, provider.AccessKeyID)
+	setAWSSecretAccessKeyPrompt(prompter, provider.SecretAccessKey)
+	setAWSCallerIdentity(client, provider.Region, provider.AccessKeyID, provider.SecretAccessKey, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+}
+
+func setAzureSubscriptions(client *azure.MockClient, result *azure.SubscriptionResult) {
+	client.EXPECT().
+		Subscriptions(gomock.Any()).
+		Return(result, nil).
+		Times(1)
+}
+
+func setAzureResourceGroups(client *azure.MockClient, subscriptionID string, groups []armresources.ResourceGroup) {
+	client.EXPECT().
+		ResourceGroups(gomock.Any(), subscriptionID).
+		Return(groups, nil).
+		Times(1)
+}
+
+func setAzureCheckResourceGroupExistence(client *azure.MockClient, subscriptionID string, resourceGroupName string, exists bool) {
+	client.EXPECT().
+		CheckResourceGroupExistence(gomock.Any(), subscriptionID, resourceGroupName).
+		Return(exists, nil).
+		Times(1)
+}
+
+func setAzureCreateOrUpdateResourceGroup(client *azure.MockClient, subscriptionID string, resourceGroupName string, location string) {
+	client.EXPECT().
+		CreateOrUpdateResourceGroup(gomock.Any(), subscriptionID, resourceGroupName, location).
+		Return(nil).
+		Times(1)
+}
+
+func setAzureLocations(client *azure.MockClient, subscriptionID string, locations []armsubscriptions.Location) {
+	client.EXPECT().
+		Locations(gomock.Any(), subscriptionID).
+		Return(locations, nil).
+		Times(1)
+}
+
+func setAzureSubscriptionConfirmPrompt(prompter *prompt.MockInterface, subscriptionName string, choice string) {
+	prompter.EXPECT().
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(confirmAzureSubscriptionPromptFmt, subscriptionName)).
+		Return(choice, nil).
+		Times(1)
+}
+
+func setAzureSubsubscriptionPrompt(prompter *prompt.MockInterface, names []string, name string) {
+	prompter.EXPECT().
+		GetListInput(names, selectAzureSubscriptionPrompt).
+		Return(name, nil).
+		Times(1)
+}
+
+func setAzureResourceGroupCreatePrompt(prompter *prompt.MockInterface, choice string) {
+	prompter.EXPECT().
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, confirmAzureCreateResourceGroupPrompt).
+		Return(choice, nil).
+		Times(1)
+}
+
+func setAzureResourceGroupPrompt(prompter *prompt.MockInterface, names []string, name string) {
+	prompter.EXPECT().
+		GetListInput(names, selectAzureResourceGroupPrompt).
+		Return(name, nil).
+		Times(1)
+}
+
+func setAzureResourceGroupNamePrompt(prompter *prompt.MockInterface, name string) {
+	prompter.EXPECT().
+		GetTextInput(enterAzureResourceGroupNamePrompt, gomock.Any()).
+		Return(name, nil).
+		Times(1)
+}
+
+func setSelectAzureResourceGroupLocationPrompt(prompter *prompt.MockInterface, locations []string, location string) {
+	prompter.EXPECT().
+		GetListInput(locations, selectAzureResourceGroupLocationPrompt).
+		Return(location, nil).
+		Times(1)
+}
+
+func setAzureServicePrincipalAppIDPrompt(prompter *prompt.MockInterface, appID string) {
+	prompter.EXPECT().
+		GetTextInput(enterAzureServicePrincipalAppIDPrompt, gomock.Any()).
+		Return(appID, nil).
+		Times(1)
+}
+
+func setAzureServicePrincipalPasswordPrompt(prompter *prompt.MockInterface, password string) {
+	prompter.EXPECT().
+		GetTextInput(enterAzureServicePrincipalPasswordPrompt, gomock.Any()).
+		Return(password, nil).
+		Times(1)
+}
+
+func setAzureServicePrincipalTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
+	prompter.EXPECT().
+		GetTextInput(enterAzureServicePrincipalTenantIDPrompt, gomock.Any()).
+		Return(tenantID, nil).
+		Times(1)
+}
+
+// setAzureCloudProvider sets up mocks that will configure an Azure cloud provider.
+func setAzureCloudProvider(prompter *prompt.MockInterface, client *azure.MockClient, provider azure.Provider) {
+	subscriptions := &azure.SubscriptionResult{
+		Subscriptions: []azure.Subscription{{ID: provider.SubscriptionID, Name: "test-subscription"}},
+	}
+	subscriptions.Default = &subscriptions.Subscriptions[0]
+	resourceGroups := []armresources.ResourceGroup{{Name: to.Ptr(provider.ResourceGroup)}}
+
+	setAzureSubscriptions(client, subscriptions)
+	setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
+
+	setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
+	setAzureResourceGroups(client, provider.SubscriptionID, resourceGroups)
+	setAzureResourceGroupPrompt(prompter, []string{provider.ResourceGroup}, provider.ResourceGroup)
+
+	setAzureServicePrincipalAppIDPrompt(prompter, provider.ServicePrincipal.ClientID)
+	setAzureServicePrincipalPasswordPrompt(prompter, provider.ServicePrincipal.ClientSecret)
+	setAzureServicePrincipalTenantIDPrompt(prompter, provider.ServicePrincipal.TenantID)
+}
+
+func setConfirmOption(prompter *prompt.MockInterface, choice summaryResult) {
+	prompter.EXPECT().
+		RunProgram(gomock.Any()).
+		Return(&summaryModel{result: choice}, nil).
+		Times(1)
+}
+
+func setProgressHandler(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunProgram(gomock.Any()).
+		DoAndReturn(func(program *tea.Program) (tea.Model, error) {
+			program.Kill() // Quit the program immediately
+			return &progressModel{}, nil
+		}).
+		Times(1)
 }

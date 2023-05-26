@@ -116,8 +116,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		workspaceName = context
 	}
 
-	installed, err := r.HelmInterface.CheckRadiusInstall(context)
-	if !installed || (err != nil) {
+	state, err := r.HelmInterface.CheckRadiusInstall(context)
+	if !state.Installed || err != nil {
 		return fmt.Errorf("unable to create workspace %q. Radius control plane not installed on target platform. Run 'rad install' and try again", workspaceName)
 	}
 

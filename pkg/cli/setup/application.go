@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 const (
@@ -51,7 +49,7 @@ resource demo 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 // ScaffoldApplication creates a working sample application in the provided directory
 // along with configuration for the application name.
-func ScaffoldApplication(output output.Interface, directory string, name string) error {
+func ScaffoldApplication(directory string, name string) error {
 	// Create .rad in the working directory
 	err := os.Mkdir(filepath.Join(directory, ".rad"), 0755)
 	if os.IsExist(err) {
@@ -68,7 +66,6 @@ func ScaffoldApplication(output output.Interface, directory string, name string)
 	appBicepFilepath := filepath.Join(directory, "app.bicep")
 	_, err = os.Stat(appBicepFilepath)
 	if os.IsNotExist(err) {
-		output.LogInfo("Created %q", "app.bicep")
 		err = os.WriteFile(appBicepFilepath, []byte(appBicepTemplate), 0644)
 		if err != nil {
 			return err
@@ -82,9 +79,6 @@ func ScaffoldApplication(output output.Interface, directory string, name string)
 	if err != nil {
 		return err
 	}
-
-	// Printing the relative path here to avoid super long console output.
-	output.LogInfo("Created %q", filepath.Join(".rad", "rad.yaml"))
 
 	return nil
 }

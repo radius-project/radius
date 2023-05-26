@@ -90,7 +90,7 @@ func TestCreateEnvProviders(t *testing.T) {
 		{
 			name: "only aws provider",
 			providers: []any{
-				&aws.Provider{AccountId: "0", TargetRegion: "westus"},
+				&aws.Provider{AccountID: "0", Region: "westus"},
 			},
 			out: corerp.Providers{
 				Aws: &corerp.ProvidersAws{
@@ -102,8 +102,8 @@ func TestCreateEnvProviders(t *testing.T) {
 		{
 			name: "multiple aws providers",
 			providers: []any{
-				&aws.Provider{AccountId: "0", TargetRegion: "westus"},
-				&aws.Provider{AccountId: "1", TargetRegion: "eastus"},
+				&aws.Provider{AccountID: "0", Region: "westus"},
+				&aws.Provider{AccountID: "1", Region: "eastus"},
 			},
 			out: corerp.Providers{
 				Aws: &corerp.ProvidersAws{
@@ -116,7 +116,7 @@ func TestCreateEnvProviders(t *testing.T) {
 			name: "azure and aws providers",
 			providers: []any{
 				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
-				&aws.Provider{AccountId: "0", TargetRegion: "westus"},
+				&aws.Provider{AccountID: "0", Region: "westus"},
 			},
 			out: corerp.Providers{
 				Azure: &corerp.ProvidersAzure{

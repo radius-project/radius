@@ -7,7 +7,9 @@ package prompt
 import (
 	reflect "reflect"
 
+	tea "github.com/charmbracelet/bubbletea"
 	gomock "github.com/golang/mock/gomock"
+	text "github.com/project-radius/radius/pkg/cli/prompt/text"
 )
 
 // MockInterface is a mock of Interface interface.
@@ -49,7 +51,7 @@ func (mr *MockInterfaceMockRecorder) GetListInput(arg0, arg1 interface{}) *gomoc
 }
 
 // GetTextInput mocks base method.
-func (m *MockInterface) GetTextInput(arg0, arg1 string) (string, error) {
+func (m *MockInterface) GetTextInput(arg0 string, arg1 text.TextModelOptions) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTextInput", arg0, arg1)
 	ret0, _ := ret[0].(string)
@@ -61,4 +63,19 @@ func (m *MockInterface) GetTextInput(arg0, arg1 string) (string, error) {
 func (mr *MockInterfaceMockRecorder) GetTextInput(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTextInput", reflect.TypeOf((*MockInterface)(nil).GetTextInput), arg0, arg1)
+}
+
+// RunProgram mocks base method.
+func (m *MockInterface) RunProgram(arg0 *tea.Program) (tea.Model, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunProgram", arg0)
+	ret0, _ := ret[0].(tea.Model)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunProgram indicates an expected call of RunProgram.
+func (mr *MockInterfaceMockRecorder) RunProgram(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunProgram", reflect.TypeOf((*MockInterface)(nil).RunProgram), arg0)
 }

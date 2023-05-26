@@ -105,7 +105,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		message := fmt.Sprintf(deleteConfirmationFmt, r.Workspace.Name)
-		confirmed, err := prompt.YesOrNoPrompt(message, "no", r.InputPrompter)
+		confirmed, err := prompt.YesOrNoPrompt(message, prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			if errors.Is(err, &prompt.ErrExitConsole{}) {
 				return &cli.FriendlyError{Message: err.Error()}

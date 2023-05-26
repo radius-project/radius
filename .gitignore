@@ -20,6 +20,10 @@ docs/content/reference/cli/rad*
 # Dependency directories
 vendor/
 
+# Radius scaffolding
+app.bicep
+.rad/
+
 # Build Output
 bin/
 dist/
@@ -34,6 +38,7 @@ kcp
 !kcp/
 kcp.exe
 docs/.hugo_build.lock
+main
 
 .vscode/
 .DS_Store
