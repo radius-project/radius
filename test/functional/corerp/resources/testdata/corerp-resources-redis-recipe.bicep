@@ -22,12 +22,8 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     recipes: {
       'Applications.Link/redisCaches':{
-<<<<<<< HEAD
-        default: {
-=======
         rediscache: {
           templateKind: 'bicep'
->>>>>>> main
           templatePath: '${registry}/test/functional/corerp/recipes/redis-recipe-value-backed:${version}' 
         }
       }
