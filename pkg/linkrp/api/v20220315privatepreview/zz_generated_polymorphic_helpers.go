@@ -96,26 +96,6 @@ func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (Mon
 	return b, json.Unmarshal(rawMsg, b)
 }
 
-func unmarshalRabbitMQMessageQueuePropertiesClassification(rawMsg json.RawMessage) (RabbitMQMessageQueuePropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b RabbitMQMessageQueuePropertiesClassification
-	switch m["mode"] {
-	case "recipe":
-		b = &RecipeRabbitMQMessageQueueProperties{}
-	case "values":
-		b = &ValuesRabbitMQMessageQueueProperties{}
-	default:
-		b = &RabbitMQMessageQueueProperties{}
-	}
-	return b, json.Unmarshal(rawMsg, b)
-}
-
 func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

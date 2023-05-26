@@ -11,6 +11,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// rabbitmqmessagequeues contains the resource processor for rabbitMQ. See the processors package for more information.
 package rabbitmqmessagequeues
-
-const QueueNameKey = "queue"

@@ -1,34 +1,23 @@
 [
     {
-        "description": "unsupported_mode",
+        "description": "invalid_resource_provisioning",
         "payload": {
             "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
             "name": "rabbitmq0",
             "type": "Applications.Link/rabbitMQMessageQueues",
             "properties": {
-                "mode": "abc"
+                "resourceProvisioning": "invalid"
             }
         }
     },
     {
-        "description": "invalid_properties_with_mode_recipe",
+        "description": "invalid_properties_for_manual_provisioning",
         "payload": {
             "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
             "name": "rabbitmq0",
             "type": "Applications.Link/rabbitMQMessageQueues",
             "properties": {
-                "mode": "recipe"
-            }
-        }
-    },
-    {
-        "description": "invalid_properties_with_mode_values",
-        "payload": {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
-            "name": "rabbitmq0",
-            "type": "Applications.Link/rabbitMQMessageQueues",
-            "properties": {
-                "mode": "values"
+                "resourceProvisioning": "manual"
             }
         }
     }

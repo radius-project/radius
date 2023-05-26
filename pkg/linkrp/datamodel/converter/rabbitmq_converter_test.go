@@ -33,7 +33,7 @@ func TestRabbitMQMessageQueueDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/rabbitmqconverterresourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.RabbitMQMessageQueueResource{},
 			nil,
@@ -69,7 +69,7 @@ func TestRabbitMQMessageQueueDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqresource.json",
+			"../../api/v20220315privatepreview/testdata/rabbitmqconverterresource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},

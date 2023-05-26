@@ -53,10 +53,10 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
 type RabbitMQMessageQueueProperties struct {
 	rpv1.BasicResourceProperties
-	Queue   string            `json:"queue"`
-	Recipe  linkrp.LinkRecipe `json:"recipe,omitempty"`
-	Secrets RabbitMQSecrets   `json:"secrets,omitempty"`
-	Mode    LinkMode          `json:"mode,omitempty"`
+	Queue                string                      `json:"queue,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Secrets              RabbitMQSecrets             `json:"secrets,omitempty"`
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

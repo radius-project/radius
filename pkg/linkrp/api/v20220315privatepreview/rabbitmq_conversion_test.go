@@ -15,6 +15,7 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -25,13 +26,16 @@ import (
 )
 
 func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"rabbitmqresource.json", "rabbitmqresource2.json", "rabbitmqresource_recipe.json"}
-	for _, payload := range testset {
+	//testset := []string{"rabbitmqresource.json", "rabbitmqresource2.json", "rabbitmqresource_recipe.json"}
+	testsFile := "rabbitmqresource.json"
+	rawPayload := loadTestData(testsFile)
+	var testset []TestData
+	err := json.Unmarshal(rawPayload, &testset)
+	require.NoError(t, err)
+	for _, testData := range testset {
 
-		// arrange
-		rawPayload := loadTestData(payload)
 		versionedResource := &RabbitMQMessageQueueResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
+		err := json.Unmarshal(testData.Payload, versionedResource)
 		require.NoError(t, err)
 
 		// act
@@ -46,13 +50,12 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		switch versionedResource.Properties.(type) {
-		case *ValuesRabbitMQMessageQueueProperties:
-			require.Equal(t, "values", string(convertedResource.Properties.Mode))
+		if convertedResource.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+			require.Equal(t, "manual", string(convertedResource.Properties.ResourceProvisioning))
 			require.Equal(t, "testQueue", string(convertedResource.Properties.Queue))
 			require.Equal(t, "connection://string", convertedResource.Properties.Secrets.ConnectionString)
-		case *RecipeRabbitMQMessageQueueProperties:
-			require.Equal(t, "recipe", string(convertedResource.Properties.Mode))
+		} else {
+			require.Equal(t, "recipe", string(convertedResource.Properties.ResourceProvisioning))
 			require.Equal(t, "rabbitmq", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
 			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
@@ -61,12 +64,15 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 }
 
 func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"rabbitmqresourcedatamodel.json", "rabbitmqresourcedatamodel2.json", "rabbitmqresourcedatamodel_recipe.json"}
-	for _, payload := range testset {
+	testsFile := "rabbitmqresourcedatamodel.json"
+	rawPayload := loadTestData(testsFile)
+	var testset []TestData
+	err := json.Unmarshal(rawPayload, &testset)
+	require.NoError(t, err)
+	for _, testData := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
 		resource := &datamodel.RabbitMQMessageQueue{}
-		err := json.Unmarshal(rawPayload, resource)
+		err := json.Unmarshal(testData.Payload, resource)
 		require.NoError(t, err)
 
 		// act
@@ -78,14 +84,14 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0", *versionedResource.ID)
 		require.Equal(t, "rabbitmq0", *versionedResource.Name)
 		require.Equal(t, linkrp.RabbitMQMessageQueuesResourceType, *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetRabbitMQMessageQueueProperties().Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetRabbitMQMessageQueueProperties().Environment)
-		switch v := versionedResource.Properties.(type) {
-		case *ValuesRabbitMQMessageQueueProperties:
-			require.Equal(t, "values", string(*v.Mode))
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
+		v := versionedResource.Properties
+		if *v.ResourceProvisioning == ResourceProvisioningManual {
+			require.Equal(t, "manual", string(*v.ResourceProvisioning))
 			require.Equal(t, "testQueue", *v.Queue)
-		case *RecipeRabbitMQMessageQueueProperties:
-			require.Equal(t, "recipe", string(*v.Mode))
+		} else {
+			require.Equal(t, "recipe", string(*v.ResourceProvisioning))
 			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "rabbitmqProvider", v.Status.OutputResources[0]["Provider"])
 		}
@@ -102,22 +108,16 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *test
 		versionedResource := &RabbitMQMessageQueueResource{}
 		err := json.Unmarshal(testData.Payload, versionedResource)
 		require.NoError(t, err)
-		var expectedErr v1.ErrClientRP
 		description := testData.Description
-		if description == "unsupported_mode" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "Unsupported mode abc"
-		}
-		if description == "invalid_properties_with_mode_recipe" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "recipe is a required property for mode 'recipe'"
-		}
-		if description == "invalid_properties_with_mode_values" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "queue is a required property for mode 'values'"
-		}
 		_, err = versionedResource.ConvertTo()
-		require.Equal(t, &expectedErr, err)
+		if description == "invalid_resource_provisioning" {
+			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+			require.Equal(t, &expectedErr, err)
+		}
+		if description == "invalid_properties_for_manual_provisioning" {
+			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", ResourceProvisioningManual)}
+			require.Equal(t, &expectedErr, err)
+		}
 	}
 }
 
