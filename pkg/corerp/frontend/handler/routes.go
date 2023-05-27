@@ -393,7 +393,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						ResponseConverter: converter.GatewayDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Gateway]{
 							rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
-							gtwy_ctrl.ValidateRequest,
+							gtwy_ctrl.ValidateAndMutateRequest,
 						},
 					},
 				)
@@ -410,7 +410,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						ResponseConverter: converter.GatewayDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Gateway]{
 							rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
-							gtwy_ctrl.ValidateRequest,
+							gtwy_ctrl.ValidateAndMutateRequest,
 						},
 					},
 				)
