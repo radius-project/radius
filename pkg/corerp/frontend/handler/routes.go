@@ -132,10 +132,17 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: env_ctrl.NewCreateOrUpdateEnvironment,
 		},
 		{
-			ParentRouter:   envResourceRouter,
-			ResourceType:   env_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: env_ctrl.NewDeleteEnvironment,
+			ParentRouter: envResourceRouter,
+			ResourceType: env_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Environment]{
+						RequestConverter:  converter.EnvironmentDataModelFromVersioned,
+						ResponseConverter: converter.EnvironmentDataModelToVersioned,
+					},
+				)
+			},
 		},
 		{
 			ParentRouter:   envRTSubrouter.Path("/{environmentName}/getmetadata").Subrouter(),
@@ -168,22 +175,43 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   hrtResourceRouter,
-			ResourceType:   hrt_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: hrt_ctrl.NewCreateOrUpdateHTTPRoute,
+			ParentRouter: hrtResourceRouter,
+			ResourceType: hrt_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
+						RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
+						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   hrtResourceRouter,
-			ResourceType:   hrt_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: hrt_ctrl.NewCreateOrUpdateHTTPRoute,
+			ParentRouter: hrtResourceRouter,
+			ResourceType: hrt_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
+						RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
+						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   hrtResourceRouter,
-			ResourceType:   hrt_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: hrt_ctrl.NewDeleteHTTPRoute,
+			ParentRouter: hrtResourceRouter,
+			ResourceType: hrt_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
+						RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
+						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+					},
+				)
+			},
 		},
 		// Container resource handlers
 		{
@@ -211,22 +239,51 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   ctrResourceRouter,
-			ResourceType:   ctr_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: ctr_ctrl.NewCreateOrUpdateContainer,
+			ParentRouter: ctrResourceRouter,
+			ResourceType: ctr_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.ContainerResource]{
+						RequestConverter:  converter.ContainerDataModelFromVersioned,
+						ResponseConverter: converter.ContainerDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.ContainerResource]{
+							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
+							ctr_ctrl.ValidateAndMutateRequest,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   ctrResourceRouter,
-			ResourceType:   ctr_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: ctr_ctrl.NewCreateOrUpdateContainer,
+			ParentRouter: ctrResourceRouter,
+			ResourceType: ctr_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.ContainerResource]{
+						RequestConverter:  converter.ContainerDataModelFromVersioned,
+						ResponseConverter: converter.ContainerDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.ContainerResource]{
+							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
+							ctr_ctrl.ValidateAndMutateRequest,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   ctrResourceRouter,
-			ResourceType:   ctr_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: ctr_ctrl.NewDeleteContainer,
+			ParentRouter: ctrResourceRouter,
+			ResourceType: ctr_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.ContainerResource]{
+						RequestConverter:  converter.ContainerDataModelFromVersioned,
+						ResponseConverter: converter.ContainerDataModelToVersioned,
+					},
+				)
+			},
 		},
 		// Applications resource handler registration.
 		{
@@ -254,22 +311,51 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   appResourceRouter,
-			ResourceType:   app_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: app_ctrl.NewCreateOrUpdateApplication,
+			ParentRouter: appResourceRouter,
+			ResourceType: app_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Application]{
+						RequestConverter:  converter.ApplicationDataModelFromVersioned,
+						ResponseConverter: converter.ApplicationDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Application]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Application],
+							app_ctrl.CreateAppScopedNamespace,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   appResourceRouter,
-			ResourceType:   app_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: app_ctrl.NewCreateOrUpdateApplication,
+			ParentRouter: appResourceRouter,
+			ResourceType: app_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Application]{
+						RequestConverter:  converter.ApplicationDataModelFromVersioned,
+						ResponseConverter: converter.ApplicationDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Application]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Application],
+							app_ctrl.CreateAppScopedNamespace,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   appResourceRouter,
-			ResourceType:   app_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: app_ctrl.NewDeleteApplication,
+			ParentRouter: appResourceRouter,
+			ResourceType: app_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Application]{
+						RequestConverter:  converter.ApplicationDataModelFromVersioned,
+						ResponseConverter: converter.ApplicationDataModelToVersioned,
+					},
+				)
+			},
 		},
 		// Gateway resource handler registration.
 		{
@@ -297,22 +383,51 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   gtwyResourceRouter,
-			ResourceType:   gtwy_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: gtwy_ctrl.NewCreateOrUpdateGateway,
+			ParentRouter: gtwyResourceRouter,
+			ResourceType: gtwy_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Gateway]{
+						RequestConverter:  converter.GatewayDataModelFromVersioned,
+						ResponseConverter: converter.GatewayDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Gateway]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
+							gtwy_ctrl.ValidateAndMutateRequest,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   gtwyResourceRouter,
-			ResourceType:   gtwy_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: gtwy_ctrl.NewCreateOrUpdateGateway,
+			ParentRouter: gtwyResourceRouter,
+			ResourceType: gtwy_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Gateway]{
+						RequestConverter:  converter.GatewayDataModelFromVersioned,
+						ResponseConverter: converter.GatewayDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Gateway]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
+							gtwy_ctrl.ValidateAndMutateRequest,
+						},
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   gtwyResourceRouter,
-			ResourceType:   gtwy_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: gtwy_ctrl.NewDeleteGateway,
+			ParentRouter: gtwyResourceRouter,
+			ResourceType: gtwy_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Gateway]{
+						RequestConverter:  converter.GatewayDataModelFromVersioned,
+						ResponseConverter: converter.GatewayDataModelToVersioned,
+					},
+				)
+			},
 		},
 		// Volumes resource handler registration.
 		{
