@@ -25,7 +25,7 @@ import (
 )
 
 // ValidateAndMutateRequest validates and mutates the incoming request.
-func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.Gateway, oldResource *datamodel.Gateway, options *controller.Options) (rest.Response, error) {
+func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *datamodel.Gateway, options *controller.Options) (rest.Response, error) {
 	if newResource.Properties.TLS != nil {
 		// If SSL Passthrough and TLS termination are both configured, then report an error
 		if newResource.Properties.TLS.SSLPassthrough && newResource.Properties.TLS.CertificateFrom != "" {
