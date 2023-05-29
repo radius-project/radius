@@ -82,7 +82,7 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptio
 
 	tenantID, err := r.Prompter.GetTextInput(enterAzureServicePrincipalTenantIDPrompt, prompt.TextInputOptions{
 		Placeholder: enterAzureServicePrincipalTenantIDPlaceholder,
-		Validate:    prompt.ValidateResourceName,
+		Validate:    prompt.ValidateUUIDv4,
 	})
 	if errors.Is(err, &prompt.ErrExitConsole{}) {
 		return nil, &cli.FriendlyError{Message: err.Error()}
