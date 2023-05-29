@@ -24,10 +24,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type (
-	errMsg error
-)
-
 var (
 	QuitTextStyle = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 )
@@ -59,17 +55,20 @@ type Model struct {
 	prompt       string
 	textInput    textinput.Model
 	valueEntered bool
-	err          error
 }
 
 // NewTextModel returns a new text model with prompt message.
 func NewTextModel(prompt string, options TextModelOptions) Model {
+	// Note: we don't use the validation support provided by textinput due to a bug in the library.
+	//
+	// See: https://github.com/charmbracelet/bubbles/issues/244
+	//
+	// This blocks the input control from **ever** containing invalid data. For example `prod-` is an invalid environment name,
+	// so it will be blocked. This means you can't type `prod-aws` which is a valid name.
 	ti := textinput.New()
 	ti.Focus()
 	ti.Width = 40
-
 	ti.Placeholder = options.Placeholder
-	ti.Validate = options.Validate
 
 	return Model{
 		Style:     lipgloss.NewStyle(), // No border or padding by default
@@ -93,19 +92,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
+			// Block submit on invalid values.
+			if m.textInput.Err != nil {
+				return m, nil
+			}
+
 			m.valueEntered = true
 			return m, tea.Quit
 		case tea.KeyCtrlC:
 			m.Quitting = true
 			return m, tea.Quit
 		}
-
-	// We handle errors just like any other message
-	case errMsg:
-		m.err = msg
-		return m, nil
 	}
+
+	// Workaround for https://github.com/charmbracelet/bubbles/issues/244
+	//
+	// Instead of using the validation support on textinput, we perform the validation
+	// and update its state manually.
 	m.textInput, cmd = m.textInput.Update(msg)
+	if m.options.Validate != nil {
+		validationErr := m.options.Validate(m.textInput.Value())
+		m.textInput.Err = validationErr
+	}
+
 	return m, cmd
 }
 
