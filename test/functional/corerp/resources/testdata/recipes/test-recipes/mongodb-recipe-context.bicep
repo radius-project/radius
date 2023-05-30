@@ -2,7 +2,7 @@ param context object
 param location string = resourceGroup().location
 param rg string = resourceGroup().name
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2021-10-15-preview' = {
   name: 'account-${rg}'
   location: location
   kind: 'MongoDB'
@@ -23,8 +23,8 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     databaseAccountOfferType: 'Standard'
   }
 
-  resource dbinner 'mongodbDatabases' = {
-    name: '${context.resource.name}-${rg}'
+  resource dbinner 'mongodbDatabases@2021-10-15-preview' = {
+    name: '${context.resource.name}-db'
     properties: {
       resource: {
         id: '${context.resource.name}-${rg}'
@@ -41,5 +41,8 @@ output result object = {
     host: account.properties.documentEndpoint
     port: 443
     database: account::dbinner.name
+  }
+  secrets: {
+    connectionString: 'mongodb://${account.properties.documentEndpoint}:443/${context.resource.name}-db'
   }
 }

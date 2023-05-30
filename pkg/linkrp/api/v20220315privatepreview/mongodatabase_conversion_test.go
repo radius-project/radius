@@ -128,7 +128,6 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		filename       string
-		recipe         Recipe
 		overrideRecipe bool
 		resources      []*ResourceReference
 	}{
@@ -144,7 +143,6 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		{
 			// Named recipe
 			filename: "mongodatabaseresourcedatamodel_recipe.json",
-			recipe:   Recipe{Name: to.Ptr("cosmosdb"), Parameters: map[string]any{"foo": "bar"}},
 		},
 	}
 	for _, payload := range testset {
@@ -168,9 +166,10 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
 
 		if resource.Properties.ResourceProvisioning == "" {
-			require.Equal(t, payload.recipe, *versionedResource.Properties.Recipe)
+			require.Equal(t, resource.Properties.Recipe.Name, *versionedResource.Properties.Recipe.Name)
+			require.Equal(t, resource.Properties.Recipe.Parameters, versionedResource.Properties.Recipe.Parameters)
 		} else {
-			require.Equal(t, ResourceProvisioningManual, *versionedResource.Properties.ResourceProvisioning)
+			require.Equal(t, ResourceProvisioning(resource.Properties.ResourceProvisioning), *versionedResource.Properties.ResourceProvisioning)
 			require.Equal(t, Recipe{Name: to.Ptr(""), Parameters: nil}, *versionedResource.Properties.Recipe)
 			require.Equal(t, resource.Properties.Host, *versionedResource.Properties.Host)
 			require.Equal(t, resource.Properties.Port, *versionedResource.Properties.Port)
