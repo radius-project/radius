@@ -43,6 +43,6 @@ output result object = {
     database: account::dbinner.name
   }
   secrets: {
-    connectionString: 'mongodb://${account.properties.documentEndpoint}:443/${context.resource.name}-db'
+    connectionString: 'mongodb://${account.properties.documentEndpoint}:443/${context.resource.name}-rg'
   }
 }
