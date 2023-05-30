@@ -483,8 +483,7 @@ jobs:
           az group delete \
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
-            --yes \
-            --no-wait
+            --yes --verbose
   report-failure:
     name: Report test failure
     needs: [build, tests]

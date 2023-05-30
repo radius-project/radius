@@ -20,8 +20,6 @@ on:
     # Run twice a day
     - cron: "30 0,12 * * *"
 env:
-  # The test subscription id for testing.
-  AZURE_SUBSCRIPTION_ID: '85716382-7362-45c3-ae03-2126e459a123'
   AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
   # The valid resource time window in seconds to delete the test resources. 6 hours
   VALID_RESOURCE_WINDOW: 6*60*60
@@ -35,7 +33,7 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: '{"clientId":"${{ secrets.AZURE_SP_TESTS_APPID }}","clientSecret":"${{ secrets.AZURE_SP_TESTS_PASSWORD }}","subscriptionId":"${{ env.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_SP_TESTS_TENANTID }}"}'
+          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - name: Find old test resource groups
         run: |
           echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
@@ -43,7 +41,7 @@ jobs:
           # Create the file to store the resource group list
           touch ${{ env.AZURE_RG_DELETE_LIST_FILE}}
 
-          az account set -s ${{ env.AZURE_SUBSCRIPTION_ID }}
+          az account set -s ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
           resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
 
           current_time=$(date +%s)
