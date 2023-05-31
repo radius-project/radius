@@ -6,7 +6,7 @@ The core of Radius is using the declarative **application model** to describe co
 
 ## Contents 
 
-[TODO: remove this section and describe in How it works]
+[TODO] remove this section and describe in How it works]
 
 Radius consists of:
 
