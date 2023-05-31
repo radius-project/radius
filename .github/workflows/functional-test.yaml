@@ -83,6 +83,11 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+      - name: Set up checkout target (issue_comment)
+        if: github.event_name == 'issue_comment'
+        run: |
+            echo "CHECKOUT_REPO=${{ github.event.pull_head_repo }}" >> $GITHUB_ENV
+            echo "CHECKOUT_REF=${{ github.event.pull_head_ref }}" >> $GITHUB_ENV
       - name: Check out code
         uses: actions/checkout@v3
         with:
