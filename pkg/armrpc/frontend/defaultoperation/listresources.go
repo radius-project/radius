@@ -32,15 +32,20 @@ type ListResources[P interface {
 	v1.ResourceDataModel
 }, T any] struct {
 	ctrl.Operation[P, T]
+
+	// RecursiveQuery specifies whether the store query should be recursive or not. This should be set when the
+	// scope of the list operation does not match the scope of the underlying resource type.
+	RecursiveQuery bool
 }
 
 // NewListResources creates a new ListResources instance.
 func NewListResources[P interface {
 	*T
 	v1.ResourceDataModel
-}, T any](opts ctrl.Options, ctrlOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
+}, T any](opts ctrl.Options, ctrlOpts ctrl.ResourceOptions[T]) (*ListResources[P, T], error) {
 	return &ListResources[P, T]{
 		ctrl.NewOperation[P](opts, ctrlOpts),
+		false,
 	}, nil
 }
 
@@ -49,8 +54,9 @@ func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, re
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{
-		RootScope:    serviceCtx.ResourceID.RootScope(),
-		ResourceType: serviceCtx.ResourceID.Type(),
+		RootScope:      serviceCtx.ResourceID.RootScope(),
+		ResourceType:   serviceCtx.ResourceID.Type(),
+		ScopeRecursive: e.RecursiveQuery,
 	}
 
 	result, err := e.StorageClient().Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
