@@ -24,7 +24,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2021-10-15-preview' = {
   }
 
   resource dbinner 'mongodbDatabases@2021-10-15-preview' = {
-    name: '${context.resource.name}-db'
+    name: '${context.resource.name}-${rg}'
     properties: {
       resource: {
         id: '${context.resource.name}-${rg}'
@@ -43,6 +43,6 @@ output result object = {
     database: account::dbinner.name
   }
   secrets: {
-    connectionString: 'mongodb://${account.properties.documentEndpoint}:443/${context.resource.name}-db'
+    connectionString: 'mongodb://${account.properties.documentEndpoint}:443/${context.resource.name}-${rg}'
   }
 }
