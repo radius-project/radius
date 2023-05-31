@@ -44,7 +44,7 @@ type Interface interface {
 	// GetListInput prompts user to select from a list. Will return ErrExitConsole if the user cancels.
 	GetListInput(items []string, promptMsg string) (string, error)
 
-	// RunProgram runs a bubbletea program and blocks until the the program exits.
+	// RunProgram runs a bubbletea program and blocks until the program exits.
 	//
 	// To create a cancellable program, use the options to pass a context.Context into the program.
 	RunProgram(program *tea.Program) (tea.Model, error)
@@ -102,7 +102,7 @@ func (i *Impl) GetListInput(items []string, promptMsg string) (string, error) {
 	return lm.Choice, nil
 }
 
-// RunProgram runs a bubbletea program and blocks until the the program exits.
+// RunProgram runs a bubbletea program and blocks until the program exits.
 func (i *Impl) RunProgram(program *tea.Program) (tea.Model, error) {
 	return program.Run()
 }
