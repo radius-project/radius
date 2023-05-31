@@ -1,0 +1,33 @@
+name: radius-bot
+
+on:
+  #### TODO for testing
+  # issue_comment:
+  #   types: [created]
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  radius-bot:
+    name: Run Radius Bot script
+    runs-on: ubuntu-latest
+    env:
+      accessToken: '${{ secrets.GH_RAD_CI_BOT_PAT }}'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - name: Install Dependencies
+        run: |
+          npm install
+          npm install @octokit/rest
+      - name: Comment analyzer
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const script = require('./.github/scripts/radius-bot.js')
+            await script({github, context})

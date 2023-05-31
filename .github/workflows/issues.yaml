@@ -7,7 +7,7 @@ on:
 jobs:
   customer:
     name: Add a label if Issue created by customer
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
@@ -33,3 +33,16 @@ jobs:
               fi
             fi
           done
+  trigger-tests:
+    name: Trigger CI/CD tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3 # required to make the script available for next step
+      - name: Comment analyzer
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            const script = require('./.github/scripts/test-trigger.js')
+            await script({github, context})

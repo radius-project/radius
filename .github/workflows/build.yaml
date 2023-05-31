@@ -24,7 +24,7 @@ on:
       - v*
   pull_request:
     branches:
-      - main
+      # - main
       - features/*
       - release/*
 
@@ -42,7 +42,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -193,7 +193,7 @@ jobs:
   # - push the image for pushes to master, or to a tag
   images:
     name: Container image build
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -254,7 +254,7 @@ jobs:
   helm:
     name: Helm chart build
     needs: ['images']
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -288,7 +288,7 @@ jobs:
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
@@ -372,7 +372,7 @@ jobs:
     name: Delete artifacts
     if: ${{ success() }}
     needs: [ 'build', 'publish' ]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Delete release artifacts
         uses: geekyeggo/delete-artifact@v1

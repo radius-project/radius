@@ -18,7 +18,7 @@ name: Validate Bicep Code
 on:
   pull_request:
     branches:
-      - main
+      # - main
       - release/*
 
 concurrency:
@@ -29,7 +29,7 @@ concurrency:
 jobs:
   build:
     name: Validate Bicep Code
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repo
         uses: actions/checkout@v3

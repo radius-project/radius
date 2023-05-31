@@ -23,7 +23,7 @@ on:
     - cron: "30 0,12 * * 0,6"
   pull_request:
     branches:
-      - main
+      # - main
       - features/*
       - release/*
   # Dispatch on external events
@@ -63,7 +63,7 @@ env:
 jobs:
   build:
     name: Build Radius for test
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -256,7 +256,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
@@ -503,7 +503,7 @@ jobs:
   report-failure:
     name: Report test failure
     needs: [build, tests]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: failure() && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing scheduled run
