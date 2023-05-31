@@ -38,11 +38,11 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2021-10-15-preview' = {
 
 output result object = {
   values: {
-    host: split(account.properties.documentEndpoint, '://')[1]
+    host: split(split(account.properties.documentEndpoint, '://')[1], ':')[0]
     port: 443
     database: '${context.resource.name}-${rg}'
   }
   secrets: {
-    connectionString: 'mongodb://${split(account.properties.documentEndpoint, '://')[1]}/${context.resource.name}-${rg}'
+    connectionString: 'mongodb://${split(split(account.properties.documentEndpoint, '://')[1], ':')[0]}:443/${context.resource.name}-${rg}'
   }
 }
