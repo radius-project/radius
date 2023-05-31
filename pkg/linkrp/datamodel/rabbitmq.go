@@ -67,3 +67,11 @@ type RabbitMQSecrets struct {
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
 }
+
+// Recipe returns the recipe for the RabbitMQMessageQueue
+func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
+	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
+	return &r.Properties.Recipe
+}

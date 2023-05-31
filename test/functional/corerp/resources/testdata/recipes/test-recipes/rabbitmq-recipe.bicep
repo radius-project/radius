@@ -9,7 +9,7 @@ param username string = 'guest'
 
 @description('Specifies the RabbitMQ password.')
 @secure()
-param password string ='Rabbit!1312Rabbit'
+param password string
 
 resource rabbitmq 'apps/Deployment@v1' = {
   metadata: {
