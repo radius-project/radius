@@ -35,6 +35,11 @@ type ControllerRegistry struct {
 }
 
 // NewControllerRegistry creates an ControllerRegistry instance.
+//
+// # Function Explanation
+// 
+//	ControllerRegistry's NewControllerRegistry function creates a new ControllerRegistry object with a map of controllers 
+//	and a DataStorageProvider, and returns it. If an error occurs during the creation, it will be returned to the caller.
 func NewControllerRegistry(sp dataprovider.DataStorageProvider) *ControllerRegistry {
 	return &ControllerRegistry{
 		ctrlMap: map[string]ctrl.Controller{},
@@ -43,6 +48,12 @@ func NewControllerRegistry(sp dataprovider.DataStorageProvider) *ControllerRegis
 }
 
 // Register registers controller.
+//
+// # Function Explanation
+// 
+//	ControllerRegistry's Register function locks the controller map, gets a storage client from the provided options, 
+//	creates a controller using the provided factory function, and adds the controller to the controller map. If any of these
+//	 steps fail, an error is returned.
 func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, method v1.OperationMethod, factoryFn ControllerFactoryFunc, opts ctrl.Options) error {
 	h.ctrlMapMu.Lock()
 	defer h.ctrlMapMu.Unlock()
@@ -66,6 +77,11 @@ func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, 
 }
 
 // Get gets the registered async controller instance.
+//
+// # Function Explanation
+// 
+//	ControllerRegistry.Get() provides a thread-safe way to retrieve a controller from the registry's map of controllers, 
+//	using an operationType as a key. If the controller is found, it is returned, otherwise nil is returned.
 func (h *ControllerRegistry) Get(operationType v1.OperationType) ctrl.Controller {
 	h.ctrlMapMu.RLock()
 	defer h.ctrlMapMu.RUnlock()

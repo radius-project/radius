@@ -33,6 +33,11 @@ type Result struct {
 }
 
 // NewCanceledResult creates the canceled asynchronous operation result.
+//
+// # Function Explanation
+// 
+//	NewCanceledResult creates a new Result object with a Canceled status and a message, and returns it to the caller. This 
+//	allows callers to easily create a Result object with a Canceled status and a message to indicate an error.
 func NewCanceledResult(message string) Result {
 	r := Result{}
 	r.SetCanceled(message)
@@ -40,6 +45,11 @@ func NewCanceledResult(message string) Result {
 }
 
 // NewFailedResult creates the failed asynchronous operation result.
+//
+// # Function Explanation
+// 
+//	NewFailedResult creates a new Result object with the given error details and sets the result to failed. It is useful for
+//	 callers of this function to handle errors.
 func NewFailedResult(err v1.ErrorDetails) Result {
 	r := Result{}
 	r.SetFailed(err, false)
@@ -47,6 +57,11 @@ func NewFailedResult(err v1.ErrorDetails) Result {
 }
 
 // SetFailed sets the error response with Failed status.
+//
+// # Function Explanation
+// 
+//	Result.SetFailed sets the ProvisioningState to Failed and sets the Error field to the given ErrorDetails, and sets the 
+//	Requeue field to the given boolean value. It also handles the case where Result is nil.
 func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 	if r == nil {
 		r = &Result{}
@@ -60,6 +75,13 @@ func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 }
 
 // SetCanceled sets the response status to Canceled.
+//
+// # Function Explanation
+// 
+//	Result.SetCanceled sets the Result object's Requeue field to false, sets the ProvisioningState to Canceled, and sets the
+//	 Error field to an ErrorDetails object with Code set to OperationCanceled and Message set to the provided message. If 
+//	the Result object is nil, it is initialized before setting the fields. This allows callers to check the Result object's 
+//	fields to determine if the operation was canceled.
 func (r *Result) SetCanceled(message string) {
 	if r == nil {
 		r = &Result{}
@@ -73,11 +95,20 @@ func (r *Result) SetCanceled(message string) {
 }
 
 // SetProvisioningState sets provisioning state.
+//
+// # Function Explanation
+// 
+//	Result.SetProvisioningState sets the ProvisioningState of the Result object, returning an error if the state is invalid.
 func (r *Result) SetProvisioningState(s v1.ProvisioningState) {
 	r.state = &s
 }
 
 // ProvisioningState gets the provisioning state of the result.
+//
+// # Function Explanation
+// 
+//	Result.ProvisioningState() returns the ProvisioningState of the Result object, either as the stored state or as the 
+//	default value of 'Succeeded' if no state has been set.
 func (r *Result) ProvisioningState() v1.ProvisioningState {
 	if r.state == nil {
 		return v1.ProvisioningStateSucceeded

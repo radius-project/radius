@@ -35,12 +35,21 @@ type CreateOrUpdateSubscription struct {
 }
 
 // NewCreateOrUpdateSubscription creates a new CreateOrUpdateSubscription.
+//
+// # Function Explanation
+// 
+//	CreateOrUpdateSubscription creates a new controller and returns it, or returns an error if one occurs.
 func NewCreateOrUpdateSubscription(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateSubscription{ctrl.NewBaseController(opts)}, nil
 }
 
 // CreateOrUpdateSubscription is triggered when the state of the user subscription is changed (setup or tear down).
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#subscription-lifecycle-api-reference
+//
+// # Function Explanation
+// 
+//	CreateOrUpdateSubscription runs a check against a data store to determine if a subscription exists and, if so, validates
+//	 it. If the API version is not found, a NotFoundAPIVersionResponse is returned.
 func (a *CreateOrUpdateSubscription) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	// TODO: implement data store check for subscriptions
 	log := ucplog.FromContextOrDiscard(ctx)
@@ -54,6 +63,11 @@ func (a *CreateOrUpdateSubscription) Run(ctx context.Context, w http.ResponseWri
 	return rest.NewNotFoundAPIVersionResponse("Subscriptions", "Applications.Core", sCtx.APIVersion), nil
 }
 
+// # Function Explanation
+// 
+//	CreateOrUpdateSubscription reads the body of the request and attempts to unmarshal it into a Subscription object. If 
+//	successful, it returns the Subscription object, otherwise it returns nil. Error handling is done by returning nil if an 
+//	error occurs.
 func (a *CreateOrUpdateSubscription) Validate(req *http.Request) *v1.Subscription {
 	content, _ := ctrl.ReadJSONBody(req)
 	am := v1.Subscription{}

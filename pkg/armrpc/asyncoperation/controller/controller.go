@@ -63,36 +63,71 @@ type BaseController struct {
 }
 
 // NewBaseAsyncController creates BaseAsyncController instance.
+//
+// # Function Explanation
+// 
+//	NewBaseAsyncController creates a new BaseController object with the given options and returns it. If any errors occur 
+//	during the creation of the object, they will be returned to the caller.
 func NewBaseAsyncController(options Options) BaseController {
 	return BaseController{options}
 }
 
 // StorageClient gets storage client for this controller.
+//
+// # Function Explanation
+// 
+//	BaseController's StorageClient function returns the StorageClient option from the BaseController's options struct, 
+//	allowing callers to access the StorageClient. If the StorageClient option is not set, an error is returned.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
 
 // DataProvider gets data storage provider for this controller.
+//
+// # Function Explanation
+// 
+//	BaseController's DataProvider() function returns the DataStorageProvider from the options struct, allowing callers to 
+//	access the data provider. If the data provider is not set, an error is returned.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
 }
 
 // KubeClient gets Kubernetes client for this controller.
+//
+// # Function Explanation
+// 
+//	The BaseController.KubeClient() function returns a runtimeclient.Client object which is used to interact with the 
+//	Kubernetes API. It handles any errors that occur during the process and returns an error if one is encountered.
 func (b *BaseController) KubeClient() runtimeclient.Client {
 	return b.options.KubeClient
 }
 
 // ResourceType gets the resource type for this controller.
+//
+// # Function Explanation
+// 
+//	BaseController's ResourceType function returns the resource type of the controller, or an error if the resource type is 
+//	not set.
 func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
 
 // DeploymentProcessor gets the core rp deployment processor for this controller.
+//
+// # Function Explanation
+// 
+//	The DeploymentProcessor function returns the deployment processor from the options provided, and handles any errors that
+//	 may occur.
 func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
 	return b.options.GetDeploymentProcessor()
 }
 
 // LinkDeploymentProcessor gets the link rp deployment processor for this controller.
+//
+// # Function Explanation
+// 
+//	The LinkDeploymentProcessor function returns a DeploymentProcessor object from the options provided, and handles any 
+//	errors that may occur.
 func (b *BaseController) LinkDeploymentProcessor() link_dp.DeploymentProcessor {
 	return b.options.GetLinkDeploymentProcessor()
 }

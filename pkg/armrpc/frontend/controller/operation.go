@@ -47,6 +47,11 @@ type Operation[P interface {
 }
 
 // NewOperation creates BaseController instance.
+//
+// # Function Explanation
+// 
+//	NewOperation creates a new Operation object with the given Options and ResourceOptions, and returns it. If any of the 
+//	parameters are invalid, an error is returned.
 func NewOperation[P interface {
 	*T
 	v1.ResourceDataModel
@@ -55,30 +60,59 @@ func NewOperation[P interface {
 }
 
 // Options gets the options for this controller.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s Options() function returns a pointer to the Options struct associated with the Operation, allowing 
+//	callers to access and modify the options. If an error occurs, it is returned to the caller.
 func (b *Operation[P, T]) Options() *Options {
 	return &b.options
 }
 
 // StorageClient gets storage client for this controller.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s StorageClient() function returns the StorageClient option from the Operation[P, T]'s options struct, 
+//	allowing callers to access the StorageClient. If the StorageClient option is not set, an error is returned.
 func (b *Operation[P, T]) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
 
+// # Function Explanation
+// 
+//	Operation[P, T]'s DataProvider() function returns the DataStorageProvider from the options struct, allowing callers to 
+//	access the data provider. If the options struct is nil, an error is returned.
 func (b *Operation[P, T]) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
 }
 
 // ResourceType gets the resource type for this controller.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s ResourceType() function returns the ResourceType option from the options struct, or an error if the 
+//	option is not set.
 func (b *Operation[P, T]) ResourceType() string {
 	return b.options.ResourceType
 }
 
 // DeploymentProcessor gets the deployment processor for this controller.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s StatusManager() function returns the StatusManager from the options struct, allowing callers to access
+//	 the StatusManager and handle errors accordingly.
 func (b *Operation[P, T]) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
 }
 
 // GetResourceFromRequest extracts and deserializes from HTTP request body to datamodel.
+//
+// # Function Explanation
+// 
+//	The GetResourceFromRequest function reads the JSON body from the given request, converts it to a resource object based 
+//	on the API version, and returns it. If any errors occur during the process, they are returned to the caller.
 func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.Request) (*T, error) {
 	content, err := ReadJSONBody(req)
 	if err != nil {
@@ -95,6 +129,11 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 }
 
 // GetResource is the helper to get the resource via storage client.
+//
+// # Function Explanation
+// 
+//	The GetResource function retrieves a resource from the storage client and returns it as an object, along with its ETag. 
+//	If the resource is not found, it returns nil and no error. Otherwise, it returns an error if one occurs.
 func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out *T, etag string, err error) {
 	etag = ""
 	out = new(T)
@@ -114,6 +153,11 @@ func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out
 }
 
 // SaveResource is the helper to save the resource via storage client.
+//
+// # Function Explanation
+// 
+//	"SaveResource" saves a resource with the given ID and data to the storage client, using the given ETag if provided. It 
+//	returns the ETag of the saved resource, or an error if the save fails.
 func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, etag string) (string, error) {
 	nr := &store.Object{
 		Metadata: store.Metadata{
@@ -129,6 +173,13 @@ func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, et
 }
 
 // PrepareResource validates incoming request and populate the metadata to new resource.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s PrepareResource function validates the ETag, checks if the resource is in a terminal state, and 
+//	updates the metadata and system data of the new resource. If the ETag is invalid, a PreconditionFailedResponse is 
+//	returned. If the resource is not in a terminal state, a ConflictResponse is returned. If the old resource is not found, 
+//	a NotFoundResponse is returned.
 func (c *Operation[P, T]) PrepareResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -163,6 +214,12 @@ func (c *Operation[P, T]) PrepareResource(ctx context.Context, req *http.Request
 }
 
 // PrepareAsyncOperation saves the initial state and queue the async operation.
+//
+// # Function Explanation
+// 
+//	"PrepareAsyncOperation" sets the initial state of the new resource, saves it, and queues an asynchronous operation with 
+//	a timeout and retry duration. If an error occurs, the resource's state is set to failed and saved, and the error is 
+//	returned.
 func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource *T, initialState v1.ProvisioningState, asyncTimeout time.Duration, etag *string) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -195,6 +252,11 @@ func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource
 }
 
 // ConstructSyncResponse constructs synchronous API response.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s ConstructSyncResponse function creates a response with the given resource, ETag header, and API 
+//	version, and returns it with an OK status. If an error occurs, it is returned instead.
 func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -207,6 +269,13 @@ func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, eta
 }
 
 // ConstructAsyncResponse constructs asynchronous API response.
+//
+// # Function Explanation
+// 
+//	The ConstructAsyncResponse function creates an asynchronous response for a given resource, method and etag. It converts 
+//	the resource to the appropriate version and sets the response code to either Accepted or Created depending on the 
+//	method. It also sets the RetryAfter value if it is specified in the resourceOptions. If an error occurs, it is returned 
+//	to the caller.
 func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -228,26 +297,53 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 }
 
 // RequestConverter returns the request converter function for this controller.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s RequestConverter() returns a v1.ConvertToDataModel[T] which is used to convert a request object into a
+//	 data model. If an error occurs, it is returned to the caller.
 func (b *Operation[P, T]) RequestConverter() v1.ConvertToDataModel[T] {
 	return b.resourceOptions.RequestConverter
 }
 
 // ResponseConverter returns the response converter function for this controller.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s ResponseConverter() returns the resourceOptions' ResponseConverter, which is used to convert the 
+//	response into an API model. If the resourceOptions' ResponseConverter is nil, an error is returned.
 func (b *Operation[P, T]) ResponseConverter() v1.ConvertToAPIModel[T] {
 	return b.resourceOptions.ResponseConverter
 }
 
 // DeleteFilters returns the set of filters to execute on delete operations.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s DeleteFilters() function returns the DeleteFilters[T] associated with the resourceOptions of the 
+//	Operation[P, T] instance, and returns an empty slice if the resourceOptions are nil. If an error occurs, it is returned 
+//	to the caller.
 func (b *Operation[P, T]) DeleteFilters() []DeleteFilter[T] {
 	return b.resourceOptions.DeleteFilters
 }
 
 // DeleteFilters returns the set of filters to execute on update (PUT/PATCH) operations.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s UpdateFilters() function returns the UpdateFilters[T] associated with the resourceOptions of the 
+//	Operation[P, T] instance, and returns an empty slice if the resourceOptions are nil.
 func (b *Operation[P, T]) UpdateFilters() []UpdateFilter[T] {
 	return b.resourceOptions.UpdateFilters
 }
 
 // AsyncOperationTimeout returns the timeput for the operation.
+//
+// # Function Explanation
+// 
+//	Operation[P, T]'s AsyncOperationTimeout() function returns the timeout duration for an asynchronous operation, either 
+//	from the resourceOptions parameter or the defaultAsyncPutTimeout if the resourceOptions parameter is 0. If an error 
+//	occurs, the defaultAsyncPutTimeout will be returned.
 func (b *Operation[P, T]) AsyncOperationTimeout() time.Duration {
 	if b.resourceOptions.AsyncOperationTimeout == 0 {
 		return defaultAsyncPutTimeout

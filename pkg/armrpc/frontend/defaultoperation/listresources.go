@@ -39,6 +39,11 @@ type ListResources[P interface {
 }
 
 // NewListResources creates a new ListResources instance.
+//
+// # Function Explanation
+// 
+//	NewListResources creates a new ListResources object with the given Options and ResourceOptions, and returns it or an 
+//	error if one occurs. It handles errors by returning them to the caller.
 func NewListResources[P interface {
 	*T
 	v1.ResourceDataModel
@@ -50,6 +55,11 @@ func NewListResources[P interface {
 }
 
 // Run fetches the list of all resources in resourcegroups.
+//
+// # Function Explanation
+// 
+//	ListResources.Run() queries the storage client for resources based on the context of the request, and returns a 
+//	paginated response with the results, or an error if the query fails.
 func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
