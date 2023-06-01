@@ -107,7 +107,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongo-db",
+						Name: "mongodb-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 					},
