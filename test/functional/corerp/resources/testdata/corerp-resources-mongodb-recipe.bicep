@@ -21,7 +21,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     providers: {
       azure: {
-        scope: '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/shruthikumar'
+        scope: '/subscriptions/${sub}/resourceGroups/${rg}'
       }
     }
     recipes: {
