@@ -42,63 +42,31 @@ using OpenAPI;
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
-
-@doc("DaprStateStore Properties for Mode Resource")
-model ResourceDaprStateStoreProperties extends DaprStateStoreProperties {
-  @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "resource";
-
-  @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
-  metadata?: object;
-
-  @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type?: string;
-
-  @doc("Dapr component version")
-  version?: string;
-
-  @doc("The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.")
-  resource: string;
-
-}
-@doc("DaprStateStore Properties for Mode Values")
-model ValuesDaprStateStoreProperties extends DaprStateStoreProperties {
-  @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
-
-  @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
-  metadata: object;
-
-  @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type: string;
-
-  @doc("Dapr component version")
-  version: string;
-}
-@doc("DaprStateStore Properties for Mode Recipe")
-model RecipeDaprStateStoreProperties extends DaprStateStoreProperties {
-  @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "recipe";
-
-  @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
-  metadata?: object;
-
-  @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type?: string;
-
-  @doc("Dapr component version")
-  version?: string;
-
-  @doc("The recipe used to automatically deploy underlying infrastructure for the daprStateStore link")
-  recipe: Recipe;
-}
 @doc("DaprStateStore link properties")
-@discriminator("mode")
 model DaprStateStoreProperties extends BasicDaprResourceProperties {
   @doc("Provisioning state of the DaprStateStore link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
+
+  @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
+  metadata?: object;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the daprStateStore link")
+  recipe?: Recipe;
+
+  @doc("A collection of references to resources associated with the state store")
+  resources?: ResourceReference[];
+
+  @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
+  type?: string;
+
+  @doc("Dapr component version")
+  version?: string;
 }
+
 @doc("DaprStateStore link")
 model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
   @doc("DaprStateStore name")
