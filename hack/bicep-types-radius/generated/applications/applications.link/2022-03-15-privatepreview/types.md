@@ -254,10 +254,6 @@
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
-## ResourceReference
-### Properties
-* **id**: string (Required): Resource id of an existing resource
-
 ## MongoDatabaseSecrets
 ### Properties
 * **connectionString**: string: Connection string used to connect to the target Mongo database

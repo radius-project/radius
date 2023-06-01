@@ -2543,11 +2543,11 @@
       "properties": {
         "metadata": {
           "$ref": "#/definitions/object",
-          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format."
         },
         "version": {
           "type": "string",
@@ -2555,16 +2555,16 @@
         },
         "resource": {
           "type": "string",
-          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to."
+          "description": "PubSub resource"
         }
       },
-      "description": "DaprStateStore Properties for Mode Resource",
+      "description": "DaprPubSubBroker Properties for Mode Resource",
       "required": [
         "resource"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/DaprStateStoreProperties"
+          "$ref": "#/definitions/DaprPubSubBrokerProperties"
         }
       ],
       "x-ms-discriminator-value": "resource"
@@ -2717,37 +2717,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/DaprSecretStoreProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesDaprStateStoreProperties": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": "string",
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Mongo database"
-        },
-        "database": {
-          "type": "string",
-          "description": "Database name of the target Mongo database",
-          "readOnly": true
-        }
-      },
-      "description": "DaprStateStore Properties for Mode Values",
-      "required": [
-        "metadata",
-        "type",
-        "version"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreProperties"
         }
       ],
       "x-ms-discriminator-value": "values"
