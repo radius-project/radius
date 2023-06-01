@@ -35,10 +35,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // CheckRadiusInstall mocks base method.
-func (m *MockInterface) CheckRadiusInstall(arg0 string) (bool, error) {
+func (m *MockInterface) CheckRadiusInstall(arg0 string) (InstallState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckRadiusInstall", arg0)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(InstallState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

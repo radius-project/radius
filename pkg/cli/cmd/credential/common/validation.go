@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +21,8 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/validation"
+	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/azure"
 )
 
 // Used in tests
@@ -28,7 +32,7 @@ const (
 )
 
 var (
-	supportedProviders = []string{validation.AzureCloudProvider, validation.AWSCloudProvider}
+	supportedProviders = []string{azure.ProviderDisplayName, aws.ProviderDisplayName}
 )
 
 func ValidateCloudProviderName(name string) error {

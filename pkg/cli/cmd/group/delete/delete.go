@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -102,7 +105,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !r.Confirmation {
 		confirmed, err := prompt.YesOrNoPrompt(
 			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName),
-			"no",
+			prompt.ConfirmNo,
 			r.InputPrompter)
 		if err != nil {
 			if errors.Is(err, &prompt.ErrExitConsole{}) {

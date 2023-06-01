@@ -2,7 +2,7 @@
 #
 # This configures UCP to...
 #
-# - Use Kubernetes (namespace: radius-system) for storage and secrets
+# - Use Kubernetes (namespace: radius-testing) for storage and secrets
 # - Listen on port 9000
 # - Talk to Deployment Engine on port 5017
 # - Talk to Core RP on port 8080
@@ -13,7 +13,7 @@ storageProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'radius-system'
+    namespace: 'radius-testing'
 
 secretProvider:
   provider: "kubernetes"
@@ -22,7 +22,7 @@ queueProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'radius-system'
+    namespace: 'radius-testing'
 
 profilerProvider:
   enabled: false

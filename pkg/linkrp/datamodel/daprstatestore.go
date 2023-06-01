@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,7 +59,11 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 	return linkrp.DaprStateStoresResourceType
 }
 
+// Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
 func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
+	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
 	return &r.Properties.Recipe
 }
 
@@ -64,10 +71,11 @@ func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
 type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Mode     LinkMode          `json:"mode,omitempty"`
-	Metadata map[string]any    `json:"metadata,omitempty"`
-	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
-	Resource string            `json:"resource,omitempty"`
-	Type     string            `json:"type,omitempty"`
-	Version  string            `json:"version,omitempty"`
+	// Specifies how the underlying service/resource is provisioned and managed
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Metadata             map[string]any              `json:"metadata,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Type                 string                      `json:"type,omitempty"`
+	Version              string                      `json:"version,omitempty"`
 }

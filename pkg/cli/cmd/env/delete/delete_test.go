@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -143,8 +146,8 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
-			Return("yes", nil).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -189,8 +192,8 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
-			Return("no", nil).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return(prompt.ConfirmNo, nil).
 			Times(1)
 
 		workspace := &workspaces.Workspace{
@@ -267,7 +270,7 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 

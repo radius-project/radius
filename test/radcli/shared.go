@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,8 +27,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/golang/mock/gomock"
-	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
@@ -35,7 +39,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -61,8 +64,9 @@ type ValidateMocks struct {
 	Namespace                   *namespace.MockInterface
 	Prompter                    *prompt.MockInterface
 	Helm                        *helm.MockInterface
-	Setup                       *setup.MockInterface
 	ApplicationManagementClient *clients.MockApplicationsManagementClient
+	AzureClient                 *azure.MockClient
+	AWSClient                   *aws.MockClient
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -92,8 +96,9 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 					Namespace:                   namespace.NewMockInterface(ctrl),
 					Prompter:                    prompt.NewMockInterface(ctrl),
 					Helm:                        helm.NewMockInterface(ctrl),
-					Setup:                       setup.NewMockInterface(ctrl),
 					ApplicationManagementClient: clients.NewMockApplicationsManagementClient(ctrl),
+					AzureClient:                 azure.NewMockClient(ctrl),
+					AWSClient:                   aws.NewMockClient(ctrl),
 				}
 
 				testcase.ConfigureMocks(mocks)
@@ -102,10 +107,11 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				framework.NamespaceInterface = mocks.Namespace
 				framework.Prompter = mocks.Prompter
 				framework.HelmInterface = mocks.Helm
-				framework.SetupInterface = mocks.Setup
 				framework.ConnectionFactory = &connections.MockFactory{
 					ApplicationsManagementClient: mocks.ApplicationManagementClient,
 				}
+				framework.AzureClient = mocks.AzureClient
+				framework.AWSClient = mocks.AWSClient
 			}
 
 			if testcase.CreateTempDirectory != "" {
@@ -239,7 +245,7 @@ workspaces:
 }
 
 func Create404Error() error {
-	code := armrpcv1.CodeNotFound
+	code := v1.CodeNotFound
 	return &azcore.ResponseError{
 		ErrorCode:  code,
 		StatusCode: 404,

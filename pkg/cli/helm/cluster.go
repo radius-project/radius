@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,7 +26,6 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -76,15 +78,13 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
-// Installs radius based on kubecontext in "radius-system" namespace
+// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
-	step := output.BeginStep("Installing Radius version %s control plane...", version.Version())
 	foundExisting, err := InstallOnCluster(ctx, clusterOptions, kubeContext)
 	if err != nil {
 		return false, err
 	}
 
-	output.CompleteStep(step)
 	return foundExisting, nil
 }
 
@@ -134,8 +134,8 @@ func UninstallOnCluster(kubeContext string) error {
 	return nil
 }
 
-// Checks whethere radius installed on the cluster based of kubeContext
-func CheckRadiusInstall(kubeContext string) (bool, error) {
+// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
+func CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	var helmOutput strings.Builder
 
 	namespace := RadiusSystemNamespace
@@ -146,36 +146,53 @@ func CheckRadiusInstall(kubeContext string) (bool, error) {
 
 	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
-		return false, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+		return InstallState{}, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 	histClient := helmaction.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
-	_, err = histClient.Run(radiusReleaseName)
+	releases, err := histClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		return false, nil
+		return InstallState{}, nil
 	} else if err != nil {
-		return false, err
+		return InstallState{}, err
+	} else if len(releases) == 0 {
+		return InstallState{}, nil
 	}
 
-	return true, nil
+	version := releases[0].Chart.Metadata.Version
+	return InstallState{Installed: true, Version: version}, nil
+}
+
+// InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
+type InstallState struct {
+	// Installed denotes whether the Radius helm chart is installed on the cluster.
+	Installed bool
+
+	// Version is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
+	Version string
 }
 
 //go:generate mockgen -destination=./mock_cluster.go -package=helm -self_package github.com/project-radius/radius/pkg/cli/helm github.com/project-radius/radius/pkg/cli/helm Interface
+
+// Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
-	CheckRadiusInstall(kubeContext string) (bool, error)
+	// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
+	CheckRadiusInstall(kubeContext string) (InstallState, error)
+
+	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
 }
 
 type Impl struct {
 }
 
-// Checks if radius is installed based on kubeContext
-func (i *Impl) CheckRadiusInstall(kubeContext string) (bool, error) {
+// Checks if radius is installed based on kubeContext.
+func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	return CheckRadiusInstall(kubeContext)
 }
 
-// Installs radius on a cluster based on kubeContext
+// Installs radius on a cluster based on kubeContext.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
 	return Install(ctx, clusterOptions, kubeContext)
 }

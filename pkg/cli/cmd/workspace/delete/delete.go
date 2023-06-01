@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -102,7 +105,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		message := fmt.Sprintf(deleteConfirmationFmt, r.Workspace.Name)
-		confirmed, err := prompt.YesOrNoPrompt(message, "no", r.InputPrompter)
+		confirmed, err := prompt.YesOrNoPrompt(message, prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			if errors.Is(err, &prompt.ErrExitConsole{}) {
 				return &cli.FriendlyError{Message: err.Error()}

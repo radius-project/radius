@@ -1,9 +1,5 @@
 # Running Radius control plane provider locally
 
-There are many times where it's important to be able to debug the Radius RP locally:
-- Fast inner loop debugging on a component in Radius.
-- Can run a subset of processes required for a specific scenario (for example, just running Applications.Core and async processor)
-
 Radius consists of a few processes that get deployed inside a Kubernetes cluster.
 
  This includes:
@@ -12,11 +8,13 @@ Radius consists of a few processes that get deployed inside a Kubernetes cluster
 - Universal Control Plane (ucp) - Acts as a proxy between the other services, also manages deployments of AWS resources.
 - Deployment Engine (bicep-de) - Handles deployment orchestration for bicep files.
 
-The easiest way to get started to to launch Radius using VS Code. This will give you the ability to debug all of the processes. This workflow will run all of the Radius processes locally on your computer without containerizing them.
+The easiest way to get started is to launch Radius using VS Code. This will give you the ability to debug all of the processes. This workflow will run all of the Radius processes locally on your computer without containerizing them.
+
+> ⚠️ The debugging setup provided by these instructions **does NOT** share its database with an installed copy of Radius. It will use a separate namespace to store data. 
 
 ## Endpoints
 
-If you need to manually test APIs you can reach them at the following endpoints following these instructions:
+If you need to manually test APIs you can reach them at the following endpoints after following these instructions:
 
 - UCP: port 9000
 - AppCore RP: port 8080
@@ -29,7 +27,8 @@ If you need to manually test APIs you can reach them at the following endpoints 
 2. Clone the `project-radius/radius` and `project-radius/deployment-engine` repo next to each other. 
 3. Run `git submodule update --init` in the `deployment-engine` repo
 4. Install .NET 6.0 SDK - https://dotnet.microsoft.com/en-us/download/dotnet/6.0
-5. (Optional) Configure any cloud provider credentials you want to use for developing Radius. 
+5. Install C# VS Code extension - https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp
+6. (Optional) Configure any cloud provider credentials you want to use for developing Radius. 
   
 > 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
 
@@ -47,7 +46,8 @@ rad init --dev
 rad init
 ```
 
-This will install Radius and configure an environment for you. The database that's used will be shared between the instance of Radius installed in your Kubernetes cluster, and the instance running locally.
+This will install Radius and configure an environment for you. The database that's used **will NOT** be shared with your debug setup, so it mostly doesn't matter what choices you make.
+
 
 ## Setup Step 2: Modify config.yaml to point to your local RPs
 
@@ -69,7 +69,7 @@ workspaces:
       scope: /planes/radius/local/resourceGroups/default
 ```
 
-Make a copy of the `default` environment called `dev` and set it as the default. Then add the `overrides` section from the example below. 
+Make a copy of the `default` workspace called `dev` and set it as the default. Then add the `overrides` section from the example below. 
 
  This example adds a `dev` workspace:
 
@@ -79,9 +79,9 @@ workspaces:
   items:
     dev:
       connection:
-      context: kind-kind
-      kind: kubernetes
-      overrides:
+        context: kind-kind
+        kind: kubernetes
+        overrides:
           ucp: http://localhost:9000
       environment: /planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default
       scope: /planes/radius/local/resourceGroups/default
@@ -95,6 +95,34 @@ workspaces:
 
 The `overrides` element tells the `rad` CLI what endpoint to talk to.
 
+## Setup Step 3: Create radius-testing namespace
+
+Run this command to create the namespace that will be used to store data.
+
+```sh
+kubectl create namespace radius-testing
+```
+
+## Setup Step 3: Create Resource Group and Environment
+
+At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
+
+In VS Code:
+
+- Open the Debug tab in VS Code
+- Select `Launch Control Plane (all)` from the drop-down
+- Press Debug
+
+Wait for all 3 of these to start.
+
+Then at the command line run:
+
+```sh
+rad group create default
+rad env create default
+```
+
+At this point you're done with setup! Feel free to stop the debugger.
 
 ## Debugging
 

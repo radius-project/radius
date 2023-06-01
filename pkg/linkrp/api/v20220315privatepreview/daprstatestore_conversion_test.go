@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,112 +24,168 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []string{
-		"daprstatestoresqlserverresource.json",
-		"daprstatestoreazuretablestorageresource.json",
-		"daprstatestogenericreresource.json",
-		"daprstatestoreresource_recipe.json",
-		"daprstatestoreresource_recipe2.json"}
-
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		versionedResource := &DaprStateStoreResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
-		require.NoError(t, err)
-
-		// act
-		dm, err := versionedResource.ConvertTo()
-
-		// assert
-		require.NoError(t, err)
-		convertedResource := dm.(*datamodel.DaprStateStore)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprStateStores/daprStateStore0", convertedResource.ID)
-		require.Equal(t, "daprStateStore0", convertedResource.Name)
-		require.Equal(t, linkrp.DaprStateStoresResourceType, convertedResource.Type)
-		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		switch versionedResource.Properties.(type) {
-		case *ResourceDaprStateStoreProperties:
-			if payload == "daprstatestoresqlserverresource.json" {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.Resource)
-				require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-			} else {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", convertedResource.Properties.Resource)
-			}
-		case *ValuesDaprStateStoreProperties:
-			require.Equal(t, "state.zookeeper", convertedResource.Properties.Type)
-			require.Equal(t, "v1", convertedResource.Properties.Version)
-			require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
-			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-		case *RecipeDaprStateStoreProperties:
-			if payload == "daprstatestoreresource_recipe2.json" {
-				parameters := map[string]any{"port": float64(6081)}
-				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
-			} else {
-				require.Equal(t, "recipe-test", convertedResource.Properties.Recipe.Name)
-			}
-		}
+		"daprstatestore_values_resource.json",
+		"daprstatestore_recipe_resource.json",
 	}
 
+	for _, payload := range testset {
+		t.Run(payload, func(t *testing.T) {
+			rawPayload := loadTestData(payload)
+			versionedResource := &DaprStateStoreResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
+
+			dm, err := versionedResource.ConvertTo()
+
+			require.NoError(t, err)
+			convertedResource := dm.(*datamodel.DaprStateStore)
+
+			expected := &datamodel.DaprStateStore{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprStateStores/daprStateStore0",
+						Name:     "daprStateStore0",
+						Type:     linkrp.DaprStateStoresResourceType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.DaprStateStoreProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+				},
+			}
+			if payload == "daprstatestore_values_resource.json" {
+				expected.Properties.ResourceProvisioning = linkrp.ResourceProvisioningManual
+				expected.Properties.Type = "state.zookeeper"
+				expected.Properties.Version = "v1"
+				expected.Properties.Metadata = map[string]any{
+					"foo": "bar",
+				}
+				expected.Properties.Resources = []*linkrp.ResourceReference{
+					{
+						ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+					},
+				}
+			} else if payload == "daprstatestore_recipe_resource.json" {
+				expected.Properties.ResourceProvisioning = linkrp.ResourceProvisioningRecipe
+				expected.Properties.Recipe.Name = "recipe-test"
+			}
+
+			require.Equal(t, expected, convertedResource)
+		})
+	}
+}
+
+func TestDaprStateStore_ConvertVersionedToDataModel_Invalid(t *testing.T) {
+	testset := []struct {
+		payload string
+		errType error
+		message string
+	}{
+		{"daprstatestore_invalidvalues_resource.json", &v1.ErrClientRP{}, "code BadRequest: err multiple errors were found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
+		{"daprstatestore_invalidrecipe_resource.json", &v1.ErrClientRP{}, "code BadRequest: err multiple errors were found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)"},
+	}
+
+	for _, test := range testset {
+		t.Run(test.payload, func(t *testing.T) {
+			rawPayload := loadTestData(test.payload)
+			versionedResource := &DaprStateStoreResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
+
+			dm, err := versionedResource.ConvertTo()
+			require.Error(t, err)
+			require.Nil(t, dm)
+			require.IsType(t, test.errType, err)
+			require.Equal(t, test.message, err.Error())
+		})
+	}
 }
 
 func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []string{
-		"daprstatestoresqlserverresourcedatamodel.json",
-		"daprstatestoreazuretablestorageresourcedatamodel.json",
-		"daprstatestogenericreresourcedatamodel.json",
-		"daprstatestoreresourcedatamodel_recipe.json",
-		"daprstatestoreresourcedatamodel_recipe2.json"}
-
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		resource := &datamodel.DaprStateStore{}
-		err := json.Unmarshal(rawPayload, resource)
-		require.NoError(t, err)
-
-		// act
-		versionedResource := &DaprStateStoreResource{}
-		err = versionedResource.ConvertFrom(resource)
-
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprStateStores/daprStateStore0", resource.ID)
-		require.Equal(t, "daprStateStore0", resource.Name)
-		require.Equal(t, linkrp.DaprStateStoresResourceType, resource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-		switch v := versionedResource.Properties.(type) {
-		case *ResourceDaprStateStoreProperties:
-			if payload == "daprstatestoreazuretablestorageresourcedatamodel.json" {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", resource.Properties.Resource)
-				require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
-				require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
-			} else {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.Resource)
-			}
-		case *ValuesDaprStateStoreProperties:
-			require.Equal(t, "state.zookeeper", *v.Type)
-			require.Equal(t, "v1", *v.Version)
-			require.Equal(t, "bar", v.Metadata["foo"])
-			require.Equal(t, "Deployment", v.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "kubernetes", v.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
-		case *RecipeDaprStateStoreProperties:
-			if payload == "daprstatestoreresourcedatamodel_recipe2.json" {
-				parameters := map[string]any{"port": float64(6081)}
-				require.Equal(t, parameters, resource.Properties.Recipe.Parameters)
-			} else {
-				require.Equal(t, "recipe-test", resource.Properties.Recipe.Name)
-			}
-		}
+		"daprstatestore_values_resourcedatamodel.json",
+		"daprstatestore_recipe_resourcedatamodel.json",
 	}
 
+	for _, payload := range testset {
+		t.Run(payload, func(t *testing.T) {
+			rawPayload := loadTestData(payload)
+			resource := &datamodel.DaprStateStore{}
+			err := json.Unmarshal(rawPayload, resource)
+			require.NoError(t, err)
+
+			versionedResource := &DaprStateStoreResource{}
+			err = versionedResource.ConvertFrom(resource)
+			require.NoError(t, err)
+
+			// Skip system data comparison
+			versionedResource.SystemData = nil
+
+			expected := &DaprStateStoreResource{
+				ID:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprStateStores/daprStateStore0"),
+				Name:     to.Ptr("daprStateStore0"),
+				Type:     to.Ptr(linkrp.DaprStateStoresResourceType),
+				Location: to.Ptr(v1.LocationGlobal),
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				Properties: &DaprStateStoreProperties{
+					Application:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					Environment:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					ComponentName:     to.Ptr(""),
+					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "kubernetes",
+							},
+						},
+					},
+				},
+			}
+
+			if payload == "daprstatestore_values_resourcedatamodel.json" {
+				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningManual)
+				expected.Properties.Type = to.Ptr("state.zookeeper")
+				expected.Properties.Version = to.Ptr("v1")
+				expected.Properties.Metadata = map[string]any{
+					"foo": "bar",
+				}
+				expected.Properties.Resources = []*ResourceReference{
+					{
+						ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"),
+					},
+				}
+			} else if payload == "daprstatestore_recipe_resourcedatamodel.json" {
+				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningRecipe)
+				expected.Properties.Recipe = &Recipe{
+					Name: to.Ptr("recipe-test"),
+				}
+			}
+
+			require.Equal(t, expected, versionedResource)
+		})
+	}
 }
 
 func TestDaprStateStore_ConvertFromValidation(t *testing.T) {
