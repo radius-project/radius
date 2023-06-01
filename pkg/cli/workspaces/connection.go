@@ -151,7 +151,11 @@ type KubernetesConnectionOverrides struct {
 }
 
 func (c *KubernetesConnectionConfig) String() string {
-	return fmt.Sprintf("Kubernetes (context=%s)", c.Context)
+	if c.Overrides.UCP == "" {
+		return fmt.Sprintf("Kubernetes (context=%s)", c.Context)
+	}
+
+	return fmt.Sprintf("Kubernetes (context=%s, ucp=%s)", c.Context, c.Overrides.UCP)
 }
 
 func (c *KubernetesConnectionConfig) GetKind() string {

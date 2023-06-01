@@ -46,7 +46,11 @@ func DaprStateStoreDataModelFromVersioned(content []byte, version string) (*data
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
-		return dm.(*datamodel.DaprStateStore), err
+		if err != nil {
+			return nil, err
+		}
+
+		return dm.(*datamodel.DaprStateStore), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
