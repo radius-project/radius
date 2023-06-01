@@ -38,11 +38,11 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2021-10-15-preview' = {
 
 output result object = {
   values: {
-    host: split(split(account.properties.documentEndpoint, '://')[1], ':')[0]
+    host: '${account.name}.mongo.cosmos.azure.com'
     port: 443
     database: '${context.resource.name}-${rg}'
   }
   secrets: {
-    connectionString: 'mongodb://${split(split(account.properties.documentEndpoint, '://')[1], ':')[0]}:443/${context.resource.name}-${rg}'
+    connectionString: 'mongodb://${account.name}.mongo.cosmos.azure.com:443/${context.resource.name}-${rg}'
   }
 }
