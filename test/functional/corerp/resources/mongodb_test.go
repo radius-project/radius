@@ -82,10 +82,10 @@ func Test_MongoManualProvisioning(t *testing.T) {
 
 // Test_MongoDB_Recipe validates:
 // the creation of a mongoDB from a recipe that uses an Azure resource
-func Test_MongoDB_AzureResourceRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-mongodb-azureres-recipe.bicep"
-	name := "corerp-resources-mongodb-azureres-recipe"
-	appNamespace := "corerp-resources-mongodb-azureres-recipe-app"
+func Test_MongoDB_Recipe(t *testing.T) {
+	template := "testdata/corerp-resources-mongodb-recipe.bicep"
+	name := "corerp-resources-mongodb-recipe"
+	appNamespace := "corerp-resources-mongodb-recipe-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -93,21 +93,21 @@ func Test_MongoDB_AzureResourceRecipe(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-mongodb-azureres-recipe-env",
+						Name: "corerp-resources-mongodb-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-mongodb-azureres-recipe",
+						Name: "corerp-resources-mongodb-recipe",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "mongodb-azureres-app-ctnr",
+						Name: "mongodb-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mongo-azureres-db",
+						Name: "mongo-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 					},
@@ -116,7 +116,7 @@ func Test_MongoDB_AzureResourceRecipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-azureres-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mongodb-app-ctnr").ValidateLabels(false),
 					},
 				},
 			},
