@@ -2,7 +2,7 @@ import radius as radius
 
 param scope string = resourceGroup().id
 
-param registry string 
+param registry string
 
 param version string
 
@@ -21,10 +21,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Link/redisCaches':{
+      'Applications.Link/redisCaches': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/corerp/recipes/redis-recipe-value-backed:${version}' 
+          templatePath: '${registry}/test/functional/corerp/recipes/redis-recipe-value-backed:${version}'
         }
       }
     }
@@ -38,8 +38,8 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-redis-default-recipe-app'
+        kind: 'kubernetesNamespace'
+        namespace: 'corerp-resources-redis-default-recipe-app'
       }
     ]
   }

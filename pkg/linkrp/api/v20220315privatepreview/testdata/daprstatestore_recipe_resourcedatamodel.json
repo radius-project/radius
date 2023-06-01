@@ -15,6 +15,7 @@
     "env": "dev"
   },
   "properties": {
+    "componentName": "daprStateStore0",
     "status": {
       "outputResources": [
         {

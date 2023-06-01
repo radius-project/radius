@@ -51,16 +51,10 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 	v := src.Properties
 
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
-	var found bool
-	for _, k := range PossibleResourceProvisioningValues() {
-		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
 
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)

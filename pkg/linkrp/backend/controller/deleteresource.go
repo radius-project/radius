@@ -95,6 +95,8 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 		return &datamodel.RabbitMQMessageQueue{}, nil
 	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		return &datamodel.DaprSecretStore{}, nil
+	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
+		return &datamodel.DaprPubSubBroker{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}
