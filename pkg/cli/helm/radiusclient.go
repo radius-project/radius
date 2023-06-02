@@ -43,6 +43,7 @@ type RadiusOptions struct {
 	Reinstall    bool
 	ChartPath    string
 	ChartVersion string
+	ImageVersion string
 	Values       string
 }
 
@@ -72,11 +73,9 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	values := helmChart.Values
-
-	err = strvals.ParseInto(options.Values, values)
+	err = AddRadiusValues(helmChart, &options)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -112,6 +111,28 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 	}
 	return alreadyInstalled, err
+}
+
+func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
+
+	values := helmChart.Values
+
+	services := []string{"rp", "ucp", "de"}
+	for _, service := range services {
+		_, ok := values[service]
+		if !ok {
+			values[service] = make(map[string]any)
+		}
+		serviceconfig := values[service].(map[string]any)
+		serviceconfig["tag"] = options.ImageVersion
+	}
+
+	err := strvals.ParseInto(options.Values, values)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
