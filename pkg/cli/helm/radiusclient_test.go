@@ -61,3 +61,47 @@ func Test_AddRadiusValues(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, prometheus["path"], "path")
 }
+
+func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
+	var helmChart chart.Chart
+	helmChart.Values = map[string]any{}
+	options := &RadiusOptions{
+		ImageVersion: "imageversion",
+		Values:       "rp.tag=latest,global.zipkin.url=url,global.prometheus.path=path",
+	}
+
+	err := AddRadiusValues(&helmChart, options)
+	require.Equal(t, err, nil)
+
+	values := helmChart.Values
+	// validate tags for ucp, de
+	for _, k := range []string{"ucp", "de"} {
+		o := values[k].(map[string]any)
+		_, ok := o["tag"]
+		assert.True(t, ok)
+		assert.Equal(t, o["tag"], "imageversion")
+	}
+
+	// validate tag for rp should have been overridden with latest
+	o := values["rp"].(map[string]any)
+	_, ok := o["tag"]
+	assert.True(t, ok)
+	assert.Equal(t, o["tag"], "latest")
+
+	_, ok = values["global"]
+	assert.True(t, ok)
+	global := values["global"].(map[string]any)
+	_, ok = global["zipkin"]
+	assert.True(t, ok)
+	zipkin := global["zipkin"].(map[string]any)
+	_, ok = zipkin["url"]
+	assert.True(t, ok)
+	assert.Equal(t, zipkin["url"], "url")
+
+	_, ok = global["prometheus"]
+	assert.True(t, ok)
+	prometheus := global["prometheus"].(map[string]any)
+	_, ok = prometheus["path"]
+	assert.True(t, ok)
+	assert.Equal(t, prometheus["path"], "path")
+}
