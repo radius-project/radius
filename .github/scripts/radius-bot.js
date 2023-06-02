@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-module.exports = async ({ github, context, accessToken }) => {
+module.exports = async ({ github, context }) => {
+    const accessToken = process.env.accessToken
+    console.log("@@@@ accessToken: " + accessToken)
     if (
         context.eventName == 'issue_comment' &&
         context.payload.action == 'created'
