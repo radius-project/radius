@@ -36,7 +36,6 @@ func Test_AddRadiusValues(t *testing.T) {
 
 	values := helmChart.Values
 	// validate tags for ucp, de, and rp
-
 	for _, k := range []string{"ucp", "de", "rp"} {
 		o := values[k].(map[string]any)
 		_, ok := o["tag"]
