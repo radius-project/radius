@@ -67,7 +67,7 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
 		ImageVersion: "imageversion",
-		Values:       "rp.tag=latest,global.zipkin.url=url,global.prometheus.path=path",
+		Values:       "rp.image=radius.azurecr.io/appcore-rp,rp.tag=latest,global.zipkin.url=url,global.prometheus.path=path",
 	}
 
 	err := AddRadiusValues(&helmChart, options)
@@ -82,11 +82,14 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 		assert.Equal(t, o["tag"], "imageversion")
 	}
 
-	// validate tag for rp should have been overridden with latest
+	// validate image, tag for rp should have been overridden with latest
 	o := values["rp"].(map[string]any)
 	_, ok := o["tag"]
 	assert.True(t, ok)
 	assert.Equal(t, o["tag"], "latest")
+	_, ok = o["image"]
+	assert.True(t, ok)
+	assert.Equal(t, o["image"], "radius.azurecr.io/appcore-rp")
 
 	_, ok = values["global"]
 	assert.True(t, ok)
