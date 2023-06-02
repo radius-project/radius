@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-module.exports = async ({ github, context }) => {
+module.exports = async ({ github, context, githubToken }) => {
     if (
         context.eventName == 'issue_comment' &&
         context.payload.action == 'created'
     ) {
-        await handleIssueCommentCreate({ github, context })
+        await handleIssueCommentCreate({ github, context, githubToken })
     }
 }
 
 // Handle issue comment create event.
-async function handleIssueCommentCreate({ github, context }) {
+async function handleIssueCommentCreate({ github, context, githubToken }) {
     const payload = context.payload
     const issue = context.issue
     const isFromPulls = !!payload.issue.pull_request
@@ -42,7 +42,7 @@ async function handleIssueCommentCreate({ github, context }) {
 
     switch (command) {
         case '/ok-to-test':
-            await cmdOkToTest(github, issue, isFromPulls)
+            await cmdOkToTest(github, issue, isFromPulls, githubToken)
             break
         default:
             console.log(
@@ -58,7 +58,7 @@ async function handleIssueCommentCreate({ github, context }) {
  * @param {*} issue GitHub issue object
  * @param {boolean} isFromPulls is the workflow triggered by a pull request?
  */
-async function cmdOkToTest(github, issue, isFromPulls) {
+async function cmdOkToTest(github, issue, isFromPulls, accessToken) {
     if (!isFromPulls) {
         console.log(
             '[cmdOkToTest] only pull requests supported, skipping command execution.'
@@ -67,6 +67,8 @@ async function cmdOkToTest(github, issue, isFromPulls) {
     }
 
     // Check if the user has permission to trigger e2e test with an issue comment
+    const org = "project-radius"
+    const teamSlug = "RadiusEng"
     checkTeamMembership(org, teamSlug, username, accessToken)
         .then(isMember => {
             if (!isMember) {
