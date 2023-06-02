@@ -17,4 +17,4 @@ jobs:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
             const script = require('./radius-bot.js')
-            execSync(node script({github, context, github-token}))
+            script({github, context, github-token})
