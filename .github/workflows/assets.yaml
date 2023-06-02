@@ -25,7 +25,7 @@ on:
 jobs:
   publish:
     name: Assets
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
