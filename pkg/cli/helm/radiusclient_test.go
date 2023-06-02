@@ -27,17 +27,18 @@ func Test_AddRadiusValues(t *testing.T) {
 	_, ok := values["rp"]
 
 	assert.True(t, ok)
+
 	rp := values["rp"].(map[string]any)
 	_, ok = rp["tag"]
 	assert.True(t, ok)
 	assert.Equal(t, rp["tag"], "imageversion")
 
-	ucp := rp["ucp"].(map[string]any)
+	ucp := values["ucp"].(map[string]any)
 	_, ok = ucp["tag"]
 	assert.True(t, ok)
 	assert.Equal(t, ucp["tag"], "imageversion")
 
-	de := rp["de"].(map[string]any)
+	de := values["de"].(map[string]any)
 	_, ok = de["tag"]
 	assert.True(t, ok)
 	assert.Equal(t, de["tag"], "imageversion")
