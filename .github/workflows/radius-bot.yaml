@@ -10,14 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download comment analyzer script
-        uses: actions/github-script@v4
-        with:
-            script: |
-              wget -q https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js
+        run: wget -q https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js -O radius-bot.js
+      # - name: Set up Node.js
+      #   uses: actions/setup-node@v2
+      #   with:
+      #     node-version: 'lts'
       - name: Comment analyzer
         uses: actions/github-script@v4
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
             const script = require('./radius-bot.js')
-            await script({github, context, github-token})
+            execSync(node script({github, context, github-token}))
