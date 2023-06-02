@@ -13,8 +13,8 @@ jobs:
         run: curl -sSL -k -o radius-bot.js https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js
       - name: Comment analyzer
         uses: actions/github-script@v4
-        with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+        env:
+          accessToken: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
             const script = require('./radius-bot.js')
-            script({github, context, github-token})
+            script({github, context, accessToken})

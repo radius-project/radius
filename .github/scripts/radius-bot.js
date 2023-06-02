@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-module.exports = async ({ github, context, githubToken }) => {
+module.exports = async ({ github, context, accessToken }) => {
     if (
         context.eventName == 'issue_comment' &&
         context.payload.action == 'created'
     ) {
-        await handleIssueCommentCreate({ github, context, githubToken })
+        await handleIssueCommentCreate({ github, context, accessToken })
     }
 }
 
 // Handle issue comment create event.
-async function handleIssueCommentCreate({ github, context, githubToken }) {
+async function handleIssueCommentCreate({ github, context, accessToken }) {
     const payload = context.payload
     const issue = context.issue
     const isFromPulls = !!payload.issue.pull_request
@@ -42,7 +42,7 @@ async function handleIssueCommentCreate({ github, context, githubToken }) {
 
     switch (command) {
         case '/ok-to-test':
-            await cmdOkToTest(github, issue, isFromPulls, githubToken)
+            await cmdOkToTest(github, issue, isFromPulls, accessToken)
             break
         default:
             console.log(
