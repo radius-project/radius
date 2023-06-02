@@ -16,7 +16,6 @@ limitations under the License.
 
 module.exports = async ({ github, context }) => {
     const accessToken = process.env.accessToken
-    console.log("@@@@ accessToken: " + accessToken)
     if (
         context.eventName == 'issue_comment' &&
         context.payload.action == 'created'
@@ -72,6 +71,7 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
     // Check if the user has permission to trigger e2e test with an issue comment
     const org = "project-radius"
     const teamSlug = "RadiusEng"
+    console.log("@@@@ Checking team membership")
     checkTeamMembership(org, teamSlug, username, accessToken)
         .then(isMember => {
             if (!isMember) {
@@ -101,6 +101,7 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
             issue: issue,
         }
 
+        console.log("@@@@ Creating dispatch event")
         // Fire repository_dispatch event to trigger e2e test
         await github.repos.createDispatchEvent({
             owner: issue.owner,
