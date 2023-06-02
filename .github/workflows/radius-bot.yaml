@@ -6,7 +6,7 @@ on:
 
 jobs:
   radius-bot:
-    name: Trigger CI/CD tests
+    name: Run Radius Bot script
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
       - name: Download comment analyzer script

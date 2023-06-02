@@ -1,8 +1,6 @@
 name: Issues Automation
 
 on:
-  issue_comment:
-    types: [created]
   issues:
     types: [opened]
 
