@@ -47,6 +47,7 @@ type RadiusOptions struct {
 	Values       string
 }
 
+// Apply the radius helm chart.
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
@@ -113,10 +114,10 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
-// AddRadiusValues adds values to the helm chart. It overrides the default values in followin order:
+// AddRadiusValues adds values to the helm chart. It overrides the default values in following order:
 // 1. lowest priority: Values from the helm chart default values.yaml
-// 2. next priority: set correct image tag, potentially overwriting "latest" tag
-// 3. highest priority: Values by the --set flag
+// 2. next priority: set correct image tag, potentially overwriting "latest" tag from step 1
+// 3. highest priority: Values by the --set flag potentially overwriting values from step 1 and 2
 func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
