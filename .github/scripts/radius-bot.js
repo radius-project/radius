@@ -120,8 +120,7 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
 
 async function checkTeamMembership(org, teamSlug, username, accessToken) {
     try {
-      const fetch = require('node-fetch');
-      const response = await fetch(`https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
+      const response = await node-fetch(`https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/vnd.github.v3+json'
