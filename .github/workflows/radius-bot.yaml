@@ -8,6 +8,8 @@ jobs:
   radius-bot:
     name: Run Radius Bot script
     runs-on: ubuntu-latest
+    env:
+      accessToken: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
       # - name: Download comment analyzer script
       #   run: curl -sSL -k -o radius-bot.js https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js
@@ -15,8 +17,6 @@ jobs:
         uses: actions/checkout@v3
       - name: Comment analyzer
         uses: actions/github-script@v4
-        env:
-          accessToken: ${{ secrets.GH_RAD_CI_BOT_PAT }}
         with:
           script: |
             const script = require('./.github/scripts/radius-bot.js')
