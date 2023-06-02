@@ -38,11 +38,13 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2021-10-15-preview' = {
 
 output result object = {
   values: {
-    host: '${account.name}.mongo.cosmos.azure.com'
-    port: 443
+    host: 'account-${rg}.mongo.cosmos.azure.com'
+    port: 10255
     database: '${context.resource.name}-${rg}'
   }
   secrets: {
-    connectionString: 'mongodb://${account.name}.mongo.cosmos.azure.com:443/${context.resource.name}-${rg}'
+    connectionString: account.listConnectionStrings().connectionStrings[0].connectionString
+    username: account.name
+    password: account.listKeys().primaryMasterKey
   }
 }
