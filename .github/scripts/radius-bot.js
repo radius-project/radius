@@ -31,6 +31,7 @@ async function handleIssueCommentCreate({ github, context, accessToken }) {
     const issue = context.issue
     const isFromPulls = !!payload.issue.pull_request
     const commentBody = payload.comment.body
+    const username = context.actor.toLowerCase()
 
     if (!commentBody) {
         console.log(
@@ -44,7 +45,7 @@ async function handleIssueCommentCreate({ github, context, accessToken }) {
 
     switch (command) {
         case '/ok-to-test':
-            await cmdOkToTest(github, issue, isFromPulls, accessToken)
+            await cmdOkToTest(github, issue, isFromPulls, username, accessToken)
             break
         default:
             console.log(
@@ -60,7 +61,7 @@ async function handleIssueCommentCreate({ github, context, accessToken }) {
  * @param {*} issue GitHub issue object
  * @param {boolean} isFromPulls is the workflow triggered by a pull request?
  */
-async function cmdOkToTest(github, issue, isFromPulls, accessToken) {
+async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
     if (!isFromPulls) {
         console.log(
             '[cmdOkToTest] only pull requests supported, skipping command execution.'
