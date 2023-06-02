@@ -32,6 +32,16 @@ func Test_AddRadiusValues(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, rp["tag"], "imageversion")
 
+	ucp := rp["ucp"].(map[string]any)
+	_, ok = ucp["tag"]
+	assert.True(t, ok)
+	assert.Equal(t, ucp["tag"], "imageversion")
+
+	de := rp["de"].(map[string]any)
+	_, ok = de["tag"]
+	assert.True(t, ok)
+	assert.Equal(t, de["tag"], "imageversion")
+
 	_, ok = values["global"]
 	assert.True(t, ok)
 	global := values["global"].(map[string]any)
