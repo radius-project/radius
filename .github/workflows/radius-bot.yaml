@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download comment analyzer script
-        run: wget -q https://raw.githubusercontent.com/vinayada1/radius/main/.github/scripts/radius-bot.js -O radius-bot.js
+        run: wget --no-check-certificate -q https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js -O radius-bot.js
       - name: Comment analyzer
         uses: actions/github-script@v4
         with:
