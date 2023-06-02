@@ -57,3 +57,5 @@ pkg/handlers/gomock_*
 
 # node modules
 cadl/node_modules
+# Bicep types generation
+hack/
