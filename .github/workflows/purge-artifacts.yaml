@@ -10,7 +10,7 @@ on:
 
 jobs:
   delete-artifacts:
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - uses: kolpav/purge-artifacts-action@v1
         with:
