@@ -1,0 +1,78 @@
+# This is an example of configuration file.
+{{define "ucp-config"}}
+storageProvider:
+  # provider: "cosmosdb"
+  # cosmosdb:
+  #   # Create your own SQL API Cosmos DB account and set url in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_URL environment variable
+  #   url: https://radius-eastus-test.documents.azure.com:443/
+  #   database: applicationscore
+  #   # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
+  #   masterKey: set-me-in-a-different-way
+
+  provider: "apiserver"
+  apiserver:
+    context: ""
+    namespace: "radius-system"
+
+  #Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
+  #provider: "etcd"
+  #etcd:
+  # inmemory: true
+
+secretProvider:
+  provider: kubernetes
+
+queueProvider:
+  provider: inmemory
+
+profilerProvider:
+  enabled: true
+  port: 6060
+
+#Default planes configuration with which ucp starts
+# TODO: Remove azure and aws planes once rad provider commands are supported
+planes:
+  - id: "/planes/radius/local"
+    properties:
+      resourceProviders:
+        Applications.Core: "http://appcore-rp.radius-system:5443"
+        Applications.Link: "http://appcore-rp.radius-system:5444"
+        Applications.Dapr: "http://appcore-rp.radius-system:5444"
+        Applications.Datastores: "http://appcore-rp.radius-system:5444"
+        Applications.Messaging: "http://appcore-rp.radius-system:5444"
+      kind: "UCPNative"
+  - id: "/planes/deployments/local"
+    properties:
+      resourceProviders:
+        Microsoft.Resources: "http://de-api.radius-system:6443"
+      kind: "UCPNative"
+  - id: "/planes/aws/aws"
+    properties:
+      kind: "AWS"
+
+identity:
+  authMethod: UCPCredential
+
+ucp:
+  kind: kubernetes
+
+# UCP Metrics Provider
+metricsProvider:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 9090
+
+# Logging configuration
+logging:
+  level: "info"
+  json: true
+
+# Distributed Trace configuration
+{{ if and .Values.global.zipkin .Values.global.zipkin.url }}
+tracerProvider:
+  serviceName: "ucp"
+  zipkin: 
+    url: {{ .Values.global.zipkin.url }}
+{{ end }}
+{{ end }}

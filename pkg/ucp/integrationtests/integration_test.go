@@ -62,8 +62,10 @@ func NewClient(httpClient *http.Client, baseURL string) Client {
 
 const (
 	rpURL                     = "127.0.0.1:7443"
+	rp2URL                    = "127.0.0.1:7442"
 	azureURL                  = "127.0.0.1:9443"
-	testProxyRequestPath      = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications"
+	testProxyRequestCorePath  = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications"
+	testProxyRequestDSPath    = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Datastores/mongoDatabases"
 	testProxyRequestAzurePath = "/subscriptions/sid/resourceGroups/rg1/providers/Microsoft.Network/virtualNetworks/vnet1"
 	apiVersionQueyParam       = "api-version=2022-09-01-privatepreview"
 	testUCPNativePlaneID      = "/planes/radius/local"
@@ -81,7 +83,7 @@ var applicationList = []map[string]any{
 	},
 }
 
-var testUCPNativePlane = datamodel.Plane{
+var testCoreUCPNativePlane = datamodel.Plane{
 	BaseResource: v1.BaseResource{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/planes/radius/local",
@@ -97,7 +99,23 @@ var testUCPNativePlane = datamodel.Plane{
 	},
 }
 
-var testUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
+var testDSUCPNativePlane = datamodel.Plane{
+	BaseResource: v1.BaseResource{
+		TrackedResource: armrpc_v1.TrackedResource{
+			ID:   "/planes/radius/local",
+			Type: "radius",
+			Name: "local",
+		},
+	},
+	Properties: datamodel.PlaneProperties{
+		Kind: rest.PlaneKindUCPNative,
+		ResourceProviders: map[string]*string{
+			"Applications.Datastores": to.Ptr("http://" + rp2URL),
+		},
+	},
+}
+
+var testCoreUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 	ID:   to.Ptr("/planes/radius/local"),
 	Type: to.Ptr("System.Planes/radius"),
 	Name: to.Ptr("local"),
@@ -105,6 +123,18 @@ var testUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 		Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
 		ResourceProviders: map[string]*string{
 			"Applications.Core": to.Ptr("http://" + rpURL),
+		},
+	},
+}
+
+var testDSUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
+	ID:   to.Ptr("/planes/radius/local"),
+	Type: to.Ptr("System.Planes/radius"),
+	Name: to.Ptr("local"),
+	Properties: &v20220901privatepreview.PlaneResourceProperties{
+		Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
+		ResourceProviders: map[string]*string{
+			"Applications.Datastores": to.Ptr("http://" + rp2URL),
 		},
 	},
 }
@@ -136,9 +166,9 @@ func Test_ProxyToRP(t *testing.T) {
 	require.NoError(t, err)
 
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, testProxyRequestPath, r.URL.Path)
+		require.Equal(t, testProxyRequestCorePath, r.URL.Path)
 		w.Header().Add("Content-Type", "application/json")
-		w.Header().Add("Location", ucp.URL+pathBase+testProxyRequestPath)
+		w.Header().Add("Location", ucp.URL+basePath+testProxyRequestCorePath)
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(body)
 	}))
@@ -169,13 +199,120 @@ func Test_ProxyToRP(t *testing.T) {
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
 
 	// Register RP with UCP
-	registerRP(t, ucp, ucpClient, db, true)
+	registerRP(t, ucp, ucpClient, db, true, "Core")
 
 	// Create a Resource group
 	createResourceGroup(t, ucp, ucpClient, db)
 
 	// Send a request that will be proxied to the RP
-	sendProxyRequest(t, ucp, ucpClient, db)
+	sendProxyRequest(t, ucp, ucpClient, db, "Core")
+}
+
+func Test_ProxyToDatastoresRP(t *testing.T) {
+	router := mux.NewRouter()
+	ucp := httptest.NewServer(router)
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
+
+	body, err := json.Marshal(applicationList)
+	require.NoError(t, err)
+
+	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, testProxyRequestDSPath, r.URL.Path)
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Location", ucp.URL+basePath+testProxyRequestDSPath)
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write(body)
+	}))
+	listener, err := net.Listen("tcp", rp2URL)
+	require.NoError(t, err)
+	rp.Listener = listener
+	defer listener.Close()
+
+	rp.Start()
+	defer rp.Close()
+
+	ctrl := gomock.NewController(t)
+	db := store.NewMockStorageClient(ctrl)
+	provider := dataprovider.NewMockDataStorageProvider(ctrl)
+	provider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(db, nil).
+		AnyTimes()
+
+	ctx := context.Background()
+	err = api.Register(ctx, router, controller.Options{
+		Options: armrpc_controller.Options{
+			DataProvider:  provider,
+			StorageClient: db,
+			PathBase:      pathBase,
+		},
+	})
+	require.NoError(t, err)
+
+	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
+
+	// Register RP with UCP
+	// Register RP with UCP
+	registerRP(t, ucp, ucpClient, db, true, "Core")
+
+	// Create a Resource group
+	createResourceGroup(t, ucp, ucpClient, db)
+
+	// Send a request that will be proxied to the RP
+	sendProxyRequest(t, ucp, ucpClient, db, "Core")
+}
+
+func Test_ProxyToDatastoresRP(t *testing.T) {
+	router := mux.NewRouter()
+	ucp := httptest.NewServer(router)
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
+
+	body, err := json.Marshal(applicationList)
+	require.NoError(t, err)
+
+	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, testProxyRequestDSPath, r.URL.Path)
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Location", ucp.URL+basePath+testProxyRequestDSPath)
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write(body)
+	}))
+	listener, err := net.Listen("tcp", rp2URL)
+	require.NoError(t, err)
+	rp.Listener = listener
+	defer listener.Close()
+
+	rp.Start()
+	defer rp.Close()
+
+	ctrl := gomock.NewController(t)
+	db := store.NewMockStorageClient(ctrl)
+	provider := dataprovider.NewMockDataStorageProvider(ctrl)
+	provider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(db, nil).
+		AnyTimes()
+
+	ctx := context.Background()
+	err = api.Register(ctx, router, controller.Options{
+		BasePath: basePath,
+		Options: armrpc_controller.Options{
+			DataProvider:  provider,
+			StorageClient: db,
+		},
+	})
+	require.NoError(t, err)
+
+	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
+
+	// Register RP with UCP
+	registerRP(t, ucp, ucpClient, db, true, "Datastores")
+
+	// Create a Resource group
+	createResourceGroup(t, ucp, ucpClient, db)
+
+	// Send a request that will be proxied to the RP
+	sendProxyRequest(t, ucp, ucpClient, db, "Datastores")
 }
 
 func Test_ProxyToRP_NonNativePlane(t *testing.T) {
@@ -218,7 +355,7 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
 
 	// Register RP with UCP
-	registerRP(t, ucp, ucpClient, db, false)
+	registerRP(t, ucp, ucpClient, db, false, "Core")
 
 	// Create a Resource group
 	createResourceGroup(t, ucp, ucpClient, db)
@@ -276,7 +413,11 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Add("Content-Type", "application/json")
-		w.Header().Add("Location", "http://"+rpURL+testProxyRequestPath)
+		//if rp == "Core" {
+		w.Header().Add("Location", "http://"+rpURL+testProxyRequestCorePath)
+		//} else {
+		//	w.Header().Add("Location", "http://"+rpURL+testProxyRequestDSPath)
+		//}
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(body)
 	}))
@@ -310,14 +451,14 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
 
 	// Register RP with UCP
-	registerRP(t, ucp, ucpClient, db, true)
+	registerRP(t, ucp, ucpClient, db, true, "Core")
 
 	return ucp, ucpClient, db
 }
 
-func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient, ucpNative bool) {
+func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient, ucpNative bool, rp string) {
 	var requestBody map[string]any
-	if ucpNative {
+	if ucpNative && rp == "Core" {
 		requestBody = map[string]any{
 			"location": v1.LocationGlobal,
 			"properties": map[string]any{
@@ -327,6 +468,17 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 				"kind": rest.PlaneKindUCPNative,
 			},
 		}
+	} else if ucpNative && rp == "Datastores" {
+		requestBody = map[string]any{
+			"location": v1.LocationGlobal,
+			"properties": map[string]any{
+				"resourceProviders": map[string]string{
+					"Applications.Datastores": "http://" + rp2URL,
+				},
+				"kind": rest.PlaneKindUCPNative,
+			},
+		}
+
 	} else {
 		requestBody = map[string]any{
 			"location": v1.LocationGlobal,
@@ -363,8 +515,10 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	responsePlane := v20220901privatepreview.PlaneResource{}
 	err = json.Unmarshal(registerPlaneResponseBody, &responsePlane)
 	require.NoError(t, err)
-	if ucpNative {
-		require.Equal(t, testUCPNativePlaneVersioned, responsePlane)
+	if ucpNative && rp == "Core" {
+		require.Equal(t, testCoreUCPNativePlaneVersioned, responsePlane)
+	} else if ucpNative && rp == "Datastores" {
+		require.Equal(t, testDSUCPNativePlaneVersioned, responsePlane)
 	} else {
 		require.Equal(t, testAzurePlane, responsePlane)
 	}
@@ -398,13 +552,25 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	require.Equal(t, testResourceGroup, responseResourceGroup)
 }
 
-func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
-	db.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-		return &store.Object{
-			Metadata: store.Metadata{},
-			Data:     &testUCPNativePlane,
-		}, nil
-	})
+func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient, rp string) {
+	var testProxyRequestPath string
+	if rp == "Core" {
+		testProxyRequestPath = testProxyRequestCorePath
+		db.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+			return &store.Object{
+				Metadata: store.Metadata{},
+				Data:     &testCoreUCPNativePlane,
+			}, nil
+		})
+	} else {
+		testProxyRequestPath = testProxyRequestDSPath
+		db.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+			return &store.Object{
+				Metadata: store.Metadata{},
+				Data:     &testDSUCPNativePlane,
+			}, nil
+		})
+	}
 
 	rgID, err := resources.ParseScope("/planes/radius/local/resourceGroups/rg1")
 	require.NoError(t, err)
@@ -415,7 +581,8 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 		}, nil
 	})
 
-	proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+pathBase+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
+	// proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+testProxyRequestPath, nil)
+	proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
@@ -461,7 +628,7 @@ func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Serv
 	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		data := store.Object{
 			Metadata: store.Metadata{},
-			Data:     &testUCPNativePlane,
+			Data:     &testCoreUCPNativePlane,
 		}
 		return &data, nil
 	})
@@ -472,7 +639,7 @@ func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Serv
 	db.EXPECT().Get(gomock.Any(), rgID.String()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return nil, &store.ErrNotFound{}
 	})
-	proxyRequest, err := http.NewRequest("GET", ucp.URL+pathBase+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
+	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+testProxyRequestCorePath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
