@@ -517,16 +517,3 @@ jobs:
               labels: ['bug'],
               body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
-  trigger-tests:
-    name: Trigger CI/CD tests
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3 # required to make the script available for next step
-      - name: Comment analyzer
-        uses: actions/github-script@v4
-        with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          script: |
-            const script = require('./.github/scripts/test-trigger.js')
-            await script({github, context})
