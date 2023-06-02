@@ -26,7 +26,7 @@ env:
 jobs:
   purge_azure_resources:
     name: Azure resources clean-ups
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash

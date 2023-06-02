@@ -7,7 +7,7 @@ on:
 jobs:
   radius-bot:
     name: Trigger CI/CD tests
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Download comment analyzer script
         uses: actions/github-script@v4
