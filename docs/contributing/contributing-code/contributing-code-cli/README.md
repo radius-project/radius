@@ -4,7 +4,33 @@ For a lot of your development tasks you will need to build `rad` from source ins
 
 This is the best way to test changes, and to make sure you have the latest bits (other people's changes).
 
-## Creating an wrapper script (MacOS/Linux)
+## Debugging in VS Code
+
+We provide a debug target `Launch rad CLI` as part of our repo's VS Code configuration. Select `Launch rad CLI` from the drop-down press the Debug button to launch.
+
+If you need to pass command line arguments into the CLI for testing then you can do this by editing `./vscode/launch.json`. Find the `Launch rad CLI` target and edit the `args` property.
+
+> ⚠️ VS Code debugging does not support interactive user-input. If you need to debug a command that prompts for confirmation, you can bypass it by passing `--yes` at the command line. This tip does not apply to `rad init` which is always interactive.
+
+## Installing a local build
+
+You can use the Makefile to install a local build of Radius. By default this will install to `/usr/local/bin/rad`. You may also need to specify `sudo` depending on the destination and its permissions.
+
+```sh
+sudo make install
+```
+
+If you need to install to a different location, you can override via the `RAD_LOCATION` environment variable. Make sure the path you choose ends includes `rad` as the filename and is on your `PATH` so it can be executed easily.
+
+```sh
+RAD_LOCATION=/my/custom/location/rad sudo make install
+```
+
+## Creating a wrapper script
+
+If you frequently need to work with a local build of `rad` you can create a script that will wrap `go run`.
+
+> ⚠️ This tip only works when your current working directory is inside the repository. If your shell is outside the repository, then Go won't know how to resolve modules and the build will fail.
 
 Create the following script and place it on your path with a name like `dev-rad`.
 
