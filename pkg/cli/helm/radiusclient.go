@@ -116,9 +116,13 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
-	for _, service := range []string{"rp", "ucp", "de"} {
-		serviceconfig := values[service].(map[string]any)
-		serviceconfig["tag"] = options.ImageVersion
+	services := []string{"rp", "ucp", "de"}
+	for _, service := range services {
+		if _, ok := values[service]; !ok {
+			values[service] = map[string]any{}
+		}
+		o := values[service].(map[string]any)
+		o["tag"] = options.ImageVersion
 	}
 
 	err := strvals.ParseInto(options.Values, values)
