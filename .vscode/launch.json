@@ -44,10 +44,7 @@
             "preLaunchTask": "Build Radius (all)",
             "program": "${workspaceFolder}/cmd/rad/main.go",
             "cwd": "${workspaceFolder}",
-            "args": [
-                //"env", "list"
-                "install","kubernetes","--reinstall"
-            ],
+            "args": [],
         },
         {
             "name": "Launch Deployment Engine",
