@@ -11,10 +11,6 @@ jobs:
     steps:
       - name: Download comment analyzer script
         run: wget -q https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js -O radius-bot.js
-      # - name: Set up Node.js
-      #   uses: actions/setup-node@v2
-      #   with:
-      #     node-version: 'lts'
       - name: Comment analyzer
         uses: actions/github-script@v4
         with:
