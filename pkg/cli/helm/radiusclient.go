@@ -40,9 +40,11 @@ type RadiusOptions struct {
 	Reinstall    bool
 	ChartPath    string
 	ChartVersion string
+	ImageVersion string
 	Values       string
 }
 
+// Apply the radius helm chart.
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
@@ -55,7 +57,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 
 	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
-		return false, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+		return false, fmt.Errorf("failed to get Helm config, err: %w, Helm output: %s", err, helmOutput.String())
 	}
 
 	var helmChart *chart.Chart
@@ -66,14 +68,12 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	}
 
 	if err != nil {
-		return false, fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
+		return false, fmt.Errorf("failed to load Helm chart, err: %w, Helm output: %s", err, helmOutput.String())
 	}
 
-	values := helmChart.Values
-
-	err = strvals.ParseInto(options.Values, values)
+	err = AddRadiusValues(helmChart, &options)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to add Radius values, err: %w, Helm output: %s", err, helmOutput.String())
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -95,20 +95,44 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
-			return false, fmt.Errorf("failed to run radius helm install, err: \n%w\nhelm output:\n%s", err, helmOutput.String())
+			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if options.Reinstall {
 		output.LogInfo("Reinstalling Radius version %s control plane to namespace: %s", version, RadiusSystemNamespace)
 
 		err = runRadiusHelmUpgrade(helmConf, radiusReleaseName, helmChart)
 		if err != nil {
-			return false, fmt.Errorf("failed to run radius helm upgrade, err: \n%w\nhelm output:\n%s", err, helmOutput.String())
+			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if err == nil {
 		alreadyInstalled = true
 		output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 	}
 	return alreadyInstalled, err
+}
+
+// AddRadiusValues adds values to the helm chart. It overrides the default values in following order:
+// 1. lowest priority: Values from the helm chart default values.yaml
+// 2. next priority: set correct image tag, potentially overwriting "latest" tag from step 1
+// 3. highest priority: Values by the --set flag potentially overwriting values from step 1 and 2
+func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
+	values := helmChart.Values
+
+	services := []string{"rp", "ucp", "de"}
+	for _, service := range services {
+		if _, ok := values[service]; !ok {
+			values[service] = map[string]any{}
+		}
+		o := values[service].(map[string]any)
+		o["tag"] = options.ImageVersion
+	}
+
+	err := strvals.ParseInto(options.Values, values)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
