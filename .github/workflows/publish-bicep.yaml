@@ -23,7 +23,7 @@ on:
 jobs:
   update-types:
     name: Update Bicep extensibility provider types
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       GOVER: '^1.18'
