@@ -15,10 +15,11 @@ jobs:
       #   run: curl -sSL -k -o radius-bot.js https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js
       - name: Checkout Repository
         uses: actions/checkout@v3
+      - name: Install Dependencies
+        run: npm install node-fetch
       - name: Comment analyzer
         uses: actions/github-script@v4
         with:
           script: |
-            npm install node-fetch
             const script = require('./.github/scripts/radius-bot.js')
             await script({github, context})
