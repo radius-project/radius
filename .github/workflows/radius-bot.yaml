@@ -21,4 +21,4 @@ jobs:
         with:
           script: |
             const script = require('./.github/scripts/radius-bot.js')
-            await script({github, context, ${{ env.accessToken }}})
+            await script({github, context})
