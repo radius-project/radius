@@ -24,26 +24,16 @@ func Test_AddRadiusValues(t *testing.T) {
 	require.Equal(t, err, nil)
 
 	values := helmChart.Values
-	_, ok := values["rp"]
+	// validate tags for ucp, de, and rp
 
-	assert.True(t, ok)
+	for _, k := range []string{"ucp", "de", "rp"} {
+		o := values[k].(map[string]any)
+		_, ok := o["tag"]
+		assert.True(t, ok)
+		assert.Equal(t, o["tag"], "imageversion")
+	}
 
-	rp := values["rp"].(map[string]any)
-	_, ok = rp["tag"]
-	assert.True(t, ok)
-	assert.Equal(t, rp["tag"], "imageversion")
-
-	ucp := values["ucp"].(map[string]any)
-	_, ok = ucp["tag"]
-	assert.True(t, ok)
-	assert.Equal(t, ucp["tag"], "imageversion")
-
-	de := values["de"].(map[string]any)
-	_, ok = de["tag"]
-	assert.True(t, ok)
-	assert.Equal(t, de["tag"], "imageversion")
-
-	_, ok = values["global"]
+	_, ok := values["global"]
 	assert.True(t, ok)
 	global := values["global"].(map[string]any)
 	_, ok = global["zipkin"]

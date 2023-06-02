@@ -57,3 +57,4 @@ pkg/handlers/gomock_*
 
 # node modules
 cadl/node_modules
+.vscode/launch.json
