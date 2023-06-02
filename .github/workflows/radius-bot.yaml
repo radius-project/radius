@@ -9,8 +9,13 @@ jobs:
     name: Run Radius Bot script
     runs-on: ubuntu-latest
     steps:
-      - name: Download comment analyzer script
-        run: curl -sSL -k -o radius-bot.js https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js
+      # - name: Download comment analyzer script
+      #   run: curl -sSL -k -o radius-bot.js https://raw.githubusercontent.com/radius/.github/scripts/radius-bot.js
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Download File
+        run: |
+          cp ./.github/scripts/radius-bot.js radius-bot.js
       - name: Comment analyzer
         uses: actions/github-script@v4
         env:
