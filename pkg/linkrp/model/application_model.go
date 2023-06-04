@@ -24,7 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
@@ -67,12 +66,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Renderer: &daprpubsubbrokers.Renderer{
 				PubSubs: daprpubsubbrokers.SupportedPubSubModes,
-			},
-		},
-		{
-			ResourceType: linkrp.DaprSecretStoresResourceType,
-			Renderer: &daprsecretstores.Renderer{
-				SecretStores: daprsecretstores.SupportedSecretStoreModes,
 			},
 		},
 		{

@@ -1883,21 +1883,33 @@
     "DaprSecretStoreProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for DaprSecretStoreProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the dapr secret store link at the time the operation was called",
           "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "metadata": {
+          "$ref": "#/definitions/object",
+          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
       "description": "DaprSecretStore link properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicDaprResourceProperties"
@@ -2303,37 +2315,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/DaprPubSubBrokerProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
-    "RecipeDaprSecretStoreProperties": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link"
-        }
-      },
-      "description": "DaprSecretStore Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprSecretStoreProperties"
         }
       ],
       "x-ms-discriminator-value": "recipe"
@@ -2765,35 +2746,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/DaprPubSubBrokerProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesDaprSecretStoreProperties": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
-        }
-      },
-      "description": "DaprSecretStore Properties for Mode Values",
-      "required": [
-        "type",
-        "version",
-        "metadata"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprSecretStoreProperties"
         }
       ],
       "x-ms-discriminator-value": "values"

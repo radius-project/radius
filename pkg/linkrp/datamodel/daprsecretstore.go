@@ -57,9 +57,17 @@ func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
 type DaprSecretStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Mode     LinkMode          `json:"mode"`
-	Type     string            `json:"type"`
-	Version  string            `json:"version"`
-	Metadata map[string]any    `json:"metadata"`
-	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Type                 string                      `json:"type,omitempty"`
+	Version              string                      `json:"version,omitempty"`
+	Metadata             map[string]any              `json:"metadata,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+}
+
+// Recipe returns the recipe for the SqlDatabase
+func (secterStore *DaprSecretStore) Recipe() *linkrp.LinkRecipe {
+	if secterStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
+	return &secterStore.Properties.Recipe
 }

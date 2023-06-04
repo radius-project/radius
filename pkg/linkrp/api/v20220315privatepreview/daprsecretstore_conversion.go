@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -38,37 +39,37 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			InternalMetadata: v1.InternalMetadata{
 				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprSecretStoreProperties().ProvisioningState),
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.GetDaprSecretStoreProperties().Environment),
-				Application: to.String(src.Properties.GetDaprSecretStoreProperties().Application),
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
 			},
 		},
 	}
-	switch v := src.Properties.(type) {
-	case *ValuesDaprSecretStoreProperties:
-		if v.Type == nil || v.Version == nil || v.Metadata == nil {
-			return nil, v1.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
+	v := src.Properties
+	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
+	var found bool
+	for _, k := range PossibleResourceProvisioningValues() {
+		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
+			found = true
+			break
 		}
-		converted.Properties.Type = to.String(v.Type)
-		converted.Properties.Version = to.String(v.Version)
-		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Mode = datamodel.LinkModeValues
-	case *RecipeDaprSecretStoreProperties:
-		if v.Recipe == nil {
-			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
-		}
-		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
-		converted.Properties.Type = to.String(v.Type)
-		converted.Properties.Version = to.String(v.Version)
-		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Mode = datamodel.LinkModeRecipe
-	default:
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetDaprSecretStoreProperties().Mode))
 	}
+	if !found {
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	}
+	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+	converted.Properties.Type = to.String(v.Type)
+	converted.Properties.Version = to.String(v.Version)
+	converted.Properties.Metadata = v.Metadata
+	manualInputs := src.verifyManualInputs()
+	if manualInputs != nil {
+		return nil, manualInputs
+	}
+
 	return converted, nil
 }
 
@@ -85,39 +86,28 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 	dst.SystemData = fromSystemDataModel(daprSecretStore.SystemData)
 	dst.Location = to.Ptr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
-	switch daprSecretStore.Properties.Mode {
-	case datamodel.LinkModeValues:
-		mode := "values"
-		dst.Properties = &ValuesDaprSecretStoreProperties{
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(daprSecretStore.Properties.Environment),
-			Application:       to.Ptr(daprSecretStore.Properties.Application),
-			Mode:              &mode,
-			Type:              to.Ptr(daprSecretStore.Properties.Type),
-			Version:           to.Ptr(daprSecretStore.Properties.Version),
-			Metadata:          daprSecretStore.Properties.Metadata,
-			ComponentName:     to.Ptr(daprSecretStore.Properties.ComponentName),
-		}
-	case datamodel.LinkModeRecipe:
-		mode := "recipe"
-		var recipe *Recipe
-		recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
-		dst.Properties = &RecipeDaprSecretStoreProperties{
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(daprSecretStore.Properties.Environment),
-			Application:       to.Ptr(daprSecretStore.Properties.Application),
-			Mode:              &mode,
-			Type:              to.Ptr(daprSecretStore.Properties.Type),
-			Version:           to.Ptr(daprSecretStore.Properties.Version),
-			Metadata:          daprSecretStore.Properties.Metadata,
-			ComponentName:     to.Ptr(daprSecretStore.Properties.ComponentName),
-			Recipe:            recipe,
+	dst.Properties = &DaprSecretStoreProperties{
+		Recipe:               fromRecipeDataModel(daprSecretStore.Properties.Recipe),
+		ResourceProvisioning: fromResourceProvisioningDataModel(daprSecretStore.Properties.ResourceProvisioning),
+		ProvisioningState:    fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
+		Environment:          to.Ptr(daprSecretStore.Properties.Environment),
+		Application:          to.Ptr(daprSecretStore.Properties.Application),
+		Type:                 to.Ptr(daprSecretStore.Properties.Type),
+		Version:              to.Ptr(daprSecretStore.Properties.Version),
+		Metadata:             daprSecretStore.Properties.Metadata,
+		ComponentName:        to.Ptr(daprSecretStore.Properties.ComponentName),
+		Status: &ResourceStatus{
+			OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
+		},
+	}
+	return nil
+}
+
+func (src *DaprSecretStoreResource) verifyManualInputs() error {
+	properties := src.Properties
+	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
+		if properties.Type == nil || properties.Version == nil || properties.Metadata == nil {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("type, version and metadata are required when resourceProvisioning is %s", ResourceProvisioningManual)}
 		}
 	}
 	return nil
