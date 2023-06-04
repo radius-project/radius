@@ -1,5 +1,9 @@
 # Your first commit: Development tools
 
+<!--
+    Note: some of this content is synchronized with the prerequisites guide for simplicity. Keep these in sync!
+-->
+
 ## Editor
 
 This guide covers basic development tasks for Go in Visual Studio Code. The experience with VS Code is high-quality and approachable for newcomers.

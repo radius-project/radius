@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -148,12 +151,33 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			err: nil,
 		},
 		{
+			desc:        "root-scope-plane",
+			storeQuery:  store.Query{RootScope: "/planes/radius/local", ScopeRecursive: true},
+			queryString: "SELECT * FROM c WHERE STARTSWITH(c.rootScope, @rootScope, true)",
+			params: []cosmosapi.QueryParam{{
+				Name:  "@rootScope",
+				Value: "/planes/radius/local",
+			}},
+			err: nil,
+		},
+		{
 			desc:        "root-scope-subscription-id-and-resource-group",
 			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup", ScopeRecursive: false},
 			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
 				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup",
+			}},
+			err: nil,
+		},
+
+		{
+			desc:        "root-scope-plane-and-resource-group",
+			storeQuery:  store.Query{RootScope: "/planes/radius/local/resourcegroups/testgroup", ScopeRecursive: false},
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
+			params: []cosmosapi.QueryParam{{
+				Name:  "@rootScope",
+				Value: "/planes/radius/local/resourcegroups/testgroup",
 			}},
 			err: nil,
 		},
@@ -359,12 +383,14 @@ func TestSave(t *testing.T) {
 }
 
 // TestQuery tests the following scenarios:
-// 1. Query records by subscription
-// 2. Query records by subscription and resource group
-// 3. Query records by subscription and resource type
-// 4. Query records by subscription, resource group, and resource type
-// 5. Query records by subscription, resource group, and custom filter
-// 6. Query records by resource type and custom filter (across subscription)
+// - Query records by subscription
+// - Query records by plane
+// - Query records by subscription and resource group
+// - Query records by plane and resource group
+// - Query records by subscription and resource type
+// - Query records by subscription, resource group, and resource type
+// - Query records by subscription, resource group, and custom filter
+// - Query records by resource type and custom filter (across subscription)
 //   - Use case - this will be used when environment queries all linked applications and links.
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
@@ -500,40 +526,40 @@ func TestQuery(t *testing.T) {
 		})
 	}
 
-	// Query with subscriptionID
+	// Query with subscriptionID or plane - These are recursive queries
 	subscriptionIDCases := map[string]struct {
-		subscriptionID string
-		resourceType   string
-		filters        []store.QueryFilter
-		expected       int
+		rootScope    string
+		resourceType string
+		filters      []store.QueryFilter
+		expected     int
 	}{
 		"arm-resource-subscription-id": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   "",
-			filters:        []store.QueryFilter{},
-			expected:       3,
+			rootScope:    fmt.Sprintf("/subscriptions/%s", randomSubscriptionIDs[0]),
+			resourceType: "",
+			filters:      []store.QueryFilter{},
+			expected:     3,
 		},
 		"ucp-resource-subscription-id": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   "",
-			filters:        []store.QueryFilter{},
-			expected:       3,
+			rootScope:    "/planes/radius/local",
+			resourceType: "",
+			filters:      []store.QueryFilter{},
+			expected:     3,
 		},
 		"arm-resource-subscription-id-with-resource-type": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   environmentResourceType,
-			filters:        []store.QueryFilter{},
-			expected:       3,
+			rootScope:    fmt.Sprintf("/subscriptions/%s", randomSubscriptionIDs[0]),
+			resourceType: environmentResourceType,
+			filters:      []store.QueryFilter{},
+			expected:     3,
 		},
-		"ucp-resource-subscription-idd-with-resource-type": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   environmentResourceType,
-			filters:        []store.QueryFilter{},
-			expected:       3,
+		"ucp-resource-subscription-id-with-resource-type": {
+			rootScope:    "/planes/radius/local",
+			resourceType: environmentResourceType,
+			filters:      []store.QueryFilter{},
+			expected:     3,
 		},
 		"arm-resource-subscription-id-with-resource-type-with-filter": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   environmentResourceType,
+			rootScope:    fmt.Sprintf("/subscriptions/%s", randomSubscriptionIDs[0]),
+			resourceType: environmentResourceType,
 			filters: []store.QueryFilter{
 				{
 					Field: "location",
@@ -542,9 +568,9 @@ func TestQuery(t *testing.T) {
 			},
 			expected: 3,
 		},
-		"ucp-resource-subscription-idd-with-resource-type-with-filter": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   environmentResourceType,
+		"ucp-resource-subscription-id-with-resource-type-with-filter": {
+			rootScope:    "/planes/radius/local",
+			resourceType: environmentResourceType,
 			filters: []store.QueryFilter{
 				{
 					Field: "location",
@@ -554,8 +580,8 @@ func TestQuery(t *testing.T) {
 			expected: 3,
 		},
 		"arm-resource-subscription-id-with-resource-type-with-invalid-filter": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   environmentResourceType,
+			rootScope:    fmt.Sprintf("/subscriptions/%s", randomSubscriptionIDs[0]),
+			resourceType: environmentResourceType,
 			filters: []store.QueryFilter{
 				{
 					Field: "location",
@@ -564,9 +590,9 @@ func TestQuery(t *testing.T) {
 			},
 			expected: 0,
 		},
-		"ucp-resource-subscription-idd-with-resource-type-with-invalid-filter": {
-			subscriptionID: randomSubscriptionIDs[0],
-			resourceType:   environmentResourceType,
+		"ucp-resource-subscription-id-with-resource-type-with-invalid-filter": {
+			rootScope:    "/planes/radius/local",
+			resourceType: environmentResourceType,
 			filters: []store.QueryFilter{
 				{
 					Field: "location",
@@ -583,7 +609,7 @@ func TestQuery(t *testing.T) {
 
 			// Build the query for testing
 			query := store.Query{
-				RootScope:      fmt.Sprintf("/subscriptions/%s", tc.subscriptionID),
+				RootScope:      tc.rootScope,
 				ScopeRecursive: true,
 			}
 			if tc.resourceType != "" {
@@ -598,6 +624,12 @@ func TestQuery(t *testing.T) {
 			require.NotNil(t, results)
 			require.NotNil(t, results.Items)
 			require.Equal(t, tc.expected, len(results.Items))
+
+			for _, item := range results.Items {
+				if !strings.HasPrefix(item.Metadata.ID, tc.rootScope) {
+					require.Failf(t, "Matched an item that doesn't include the rootscope %s", item.ID)
+				}
+			}
 		})
 	}
 }

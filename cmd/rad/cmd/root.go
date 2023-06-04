@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +26,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	app_switch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
 	app_delete "github.com/project-radius/radius/pkg/cli/cmd/app/delete"
@@ -64,7 +69,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/trace"
 	"go.opentelemetry.io/otel"
 
@@ -178,7 +182,8 @@ func initSubCommands() {
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
 		NamespaceInterface:  &namespace.Impl{},
-		SetupInterface:      &setup.Impl{},
+		AWSClient:           aws.NewClient(),
+		AzureClient:         azure.NewClient(),
 	}
 
 	deployCmd, _ := cmd_deploy.NewCommand(framework)

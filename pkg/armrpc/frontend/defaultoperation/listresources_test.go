@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +24,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -87,14 +91,17 @@ func TestListResourcesRun(t *testing.T) {
 
 	listEnvsCases := []struct {
 		desc       string
+		headerFile string
 		dbCount    int
 		batchCount int
 		top        string
 		skipToken  bool
+		planeScope bool
 	}{
-		{"list-envs-more-items-than-top", 10, 5, "5", true},
-		{"list-envs-less-items-than-top", 5, 5, "10", false},
-		{"list-envs-no-top", 5, 5, "", false},
+		{"list-envs-more-items-than-top", resourceTestHeaderFile, 10, 5, "5", true, false},
+		{"list-envs-less-items-than-top", resourceTestHeaderFile, 5, 5, "10", false, false},
+		{"list-envs-no-top", resourceTestHeaderFile, 5, 5, "", false, false},
+		{"list-envs-plane-scope-more-items-than-top", "resource_planescope_requestheaders.json", 5, 5, "", false, false},
 	}
 
 	for _, tt := range listEnvsCases {
@@ -107,6 +114,7 @@ func TestListResourcesRun(t *testing.T) {
 			req.URL.RawQuery = q.Encode()
 
 			ctx := testutil.ARMTestContextFromRequest(req)
+			serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 			paginationToken := ""
 			if tt.skipToken {
@@ -124,9 +132,19 @@ func TestListResourcesRun(t *testing.T) {
 				items = append(items, item)
 			}
 
+			expectedQuery := store.Query{
+				RootScope:    serviceCtx.ResourceID.RootScope(),
+				ResourceType: serviceCtx.ResourceID.Type(),
+
+				// Most of our tests cases are for the case where the resource scope matches the query
+				// scope. eg: environment is scoped to resource groups and the URL of the test request
+				// matches the resource group scope.
+				ScopeRecursive: tt.planeScope,
+			}
+
 			mStorageClient.
 				EXPECT().
-				Query(gomock.Any(), gomock.Any(), gomock.Any()).
+				Query(gomock.Any(), expectedQuery, gomock.Any()).
 				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 					return &store.ObjectQueryResult{
 						Items:           items,
@@ -143,6 +161,7 @@ func TestListResourcesRun(t *testing.T) {
 			}
 
 			ctl, err := NewListResources(opts, ctrlOpts)
+			ctl.RecursiveQuery = tt.planeScope
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, w, req)

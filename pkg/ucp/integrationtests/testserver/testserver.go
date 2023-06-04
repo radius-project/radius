@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -100,7 +103,7 @@ func Start(t *testing.T) *TestServer {
 		// and you'll be able to see the spam from etcd.
 		//
 		// This is caught by the race checker and will fail your pr if you do it.
-		//ctx := context.Background()
+		ctx := context.Background()
 		err := etcd.Run(ctx)
 		if err != nil {
 			t.Logf("error from etcd: %v", err)

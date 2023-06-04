@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +33,7 @@ var (
 	titleStyle        = lipgloss.NewStyle().PaddingLeft(2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#555555", Dark: "#AAAAAA"})
 )
 
 type item string
@@ -86,15 +89,24 @@ func NewListModel(choices []string, promptMsg string) ListModel {
 	l.SetFilteringEnabled(true)
 	l.Styles.Title = titleStyle
 
+	// The built-in help styles (list of keybindings) dont't have enough contrast.
+	l.Help.Styles.FullKey = helpStyle
+	l.Help.Styles.ShortKey = helpStyle
+	l.Help.Styles.FullDesc = helpStyle
+	l.Help.Styles.ShortDesc = helpStyle
+
 	return ListModel{
-		List: l,
+		List:  l,
+		Style: lipgloss.NewStyle(),
 	}
 }
 
 // ListMode represents the bubble tea model to use for user input
 type ListModel struct {
-	List     list.Model
-	Choice   string
+	List   list.Model
+	Choice string
+	// Style configures the style applied to all rendering for the list. This can be used to apply padding and borders.
+	Style    lipgloss.Style
 	Quitting bool
 }
 
@@ -109,7 +121,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
-		case "ctrl+c", "esc", "q":
+		case "ctrl+c", "q":
 			m.Quitting = true
 			return m, tea.Quit
 		case "enter":
@@ -131,8 +143,9 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the view after user selection.
 func (m ListModel) View() string {
 	if m.Choice != "" {
-		return quitTextStyle.Render(fmt.Sprintf("%s: %s", m.List.Title, m.Choice))
+		// Hide output once the choice has been made
+		return ""
 	}
 
-	return "\n" + m.List.View()
+	return m.Style.Render(m.List.View())
 }

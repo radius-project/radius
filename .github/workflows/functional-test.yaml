@@ -1,9 +1,12 @@
 # ------------------------------------------------------------
 # Copyright 2023 The Radius Authors.
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
+#    
 #     http://www.apache.org/licenses/LICENSE-2.0
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -480,8 +483,7 @@ jobs:
           az group delete \
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
-            --yes \
-            --no-wait
+            --yes --verbose
   report-failure:
     name: Report test failure
     needs: [build, tests]
@@ -494,9 +496,8 @@ jobs:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
             github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: 'Scheduled functional test failed - Run ID: ' + context.runId,
-              body: '## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](' + process.env.ACTION_LINK + ').'
-              labels: ['bug']
+              ...context.repo,
+              title: `Scheduled functional test failed - Run ID: ${context.runId}`,
+              labels: ['bug'],
+              body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
