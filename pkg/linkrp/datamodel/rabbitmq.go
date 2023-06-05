@@ -17,6 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -77,4 +79,14 @@ func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
 		return nil
 	}
 	return &r.Properties.Recipe
+}
+
+func (rabbitmq *RabbitMQMessageQueue) VerifyInputs() error {
+	properties := rabbitmq.Properties
+	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if properties.Queue == "" {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }

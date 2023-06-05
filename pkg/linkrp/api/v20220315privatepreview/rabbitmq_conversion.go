@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -63,7 +62,7 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 	}
 	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	converted.Properties.Queue = to.String(properties.Queue)
-	err := src.verifyManualInputs()
+	err := converted.VerifyInputs()
 	if err != nil {
 		return nil, err
 	}
@@ -119,14 +118,4 @@ func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 		ConnectionString: to.String(src.ConnectionString),
 	}
 	return converted, nil
-}
-
-func (src *RabbitMQMessageQueueResource) verifyManualInputs() error {
-	properties := src.Properties
-	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
-		if properties.Queue == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", ResourceProvisioningManual)}
-		}
-	}
-	return nil
 }

@@ -114,7 +114,6 @@ func (s *Service) Run(ctx context.Context) error {
 			processor := &rabbitmqmessagequeues.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue](processor, engine, client, configLoader, options)
 		}},
-		{linkrp.DaprStateStoresResourceType, backend_ctrl.NewLegacyCreateOrUpdateResource},
 		{linkrp.DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &daprstatestores.Processor{Client: runtimeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](processor, engine, client, configLoader, options)
