@@ -42,11 +42,13 @@ func Test_MicrosoftSQL(t *testing.T) {
 		t.Error("AZURE_MSSQL_USERNAME and AZURE_MSSQL_PASSWORD environment variable must be set to run this test.")
 	}
 	mssqlresourceid := "mssqlresourceid=" + os.Getenv("AZURE_MSSQL_RESOURCE_ID")
+	sqlDatabse := "database=" + os.Getenv("AZURE_MSSQL_DATABASE")
+	sqlServer := "server=" + os.Getenv("AZURE_MSSQL_RESOURCE_ID")
 	appNamespace := "default-corerp-resources-microsoft-sql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword, sqlDatabse, sqlServer),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

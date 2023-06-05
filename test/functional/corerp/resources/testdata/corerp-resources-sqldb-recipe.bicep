@@ -16,7 +16,7 @@ param username string = 'sa'
 
 @description('Specifies the SQL password.')
 @secure()
-param password string = 'SQLPa$$w0rd'
+param password string = newGuid()
 
 param registry string 
 
@@ -34,6 +34,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     recipes: {
       'Applications.Link/sqlDatabases':{
         default: {
+          templateKind: 'bicep'
           templatePath: '${registry}/test/functional/corerp/recipes/sqldb-recipe:${version}'
           parameters: {
             username: username

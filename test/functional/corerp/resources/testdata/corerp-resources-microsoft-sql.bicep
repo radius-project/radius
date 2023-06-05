@@ -21,6 +21,10 @@ param adminPassword string
 
 param mssqlresourceid string
 
+param database string
+
+param server string
+
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-microsoft-sql'
   location: location
@@ -65,7 +69,7 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
         id:mssqlresourceid
       }
     ]
-    database:'database-radiustest'
-    server:'mssql-radiustest.database.windows.net'
+    database: database
+    server: server
   }
 }
