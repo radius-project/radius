@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import fetch from 'node-fetch';
+
 module.exports = async ({ github, context }) => {
     const accessToken = process.env.accessToken
     if (
@@ -120,7 +122,7 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
 
 async function checkTeamMembership(org, teamSlug, username, accessToken) {
     try {
-      const response = await node-fetch(`https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
+      const response = await fetch(`https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/vnd.github.v3+json'
