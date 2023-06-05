@@ -7,7 +7,7 @@ param environment string
 param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-secretstore-generic'
+  name: 'corerp-resources-dapr-secretstore-manual'
   location: location
   properties: {
     environment: environment
@@ -42,7 +42,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privatepreview' = {
-  name: 'gnrc-scs-generic'
+  name: 'gnrc-scs-manual'
   location: location
   properties: {
     environment: environment

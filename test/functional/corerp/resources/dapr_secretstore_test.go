@@ -26,9 +26,9 @@ import (
 )
 
 func Test_DaprSecretStoreGeneric(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
-	name := "corerp-resources-dapr-secretstore-generic"
-	appNamespace := "default-corerp-resources-dapr-secretstore-generic"
+	template := "testdata/corerp-resources-dapr-secretstore-manual.bicep"
+	name := "corerp-resources-dapr-secretstore-manual"
+	appNamespace := "default-corerp-resources-dapr-secretstore-manual"
 
 	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
 		{
@@ -45,7 +45,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "gnrc-scs",
+						Name: "gnrc-scs-manual",
 						Type: validation.DaprSecretStoresResource,
 						App:  name,
 					},
@@ -65,7 +65,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_DaprSecretStoreRecipe(t *testing.T) {
+func Test_DaprSecretStore_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-secretstore-recipe.bicep"
 	name := "corerp-resources-dapr-secretstore-recipe"
 	appNamespace := "corerp-resources-dapr-secretstore-recipe"
