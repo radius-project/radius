@@ -212,20 +212,21 @@ func TestGetRecipeDefinition(t *testing.T) {
 	t.Run("invalid resource id", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.ResourceID = "invalid-id"
-		_, err := getRecipeDefinition(&envResource, metadata)
+		_, err := getRecipeDefinition(&envResource, &metadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to parse resourceID")
 	})
-	t.Run("empty recipe name", func(t *testing.T) {
+	t.Run("empty recipe name loads default recipe", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.Name = ""
-		_, err := getRecipeDefinition(&envResource, metadata)
+		_, err := getRecipeDefinition(&envResource, &metadata)
 		require.NoError(t, err)
+		require.Equal(t, "default", metadata.Name)
 	})
-	t.Run("recipe not found", func(t *testing.T) {
+	t.Run("recipe not found for the resource type", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.ResourceID = redisID
-		_, err := getRecipeDefinition(&envResource, metadata)
+		_, err := getRecipeDefinition(&envResource, &metadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
@@ -238,14 +239,14 @@ func TestGetRecipeDefinition(t *testing.T) {
 				"foo": "bar",
 			},
 		}
-		recipeDef, err := getRecipeDefinition(&envResource, recipeMetadata)
+		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)
 		require.NoError(t, err)
 		require.Equal(t, recipeDef, &expected)
 	})
-	t.Run("", func(t *testing.T) {
+	t.Run("no recipes registered to the environment", func(t *testing.T) {
 		envResourceNilRecipe := envResource
 		envResourceNilRecipe.Properties.Recipes = nil
-		_, err := getRecipeDefinition(&envResourceNilRecipe, recipeMetadata)
+		_, err := getRecipeDefinition(&envResourceNilRecipe, &recipeMetadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
