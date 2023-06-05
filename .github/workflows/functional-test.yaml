@@ -90,14 +90,10 @@ jobs:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
             const testPayload = context.payload.client_payload;
-            if (testPayload && testPayload.command == "ok-to-test") {
-              var fs = require('fs');
-              // Set environment variables
-              fs.appendFileSync(process.env.GITHUB_ENV,
-                `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
-                `CHECKOUT_REF=${testPayload.pull_head_ref}\n`+
-                `PR_NUMBER=${testPayload.issue.number}`
-              );
+            if (testPayload && testPayload.command === `ok-to-test`) {
+              echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
+              echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+              echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
             }
       - name: Check out code
         uses: actions/checkout@v3
