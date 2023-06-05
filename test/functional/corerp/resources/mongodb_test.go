@@ -233,6 +233,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  rpv1.LocalIDAzureCosmosAccount,
+								Name:     "account-" + rg,
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,

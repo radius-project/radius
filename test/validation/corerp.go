@@ -171,7 +171,12 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 							}
 							break
 						}
+						if !found {
+							t.Logf("Expected output resource: ", expectedOutputResource.Name)
+							t.Logf("Actual output resources: ", actualOutputResource.Name)
+						}
 					}
+
 					require.Truef(t, found, "expected output resource %v wasn't found", expectedOutputResource)
 				}
 			}
