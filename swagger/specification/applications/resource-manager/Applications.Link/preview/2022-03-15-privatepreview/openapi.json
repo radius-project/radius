@@ -2094,7 +2094,7 @@
         },
         "secrets": {
           "$ref": "#/definitions/MongoDatabaseSecrets",
-          "description": "Secrets values provided for the resource"
+          "description": "Secret values provided for the resource"
         },
         "host": {
           "type": "string",

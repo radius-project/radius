@@ -579,7 +579,7 @@ type MongoDatabaseProperties struct {
 	// List of the resource IDs that support the MongoDB resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// Secrets values provided for the resource
+	// Secret values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Database name of the target Mongo database

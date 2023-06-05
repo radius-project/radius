@@ -29,7 +29,7 @@ import (
 )
 
 // Opt-out case for manual resource provisioning
-func Test_MongoManualProvisioning(t *testing.T) {
+func Test_MongoDB_ManualProvisioning(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-manual-provisioning.bicep"
 	name := "corerp-resources-mongodb-manual-provisioning"
 	appNamespace := "default-ccorerp-resources-mongodb-manual-provisioning"
@@ -130,7 +130,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // and developer while creating the mongoDatabase link.
 // If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.
 // Container uses the mongoDB link to connect to the mongoDB resource
-func Test_MongoDB_Recipe_Parameters(t *testing.T) {
+func Test_MongoDB_RecipeParameters(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"

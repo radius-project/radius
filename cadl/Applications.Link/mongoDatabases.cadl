@@ -75,7 +75,7 @@ model MongoDatabaseProperties extends BasicResourceProperties{
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("Secrets values provided for the resource")
+  @doc("Secret values provided for the resource")
   secrets?: MongoDatabaseSecrets;
 
   @doc("Host name of the target Mongo database")
