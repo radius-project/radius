@@ -37,6 +37,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2021-10-15-preview' = {
 }
 
 output result object = {
+  resources: [
+    account.id
+    account::dbinner.properties.resource.id
+  ]
   values: {
     host: 'account-${rg}.mongo.cosmos.azure.com'
     port: 10255
