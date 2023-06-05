@@ -1,5 +1,9 @@
 # Contributor Covenant Code of Conduct
 
+## Preamble
+
+The Radius project seeks to foster an open, innovative, and inclusive community. To clarify expected behaviour in our communities we have adopted the [Contributor Covenant](http://contributor-covenant.org/). This code of conduct has been adopted by [many other open source communities](http://contributor-covenant.org/adopters/) and we feel it expresses our values well. This applies to all interactions using official Radius project resources including all GitHub repositories.
+
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our
