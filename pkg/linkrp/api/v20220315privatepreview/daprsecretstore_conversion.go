@@ -65,7 +65,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.Properties.Type = to.String(v.Type)
 	converted.Properties.Version = to.String(v.Version)
 	converted.Properties.Metadata = v.Metadata
-	manualInputs := src.verifyManualInputs()
+	manualInputs := converted.VerifyInputs()
 	if manualInputs != nil {
 		return nil, manualInputs
 	}

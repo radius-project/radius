@@ -2,11 +2,9 @@ import radius as radius
 
 param magpieimage string
 
-param environment string
-
 param location string = resourceGroup().location
-// param registry string 
-// param version string
+param registry string 
+param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-environment-secretstore-recipes-env'
@@ -20,8 +18,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       'Applications.Link/daprSecretStores':{
         default: {
           templateKind: 'bicep'
-          //templatePath: '${registry}/test/functional/corerp/recipes/dapr-secret-store:${version}' 
-          templatePath: 'vishwaradius.azurecr.io/recipes/daprss-test:1.0'
+          templatePath: '${registry}/test/functional/corerp/recipes/dapr-secret-store:${version}' 
         }
       }
     }
