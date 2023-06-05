@@ -507,7 +507,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
 					},
 				)
 			},
@@ -524,7 +524,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
 					},
 				)
 			},
@@ -538,7 +538,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 						RequestConverter:      converter.RabbitMQMessageQueueDataModelFromVersioned,
 						ResponseConverter:     converter.RabbitMQMessageQueueDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRedisCacheTimeout,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
 					},
 				)
 			},

@@ -16,9 +16,9 @@ param environment string = 'test'
 @secure()
 param password string 
 
-// param registry string 
+param registry string 
 
-// param version string
+param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-environment-rabbitmq-recipe-env'
@@ -33,7 +33,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       'Applications.Link/rabbitMQMessageQueues':{
         default: {
           templateKind: 'bicep'
-          templatePath: 'vishwaradius.azurecr.io/recipes/rabbitmq-test:1.0' 
+          templatePath: '${registry}/test/functional/corerp/recipes/rabbitmq-recipe:${version}' 
           parameters: {
             password: password
           }

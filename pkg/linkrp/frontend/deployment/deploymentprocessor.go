@@ -525,11 +525,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 		basicResource = &obj.Properties.BasicResourceProperties
 		recipe.Name = obj.Properties.Recipe.Name
 		recipe.Parameters = obj.Properties.Recipe.Parameters
-	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
-		obj := resource.(*datamodel.RabbitMQMessageQueue)
-		basicResource = &obj.Properties.BasicResourceProperties
-		recipe.Name = obj.Properties.Recipe.Name
-		recipe.Parameters = obj.Properties.Recipe.Parameters
 	case strings.ToLower(linkrp.ExtendersResourceType):
 		obj := resource.(*datamodel.Extender)
 		basicResource = &obj.Properties.BasicResourceProperties
