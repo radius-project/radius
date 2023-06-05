@@ -64,3 +64,43 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_DaprSecretStoreRecipe(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-secretstore-recipe.bicep"
+	name := "corerp-resources-dapr-secretstore-recipe"
+	appNamespace := "corerp-resources-dapr-secretstore-recipe"
+
+	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "gnrc-scs-ctnr-recipe",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "gnrc-scs-recipe",
+						Type: validation.DaprSecretStoresResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").ValidateLabels(false),
+					},
+				},
+			},
+		},
+	}, corerp.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
+
+	test.Test(t)
+}
