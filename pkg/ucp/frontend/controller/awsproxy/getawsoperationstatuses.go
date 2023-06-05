@@ -42,6 +42,11 @@ type GetAWSOperationStatuses struct {
 }
 
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
+//
+// # Function Explanation
+// 
+//	GetAWSOperationStatuses is a function that creates a new controller for retrieving the statuses of AWS operations. It 
+//	returns an error if the controller cannot be created.
 func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -52,6 +57,11 @@ func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	The GetAWSOperationStatuses function reads the region from the request URL, creates a cloud control options object with 
+//	the region, and then calls the AWSCloudControlClient to get the resource request status. If the resource is not found, a
+//	 NotFoundResponse is returned, and if there is an error, an appropriate error response is returned.
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)

@@ -41,6 +41,11 @@ type GetAWSOperationResults struct {
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
+//
+// # Function Explanation
+// 
+//	GetAWSOperationResults creates a new controller with the given options and returns it, or an error if something goes 
+//	wrong. It also sets up the Operation and AWSOptions fields of the controller.
 func NewGetAWSOperationResults(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationResults{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -51,6 +56,12 @@ func NewGetAWSOperationResults(opts ctrl.Options) (armrpc_controller.Controller,
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	The GetAWSOperationResults function reads the region from the request URL, creates a cloud control client with the 
+//	region, and then attempts to get the resource request status from AWS. If the resource is not found, a NotFoundResponse 
+//	is returned. If there is an error, an error response is returned. If the status is not terminal, an 
+//	AsyncOperationResultResponse is returned with a Retry-After header. Otherwise, a NoContentResponse is returned.
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)

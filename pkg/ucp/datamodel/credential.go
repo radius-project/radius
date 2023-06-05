@@ -35,6 +35,10 @@ type AzureCredential struct {
 }
 
 // ResourceTypeName gives the type of ucp resource.
+//
+// # Function Explanation
+// 
+//	"AzureCredential.ResourceTypeName() returns the type of the AzureCredential object, or an error if the type is not set."
 func (c *AzureCredential) ResourceTypeName() string {
 	return c.Type
 }
@@ -47,6 +51,11 @@ type AWSCredential struct {
 }
 
 // ResourceTypeName gives the type of ucp resource.
+//
+// # Function Explanation
+// 
+//	"AWSCredential.ResourceTypeName() returns the type of the AWSCredential object, and handles any errors that may occur 
+//	during the process."
 func (c *AWSCredential) ResourceTypeName() string {
 	return c.Type
 }

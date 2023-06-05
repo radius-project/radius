@@ -43,6 +43,11 @@ type DeleteAWSCredential struct {
 }
 
 // NewDeleteAWSCredential creates a new DeleteCredential.
+//
+// # Function Explanation
+// 
+//	NewDeleteAWSCredential creates a new DeleteAWSCredential controller which is used to delete an AWS credential. It 
+//	returns an error if the controller cannot be created.
 func NewDeleteAWSCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeleteAWSCredential{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -55,6 +60,11 @@ func NewDeleteAWSCredential(opts ctrl.Options) (armrpc_controller.Controller, er
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	DeleteAWSCredential retrieves the existing AWS Credential resource, deletes the associated secret, and then deletes the 
+//	resource itself. If the resource or secret is not found, a No Content response is returned. If any other errors occur, 
+//	they are returned to the caller.
 func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)

@@ -30,6 +30,14 @@ const (
 )
 
 // ConvertTo converts from the versioned Credential resource to version-agnostic datamodel.
+//
+// # Function Explanation
+// 
+//	AzureCredentialResource's ConvertTo() function takes in an AzureCredentialResource object and returns a 
+//	datamodel.AzureCredential object, or an error if one occurs. It does this by first getting the data model credential 
+//	properties, and then creating a datamodel.AzureCredential object with the properties, ID, Name, Type, Location, and Tags
+//	 from the AzureCredentialResource object. If an error occurs while getting the data model credential properties, it is 
+//	returned.
 func (cr *AzureCredentialResource) ConvertTo() (v1.DataModelInterface, error) {
 	prop, err := cr.getDataModelCredentialProperties()
 	if err != nil {
@@ -96,6 +104,14 @@ func (cr *AzureCredentialResource) getDataModelCredentialProperties() (*datamode
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Credential resource.
+//
+// # Function Explanation
+// 
+//	The ConvertFrom function in the AzureCredentialResource struct takes in a DataModelInterface and returns an error. It 
+//	checks if the DataModelInterface is a valid AzureCredential and if so, it sets the ID, Name, Type, Location and Tags of 
+//	the AzureCredentialResource to the corresponding values from the AzureCredential. It then sets the Storage and Kind 
+//	properties of the AzureServicePrincipalProperties based on the Kind of the AzureCredential's Storage. If the 
+//	DataModelInterface is not a valid AzureCredential, it returns an error.
 func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*datamodel.AzureCredential)
 	if !ok {

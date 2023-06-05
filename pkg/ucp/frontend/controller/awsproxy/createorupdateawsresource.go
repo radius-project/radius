@@ -46,6 +46,11 @@ type CreateOrUpdateAWSResource struct {
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
+//
+// # Function Explanation
+// 
+//	NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource controller with the given options, which is used to
+//	 create or update AWS resources. It returns an error if the controller cannot be created.
 func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSResource{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -56,6 +61,12 @@ func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controll
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	CreateOrUpdateAWSResource reads the request body, extracts the region from the URL, and then checks if the resource 
+//	already exists. If it does, it generates a patch and updates the resource, otherwise it creates the resource. It then 
+//	returns an AsyncOperationResponse with the resource ID, operation ID, and a 201 status code. If an error occurs, it 
+//	returns an appropriate error response.
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 

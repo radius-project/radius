@@ -42,6 +42,11 @@ type DeleteAWSResource struct {
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
+//
+// # Function Explanation
+// 
+//	NewDeleteAWSResource creates a new DeleteAWSResource controller which handles the deletion of AWS resources. It sets up 
+//	an Operation with the given options and returns an error if one occurs.
 func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeleteAWSResource{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -52,6 +57,11 @@ func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, erro
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	DeleteAWSResource runs the logic to delete an AWS resource, using the AWSCloudControlClient to make the request. It 
+//	reads the region from the request URL, and handles any errors that occur during the request, returning an appropriate 
+//	response or error.
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)

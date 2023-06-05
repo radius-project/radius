@@ -42,6 +42,12 @@ type DeleteAzureCredential struct {
 }
 
 // NewDeleteAzureCredential creates a new DeleteAzureCredential.
+//
+// # Function Explanation
+// 
+//	NewDeleteAzureCredential creates a new DeleteAzureCredential controller which is used to delete an AzureCredential 
+//	resource. It takes in an Options object and returns a Controller and an error if one occurs. The Controller is used to 
+//	perform the delete operation and the error is used to indicate any issues that may have occurred during the operation.
 func NewDeleteAzureCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeleteAzureCredential{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -54,6 +60,11 @@ func NewDeleteAzureCredential(opts ctrl.Options) (armrpc_controller.Controller, 
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	DeleteAzureCredential retrieves the existing credential from storage, deletes the associated secret, and then deletes 
+//	the credential from storage. If the credential or secret does not exist, a No Content response is returned. If an error 
+//	occurs, it is returned to the caller.
 func (c *DeleteAzureCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)

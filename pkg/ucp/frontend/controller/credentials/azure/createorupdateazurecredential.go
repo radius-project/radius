@@ -38,6 +38,12 @@ type CreateOrUpdateAzureCredential struct {
 }
 
 // NewCreateOrUpdateAzureCredential creates a new CreateOrUpdateAzureCredential.
+//
+// # Function Explanation
+// 
+//	The CreateOrUpdateAzureCredential function creates a new controller for creating or updating an AzureCredential 
+//	resource. It sets up the necessary operation and secret client, and returns an error if any of the setup fails. Callers 
+//	of this function should check for errors before proceeding.
 func NewCreateOrUpdateAzureCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAzureCredential{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -50,6 +56,10 @@ func NewCreateOrUpdateAzureCredential(opts ctrl.Options) (armrpc_controller.Cont
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	CreateOrUpdateAzureCredential retrieves the existing resource from the metadata store, validates the new resource, saves
+//	 the credential secret, and updates the resource in the metadata store. It returns an error if any of these steps fail.
 func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := c.GetResourceFromRequest(ctx, req)

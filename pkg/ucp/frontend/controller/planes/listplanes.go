@@ -38,6 +38,11 @@ type ListPlanes struct {
 }
 
 // NewListPlanes creates a new ListPlanes.
+//
+// # Function Explanation
+// 
+//	NewListPlanes creates a new ListPlanes controller which handles requests for the Plane resource type, converting the 
+//	request and response data to and from the versioned data model. It returns an error if the controller cannot be created.
 func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -49,6 +54,11 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	ListPlanes runs a query on the storage client to list all planes in the given scope, creates a response from the query 
+//	result, and returns an OKResponse with the list of planes. If an error occurs during the query or response creation, an 
+//	error is returned.
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger := ucplog.FromContextOrDiscard(ctx)

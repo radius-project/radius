@@ -25,6 +25,11 @@ import (
 )
 
 // PlaneDataModelToVersioned converts version agnostic plane datamodel to versioned model.
+//
+// # Function Explanation
+// 
+//	PlaneDataModelToVersioned takes in a Plane data model and a version string, and returns a VersionedModelInterface object
+//	 for the specified version. If the version is not supported, it returns an error.
 func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
@@ -40,6 +45,13 @@ func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.Versi
 }
 
 // PlaneDataModelFromVersioned converts versioned plane model to datamodel.
+//
+// # Function Explanation
+// 
+//	PlaneDataModelFromVersioned takes in a byte array and a version string and returns a Plane data model. It uses a switch 
+//	statement to determine which version of the data model to use, and then converts the byte array to the corresponding 
+//	versioned data model before converting it to the Plane data model. If an unsupported version is provided, it returns an 
+//	error.
 func PlaneDataModelFromVersioned(content []byte, version string) (*datamodel.Plane, error) {
 	switch version {
 	case v20220901privatepreview.Version:

@@ -54,14 +54,28 @@ type EmbeddedETCDService struct {
 	dirs    []string
 }
 
+// # Function Explanation
+// 
+//	EmbeddedETCDService is a function that creates a new instance of an EmbeddedETCDService object with the given options. 
+//	It also handles any errors that may occur during the creation of the object.
 func NewEmbeddedETCDService(options EmbeddedETCDServiceOptions) *EmbeddedETCDService {
 	return &EmbeddedETCDService{options: options}
 }
 
+// # Function Explanation
+// 
+//	"EmbeddedETCDService.Name()" returns the name of the service as a string. It handles any errors that occur by returning 
+//	an empty string.
 func (s *EmbeddedETCDService) Name() string {
 	return "etcd"
 }
 
+// # Function Explanation
+// 
+//	EmbeddedETCDService.Run creates a temporary directory for data and wal storage, assigns random ports for etcd to listen 
+//	on, configures logging, and starts an etcd server. If the server fails to start due to a port conflict, it assumes 
+//	another instance of etcd is already running and attempts to connect to it. If the server fails to start or stop, an 
+//	error is returned.
 func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	defer s.cleanup(ctx)

@@ -41,6 +41,11 @@ type ListAWSResources struct {
 }
 
 // NewListAWSResources creates a new ListAWSResources.
+//
+// # Function Explanation
+// 
+//	ListAWSResources creates a new controller with the given options and returns it, or an error if something goes wrong. It
+//	 handles errors by returning them to the caller.
 func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListAWSResources{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -51,6 +56,11 @@ func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	ListAWSResources runs a request to the AWS CloudControl API to list resources of a given type in a given region, and 
+//	returns a response with the list of resources and their properties. If an error occurs, it is handled and an appropriate
+//	 response is returned.
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)

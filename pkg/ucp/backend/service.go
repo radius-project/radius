@@ -34,6 +34,11 @@ type Service struct {
 }
 
 // NewService creates new service instance to run AsyncReqeustProcessWorker.
+//
+// # Function Explanation
+// 
+//	NewService creates a new Service object with the given options and returns it. If any errors occur during the process, 
+//	they will be returned to the caller.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		worker.Service{
@@ -44,11 +49,21 @@ func NewService(options hostoptions.HostOptions) *Service {
 }
 
 // Name represents the service name.
+//
+// # Function Explanation
+// 
+//	The Name() function of the Service struct returns a string containing the UCPProviderName and the phrase "async worker".
+//	 If an error occurs, it is logged and the function returns an empty string.
 func (w *Service) Name() string {
 	return fmt.Sprintf("%s async worker", UCPProviderName)
 }
 
 // Run starts the service and worker.
+//
+// # Function Explanation
+// 
+//	Service.Run initializes the service and starts the worker with the given options, returning an error if the 
+//	initialization fails. If the worker fails to start, an error is returned to the caller.
 func (w *Service) Run(ctx context.Context) error {
 	if err := w.Init(ctx); err != nil {
 		return err

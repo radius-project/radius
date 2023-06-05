@@ -49,6 +49,11 @@ type GetAWSResourceWithPost struct {
 }
 
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost.
+//
+// # Function Explanation
+// 
+//	The GetAWSResourceWithPost function creates a new Controller object with the given Options and AWSOptions, and returns 
+//	it along with any errors. If an error occurs, it will be returned to the caller for further handling.
 func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSResourceWithPost{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -59,6 +64,11 @@ func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller,
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	The GetAWSResourceWithPost function reads the region from the request URL, reads properties from the request body, uses 
+//	the AWS CloudFormation and CloudControl clients to fetch the resource, computes the resource ID, and returns an OK 
+//	response with the resource details. If an error occurs, it returns an appropriate error response.
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)

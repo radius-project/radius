@@ -38,10 +38,18 @@ type Plane struct {
 	Properties PlaneProperties `json:"properties"`
 }
 
+// # Function Explanation
+// 
+//	Plane's ResourceTypeName function returns the type of the Plane as a string. If an error occurs, it will be logged and 
+//	an empty string will be returned.
 func (p Plane) ResourceTypeName() string {
 	return p.Type
 }
 
+// # Function Explanation
+// 
+//	"LookupResourceProvider" searches through the "ResourceProviders" property of the Plane struct and returns the value 
+//	associated with the given key, if found. If the key is not found, an empty string is returned.
 func (plane *Plane) LookupResourceProvider(key string) string {
 	var value string
 	for k, v := range plane.Properties.ResourceProviders {

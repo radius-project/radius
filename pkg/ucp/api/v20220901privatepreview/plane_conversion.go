@@ -25,6 +25,13 @@ import (
 )
 
 // ConvertTo converts from the versioned Plane resource to version-agnostic datamodel.
+//
+// # Function Explanation
+// 
+//	The PlaneResource ConvertTo() function validates the properties of the PlaneResource object and converts it into a 
+//	datamodel.Plane object. It checks that the Kind property is one of the possible values and that the URL and 
+//	ResourceProviders properties are valid for the given Kind. If any of the validations fail, it returns an error with the 
+//	property name and valid value.
 func (src *PlaneResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
@@ -70,6 +77,14 @@ func (src *PlaneResource) ConvertTo() (v1.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Plane resource.
+//
+// # Function Explanation
+// 
+//	PlaneResource's ConvertFrom function takes in a DataModelInterface and converts it into a PlaneResource, returning an 
+//	error if the conversion is unsuccessful. It sets the ID, Name, and Type fields of the PlaneResource to the corresponding
+//	 fields of the DataModelInterface, and sets the Properties field to a PlaneResourceProperties object with the Kind, URL,
+//	 and ResourceProviders fields set to the corresponding fields of the DataModelInterface. If the DataModelInterface is 
+//	not a Plane, it returns an error.
 func (dst *PlaneResource) ConvertFrom(src v1.DataModelInterface) error {
 	plane, ok := src.(*datamodel.Plane)
 	if !ok {

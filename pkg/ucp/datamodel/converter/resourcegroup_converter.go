@@ -25,6 +25,12 @@ import (
 )
 
 // ResourceGroupDataModelToVersioned converts version agnostic environment datamodel to versioned model.
+//
+// # Function Explanation
+// 
+//	ResourceGroupDataModelToVersioned takes in a ResourceGroup model and a version string and returns a 
+//	VersionedModelInterface object. It checks the version string and converts the model to the corresponding versioned 
+//	model, returning an error if the version is unsupported.
 func ResourceGroupDataModelToVersioned(model *datamodel.ResourceGroup, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
@@ -40,6 +46,13 @@ func ResourceGroupDataModelToVersioned(model *datamodel.ResourceGroup, version s
 }
 
 // ResourceGroupDataModelFromVersioned converts versioned environment model to datamodel.
+//
+// # Function Explanation
+// 
+//	ResourceGroupDataModelFromVersioned takes in a byte array and a version string and returns a ResourceGroup object or an 
+//	error. It uses a switch statement to determine which version of the ResourceGroup object to create, and then uses the 
+//	ConvertTo method to convert the versioned object to the ResourceGroup object. If an error occurs during the conversion, 
+//	it is returned to the caller.
 func ResourceGroupDataModelFromVersioned(content []byte, version string) (*datamodel.ResourceGroup, error) {
 	switch version {
 	case v20220901privatepreview.Version:

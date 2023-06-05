@@ -99,6 +99,12 @@ func initCosmosDBClient(ctx context.Context, opt StorageProviderOptions, collect
 }
 
 // InitETCDClient initializes a new etcd client.
+//
+// # Function Explanation
+// 
+//	InitETCDClient initializes an ETCD client using the provided StorageProviderOptions. If the InMemory option is not set, 
+//	an error is returned. If the Client option is nil, an error is returned. If the client is successfully initialized, an 
+//	ETCDClient is returned. If any errors occur, an error is returned.
 func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
 	if !opt.ETCD.InMemory {
 		return nil, errors.New("failed to initialize etcd client: inmemory is the only supported mode for now")

@@ -23,6 +23,11 @@ import (
 )
 
 // GetSecretName returns the secret name of credential storage.
+//
+// # Function Explanation
+// 
+//	GetSecretName takes an ID and returns a normalized string based on the PlaneNamespace and Name of the ID, replacing any 
+//	"/" with "-". If an error occurs, the function will return an empty string.
 func GetSecretName(id resources.ID) string {
 	planeNamespace := id.PlaneNamespace()
 	planeNamespace = strings.ReplaceAll(planeNamespace, "/", "-")

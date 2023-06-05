@@ -65,6 +65,11 @@ type HandlerOptions struct {
 	HandlerFactory ControllerFunc
 }
 
+// # Function Explanation
+// 
+//	RegisterHandler sets up a handler for a given resource type and operation type. It creates a storage client, controller 
+//	and handler function, and registers the handler function with the given parent router. It handles errors by calling 
+//	server.HandleError.
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options) error {
 	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
@@ -105,6 +110,10 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options)
 	return nil
 }
 
+// # Function Explanation
+// 
+//	ConfigureDefaultHandlers sets up default handlers for NotFound and MethodNotAllowed errors, allowing callers to handle 
+//	errors in a consistent way.
 func ConfigureDefaultHandlers(router *mux.Router, opts armrpc_controller.Options) {
 	router.NotFoundHandler = validator.APINotFoundHandler()
 	router.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()

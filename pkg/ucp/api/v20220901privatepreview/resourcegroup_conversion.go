@@ -23,6 +23,12 @@ import (
 )
 
 // ConvertTo converts from the versioned ResourceGroup resource to version-agnostic datamodel.
+//
+// # Function Explanation
+// 
+//	ResourceGroupResource.ConvertTo() converts a ResourceGroupResource object into a datamodel.ResourceGroup object, mapping
+//	 the ID, Name, Type, Location and Tags fields. It does not convert the SystemData field, and returns an error if the 
+//	conversion fails.
 func (src *ResourceGroupResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
@@ -42,6 +48,13 @@ func (src *ResourceGroupResource) ConvertTo() (v1.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned ResourceGroup resource.
+//
+// # Function Explanation
+// 
+//	ResourceGroupResource's ConvertFrom function takes in a DataModelInterface and converts it into a ResourceGroupResource,
+//	 returning an error if the conversion is unsuccessful. It checks if the DataModelInterface is a ResourceGroup, and if it
+//	 is, it sets the fields of the ResourceGroupResource to the corresponding fields of the ResourceGroup. If the 
+//	DataModelInterface is not a ResourceGroup, it returns an error.
 func (dst *ResourceGroupResource) ConvertFrom(src v1.DataModelInterface) error {
 	// TODO: Improve the validation.
 	rg, ok := src.(*datamodel.ResourceGroup)
