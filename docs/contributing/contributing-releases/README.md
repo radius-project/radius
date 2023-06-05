@@ -93,12 +93,12 @@ Before a release can be finished, all [tutorials](https://edge.radapp.dev/user-g
 1. Install the latest release candidate of the CLI
 For MacOS
 ```
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.21.0-rc1
+curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.21.0-rc1
 ```
 
 For Windows
 ```
-$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.21.0-rc1
+$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.21.0-rc1
 ```
 
 Because we have not forked for samples and docs yet, please use the `edge` channel for validation. Specifically using `edge.radapp.dev` for the docs and following along.
