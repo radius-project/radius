@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_RabbitMQ(t *testing.T) {
+func Test_RabbitMQ_Manual(t *testing.T) {
 	template := "testdata/corerp-resources-rabbitmq.bicep"
 	name := "corerp-resources-rabbitmq"
 	appNamespace := "default-corerp-resources-rabbitmq"
