@@ -1,7 +1,9 @@
 # Project Radius documentation
 
-The docs for Project Radius are at https://radapp.dev, with the source in the [project-radius/docs repo](https://github.com/project-radius/docs).
+The documentation for Project Radius is at https://radapp.dev, with the source in the [project-radius/docs repo](https://github.com/project-radius/docs).
 
 ## Contributing to Project Radius
 
-To contribute to Project Radius, refer to the [contributing docs](./contributing/).
+This folder contains the documentation for contributing to Radius. 
+
+To browse the table of contents, refer to the [contributing docs](./../CONTRIBUTING.md).
