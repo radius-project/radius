@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: '14'
       - name: Install Dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install @octokit/rest
       - name: Comment analyzer
         uses: actions/github-script@v4
         with:
