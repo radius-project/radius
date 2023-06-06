@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
@@ -152,6 +153,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     azresources.DocumentDBDatabaseAccounts,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     azresources.DocumentDBDatabaseAccountsMongoDBDatabases + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 	}
 
