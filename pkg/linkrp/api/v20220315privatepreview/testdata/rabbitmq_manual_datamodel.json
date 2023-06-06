@@ -13,9 +13,19 @@
     "tags": {
         "env": "dev"
     },
+    "location": "global",
     "properties": {
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "status": {
+            "outputResources": [{
+              "LocalID": "Deployment",
+              "ResourceType": {
+                "Type": "rabbitmq",
+                "Provider": "rabbitmqProvider"
+              }
+            }]
+        },
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
         "resourceProvisioning":"manual",
         "queue": "testQueue",
         "secrets": {

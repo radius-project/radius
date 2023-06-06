@@ -18,109 +18,234 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
-	//testset := []string{"rabbitmqresource.json", "rabbitmqresource2.json", "rabbitmqresource_recipe.json"}
-	testsFile := "rabbitmqresource.json"
-	rawPayload := loadTestData(testsFile)
-	var testset []TestData
-	err := json.Unmarshal(rawPayload, &testset)
-	require.NoError(t, err)
-	for _, testData := range testset {
+	testCases := []struct {
+		desc     string
+		file     string
+		expected *datamodel.RabbitMQMessageQueue
+	}{
+		{
+			desc: "rabbitmq manual resource",
+			file: "rabbitmq_manual_resource.json",
+			expected: &datamodel.RabbitMQMessageQueue{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
+						Name:     "rabbitmq0",
+						Type:     linkrp.RabbitMQMessageQueuesResourceType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.RabbitMQMessageQueueProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					Queue:                "testQueue",
+					Secrets: datamodel.RabbitMQSecrets{
+						ConnectionString: "connection://string",
+					},
+				},
+			},
+		},
+		{
+			desc: "rabbitmq recipe resource",
+			file: "rabbitmq_recipe_resource.json",
+			expected: &datamodel.RabbitMQMessageQueue{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
+						Name:     "rabbitmq0",
+						Type:     linkrp.RabbitMQMessageQueuesResourceType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.RabbitMQMessageQueueProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					Recipe: linkrp.LinkRecipe{
+						Name: "rabbitmq",
+						Parameters: map[string]any{
+							"foo": "bar",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// arrange
+			rawPayload := loadTestData(tc.file)
+			versionedResource := &RabbitMQMessageQueueResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
 
-		versionedResource := &RabbitMQMessageQueueResource{}
-		err := json.Unmarshal(testData.Payload, versionedResource)
-		require.NoError(t, err)
+			// act
+			dm, err := versionedResource.ConvertTo()
 
-		// act
-		dm, err := versionedResource.ConvertTo()
+			// assert
+			require.NoError(t, err)
+			convertedResource := dm.(*datamodel.RabbitMQMessageQueue)
 
-		// assert
-		require.NoError(t, err)
-		convertedResource := dm.(*datamodel.RabbitMQMessageQueue)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0", convertedResource.ID)
-		require.Equal(t, "rabbitmq0", convertedResource.Name)
-		require.Equal(t, linkrp.RabbitMQMessageQueuesResourceType, convertedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		if convertedResource.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
-			require.Equal(t, "manual", string(convertedResource.Properties.ResourceProvisioning))
-			require.Equal(t, "testQueue", string(convertedResource.Properties.Queue))
-			require.Equal(t, "connection://string", convertedResource.Properties.Secrets.ConnectionString)
-		} else {
-			require.Equal(t, "recipe", string(convertedResource.Properties.ResourceProvisioning))
-			require.Equal(t, "rabbitmq", convertedResource.Properties.Recipe.Name)
-			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
-			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-		}
+			require.Equal(t, tc.expected, convertedResource)
+		})
 	}
 }
 
 func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
-	testsFile := "rabbitmqresourcedatamodel.json"
-	rawPayload := loadTestData(testsFile)
-	var testset []TestData
-	err := json.Unmarshal(rawPayload, &testset)
-	require.NoError(t, err)
-	for _, testData := range testset {
-		// arrange
-		resource := &datamodel.RabbitMQMessageQueue{}
-		err := json.Unmarshal(testData.Payload, resource)
-		require.NoError(t, err)
+	testCases := []struct {
+		desc     string
+		file     string
+		expected *RabbitMQMessageQueueResource
+	}{
+		{
+			desc: "rabbitmq manual data model",
+			file: "rabbitmq_manual_datamodel.json",
+			expected: &RabbitMQMessageQueueResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &RabbitMQMessageQueueProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Queue:                to.Ptr("testQueue"),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "rabbitmqProvider",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0"),
+				Name: to.Ptr("rabbitmq0"),
+				Type: to.Ptr(linkrp.RabbitMQMessageQueuesResourceType),
+			},
+		},
+		{
+			desc: "rabbitmq recipe data model",
+			file: "rabbitmq_recipe_datamodel.json",
+			expected: &RabbitMQMessageQueueResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &RabbitMQMessageQueueProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Queue:                to.Ptr("testQueue"),
+					Recipe: &Recipe{
+						Name: to.Ptr("rabbitmq"),
+						Parameters: map[string]any{
+							"foo": "bar",
+						},
+					},
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "rabbitmqProvider",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0"),
+				Name: to.Ptr("rabbitmq0"),
+				Type: to.Ptr(linkrp.RabbitMQMessageQueuesResourceType),
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload := loadTestData(tc.file)
+			resource := &datamodel.RabbitMQMessageQueue{}
+			err := json.Unmarshal(rawPayload, resource)
+			require.NoError(t, err)
 
-		// act
-		versionedResource := &RabbitMQMessageQueueResource{}
-		err = versionedResource.ConvertFrom(resource)
+			versionedResource := &RabbitMQMessageQueueResource{}
+			err = versionedResource.ConvertFrom(resource)
+			require.NoError(t, err)
 
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0", *versionedResource.ID)
-		require.Equal(t, "rabbitmq0", *versionedResource.Name)
-		require.Equal(t, linkrp.RabbitMQMessageQueuesResourceType, *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		v := versionedResource.Properties
-		if *v.ResourceProvisioning == ResourceProvisioningManual {
-			require.Equal(t, "manual", string(*v.ResourceProvisioning))
-			require.Equal(t, "testQueue", *v.Queue)
-		} else {
-			require.Equal(t, "recipe", string(*v.ResourceProvisioning))
-			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "rabbitmqProvider", v.Status.OutputResources[0]["Provider"])
-		}
+			// Skip system data comparison
+			versionedResource.SystemData = nil
+
+			require.Equal(t, tc.expected, versionedResource)
+		})
 	}
 }
 
 func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
-	testsFile := "rabbitmqinvalid.json"
-	rawPayload := loadTestData(testsFile)
-	var testset []TestData
-	err := json.Unmarshal(rawPayload, &testset)
-	require.NoError(t, err)
-	for _, testData := range testset {
-		versionedResource := &RabbitMQMessageQueueResource{}
-		err := json.Unmarshal(testData.Payload, versionedResource)
-		require.NoError(t, err)
-		description := testData.Description
-		_, err = versionedResource.ConvertTo()
-		if description == "invalid_resource_provisioning" {
-			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
-			require.Equal(t, &expectedErr, err)
-		}
-		if description == "invalid_properties_for_manual_provisioning" {
-			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", ResourceProvisioningManual)}
-			require.Equal(t, &expectedErr, err)
-		}
+	testset := []struct {
+		payload string
+		errType error
+		message string
+	}{
+		{
+			"rabbitmq_invalid_properties_resource.json",
+			&v1.ErrClientRP{},
+			"code Bad Request: err queue is required when resourceProvisioning is manual",
+		},
+		{
+			"rabbitmq_invalid_resourceprovisioning_resource.json",
+			&v1.ErrModelConversion{},
+			"$.properties.resourceProvisioning must be one of [manual recipe].",
+		},
+	}
+
+	for _, test := range testset {
+		t.Run(test.payload, func(t *testing.T) {
+			rawPayload := loadTestData(test.payload)
+			versionedResource := &RabbitMQMessageQueueResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
+
+			dm, err := versionedResource.ConvertTo()
+			require.Error(t, err)
+			require.Nil(t, dm)
+			require.IsType(t, test.errType, err)
+			require.Equal(t, test.message, err.Error())
+		})
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -94,9 +95,11 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 		ProvisioningState:    fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(rabbitmq.Properties.Environment),
 		Application:          to.Ptr(rabbitmq.Properties.Application),
-		Recipe:               fromRecipeDataModel(rabbitmq.Properties.Recipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(rabbitmq.Properties.ResourceProvisioning),
 		Queue:                to.Ptr(rabbitmq.Properties.Queue),
+	}
+	if rabbitmq.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 	return nil
 }
