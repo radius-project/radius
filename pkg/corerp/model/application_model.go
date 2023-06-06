@@ -187,6 +187,12 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		// Any new SecretValueTransformer for a link should be added here to support connections from container.
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: resourcemodel.ProviderAzure,
+			},
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
