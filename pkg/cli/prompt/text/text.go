@@ -38,6 +38,9 @@ type TextModelOptions struct {
 
 	// Validate defines a validator for the user input.
 	Validate func(string) error
+
+	// EchoMode indicates the input behavior of the text input field (e.g. password).
+	EchoMode textinput.EchoMode
 }
 
 // Model is text model for bubble tea.
@@ -69,6 +72,7 @@ func NewTextModel(prompt string, options TextModelOptions) Model {
 	ti.Focus()
 	ti.Width = 40
 	ti.Placeholder = options.Placeholder
+	ti.EchoMode = options.EchoMode
 
 	return Model{
 		Style:     lipgloss.NewStyle(), // No border or padding by default
