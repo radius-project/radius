@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
@@ -187,12 +188,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		// Any new SecretValueTransformer for a link should be added here to support connections from container.
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: resourcemodel.ProviderAzure,
-			},
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
@@ -224,6 +219,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     azresources.DocumentDBDatabaseAccounts,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     azresources.DocumentDBDatabaseAccountsMongoDBDatabases + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 	}
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
