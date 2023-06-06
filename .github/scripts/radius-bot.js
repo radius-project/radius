@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Octokit } from "octokit";
+const { Octokit, App } = require("octokit");
 
 const octokit = new Octokit({ 
   auth: process.env.accessToken,

@@ -18,7 +18,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
       - name: Install Dependencies
-        run: npm install node-fetch
+        run: npm install octokit
       - name: Comment analyzer
         uses: actions/github-script@v4
         with:
