@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -51,7 +52,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 		return nil, err
 	}
 
-	secretAccessKey, err := r.Prompter.GetTextInput(enterAWSIAMSecretAccessKeyPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMSecretAccessKeyPlaceholder})
+	secretAccessKey, err := r.Prompter.GetTextInput(enterAWSIAMSecretAccessKeyPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMSecretAccessKeyPlaceholder, EchoMode: textinput.EchoPassword})
 	if errors.Is(err, &prompt.ErrExitConsole{}) {
 		return nil, &cli.FriendlyError{Message: err.Error()}
 	} else if err != nil {
