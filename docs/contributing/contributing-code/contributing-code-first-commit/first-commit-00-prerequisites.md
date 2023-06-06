@@ -1,5 +1,9 @@
 # Your first commit: Prerequisites
 
+<!--
+    Note: some of this content is synchronized with the prerequisites guide for simplicity. Keep these in sync!
+-->
+
 ## Operating system
 
 We support developing on macOS, Linux and Windows with [WSL](https://docs.microsoft.com/windows/wsl/install).

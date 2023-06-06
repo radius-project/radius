@@ -50,12 +50,18 @@ func NewDefaultClusterOptions() ClusterOptions {
 		chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
 	}
 
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
 	return ClusterOptions{
 		Contour: ContourOptions{
 			ChartVersion: ContourChartDefaultVersion,
 		},
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
+			ImageVersion: tag,
 		},
 	}
 }

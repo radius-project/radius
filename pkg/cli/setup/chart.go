@@ -32,7 +32,7 @@ type ChartArgs struct {
 	UcpTag       string
 
 	// PublicEndpointOverride is used to define the public endpoint of the Kubernetes cluster
-	// for display purposes. This is useful when the the actual public IP address of a cluster's ingress
+	// for display purposes. This is useful when the actual public IP address of a cluster's ingress
 	// is not a routable IP. This comes up all of the time for a local cluster.
 	PublicEndpointOverride string
 

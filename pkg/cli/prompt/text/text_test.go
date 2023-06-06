@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/stretchr/testify/require"
@@ -47,6 +48,26 @@ func Test_NewTextModel(t *testing.T) {
 
 	require.Equal(t, "test prompt", model.prompt)
 	require.Equal(t, options.Placeholder, model.textInput.Placeholder)
+	require.Equal(t, textinput.EchoNormal, model.textInput.EchoMode)
+	require.Nil(t, model.textInput.Validate) // See comments in NewTextModel.
+}
+
+func Test_NewTextModel_UpdateEchoMode(t *testing.T) {
+	options := TextModelOptions{
+		Default:     "test default",
+		Placeholder: "test placeholder",
+		Validate: func(input string) error {
+			return nil
+		},
+		EchoMode: textinput.EchoPassword,
+	}
+	model := NewTextModel("test prompt", options)
+	require.NotNil(t, model)
+	require.NotNil(t, model.textInput)
+
+	require.Equal(t, "test prompt", model.prompt)
+	require.Equal(t, options.Placeholder, model.textInput.Placeholder)
+	require.Equal(t, textinput.EchoPassword, model.textInput.EchoMode)
 	require.Nil(t, model.textInput.Validate) // See comments in NewTextModel.
 }
 
