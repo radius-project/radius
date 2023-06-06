@@ -132,6 +132,8 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 			require.True(t, found, fmt.Sprintf("application %s was not found", expectedResource.Name))
 		} else {
 			res, err := client.ShowResource(ctx, expectedResource.Type, expectedResource.Name)
+			t.Logf("Resource: " + *res.Name)
+			t.Logf("resource outputs: " + fmt.Sprintf("%v", res.Properties["status"]))
 			require.NoError(t, err)
 			require.NotNil(t, res, "resource %s with type %s does not exist", expectedResource.Name, expectedResource.Type)
 
@@ -152,6 +154,7 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 				for _, expectedOutputResource := range expectedResource.OutputResources {
 					found := false
 					for _, actualOutputResource := range outputResources {
+						t.Logf("Output resource from the map. Name: " + actualOutputResource.Name + " LocalID: " + actualOutputResource.LocalID + " Provider: " + actualOutputResource.Provider)
 						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
 							found = true
 							// if the test has the OutputResourceResponse.Name set then validate
