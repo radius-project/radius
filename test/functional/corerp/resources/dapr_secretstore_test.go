@@ -72,7 +72,7 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
