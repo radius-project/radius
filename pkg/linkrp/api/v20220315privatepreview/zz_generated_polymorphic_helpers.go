@@ -32,26 +32,6 @@ func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (
 	return b, json.Unmarshal(rawMsg, b)
 }
 
-func unmarshalDaprSecretStorePropertiesClassification(rawMsg json.RawMessage) (DaprSecretStorePropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b DaprSecretStorePropertiesClassification
-	switch m["mode"] {
-	case "recipe":
-		b = &RecipeDaprSecretStoreProperties{}
-	case "values":
-		b = &ValuesDaprSecretStoreProperties{}
-	default:
-		b = &DaprSecretStoreProperties{}
-	}
-	return b, json.Unmarshal(rawMsg, b)
-}
-
 func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (MongoDatabasePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

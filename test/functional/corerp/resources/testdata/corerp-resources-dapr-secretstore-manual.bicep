@@ -7,7 +7,7 @@ param environment string
 param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-secretstore-generic'
+  name: 'corerp-resources-dapr-secretstore-manual'
   location: location
   properties: {
     environment: environment
@@ -16,7 +16,6 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'gnrc-scs-ctnr'
-  location: location
   properties: {
     application: app.id
     connections: {
@@ -43,12 +42,12 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privatepreview' = {
-  name: 'gnrc-scs'
+  name: 'gnrc-scs-manual'
   location: location
   properties: {
     environment: environment
     application: app.id
-    mode: 'values'
+    resourceProvisioning: 'manual'
     type: 'secretstores.kubernetes'
     metadata: {
       vaultName: 'test'

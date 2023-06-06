@@ -43,6 +43,11 @@ var (
 	AsyncCreateOrUpdateDaprStateStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprStateStoreTimeout is the timeout for async delete dapr state store
 	AsyncDeleteDaprStateStoreTimeout = time.Duration(30) * time.Minute
+
+	// AsyncCreateOrUpdateDaprSecretStoreTimeout is the timeout for async create or update dapr secret store
+	AsyncCreateOrUpdateDaprSecretStoreTimeout = time.Duration(60) * time.Minute
+	// AsyncDeleteDaprSecretStoreTimeout is the timeout for async delete dapr secret store
+	AsyncDeleteDaprSecretStoreTimeout = time.Duration(30) * time.Minute
 )
 
 // Options is the options to configure LinkRP controller.
