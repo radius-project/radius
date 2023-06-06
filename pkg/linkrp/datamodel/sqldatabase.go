@@ -17,6 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -69,4 +71,14 @@ type SqlDatabaseProperties struct {
 	Server               string                      `json:"server,omitempty"`
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
+}
+
+func (sql *SqlDatabase) VerifyInputs() error {
+	properties := sql.Properties
+	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if properties.Database == "" || properties.Server == "" {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("database and server are required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }

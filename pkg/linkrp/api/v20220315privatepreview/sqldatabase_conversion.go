@@ -87,7 +87,6 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Location = to.Ptr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
 	dst.Properties = &SQLDatabaseProperties{
-		Recipe:               fromRecipeDataModel(sql.Properties.Recipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(sql.Properties.ResourceProvisioning),
 		Resources:            fromResourcesDataModel(sql.Properties.Resources),
 		Database:             to.Ptr(sql.Properties.Database),
@@ -98,6 +97,9 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(sql.Properties.Environment),
 		Application:       to.Ptr(sql.Properties.Application),
+	}
+	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
 	}
 	return nil
 }

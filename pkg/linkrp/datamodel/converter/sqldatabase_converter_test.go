@@ -36,7 +36,7 @@ func TestSqlDatabaseDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabaseconverterresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.SQLDatabaseResource{},
 			nil,
@@ -72,7 +72,7 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabaseconverterresource.json",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},

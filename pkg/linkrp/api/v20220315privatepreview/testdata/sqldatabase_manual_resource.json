@@ -2,6 +2,10 @@
     "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0",
     "name": "sql0",
     "type": "Applications.Link/sqlDatabases",
+    "location": "global",
+    "tags": {
+        "env": "dev"
+    },
     "properties": {
         "status": {
             "outputResources": [{
@@ -12,8 +16,8 @@
               }
             }]
         },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
         "resourceProvisioning":"manual",
         "resources": [
             {
