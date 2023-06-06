@@ -133,13 +133,3 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 	}
 	return nil
 }
-
-func (src *DaprSecretStoreResource) verifyManualInputs() error {
-	properties := src.Properties
-	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
-		if properties.Type == nil || properties.Version == nil || properties.Metadata == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("type, version and metadata are required when resourceProvisioning is %s", ResourceProvisioningManual)}
-		}
-	}
-	return nil
-}
