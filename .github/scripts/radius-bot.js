@@ -14,7 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import fetch from 'node-fetch';
+import { Octokit } from "octokit";
+
+const octokit = new Octokit({ 
+  auth: process.env.accessToken,
+});
 
 module.exports = async ({ github, context }) => {
     const accessToken = process.env.accessToken
@@ -115,23 +119,19 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
 }
 
 async function checkTeamMembership(org, teamSlug, username, accessToken) {
-    try {
-      const response = await fetch(`https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
+    const response = await octokit.request(`"GET https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.github.v3+json'
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/vnd.github.v3+json'
         }
-      });
-  
-      if (response.status === 200) {
+    });
+
+    if (response.status === 200) {
         const data = await response.json();
         return data.state === 'active';
-      } else if (response.status === 404) {
+    } else if (response.status === 404) {
         return false;
-      } else {
+    } else {
         throw new Error(`Error: ${response.statusText}`);
-      }
-    } catch (error) {
-      throw error;
     }
-  }
+}
