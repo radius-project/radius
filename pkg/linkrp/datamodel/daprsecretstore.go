@@ -17,8 +17,6 @@ limitations under the License.
 package datamodel
 
 import (
-	"fmt"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -66,20 +64,10 @@ type DaprSecretStoreProperties struct {
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
 
-// Recipe returns the recipe for the SqlDatabase
+// Recipe returns the recipe for the Dapr Secret Store
 func (daprSecretStore *DaprSecretStore) Recipe() *linkrp.LinkRecipe {
 	if daprSecretStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
 	}
 	return &daprSecretStore.Properties.Recipe
-}
-
-func (daprSecretStore *DaprSecretStore) VerifyInputs() error {
-	properties := daprSecretStore.Properties
-	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
-		if properties.Type == "" || properties.Version == "" || properties.Metadata == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("type, version and metadata are required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
-		}
-	}
-	return nil
 }

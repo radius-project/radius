@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprSecretStoreGeneric(t *testing.T) {
+func Test_DaprSecretStore_Manual_Generic(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-secretstore-manual.bicep"
 	name := "corerp-resources-dapr-secretstore-manual"
 	appNamespace := "default-corerp-resources-dapr-secretstore-manual"

@@ -37,7 +37,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 	}{
 		{
 			desc: "daprsecretstore manual resource",
-			file: "daprsecretstoreresource.json",
+			file: "daprsecretstore_manual_resource.json",
 			expected: &datamodel.DaprSecretStore{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -72,7 +72,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			desc: "daprsecretstore recipe resource",
-			file: "daprsecretstoreresource_recipe.json",
+			file: "daprsecretstore_recipe_resource.json",
 			expected: &datamodel.DaprSecretStore{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -135,7 +135,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 	}{
 		{
 			desc: "daprsecretstore manual resource data model",
-			file: "daprsecretstoreresourcedatamodel.json",
+			file: "daprsecretstore_manual_resourcedatamodel.json",
 			expected: &DaprSecretStoreResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &DaprSecretStoreProperties{
@@ -169,7 +169,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 		},
 		{
 			desc: "daprsecretstore recipe resource data model",
-			file: "daprsecretstoreresourcedatamodel_recipe.json",
+			file: "daprsecretstore_recipe_resourcedatamodel.json",
 			expected: &DaprSecretStoreResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &DaprSecretStoreProperties{
