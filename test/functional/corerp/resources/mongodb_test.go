@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -167,13 +166,11 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  rpv1.LocalIDAzureCosmosAccount,
-								Name:     "acnt-developer-" + rg,
+								LocalID:  "RecipeResource0",
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
-								Name:     "mdb-operator-" + rg,
+								LocalID:  "RecipeResource1",
 							},
 						},
 					},
@@ -232,13 +229,11 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  rpv1.LocalIDAzureCosmosAccount,
-								Name:     "account-" + rg,
+								LocalID:  "RecipeResource0",
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
-								LocalID:  rpv1.LocalIDAzureCosmosDBMongo,
-								Name:     "mdb-ctx-" + rg,
+								LocalID:  "RecipeResource1",
 							},
 						},
 					},
