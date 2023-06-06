@@ -74,17 +74,11 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
     const org = "project-radius"
     const teamSlug = "RadiusEng"
     console.log("@@@@ Checking team membership")
-    checkTeamMembership(org, teamSlug, username, accessToken)
-        .then(isMember => {
-            if (!isMember) {
-                console.log(`${username} is not a member of the ${teamSlug} team.`);
-                return
-            }
-        })
-        .catch(error => {
-            console.error(error)
-            return
-        });
+    const isMember = await checkTeamMembership(org, teamSlug, username, accessToken);
+    if (!isMember) {
+        console.log(`${username} is not a member of the ${teamSlug} team.`);
+        return
+    }
 
 
     // Get pull request
