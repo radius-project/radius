@@ -34,29 +34,31 @@ async function handleIssueCommentCreate({ github, context, accessToken }) {
     const payload = context.payload
     const issue = context.issue
     const isFromPulls = !!payload.issue.pull_request
-    const commentBody = payload.comment.body
+    // const commentBody = payload.comment.body
     const username = context.actor.toLowerCase()
 
-    if (!commentBody) {
-        console.log(
-            '[handleIssueCommentCreate] comment body not found, exiting.'
-        )
-        return
-    }
-    const commandParts = commentBody.split(/\s+/)
-    const command = commandParts.shift()
+    await cmdOkToTest(github, issue, isFromPulls, username, accessToken)
+
+    // if (!commentBody) {
+    //     console.log(
+    //         '[handleIssueCommentCreate] comment body not found, exiting.'
+    //     )
+    //     return
+    // }
+    // const commandParts = commentBody.split(/\s+/)
+    // const command = commandParts.shift()
 
 
-    switch (command) {
-        case '/ok-to-test':
-            await cmdOkToTest(github, issue, isFromPulls, username, accessToken)
-            break
-        default:
-            console.log(
-                `[handleIssueCommentCreate] command ${command} not found, exiting.`
-            )
-            break
-    }
+    // switch (command) {
+    //     case '/ok-to-test':
+    //         await cmdOkToTest(github, issue, isFromPulls, username, accessToken)
+    //         break
+    //     default:
+    //         console.log(
+    //             `[handleIssueCommentCreate] command ${command} not found, exiting.`
+    //         )
+    //         break
+    // }
 }
 
 /**
@@ -66,12 +68,12 @@ async function handleIssueCommentCreate({ github, context, accessToken }) {
  * @param {boolean} isFromPulls is the workflow triggered by a pull request?
  */
 async function cmdOkToTest(github, issue, isFromPulls, username, accessToken, octokit) {
-    if (!isFromPulls) {
-        console.log(
-            '[cmdOkToTest] only pull requests supported, skipping command execution.'
-        )
-        return
-    }
+    // if (!isFromPulls) {
+    //     console.log(
+    //         '[cmdOkToTest] only pull requests supported, skipping command execution.'
+    //     )
+    //     return
+    // }
 
     // Check if the user has permission to trigger e2e test with an issue comment
     const org = "project-radius"
