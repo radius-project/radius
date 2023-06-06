@@ -317,25 +317,15 @@
 * **Additional Properties Type**: string
 
 ## RabbitMQMessageQueueProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **queue**: string: The name of the queue
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeRabbitMQMessageQueueProperties
-#### Properties
-* **mode**: 'recipe' (Required): Discriminator property for RabbitMQMessageQueueProperties.
-* **queue**: string: The name of the queue
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-
-### ValuesRabbitMQMessageQueueProperties
-#### Properties
-* **mode**: 'values' (Required): Discriminator property for RabbitMQMessageQueueProperties.
-* **queue**: string (Required): The name of the queue
-
 
 ## RabbitMQSecrets
 ### Properties

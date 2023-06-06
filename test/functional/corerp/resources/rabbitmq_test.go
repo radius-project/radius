@@ -83,7 +83,7 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest"),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest", functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
