@@ -24,7 +24,7 @@ on:
       - v*
   pull_request:
     branches:
-      - main
+      # - main
       - features/*
       - release/*
 

@@ -19,7 +19,7 @@ name: Check code is up-to-date
 on:
   pull_request:
     branches:
-      - main
+      # - main
       - release/*
 
 concurrency:
