@@ -17,8 +17,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 'lts'
       - name: Install Dependencies
-        run: npm install @octokit/rest
+        run: npm install
       - name: Comment analyzer
         uses: actions/github-script@v4
         with:
