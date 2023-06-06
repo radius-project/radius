@@ -18,105 +18,244 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"daprsecretstoreresource.json", "daprsecretstoreresource_recipe.json"}
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		versionedResource := &DaprSecretStoreResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
-		require.NoError(t, err)
+	testCases := []struct {
+		desc     string
+		file     string
+		expected *datamodel.DaprSecretStore
+	}{
+		{
+			desc: "daprsecretstore manual resource",
+			file: "daprsecretstoreresource.json",
+			expected: &datamodel.DaprSecretStore{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/test-dss",
+						Name:     "test-dss",
+						Type:     linkrp.DaprSecretStoresResourceType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.DaprSecretStoreProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					Metadata: map[string]any{
+						"foo": "bar",
+					},
+					Type:    "secretstores.hashicorp.vault",
+					Version: "v1",
+				},
+			},
+		},
+		{
+			desc: "daprsecretstore recipe resource",
+			file: "daprsecretstoreresource_recipe.json",
+			expected: &datamodel.DaprSecretStore{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/test-dss",
+						Name:     "test-dss",
+						Type:     linkrp.DaprSecretStoresResourceType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.DaprSecretStoreProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					Recipe: linkrp.LinkRecipe{
+						Name: "daprSecretStore",
+						Parameters: map[string]any{
+							"foo": "bar",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// arrange
+			rawPayload := loadTestData(tc.file)
+			versionedResource := &DaprSecretStoreResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
 
-		// act
-		dm, err := versionedResource.ConvertTo()
+			// act
+			dm, err := versionedResource.ConvertTo()
 
-		// assert
-		require.NoError(t, err)
-		convertedResource := dm.(*datamodel.DaprSecretStore)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/daprSecretStore0", convertedResource.ID)
-		require.Equal(t, "daprSecretStore0", convertedResource.Name)
-		require.Equal(t, linkrp.DaprSecretStoresResourceType, convertedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		if convertedResource.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
-			require.Equal(t, "secretstores.hashicorp.vault", convertedResource.Properties.Type)
-			require.Equal(t, "v1", convertedResource.Properties.Version)
-			require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
-			require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		} else {
-			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-			require.Equal(t, "daprSecretStore", convertedResource.Properties.Recipe.Name)
-			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
-		}
+			// assert
+			require.NoError(t, err)
+			convertedResource := dm.(*datamodel.DaprSecretStore)
+
+			require.Equal(t, tc.expected, convertedResource)
+		})
 	}
 }
 
 func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"daprsecretstoreresourcedatamodel.json", "daprsecretstoreresourcedatamodel_recipe.json"}
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		resource := &datamodel.DaprSecretStore{}
-		err := json.Unmarshal(rawPayload, resource)
-		require.NoError(t, err)
+	testCases := []struct {
+		desc     string
+		file     string
+		expected *DaprSecretStoreResource
+	}{
+		{
+			desc: "daprsecretstore manual resource data model",
+			file: "daprsecretstoreresourcedatamodel.json",
+			expected: &DaprSecretStoreResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &DaprSecretStoreProperties{
+					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					Metadata: map[string]any{
+						"foo": "bar",
+					},
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					Type:                 to.Ptr("secretstores.hashicorp.vault"),
+					Version:              to.Ptr("v1"),
+					ComponentName:        to.Ptr(""),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "kubernetes",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/test-dss"),
+				Name: to.Ptr("test-dss"),
+				Type: to.Ptr(linkrp.DaprSecretStoresResourceType),
+			},
+		},
+		{
+			desc: "daprsecretstore recipe resource data model",
+			file: "daprsecretstoreresourcedatamodel_recipe.json",
+			expected: &DaprSecretStoreResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &DaprSecretStoreProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					Recipe: &Recipe{
+						Name: to.Ptr("daprSecretStore"),
+						Parameters: map[string]any{
+							"foo": "bar",
+						},
+					},
+					Type:              to.Ptr("secretstores.hashicorp.vault"),
+					Version:           to.Ptr("v1"),
+					Metadata:          map[string]any{"foo": "bar"},
+					ComponentName:     to.Ptr(""),
+					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "kubernetes",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/test-dss"),
+				Name: to.Ptr("test-dss"),
+				Type: to.Ptr(linkrp.DaprSecretStoresResourceType),
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload := loadTestData(tc.file)
+			resource := &datamodel.DaprSecretStore{}
+			err := json.Unmarshal(rawPayload, resource)
+			require.NoError(t, err)
 
-		// act
-		versionedResource := &DaprSecretStoreResource{}
-		err = versionedResource.ConvertFrom(resource)
+			versionedResource := &DaprSecretStoreResource{}
+			err = versionedResource.ConvertFrom(resource)
+			require.NoError(t, err)
 
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprSecretStores/daprSecretStore0", *versionedResource.ID)
-		require.Equal(t, "daprSecretStore0", *versionedResource.Name)
-		require.Equal(t, linkrp.DaprSecretStoresResourceType, *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		v := versionedResource.Properties
-		if *v.ResourceProvisioning == ResourceProvisioningManual {
-			require.Equal(t, "secretstores.hashicorp.vault", *v.Type)
-			require.Equal(t, "v1", *v.Version)
-			require.Equal(t, "bar", v.Metadata["foo"])
-		} else {
-			require.Equal(t, "daprSecretStore", *v.Recipe.Name)
-			require.Equal(t, "bar", v.Recipe.Parameters["foo"])
-			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "kubernetes", versionedResource.Properties.Status.OutputResources[0]["Provider"])
-		}
+			// Skip system data comparison
+			versionedResource.SystemData = nil
+
+			require.Equal(t, tc.expected, versionedResource)
+		})
 	}
 
 }
 
 func TestDaprSecretStore_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
-	testsFile := "daprsecretstoreinvalid.json"
-	rawPayload := loadTestData(testsFile)
-	var testset []TestData
-	err := json.Unmarshal(rawPayload, &testset)
-	require.NoError(t, err)
-	for _, testData := range testset {
-		versionedResource := &DaprSecretStoreResource{}
-		err := json.Unmarshal(testData.Payload, versionedResource)
-		require.NoError(t, err)
-		description := testData.Description
-		_, err = versionedResource.ConvertTo()
-		if description == "invalid_resource_provisioning" {
-			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
-			require.Equal(t, &expectedErr, err)
-		}
-		if description == "invalid_properties_for_manual_provisioning" {
-			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("type, version and metadata are required when resourceProvisioning is %s", ResourceProvisioningManual)}
-			require.Equal(t, &expectedErr, err)
-		}
+	testset := []struct {
+		payload string
+		errType error
+		message string
+	}{
+		{
+			"daprsecretstore_invalidvalues_resource.json",
+			&v1.ErrClientRP{},
+			"code BadRequest: err multiple errors were found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual",
+		},
+		{
+			"daprsecretstore_invalidrecipe_resource.json",
+			&v1.ErrClientRP{},
+			"code BadRequest: err multiple errors were found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)",
+		},
+	}
+	for _, test := range testset {
+		t.Run(test.payload, func(t *testing.T) {
+			rawPayload := loadTestData(test.payload)
+			versionedResource := &DaprSecretStoreResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
+
+			dm, err := versionedResource.ConvertTo()
+			require.Error(t, err)
+			require.Nil(t, dm)
+			require.IsType(t, test.errType, err)
+			require.Equal(t, test.message, err.Error())
+		})
 	}
 }
 

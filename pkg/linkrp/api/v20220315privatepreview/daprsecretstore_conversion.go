@@ -18,6 +18,8 @@ package v20220315privatepreview
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -49,25 +51,48 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 	}
-	v := src.Properties
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
-	var found bool
-	for _, k := range PossibleResourceProvisioningValues() {
-		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
-			found = true
-			break
+	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	msgs := []string{}
+	if converted.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if src.Properties.Recipe != nil && (!reflect.ValueOf(*src.Properties.Recipe).IsZero()) {
+			msgs = append(msgs, "recipe details cannot be specified when resourceProvisioning is set to manual")
 		}
+		if src.Properties.Metadata == nil || len(src.Properties.Metadata) == 0 {
+			msgs = append(msgs, "metadata must be specified when resourceProvisioning is set to manual")
+		}
+		if src.Properties.Type == nil || *src.Properties.Type == "" {
+			msgs = append(msgs, "type must be specified when resourceProvisioning is set to manual")
+		}
+		if src.Properties.Version == nil || *src.Properties.Version == "" {
+			msgs = append(msgs, "version must be specified when resourceProvisioning is set to manual")
+		}
+
+		converted.Properties.Metadata = src.Properties.Metadata
+		converted.Properties.Type = to.String(src.Properties.Type)
+		converted.Properties.Version = to.String(src.Properties.Version)
+	} else {
+		if src.Properties.Metadata != nil && (!reflect.ValueOf(src.Properties.Metadata).IsZero()) {
+			msgs = append(msgs, "metadata cannot be specified when resourceProvisioning is set to recipe (default)")
+		}
+		if src.Properties.Type != nil && (!reflect.ValueOf(*src.Properties.Type).IsZero()) {
+			msgs = append(msgs, "type cannot be specified when resourceProvisioning is set to recipe (default)")
+		}
+		if src.Properties.Version != nil && (!reflect.ValueOf(*src.Properties.Version).IsZero()) {
+			msgs = append(msgs, "version cannot be specified when resourceProvisioning is set to recipe (default)")
+		}
+
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
-	if !found {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
-	}
-	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
-	converted.Properties.Type = to.String(v.Type)
-	converted.Properties.Version = to.String(v.Version)
-	converted.Properties.Metadata = v.Metadata
-	err := converted.VerifyInputs()
-	if err != nil {
-		return nil, err
+	if len(msgs) == 1 {
+		return nil, &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: msgs[0],
+		}
+	} else if len(msgs) > 1 {
+		return nil, &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: fmt.Sprintf("multiple errors were found:\n\t%v", strings.Join(msgs, "\n\t")),
+		}
 	}
 
 	return converted, nil
@@ -87,7 +112,6 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 	dst.Location = to.Ptr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	dst.Properties = &DaprSecretStoreProperties{
-		Recipe:               fromRecipeDataModel(daprSecretStore.Properties.Recipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(daprSecretStore.Properties.ResourceProvisioning),
 		ProvisioningState:    fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(daprSecretStore.Properties.Environment),
@@ -99,6 +123,13 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 		},
+	}
+	if daprSecretStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		dst.Properties.Metadata = daprSecretStore.Properties.Metadata
+		dst.Properties.Type = to.Ptr(daprSecretStore.Properties.Type)
+		dst.Properties.Version = to.Ptr(daprSecretStore.Properties.Version)
+	} else {
+		dst.Properties.Recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 	}
 	return nil
 }
