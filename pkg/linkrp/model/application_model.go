@@ -93,6 +93,15 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 			},
 			ResourceHandler: handlers.NewAWSHandler(connection),
 		},
+
+		{
+			// Handles any Azure resource type
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AnyResourceType,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
