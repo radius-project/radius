@@ -73,7 +73,7 @@ func (m ApplicationModel) LookupOutputResourceModel(resourceType resourcemodel.R
 			}, nil
 		}
 
-		return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceType)
+		return nil, fmt.Errorf("output resource kind of '%s' is unsupported", resourceType)
 	}
 
 	return &resource, nil

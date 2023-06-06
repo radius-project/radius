@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
@@ -219,20 +218,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     azresources.DocumentDBDatabaseAccounts,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewARMHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     azresources.DocumentDBDatabaseAccountsMongoDBDatabases + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 	}
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
