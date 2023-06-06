@@ -14,19 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-const { Octokit, App } = require("octokit");
-
-const octokit = new Octokit({ 
-  auth: process.env.accessToken,
-});
-
 module.exports = async ({ github, context }) => {
+    const { Octokit } = require("@octokit/rest");
+
+    const octokit = new Octokit({ 
+    auth: process.env.accessToken,
+    });
     const accessToken = process.env.accessToken
     if (
         context.eventName == 'issue_comment' &&
         context.payload.action == 'created'
     ) {
-        await handleIssueCommentCreate({ github, context, accessToken })
+        await handleIssueCommentCreate({ github, context, accessToken, octokit })
     }
 }
 
@@ -66,7 +65,7 @@ async function handleIssueCommentCreate({ github, context, accessToken }) {
  * @param {*} issue GitHub issue object
  * @param {boolean} isFromPulls is the workflow triggered by a pull request?
  */
-async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
+async function cmdOkToTest(github, issue, isFromPulls, username, accessToken, octokit) {
     if (!isFromPulls) {
         console.log(
             '[cmdOkToTest] only pull requests supported, skipping command execution.'
@@ -78,7 +77,7 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
     const org = "project-radius"
     const teamSlug = "RadiusEng"
     console.log("@@@@ Checking team membership")
-    const isMember = await checkTeamMembership(org, teamSlug, username, accessToken);
+    const isMember = await checkTeamMembership(org, teamSlug, username, accessToken, octokit);
     if (!isMember) {
         console.log(`${username} is not a member of the ${teamSlug} team.`);
         return
@@ -118,7 +117,8 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken) {
     }
 }
 
-async function checkTeamMembership(org, teamSlug, username, accessToken) {
+async function checkTeamMembership(org, teamSlug, username, accessToken, octokit) {
+    console.log("Checking team membership")
     const response = await octokit.request(`"GET https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
         headers: {
             'Authorization': `Bearer ${accessToken}`,
