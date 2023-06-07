@@ -22,12 +22,13 @@ module.exports = async ({ github, context }) => {
     // auth: process.env.accessToken,
     // });
     const accessToken = process.env.accessToken
-    if (
-        context.eventName == 'issue_comment' &&
-        context.payload.action == 'created'
-    ) {
-        await handleIssueCommentCreate({ github, context, accessToken })
-    }
+    await handleIssueCommentCreate({ github, context, accessToken })
+    // if (
+    //     context.eventName == 'issue_comment' &&
+    //     context.payload.action == 'created'
+    // ) {
+    //     await handleIssueCommentCreate({ github, context, accessToken })
+    // }
 }
 
 // Handle issue comment create event.
@@ -80,7 +81,7 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken, oc
     const org = "project-radius"
     const teamSlug = "RadiusEng"
     console.log("@@@@ Checking team membership")
-    const isMember = await checkTeamMembership(org, teamSlug, username, accessToken, octokit);
+    const isMember = await checkTeamMembership(org, teamSlug, username, accessToken);
     if (!isMember) {
         console.log(`${username} is not a member of the ${teamSlug} team.`);
         return
