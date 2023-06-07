@@ -31,11 +31,13 @@ import (
 var _ ctrl.Controller = (*ListSecretsRabbitMQMessageQueue)(nil)
 
 // ListSecretsRabbitMQMessageQueue is the controller implementation to list secrets for the to access the connected rabbitMQ resource resource id passed in the request body.
+// (TODO: Remove this function once RabbitMQMessageQueue is removed from the API)
 type ListSecretsRabbitMQMessageQueue struct {
 	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
 }
 
 // NewListSecretsRabbitMQMessageQueue creates a new instance of ListSecretsRabbitMQMessageQueue.
+// (TODO: Remove this function once RabbitMQMessageQueue is removed)
 func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRabbitMQMessageQueue{
 		Operation: ctrl.NewOperation(opts,
@@ -47,6 +49,7 @@ func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, err
 }
 
 // Run returns secrets values for the specified RabbitMQMessageQueue resource
+// (TODO: Remove this function once RabbitMQMessageQueue is removed)
 func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -63,6 +66,7 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.Res
 	}
 
 	redisSecrets := datamodel.RabbitMQSecrets{}
+
 	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
 		redisSecrets.ConnectionString = connectionString.Value
 	}
