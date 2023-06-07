@@ -18,7 +18,7 @@ You can find our full **contributor documentation** including instructions at th
 
 ## Current status
 
-We welcome small pull request contributions from anyone (docs improments, bug fixes, minor features.) as long as they follow a few guidelines:
+We welcome small pull request contributions from anyone (docs improvements, bug fixes, minor features.) as long as they follow a few guidelines:
 
 - For very minor changes like correcting a typo feel free to send a pull request. Otherwise ... 
 - Please start by [choosing an existing issue](https://github.com/project-radius/radius/issues), or [opening an issue](https://github.com/project-radius/radius/issues/new/choose) to work on.
@@ -27,6 +27,5 @@ We welcome small pull request contributions from anyone (docs improments, bug fi
 
 ## Code of conduct
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+This project has adopted the [Contributor Covenant](http://contributor-covenant.org/).
+For more information see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
