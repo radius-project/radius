@@ -1,6 +1,6 @@
 ## Introduction
 
-The Radius helm chart deploys the Radius control plane system services on a Kubernetes cluster using Helm.
+The Radius helm chart deploys the Radius control plane system services on a Kubernetes cluster using Helm. For more information on installing Radius to Kubernetes refer to the [Radius docs](https://docs.radapp.dev/operations/platforms/kubernetes/kubernetes-install/#install-with-helm).
 
 ### Chart Details
 
@@ -10,34 +10,6 @@ This chart installs the Radius controller manager, which includes:
 - Corresponding controllers for the CRDs, which will act on resources being created, updated, or deleted in the cluster.
 - Validating Webhooks, which will validate the CRDs before going to the controller.
 
-### Prerequisities
+## Installation 
 
-- Kubernetes cluster with RBAC enabled
-- Helm 3
-
-### There are two ways to install 
-
-- Installing from source. In repo, this is done by invoking `make controller-deploy` or by directly installing the helm chart with `helm upgrade --wait --install --set container=<REGISTRY>/radius-controller --set tag=latest radius deploy/Chart -n radius-system`. `make controller-deploy` will also build and push the radius-controller, which is useful for inner loop development.
-- Invoking `rad install kubernetes --reinstall`, which will install the latest released helm chart into your kubernetes cluster.
-
-### Verify the installation
-
-Verify that the controller is running in the radius-system namespace:
-
-```
-kubectl get pods -n radius-system
-```
-
-### Uninstalling the Chart
-
-To uninstall the radius release:
-
-```
-rad uninstall kubernetes
-```
-
-OR
-
-```
-helm uninstall radius -n radius-system
-```
+Visit the [Radius docs](https://docs.radapp.dev/operations/platforms/kubernetes/kubernetes-install/#install-with-helm) to learn how to install and configure Radius on Kubernetes using the Radius Helm chart.
