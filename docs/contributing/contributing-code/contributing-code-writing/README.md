@@ -53,6 +53,10 @@ Right now we don't have automated enforcement of this rule, so expect it to come
 
 We run [golint-ci](https://github.com/golangci/golangci-lint) as part of the pull-request process for static analysis. We don't have many customizations and mostly rely on the defaults.
 
+### CodeQL security analysis
+
+We run [CodeQL](https://codeql.github.com/) as part of the pull-request process for security analysis. If the CodeQL analysis finds a security issue it will be reported as part of the PR checks. CodeQL is not currently required to pass for a PR to be merged, as it may be triggered by other alerts within the repo.
+
 ## Appendix: style guidance we don't follow
 
 We mostly ignore the Google style guide's [guidance for testing](https://google.github.io/styleguide/go/decisions#assertion-libraries). In particular, we really like [assertion libraries](https://github.com/stretchr/testify) and use them in our tests.

@@ -56,6 +56,10 @@ Ideally everything works the first time, but you may not be so lucky! Our automa
 
 If you get stuck with a failure you can't understand, feel free to ask the maintainers for help.
 
+### CodeQL security analysis
+
+We run [CodeQL](https://codeql.github.com/) as part of the pull-request process for security analysis. If the CodeQL analysis finds a security issue it will be reported as part of the PR checks. CodeQL is not currently required to pass for a PR to be merged, as it may be triggered by other alerts within the repo.
+
 ## Copilot Summary
 
 Our pull-request template includes a summary from Github Copilot. This will generate a description of your changes as well as links to the most relevant files. 
