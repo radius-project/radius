@@ -36,7 +36,7 @@ func TestDaprSecretStoreDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprsecretstoreresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/daprsecretstore_manual_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprSecretStoreResource{},
 			nil,
@@ -72,7 +72,7 @@ func TestDaprSecretStoreDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprsecretstoreresource.json",
+			"../../api/v20220315privatepreview/testdata/daprsecretstore_manual_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},

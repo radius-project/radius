@@ -39,10 +39,20 @@ var (
 	// AsyncDeleteRedisCacheTimeout is the timeout for async delete redis cache
 	AsyncDeleteRedisCacheTimeout = time.Duration(30) * time.Minute
 
+	// AsyncCreateOrUpdateRabbitMQTimeout is the timeout for async create or update rabbitMQ
+	AsyncCreateOrUpdateRabbitMQTimeout = time.Duration(60) * time.Minute
+	// AsyncDeleteRabbitMQTimeout is the timeout for async delete rabbitMQ
+	AsyncDeleteRabbitMQTimeout = time.Duration(30) * time.Minute
+
 	// AsyncCreateOrUpdateDaprStateStoreTimeout is the timeout for async create or update dapr state store
 	AsyncCreateOrUpdateDaprStateStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprStateStoreTimeout is the timeout for async delete dapr state store
 	AsyncDeleteDaprStateStoreTimeout = time.Duration(30) * time.Minute
+
+	// AsyncCreateOrUpdateDaprSecretStoreTimeout is the timeout for async create or update dapr secret store
+	AsyncCreateOrUpdateDaprSecretStoreTimeout = time.Duration(60) * time.Minute
+	// AsyncDeleteDaprSecretStoreTimeout is the timeout for async delete dapr secret store
+	AsyncDeleteDaprSecretStoreTimeout = time.Duration(30) * time.Minute
 )
 
 // Options is the options to configure LinkRP controller.

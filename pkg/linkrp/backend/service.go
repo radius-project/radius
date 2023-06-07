@@ -31,7 +31,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/linkrp/processors/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprstatestores"
+	"github.com/project-radius/radius/pkg/linkrp/processors/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/processors/sqldatabases"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -114,10 +116,17 @@ func (s *Service) Run(ctx context.Context) error {
 			processor := &sqldatabases.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.SqlDatabase, datamodel.SqlDatabase](processor, engine, client, configLoader, options)
 		}},
-		{linkrp.DaprStateStoresResourceType, backend_ctrl.NewLegacyCreateOrUpdateResource},
+		{linkrp.RabbitMQMessageQueuesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &rabbitmqmessagequeues.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue](processor, engine, client, configLoader, options)
+		}},
 		{linkrp.DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &daprstatestores.Processor{Client: runtimeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &daprsecretstores.Processor{Client: runtimeClient}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](processor, engine, client, configLoader, options)
 		}},
 	}
 
