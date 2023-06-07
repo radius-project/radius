@@ -2356,33 +2356,6 @@
       ],
       "x-ms-discriminator-value": "recipe"
     },
-    "RecipeSqlDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
-        },
-        "database": {
-          "type": "string",
-          "description": "The name of the Sql database."
-        },
-        "server": {
-          "type": "string",
-          "description": "The fully qualified domain name of the Sql database."
-        }
-      },
-      "description": "SqlDatabase Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/SqlDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
     "RedisCacheListSecretsResult": {
       "type": "object",
       "properties": {
@@ -2593,33 +2566,6 @@
         "id"
       ]
     },
-    "ResourceSqlDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "resource": {
-          "type": "string",
-          "description": "Fully qualified resource ID of a supported resource with Sql API to use for this link"
-        },
-        "database": {
-          "type": "string",
-          "description": "The name of the Sql database."
-        },
-        "server": {
-          "type": "string",
-          "description": "The fully qualified domain name of the Sql database."
-        }
-      },
-      "description": "SqlDatabase Properties for Mode Resource",
-      "required": [
-        "resource"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/SqlDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "resource"
-    },
     "ResourceStatus": {
       "type": "object",
       "properties": {
@@ -2638,21 +2584,37 @@
     "SqlDatabaseProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for SqlDatabaseProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the Sql database link at the time the operation was called",
           "readOnly": true
+        },
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          },
+          "x-cadl-name": "ResourceReference[]",
+          "description": "List of the resource IDs that support the SqlDatabase resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
       "description": "SqlDatabase properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -2757,30 +2719,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesSqlDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "database": {
-          "type": "string",
-          "description": "The name of the Sql database."
-        },
-        "server": {
-          "type": "string",
-          "description": "The fully qualified domain name of the Sql database."
-        }
-      },
-      "description": "SqlDatabase Properties for Mode Values",
-      "required": [
-        "database",
-        "server"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/SqlDatabaseProperties"
         }
       ],
       "x-ms-discriminator-value": "values"

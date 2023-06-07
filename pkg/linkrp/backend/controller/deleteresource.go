@@ -87,6 +87,8 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 		return &datamodel.MongoDatabase{}, nil
 	case strings.ToLower(linkrp.RedisCachesResourceType):
 		return &datamodel.RedisCache{}, nil
+	case strings.ToLower(linkrp.SqlDatabasesResourceType):
+		return &datamodel.SqlDatabase{}, nil
 	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		return &datamodel.DaprStateStore{}, nil
 	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):

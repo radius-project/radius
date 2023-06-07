@@ -2,6 +2,7 @@
     "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/sqlDatabases/sql0",
     "name": "sql0",
     "type": "Applications.Link/sqlDatabases",
+    "location": "global",
     "systemData": {
         "createdBy": "fakeid@live.com",
         "createdByType": "User",
@@ -23,11 +24,16 @@
               }
             }]
         },
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+        "recipe": {
+            "name": "sql-test",
+            "parameters":{
+                "foo":"bar"
+            }
+        },
         "database": "testDatabase",
         "server": "testAccount1.sql.cosmos.azure.com",
-        "mode": "resource"
+        "resourceProvisioning":"recipe"
     }
 }

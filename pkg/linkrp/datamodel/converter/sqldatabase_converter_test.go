@@ -36,7 +36,7 @@ func TestSqlDatabaseDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabaseresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.SQLDatabaseResource{},
 			nil,
@@ -72,14 +72,14 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabaseresource.json",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
 			"../../api/v20220315privatepreview/testdata/sqldatabaseresource-invalid.json",
 			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field SqlDatabaseProperties.properties.resource of type string"),
+			errors.New("json: cannot unmarshal number into Go struct field SqlDatabaseProperties.properties.database of type string"),
 		},
 		{
 			"",
