@@ -29,8 +29,8 @@
         "host": "testAccount1.mongo.cosmos.azure.com",
         "port": 10255,
         "database": "test-database",
+        "username": "testUser",
         "secrets": {
-          "username": "testUser",
           "password": "testPassword",
           "connectionString": "test-connection-string"
         }

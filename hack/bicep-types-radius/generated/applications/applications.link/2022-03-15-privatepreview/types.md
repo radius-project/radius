@@ -253,12 +253,12 @@
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the MongoDB resource
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **username**: string: Username to use when connecting to the target Mongo database
 
 ## MongoDatabaseSecrets
 ### Properties
 * **connectionString**: string: Connection string used to connect to the target Mongo database
 * **password**: string: Password to use when connecting to the target Mongo database
-* **username**: string: Username to use when connecting to the target Mongo database
 
 ## TrackedResourceTags
 ### Properties
@@ -330,7 +330,6 @@
 ### Properties
 * **connectionString**: string (ReadOnly): Connection string used to connect to the target Mongo database
 * **password**: string (ReadOnly): Password to use when connecting to the target Mongo database
-* **username**: string (ReadOnly): Username to use when connecting to the target Mongo database
 
 ## RabbitMQListSecretsResult
 ### Properties

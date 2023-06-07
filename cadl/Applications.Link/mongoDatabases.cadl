@@ -59,9 +59,6 @@ model MongoDatabaseListSecretsResult is MongoDatabaseSecrets;
 
 @doc("The secret values for the given MongoDatabase resource")
 model MongoDatabaseSecrets {
-  @doc("Username to use when connecting to the target Mongo database")
-  username?: string;
-
   @doc("Password to use when connecting to the target Mongo database")
   password?: string;
 
@@ -96,6 +93,9 @@ model MongoDatabaseProperties extends BasicResourceProperties{
 
   @doc("Specifies how the underlying service/resource is provisioned and managed.")
   resourceProvisioning?: ResourceProvisioning;
+
+  @doc("Username to use when connecting to the target Mongo database")
+  username?: string;
 }
 
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"

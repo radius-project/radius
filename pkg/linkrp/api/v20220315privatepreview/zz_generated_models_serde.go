@@ -1012,7 +1012,6 @@ func (m MongoDatabaseListSecretsResult) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "connectionString", m.ConnectionString)
 	populate(objectMap, "password", m.Password)
-	populate(objectMap, "username", m.Username)
 	return json.Marshal(objectMap)
 }
 
@@ -1030,9 +1029,6 @@ func (m *MongoDatabaseListSecretsResult) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "password":
 				err = unpopulate(val, "Password", &m.Password)
-				delete(rawMsg, key)
-		case "username":
-				err = unpopulate(val, "Username", &m.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1056,6 +1052,7 @@ func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "resources", m.Resources)
 	populate(objectMap, "secrets", m.Secrets)
 	populate(objectMap, "status", m.Status)
+	populate(objectMap, "username", m.Username)
 	return json.Marshal(objectMap)
 }
 
@@ -1100,6 +1097,9 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &m.Status)
+				delete(rawMsg, key)
+		case "username":
+				err = unpopulate(val, "Username", &m.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1196,7 +1196,6 @@ func (m MongoDatabaseSecrets) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "connectionString", m.ConnectionString)
 	populate(objectMap, "password", m.Password)
-	populate(objectMap, "username", m.Username)
 	return json.Marshal(objectMap)
 }
 
@@ -1214,9 +1213,6 @@ func (m *MongoDatabaseSecrets) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "password":
 				err = unpopulate(val, "Password", &m.Password)
-				delete(rawMsg, key)
-		case "username":
-				err = unpopulate(val, "Username", &m.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {

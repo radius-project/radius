@@ -2069,10 +2069,6 @@
     "MongoDatabaseListSecretsResult": {
       "type": "object",
       "properties": {
-        "username": {
-          "type": "string",
-          "description": "Username to use when connecting to the target Mongo database"
-        },
         "password": {
           "type": "string",
           "description": "Password to use when connecting to the target Mongo database"
@@ -2125,6 +2121,10 @@
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Mongo database"
         }
       },
       "description": "MongoDatabase link properties",
@@ -2180,10 +2180,6 @@
     "MongoDatabaseSecrets": {
       "type": "object",
       "properties": {
-        "username": {
-          "type": "string",
-          "description": "Username to use when connecting to the target Mongo database"
-        },
         "password": {
           "type": "string",
           "description": "Password to use when connecting to the target Mongo database"

@@ -159,8 +159,8 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					Host:                 "testAccount.mongo.cosmos.azure.com",
 					Port:                 10255,
 					Database:             "test-database",
+					Username:             "testUser",
 					Secrets: datamodel.MongoDatabaseSecrets{
-						Username:         "testUser",
 						Password:         "testPassword",
 						ConnectionString: "test-connection-string",
 					},
@@ -202,7 +202,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 		{
 			payload: "mongodatabaseresource-missinginputs.json",
 			errType: &v1.ErrClientRP{},
-			message: "code Bad Request: err host, port, and database are required when resourceProvisioning is manual",
+			message: "code Bad Request: err host is required when resourceProvisioning is manual",
 		},
 	}
 	for _, test := range testset {
@@ -241,6 +241,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 					Database:             to.Ptr("test-database"),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Username:             to.Ptr("testUser"),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
 							{
@@ -274,6 +275,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					Resources:            []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db")}},
+					Username:             to.Ptr(""),
 					Status: &ResourceStatus{
 						OutputResources: nil,
 					},
@@ -301,6 +303,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 					Database:             to.Ptr(""),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr("cosmosdb"), Parameters: map[string]interface{}{"foo": "bar"}},
+					Username:             to.Ptr(""),
 					Status: &ResourceStatus{
 						OutputResources: nil,
 					},
@@ -364,7 +367,6 @@ func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	require.NoError(t, err)
 	converted := dm.(*datamodel.MongoDatabaseSecrets)
 	require.Equal(t, "test-connection-string", converted.ConnectionString)
-	require.Equal(t, "testUser", converted.Username)
 	require.Equal(t, "testPassword", converted.Password)
 }
 
@@ -383,7 +385,6 @@ func TestMongoDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "test-connection-string", secrets.ConnectionString)
-	require.Equal(t, "testUser", secrets.Username)
 	require.Equal(t, "testPassword", secrets.Password)
 }
 

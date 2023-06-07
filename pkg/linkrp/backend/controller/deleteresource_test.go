@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -44,7 +43,7 @@ var outputResource = rpv1.OutputResource{
 
 func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *model.ApplicationModel, *ctrl.Request) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
@@ -58,27 +57,9 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
 
-		model := model.NewModel(
-			model.RecipeModel{},
-			[]model.RadiusResourceModel{},
-			[]model.OutputResourceModel{
-				{
-					// Handles all AWS types
-					ResourceType: resourcemodel.ResourceType{
-						Type:     "",
-						Provider: "",
-					},
-				},
-			},
-			map[string]bool{
-				resourcemodel.ProviderKubernetes: true,
-				resourcemodel.ProviderAzure:      true,
-				resourcemodel.ProviderAWS:        true,
-			})
-
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, msc, client, &model, req
+		}, msc, client, req
 	}
 
 	t.Parallel()
@@ -97,7 +78,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range deleteCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, client, model, req := setupTest(t)
+			teardownTest, msc, client, req := setupTest(t)
 			defer teardownTest(t)
 
 			status := rpv1.ResourceStatus{
@@ -148,7 +129,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 				StorageClient: msc,
 			}
 
-			ctrl, err := NewDeleteResource(opts, client, *model)
+			ctrl, err := NewDeleteResource(opts, client)
 			require.NoError(t, err)
 
 			_, err = ctrl.Run(context.Background(), req)
@@ -164,29 +145,11 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.T) {
 
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *model.ApplicationModel, *ctrl.Request) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
 		client := processors.NewMockResourceClient(mctrl)
-
-		model := model.NewModel(
-			model.RecipeModel{},
-			[]model.RadiusResourceModel{},
-			[]model.OutputResourceModel{
-				{
-					// Handles all AWS types
-					ResourceType: resourcemodel.ResourceType{
-						Type:     "",
-						Provider: "",
-					},
-				},
-			},
-			map[string]bool{
-				resourcemodel.ProviderKubernetes: true,
-				resourcemodel.ProviderAzure:      true,
-				resourcemodel.ProviderAWS:        true,
-			})
 
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
@@ -198,13 +161,13 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, msc, client, &model, req
+		}, msc, client, req
 	}
 
 	t.Parallel()
 
 	t.Run("deleting-invalid-resource", func(t *testing.T) {
-		teardownTest, msc, client, model, req := setupTest(t)
+		teardownTest, msc, client, req := setupTest(t)
 		defer teardownTest(t)
 
 		msc.EXPECT().
@@ -215,7 +178,7 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 			StorageClient: msc,
 		}
 
-		ctrl, err := NewDeleteResource(opts, client, *model)
+		ctrl, err := NewDeleteResource(opts, client)
 		require.NoError(t, err)
 
 		_, err = ctrl.Run(context.Background(), req)

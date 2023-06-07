@@ -58,10 +58,10 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.Properties.Host = to.String(v.Host)
 	converted.Properties.Port = to.Int32(v.Port)
 	converted.Properties.Database = to.String(v.Database)
+	converted.Properties.Username = to.String(v.Username)
 	if v.Secrets != nil {
 		converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
 			ConnectionString: to.String(v.Secrets.ConnectionString),
-			Username:         to.String(v.Secrets.Username),
 			Password:         to.String(v.Secrets.Password),
 		}
 	}
@@ -100,6 +100,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Application:          to.Ptr(mongo.Properties.Application),
 		Recipe:               fromRecipeDataModel(mongo.Properties.Recipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(mongo.Properties.ResourceProvisioning),
+		Username:             to.Ptr(mongo.Properties.Username),
 	}
 
 	return nil
@@ -113,7 +114,6 @@ func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	dst.ConnectionString = to.Ptr(mongoSecrets.ConnectionString)
-	dst.Username = to.Ptr(mongoSecrets.Username)
 	dst.Password = to.Ptr(mongoSecrets.Password)
 
 	return nil
@@ -123,7 +123,6 @@ func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 func (src *MongoDatabaseSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabaseSecrets{
 		ConnectionString: to.String(src.ConnectionString),
-		Username:         to.String(src.Username),
 		Password:         to.String(src.Password),
 	}
 	return converted, nil

@@ -40,11 +40,11 @@ output result object = {
   values: {
     host: 'account-${rg}.mongo.cosmos.azure.com'
     port: 10255
-    database: '${context.resource.name}-${rg}'
+    database: account::dbinner.name
+    username: account.name
   }
   secrets: {
     connectionString: account.listConnectionStrings().connectionStrings[0].connectionString
-    username: account.name
     password: account.listKeys().primaryMasterKey
   }
 }

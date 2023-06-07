@@ -551,9 +551,6 @@ type MongoDatabaseListSecretsResult struct {
 
 	// Password to use when connecting to the target Mongo database
 	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabaseProperties - MongoDatabase link properties
@@ -581,6 +578,9 @@ type MongoDatabaseProperties struct {
 
 	// Secret values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
 
 	// READ-ONLY; Database name of the target Mongo database
 	Database *string `json:"database,omitempty" azure:"ro"`
@@ -632,9 +632,6 @@ type MongoDatabaseSecrets struct {
 
 	// Password to use when connecting to the target Mongo database
 	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete method.

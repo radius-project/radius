@@ -37,7 +37,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDataba
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddRequiredStringField(renderers.DatabaseNameValue, &resource.Properties.Database)
-	validator.AddOptionalSecretField(renderers.UsernameStringValue, &resource.Properties.Secrets.Username)
+	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
 	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
 		return p.computeConnectionString(resource), nil
@@ -54,8 +54,8 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDataba
 func (p *Processor) computeConnectionString(resource *datamodel.MongoDatabase) string {
 	connectionString := "mongodb://"
 
-	if resource.Properties.Secrets.Username != "" {
-		connectionString += resource.Properties.Secrets.Username + ":"
+	if resource.Properties.Username != "" {
+		connectionString += resource.Properties.Username + ":"
 	}
 	if resource.Properties.Secrets.Password != "" {
 		connectionString += resource.Properties.Secrets.Password + "@"

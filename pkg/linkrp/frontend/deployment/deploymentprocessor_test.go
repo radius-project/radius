@@ -98,7 +98,6 @@ func buildInputResourceMongo(resourceProvisioning string) (testResource datamode
 		}
 	}
 	testResource.Properties.Secrets = datamodel.MongoDatabaseSecrets{
-		Username:         "testUser",
 		Password:         "testPassword",
 		ConnectionString: cosmosConnectionString,
 	}

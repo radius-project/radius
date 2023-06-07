@@ -25,7 +25,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -38,13 +37,12 @@ var _ ctrl.Controller = (*DeleteResource)(nil)
 // DeleteResource is the async operation controller to delete Applications.Link resource.
 type DeleteResource struct {
 	ctrl.BaseController
-	client       processors.ResourceClient
-	linkAppModel model.ApplicationModel
+	client processors.ResourceClient
 }
 
 // NewDeleteResource creates the DeleteResource controller instance.
-func NewDeleteResource(opts ctrl.Options, client processors.ResourceClient, linkAppModel model.ApplicationModel) (ctrl.Controller, error) {
-	return &DeleteResource{ctrl.NewBaseAsyncController(opts), client, linkAppModel}, nil
+func NewDeleteResource(opts ctrl.Options, client processors.ResourceClient) (ctrl.Controller, error) {
+	return &DeleteResource{ctrl.NewBaseAsyncController(opts), client}, nil
 }
 
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
@@ -120,16 +118,10 @@ func (d *DeleteResource) deleteResources(ctx context.Context, id string, outputR
 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
 		outputResource := orderedOutputResources[i]
 		id := outputResource.Identity.GetID()
-		dependencies, err := outputResource.GetDependencies()
 		if err != nil {
 			return err
 		}
 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		_, err = d.linkAppModel.LookupOutputResourceModel(outputResource.ResourceType)
-		if err != nil {
-			return err
-		}
-		fmt.Sprint(dependencies)
 		err = d.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
 		if err != nil {
 			return err

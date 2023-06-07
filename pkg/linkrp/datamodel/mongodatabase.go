@@ -53,11 +53,12 @@ type MongoDatabaseProperties struct {
 	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	// Username of the Mongo database
+	Username string `json:"username"`
 }
 
 // Secrets values consisting of secrets provided for the resource
 type MongoDatabaseSecrets struct {
-	Username         string `json:"username"`
 	Password         string `json:"password"`
 	ConnectionString string `json:"connectionString"`
 }
@@ -69,8 +70,14 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 // VerifyInputs checks that the inputs for manual resource provisioning are all provided
 func (mongodb *MongoDatabase) VerifyInputs() error {
 	if mongodb.Properties.ResourceProvisioning != "" && mongodb.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
-		if mongodb.Properties.Host == "" || mongodb.Properties.Port == 0 || mongodb.Properties.Database == "" {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host, port, and database are required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		if mongodb.Properties.Host == "" {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+		if mongodb.Properties.Port == 0 {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("port is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+		if mongodb.Properties.Database == "" {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("database is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
 		}
 	}
 	return nil

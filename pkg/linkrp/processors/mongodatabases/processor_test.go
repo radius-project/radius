@@ -52,9 +52,9 @@ func Test_Process(t *testing.T) {
 					"host":     host,
 					"port":     port,
 					"database": database,
+					"username": username,
 				},
 				Secrets: map[string]any{
-					"username": username,
 					"password": password,
 				},
 			},
@@ -66,7 +66,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, host, resource.Properties.Host)
 		require.Equal(t, int32(port), resource.Properties.Port)
 		require.Equal(t, database, resource.Properties.Database)
-		require.Equal(t, username, resource.Properties.Secrets.Username)
+		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
 
@@ -74,6 +74,7 @@ func Test_Process(t *testing.T) {
 			"host":     host,
 			"port":     int32(port),
 			"database": database,
+			"username": username,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"connectionString": {
@@ -81,9 +82,6 @@ func Test_Process(t *testing.T) {
 			},
 			"password": {
 				Value: password,
-			},
-			"username": {
-				Value: username,
 			},
 		}
 
@@ -95,15 +93,15 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
 	})
 
-	t.Run("success - values", func(t *testing.T) {
+	t.Run("success - manual", func(t *testing.T) {
 		resource := &datamodel.MongoDatabase{
 			Properties: datamodel.MongoDatabaseProperties{
 				Resources: []*linkrp.ResourceReference{{ID: azureMongoResourceID1}},
 				Host:      host,
 				Port:      port,
 				Database:  database,
+				Username:  username,
 				Secrets: datamodel.MongoDatabaseSecrets{
-					Username:         username,
 					Password:         password,
 					ConnectionString: connectionString,
 				},
@@ -115,7 +113,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, host, resource.Properties.Host)
 		require.Equal(t, int32(port), resource.Properties.Port)
 		require.Equal(t, database, resource.Properties.Database)
-		require.Equal(t, username, resource.Properties.Secrets.Username)
+		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
 
@@ -123,6 +121,7 @@ func Test_Process(t *testing.T) {
 			"host":     host,
 			"port":     int32(port),
 			"database": database,
+			"username": username,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"password": {
@@ -130,9 +129,6 @@ func Test_Process(t *testing.T) {
 			},
 			"connectionString": {
 				Value: connectionString,
-			},
-			"username": {
-				Value: username,
 			},
 		}
 
@@ -155,8 +151,8 @@ func Test_Process(t *testing.T) {
 				Host:      host,
 				Port:      port,
 				Database:  database,
+				Username:  username,
 				Secrets: datamodel.MongoDatabaseSecrets{
-					Username:         username,
 					Password:         password,
 					ConnectionString: connectionString,
 				},
@@ -172,9 +168,9 @@ func Test_Process(t *testing.T) {
 					"host":     "asdf",
 					"port":     3333,
 					"database": "asdf",
+					"username": username,
 				},
 				Secrets: map[string]any{
-					"username":         "asdf",
 					"password":         "asdf",
 					"connectionString": "asdf",
 				},
@@ -187,7 +183,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, host, resource.Properties.Host)
 		require.Equal(t, int32(port), resource.Properties.Port)
 		require.Equal(t, database, resource.Properties.Database)
-		require.Equal(t, username, resource.Properties.Secrets.Username)
+		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
 
@@ -195,6 +191,7 @@ func Test_Process(t *testing.T) {
 			"host":     host,
 			"port":     int32(port),
 			"database": database,
+			"username": username,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"password": {
@@ -202,9 +199,6 @@ func Test_Process(t *testing.T) {
 			},
 			"connectionString": {
 				Value: connectionString,
-			},
-			"username": {
-				Value: username,
 			},
 		}
 

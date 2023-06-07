@@ -28,7 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
-	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprsecretstores"
@@ -137,11 +136,6 @@ func (s *Service) Run(ctx context.Context) error {
 		}},
 	}
 
-	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient, s.Options.UCPConnection)
-	if err != nil {
-		return fmt.Errorf("failed to initialize application model: %w", err)
-	}
-
 	opts := ctrl.Options{
 		DataProvider: s.StorageProvider,
 		KubeClient:   s.KubeClient,
@@ -150,7 +144,7 @@ func (s *Service) Run(ctx context.Context) error {
 	for _, rt := range resourceTypes {
 		// Register controllers
 		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, func(options ctrl.Options) (ctrl.Controller, error) {
-			return backend_ctrl.NewDeleteResource(options, client, linkAppModel)
+			return backend_ctrl.NewDeleteResource(options, client)
 		}, opts)
 		if err != nil {
 			return err

@@ -41,8 +41,10 @@ output result object = {
     host: '${documentdbName}.mongo.cosmos.azure.com'
     port: 10255
     database: mongodbName
+    username: account.name
   }
   secrets: {
     connectionString: account.listConnectionStrings().connectionStrings[0].connectionString
+    password: account.listKeys().primaryMasterKey
   }
 }

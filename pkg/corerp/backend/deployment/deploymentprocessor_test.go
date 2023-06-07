@@ -211,10 +211,6 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 		LocalID:       rpv1.LocalIDAzureCosmosAccount,
 		Action:        "listConnectionStrings",
 		ValueSelector: "/connectionStrings/0/connectionString",
-		Transformer: resourcemodel.ResourceType{
-			Provider: resourcemodel.ProviderAzure,
-			Type:     resourcekinds.AzureCosmosDBMongo,
-		},
 	}
 
 	computedValues := map[string]any{
@@ -1082,19 +1078,19 @@ func Test_getResourceDataByID(t *testing.T) {
 	})
 }
 
-// func Test_fetchSecrets(t *testing.T) {
-// 	ctx := createContext(t)
+func Test_fetchSecrets(t *testing.T) {
+	ctx := createContext(t)
 
-// 	mocks := setup(t)
-// 	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
 
-// 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
-// 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
-// 		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
-// 		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
-// 		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
-// 		require.NoError(t, err)
-// 		require.Equal(t, 1, len(secretValues))
-// 		require.Equal(t, secret, secretValues[linkrp_renderers.ConnectionStringValue])
-// 	})
-// }
+	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
+		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
+		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
+		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(secretValues))
+		require.Equal(t, secret, secretValues[linkrp_renderers.ConnectionStringValue])
+	})
+}
