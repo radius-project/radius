@@ -161,7 +161,7 @@ func Test_Run(t *testing.T) {
 	
 			promptMock := prompt.NewMockInterface(ctrl)
 			promptMock.EXPECT().
-				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container")).
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container", "containers")).
 				Return(prompt.ConfirmYes, nil).
 				Times(1)
 	
@@ -208,7 +208,7 @@ func Test_Run(t *testing.T) {
 	
 			promptMock := prompt.NewMockInterface(ctrl)
 			promptMock.EXPECT().
-				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container")).
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container", "containers")).
 				Return(prompt.ConfirmNo, nil).
 				Times(1)
 	
