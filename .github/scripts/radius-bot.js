@@ -15,17 +15,18 @@ limitations under the License.
 */
 
 module.exports = async ({ github, context }) => {
-    const { Octokit } = require("@octokit/rest");
+    console.log("@@@@")
+    // const { Octokit } = require("@octokit/rest");
 
-    const octokit = new Octokit({ 
-    auth: process.env.accessToken,
-    });
+    // const octokit = new Octokit({ 
+    // auth: process.env.accessToken,
+    // });
     const accessToken = process.env.accessToken
     if (
         context.eventName == 'issue_comment' &&
         context.payload.action == 'created'
     ) {
-        await handleIssueCommentCreate({ github, context, accessToken, octokit })
+        await handleIssueCommentCreate({ github, context, accessToken })
     }
 }
 
@@ -119,9 +120,9 @@ async function cmdOkToTest(github, issue, isFromPulls, username, accessToken, oc
     }
 }
 
-async function checkTeamMembership(org, teamSlug, username, accessToken, octokit) {
+async function checkTeamMembership(org, teamSlug, username, accessToken) {
     console.log("Checking team membership")
-    const response = await octokit.request(`"GET https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
+    const response = await github.request(`"GET https://api.github.com/orgs/${org}/teams/${teamSlug}/memberships/${username}`, {
         headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept': 'application/vnd.github.v3+json'
