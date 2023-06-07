@@ -29,10 +29,6 @@ spec:
         image: {{ .Values.image }}:{{ .Values.tag }}
         args:
         - --kubernetes=true
-      {{- if .Values.resources }}
-        resources:
-      {{ toYaml .Values.resources | indent 4 }}
-      {{- end }}
         env:
         - name: SKIP_ARM
           value: "false"
@@ -56,6 +52,10 @@ spec:
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
+{{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+{{- end }}
       terminationGracePeriodSeconds: 10
 ---
 apiVersion: v1

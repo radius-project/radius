@@ -31,10 +31,6 @@ spec:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-link
         - --link-config=/etc/config/link-self-host.yaml
-      {{- if .Values.resources }}
-        resources:
-      {{ toYaml .Values.resources | indent 4 }}
-      {{- end }}
         env:
         - name: SKIP_ARM
           value: 'false'
@@ -67,6 +63,10 @@ spec:
           mountPath: /etc/config
         securityContext:
           allowPrivilegeEscalation: false
+{{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+{{- end }}
       volumes:
         - name: config-volume
           configMap:

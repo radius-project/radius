@@ -25,7 +25,8 @@ spec:
     spec:
       serviceAccountName: ucp
       containers:
-      - image: "{{ .Values.image }}:{{ .Values.tag }}"
+      - name: ucp
+        image: "{{ .Values.image }}:{{ .Values.tag }}"
         env:
         - name: UCP_CONFIG
           value: /etc/config/ucp-config.yaml
@@ -35,7 +36,6 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
-        name: ucp
         ports:
         - containerPort: 9443
           name: ucp
@@ -45,20 +45,18 @@ spec:
           name: metrics
           protocol: TCP
         {{ end }}
-      {{- if .Values.resources }}
-        resources:
-      {{ toYaml .Values.resources | indent 4 }}
-      {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
+{{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+{{- end }}
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
         - name: cert
           mountPath: '/var/tls/cert'
           readOnly: true
-        securityContext:
-          allowPrivilegeEscalation: false
       volumes:
         - name: config-volume
           configMap:
