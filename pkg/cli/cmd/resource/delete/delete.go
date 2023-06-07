@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	deleteConfirmation = "Are you sure you want to delete environment '%v'?"
+	deleteConfirmation = "Are you sure you want to delete resource '%v'?"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad resource delete` command.
@@ -72,7 +72,6 @@ type Runner struct {
 	Format            string
 
 	InputPrompter     prompt.Interface
-	EnvironmentName string
 	Confirm         bool
 }
 
@@ -82,6 +81,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder:      factory.GetConfigHolder(),
 		ConnectionFactory: factory.GetConnectionFactory(),
 		Output:            factory.GetOutput(),
+		InputPrompter:     factory.GetPrompter(),
 	}
 }
 
@@ -119,7 +119,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
-		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.EnvironmentName), prompt.ConfirmNo, r.InputPrompter)
+		// ISSUE: r.InputPrompter is nil when it shouldn't be. This is causing segfault
+		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ResourceName), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			if errors.Is(err, &prompt.ErrExitConsole{}) {
 				return &cli.FriendlyError{Message: err.Error()}
