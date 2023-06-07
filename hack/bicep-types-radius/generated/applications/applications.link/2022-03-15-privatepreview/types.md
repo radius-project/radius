@@ -349,33 +349,16 @@
 * **Additional Properties Type**: string
 
 ## SqlDatabaseProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **database**: string: The name of the Sql database.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the SqlDatabase resource
+* **server**: string: The fully qualified domain name of the Sql database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeSqlDatabaseProperties
-#### Properties
-* **database**: string: The name of the Sql database.
-* **mode**: 'recipe' (Required): Discriminator property for SqlDatabaseProperties.
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **server**: string: The fully qualified domain name of the Sql database.
-
-### ResourceSqlDatabaseProperties
-#### Properties
-* **database**: string: The name of the Sql database.
-* **mode**: 'resource' (Required): Discriminator property for SqlDatabaseProperties.
-* **resource**: string (Required): Fully qualified resource ID of a supported resource with Sql API to use for this link
-* **server**: string: The fully qualified domain name of the Sql database.
-
-### ValuesSqlDatabaseProperties
-#### Properties
-* **database**: string (Required): The name of the Sql database.
-* **mode**: 'values' (Required): Discriminator property for SqlDatabaseProperties.
-* **server**: string (Required): The fully qualified domain name of the Sql database.
-
 
 ## TrackedResourceTags
 ### Properties

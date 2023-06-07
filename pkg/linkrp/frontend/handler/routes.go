@@ -38,7 +38,6 @@ import (
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
-	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
@@ -602,7 +601,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return sql_ctrl.NewCreateOrUpdateSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
+						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SqlDatabase]{
+							rp_frontend.PrepareRadiusResource[*datamodel.SqlDatabase],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -610,7 +618,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return sql_ctrl.NewCreateOrUpdateSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
+						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SqlDatabase]{
+							rp_frontend.PrepareRadiusResource[*datamodel.SqlDatabase],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -618,7 +635,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return sql_ctrl.NewDeleteSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
+						RequestConverter:      converter.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter:     converter.SqlDatabaseDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteSqlDatabaseTimeout,
+					},
+				)
 			},
 		},
 		{

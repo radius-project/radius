@@ -35,6 +35,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprstatestores"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
+	"github.com/project-radius/radius/pkg/linkrp/processors/sqldatabases"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
@@ -110,6 +111,10 @@ func (s *Service) Run(ctx context.Context) error {
 		{linkrp.RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &rediscaches.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RedisCache, datamodel.RedisCache](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.SqlDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &sqldatabases.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.SqlDatabase, datamodel.SqlDatabase](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.RabbitMQMessageQueuesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &rabbitmqmessagequeues.Processor{}

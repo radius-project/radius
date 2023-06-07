@@ -17,10 +17,20 @@ limitations under the License.
 package datamodel
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
+
+// Recipe returns the recipe for the SqlDatabase
+func (sql *SqlDatabase) Recipe() *linkrp.LinkRecipe {
+	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
+	return &sql.Properties.Recipe
+}
 
 // SqlDatabase represents SqlDatabase link resource.
 type SqlDatabase struct {
@@ -56,9 +66,19 @@ func (sql *SqlDatabase) ResourceTypeName() string {
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
 	rpv1.BasicResourceProperties
-	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
-	Resource string            `json:"resource,omitempty"`
-	Database string            `json:"database,omitempty"`
-	Server   string            `json:"server,omitempty"`
-	Mode     LinkMode          `json:"mode,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Database             string                      `json:"database,omitempty"`
+	Server               string                      `json:"server,omitempty"`
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
+}
+
+func (sql *SqlDatabase) VerifyInputs() error {
+	properties := sql.Properties
+	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if properties.Database == "" || properties.Server == "" {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("database and server are required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }
