@@ -25,11 +25,16 @@ spec:
     spec:
       serviceAccountName: appcore-rp
       containers:
-      - args:
+      - name: appcore-rp
+        image: {{ .Values.image }}:{{ .Values.tag }}
+        args:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-link
         - --link-config=/etc/config/link-self-host.yaml
-        image: {{ .Values.image }}:{{ .Values.tag }}
+      {{- if .Values.resources }}
+        resources:
+      {{ toYaml .Values.resources | indent 4 }}
+      {{- end }}
         env:
         - name: SKIP_ARM
           value: 'false'
@@ -43,7 +48,6 @@ spec:
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
           value: {{ .Values.publicEndpointOverride }}
         {{ end }}
-        name: appcore-rp
         ports:
         - containerPort: 5443
           name: appcore-rp

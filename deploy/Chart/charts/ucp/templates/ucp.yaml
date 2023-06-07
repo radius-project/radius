@@ -45,6 +45,10 @@ spec:
           name: metrics
           protocol: TCP
         {{ end }}
+      {{- if .Values.resources }}
+        resources:
+      {{ toYaml .Values.resources | indent 4 }}
+      {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
