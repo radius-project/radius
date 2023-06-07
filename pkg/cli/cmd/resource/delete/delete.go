@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	deleteConfirmation = "Are you sure you want to delete resource '%v'?"
+	deleteConfirmation = "Are you sure you want to delete resource %v of type %v?"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad resource delete` command.
