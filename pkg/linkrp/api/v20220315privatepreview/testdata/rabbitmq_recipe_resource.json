@@ -2,6 +2,10 @@
     "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
     "name": "rabbitmq0",
     "type": "Applications.Link/rabbitMQMessageQueues",
+    "location": "global",
+    "tags": {
+        "env": "dev"
+    },
     "properties": {
         "status": {
             "outputResources": [{
@@ -12,12 +16,13 @@
               }
             }]
         },
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "mode": "values",
-        "queue": "testQueue",
-        "secrets": {
-            "connectionString": "connection://string"
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+        "recipe": {
+            "name": "rabbitmq",
+            "parameters":{
+              "foo":"bar"
+            }
         }
     }
 }

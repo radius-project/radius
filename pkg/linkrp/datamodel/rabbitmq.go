@@ -17,6 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -56,10 +58,10 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
 type RabbitMQMessageQueueProperties struct {
 	rpv1.BasicResourceProperties
-	Queue   string            `json:"queue"`
-	Recipe  linkrp.LinkRecipe `json:"recipe,omitempty"`
-	Secrets RabbitMQSecrets   `json:"secrets,omitempty"`
-	Mode    LinkMode          `json:"mode,omitempty"`
+	Queue                string                      `json:"queue,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Secrets              RabbitMQSecrets             `json:"secrets,omitempty"`
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
@@ -69,4 +71,22 @@ type RabbitMQSecrets struct {
 
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
+}
+
+// Recipe returns the recipe for the RabbitMQMessageQueue
+func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
+	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
+	return &r.Properties.Recipe
+}
+
+func (rabbitmq *RabbitMQMessageQueue) VerifyInputs() error {
+	properties := rabbitmq.Properties
+	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if properties.Queue == "" {
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+	}
+	return nil
 }

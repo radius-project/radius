@@ -24,6 +24,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -73,7 +74,7 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptio
 		return nil, err
 	}
 
-	clientSecret, err := r.Prompter.GetTextInput(enterAzureServicePrincipalPasswordPrompt, prompt.TextInputOptions{Placeholder: enterAzureServicePrincipalPasswordPlaceholder})
+	clientSecret, err := r.Prompter.GetTextInput(enterAzureServicePrincipalPasswordPrompt, prompt.TextInputOptions{Placeholder: enterAzureServicePrincipalPasswordPlaceholder, EchoMode: textinput.EchoPassword})
 	if errors.Is(err, &prompt.ErrExitConsole{}) {
 		return nil, &cli.FriendlyError{Message: err.Error()}
 	} else if err != nil {

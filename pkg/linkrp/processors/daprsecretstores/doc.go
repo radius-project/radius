@@ -14,9 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// daprsecretstores contains the resource processor for Dapr Secret Stores. See the processors package for more information.
 package daprsecretstores
-
-type Properties struct {
-	Kind     string `json:"kind"`
-	Resource string `json:"resource"`
-}

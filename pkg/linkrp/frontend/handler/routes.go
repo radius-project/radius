@@ -34,7 +34,6 @@ import (
 	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprinvokehttproutes"
 	daprPubSub_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprpubsubbrokers"
-	daprSecretStore_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprsecretstores"
 	extender_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
@@ -300,7 +299,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprSecretStore_ctrl.NewCreateOrUpdateDaprSecretStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
+						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprSecretStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -308,7 +316,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprSecretStore_ctrl.NewCreateOrUpdateDaprSecretStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
+						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprSecretStore]{
+							rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -316,7 +333,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprSecretStore_ctrl.NewDeleteDaprSecretStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
+						RequestConverter:      converter.DaprSecretStoreDataModelFromVersioned,
+						ResponseConverter:     converter.DaprSecretStoreDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprSecretStoreTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -500,7 +523,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
+							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -508,7 +540,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
+							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -516,7 +557,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:      converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter:     converter.RabbitMQMessageQueueDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
+					},
+				)
 			},
 		},
 		{
