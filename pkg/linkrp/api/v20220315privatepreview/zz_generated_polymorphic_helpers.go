@@ -10,7 +10,7 @@ package v20220315privatepreview
 
 import "encoding/json"
 
-func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (MongoDatabasePropertiesClassification, error) {
+func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (DaprPubSubBrokerPropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -18,58 +18,16 @@ func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (Mon
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
-	var b DaprStateStorePropertiesClassification
+	var b DaprPubSubBrokerPropertiesClassification
 	switch m["mode"] {
 	case "recipe":
-		b = &RecipeDaprStateStoreProperties{}
+		b = &RecipeDaprPubSubProperties{}
 	case "resource":
-		b = &ResourceDaprStateStoreProperties{}
+		b = &ResourceDaprPubSubProperties{}
 	case "values":
-		b = &ValuesDaprStateStoreProperties{}
+		b = &ValuesDaprPubSubProperties{}
 	default:
-		b = &MongoDatabaseProperties{}
-	}
-	return b, json.Unmarshal(rawMsg, b)
-}
-
-func unmarshalRabbitMQMessageQueuePropertiesClassification(rawMsg json.RawMessage) (RabbitMQMessageQueuePropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b RabbitMQMessageQueuePropertiesClassification
-	switch m["mode"] {
-	case "recipe":
-		b = &RecipeRabbitMQMessageQueueProperties{}
-	case "values":
-		b = &ValuesRabbitMQMessageQueueProperties{}
-	default:
-		b = &RabbitMQMessageQueueProperties{}
-	}
-	return b, json.Unmarshal(rawMsg, b)
-}
-
-func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b SQLDatabasePropertiesClassification
-	switch m["mode"] {
-	case "recipe":
-		b = &RecipeSQLDatabaseProperties{}
-	case "resource":
-		b = &ResourceSQLDatabaseProperties{}
-	case "values":
-		b = &ValuesSQLDatabaseProperties{}
-	default:
-		b = &SQLDatabaseProperties{}
+		b = &DaprPubSubBrokerProperties{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }

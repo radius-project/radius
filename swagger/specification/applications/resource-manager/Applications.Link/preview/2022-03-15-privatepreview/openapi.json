@@ -2346,73 +2346,18 @@
           "format": "int32",
           "description": "Port value of the target Mongo database"
         },
-        "database": {
-          "type": "string",
-          "description": "Database name of the target Mongo database",
-          "readOnly": true
-        },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabases link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSub link"
         }
       },
-      "description": "DaprStateStore Properties for Mode Recipe",
+      "description": "DaprPubSubBroker Properties for Mode Recipe",
       "required": [
         "recipe"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/DaprStateStoreProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
-    "RecipeRabbitMQMessageQueueProperties": {
-      "type": "object",
-      "properties": {
-        "queue": {
-          "type": "string",
-          "description": "The name of the queue"
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
-        }
-      },
-      "description": "RabbitMQMessageQueue Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
-    "RecipeSqlDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
-        },
-        "database": {
-          "type": "string",
-          "description": "The name of the Sql database."
-        },
-        "server": {
-          "type": "string",
-          "description": "The fully qualified domain name of the Sql database."
-        }
-      },
-      "description": "SqlDatabase Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/SqlDatabaseProperties"
+          "$ref": "#/definitions/DaprPubSubBrokerProperties"
         }
       ],
       "x-ms-discriminator-value": "recipe"
@@ -2692,74 +2637,31 @@
         "value"
       ]
     },
-    "ValuesDaprSecretStoreProperties": {
+    "ValuesDaprPubSubProperties": {
       "type": "object",
       "properties": {
+        "metadata": {
+          "$ref": "#/definitions/object",
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec"
+        },
         "type": {
           "type": "string",
-          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format."
         },
         "version": {
           "type": "string",
           "description": "Dapr component version"
-        },
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
         }
       },
-      "description": "DaprSecretStore Properties for Mode Values",
+      "description": "DaprPubSubBroker Properties for Mode Values",
       "required": [
+        "metadata",
         "type",
-        "version",
-        "metadata"
+        "version"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/DaprSecretStoreProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesRabbitMQMessageQueueProperties": {
-      "type": "object",
-      "properties": {
-        "queue": {
-          "type": "string",
-          "description": "The name of the queue"
-        }
-      },
-      "description": "RabbitMQMessageQueue Properties for Mode Values",
-      "required": [
-        "queue"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesSqlDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "database": {
-          "type": "string",
-          "description": "The name of the Sql database."
-        },
-        "server": {
-          "type": "string",
-          "description": "The fully qualified domain name of the Sql database."
-        }
-      },
-      "description": "SqlDatabase Properties for Mode Values",
-      "required": [
-        "database",
-        "server"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/SqlDatabaseProperties"
+          "$ref": "#/definitions/DaprPubSubBrokerProperties"
         }
       ],
       "x-ms-discriminator-value": "values"
