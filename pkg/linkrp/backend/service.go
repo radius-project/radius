@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
@@ -42,7 +41,6 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
 	"github.com/project-radius/radius/pkg/recipes/engine"
-	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/sdk/clients"
 	"k8s.io/client-go/discovery"
@@ -147,14 +145,13 @@ func (s *Service) Run(ctx context.Context) error {
 	opts := ctrl.Options{
 		DataProvider: s.StorageProvider,
 		KubeClient:   s.KubeClient,
-		GetLinkDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, sv.NewSecretValueClient(s.Options.Arm), s.KubeClient)
-		},
 	}
 
 	for _, rt := range resourceTypes {
 		// Register controllers
-		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
+		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, func(options ctrl.Options) (ctrl.Controller, error) {
+			return backend_ctrl.NewDeleteResource(options, client, linkAppModel)
+		}, opts)
 		if err != nil {
 			return err
 		}

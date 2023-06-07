@@ -103,7 +103,6 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 	}
 
 	if apiVersion == "" || apiVersion == resourcemodel.APIVersionUnknown {
-
 		apiVersion, err = c.lookupARMAPIVersion(ctx, id)
 		if err != nil {
 			return err
@@ -141,9 +140,13 @@ func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.I
 
 	// We need to match on the resource type name without the provider namespace.
 	shortType := strings.TrimPrefix(id.Type(), id.ProviderNamespace()+"/")
+	// Get doesn't return nested resource types so we check that the base type is supported.
+	baseType := strings.Split(shortType, "/")[0]
 	for _, rt := range resp.ResourceTypes {
 		if !strings.EqualFold(shortType, *rt.ResourceType) {
-			continue
+			if !strings.EqualFold(baseType, *rt.ResourceType) {
+				continue
+			}
 		}
 		if rt.DefaultAPIVersion != nil {
 			return *rt.DefaultAPIVersion, nil
