@@ -202,7 +202,7 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 	}
 
 	metadata := map[string]any{
-		name: name,
+		"name": name,
 	}
 	if ns != "" {
 		metadata["namespace"] = ns
