@@ -18,8 +18,8 @@ package delete
 
 import (
 	"context"
-	"testing"
 	"fmt"
+	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -232,7 +232,14 @@ func Test_Run(t *testing.T) {
 	
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-			require.Empty(t, outputSink.Writes)
+
+			expected := []any{
+				output.LogOutput{
+					Format: "resource %q of type %q NOT deleted",
+					Params: []any{"test-container", "containers"},
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
 		})
 	})
 }

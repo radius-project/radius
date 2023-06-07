@@ -57,6 +57,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddConfirmationFlag(cmd)
 
 	return cmd, runner
 }
@@ -112,6 +113,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
+	yes, err := cmd.Flags().GetBool("yes")
+	if err != nil {
+		return err
+	}
+	r.Confirm = yes
+
 	return nil
 }
 
@@ -119,7 +126,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
-		// ISSUE: r.InputPrompter is nil when it shouldn't be. This is causing segfault
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ResourceName), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			if errors.Is(err, &prompt.ErrExitConsole{}) {
@@ -128,6 +134,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 		if !confirmed {
+			r.Output.LogInfo("resource %q of type %q NOT deleted", r.ResourceName, r.ResourceType)
 			return nil
 		}
 	}
