@@ -74,6 +74,12 @@ type ResourceOptions[T any] struct {
 	// If this is 0 then the default value of v1.DefaultRetryAfter will be used. Consider setting this to a smaller
 	// value like 5 seconds if your operations will complete quickly.
 	AsyncOperationRetryAfter time.Duration
+
+	// ListRecursiveQuery specifies whether store query should be recursive or not. This should be set to true when the
+	// scope of the list operation does not match the scope of the underlying resource type.
+	//
+	// This is ignored by non-list controllers.
+	ListRecursiveQuery bool
 }
 
 // TODO: Remove Controller when all controller uses Operation
