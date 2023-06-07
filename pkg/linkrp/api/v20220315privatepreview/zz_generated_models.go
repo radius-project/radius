@@ -721,25 +721,22 @@ type RabbitMQListSecretsResult struct {
 	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
-// RabbitMQMessageQueuePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetRabbitMQMessageQueueProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *RabbitMQMessageQueueProperties, *RecipeRabbitMQMessageQueueProperties, *ValuesRabbitMQMessageQueueProperties
-type RabbitMQMessageQueuePropertiesClassification interface {
-	// GetRabbitMQMessageQueueProperties returns the RabbitMQMessageQueueProperties content of the underlying type.
-	GetRabbitMQMessageQueueProperties() *RabbitMQMessageQueueProperties
-}
-
 // RabbitMQMessageQueueProperties - RabbitMQMessageQueue link properties
 type RabbitMQMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Discriminator property for RabbitMQMessageQueueProperties.
-	Mode *string `json:"mode,omitempty"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
@@ -751,16 +748,13 @@ type RabbitMQMessageQueueProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetRabbitMQMessageQueueProperties implements the RabbitMQMessageQueuePropertiesClassification interface for type RabbitMQMessageQueueProperties.
-func (r *RabbitMQMessageQueueProperties) GetRabbitMQMessageQueueProperties() *RabbitMQMessageQueueProperties { return r }
-
 // RabbitMQMessageQueueResource - RabbitMQMessageQueue link
 type RabbitMQMessageQueueResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties RabbitMQMessageQueuePropertiesClassification `json:"properties,omitempty"`
+	Properties *RabbitMQMessageQueueProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -916,45 +910,6 @@ type RecipeMongoDatabaseProperties struct {
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type RecipeMongoDatabaseProperties.
 func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
 	return &MongoDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// RecipeRabbitMQMessageQueueProperties - RabbitMQMessageQueue Properties for Mode Recipe
-type RecipeRabbitMQMessageQueueProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for RabbitMQMessageQueueProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
-	// Secrets provided by resources,
-	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the rabbitMQ message queue link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetRabbitMQMessageQueueProperties implements the RabbitMQMessageQueuePropertiesClassification interface for type RecipeRabbitMQMessageQueueProperties.
-func (r *RecipeRabbitMQMessageQueueProperties) GetRabbitMQMessageQueueProperties() *RabbitMQMessageQueueProperties {
-	return &RabbitMQMessageQueueProperties{
 		Mode: r.Mode,
 		ProvisioningState: r.ProvisioningState,
 		Secrets: r.Secrets,
@@ -1480,42 +1435,6 @@ type ValuesMongoDatabaseProperties struct {
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ValuesMongoDatabaseProperties.
 func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
 	return &MongoDatabaseProperties{
-		Mode: v.Mode,
-		ProvisioningState: v.ProvisioningState,
-		Secrets: v.Secrets,
-		Status: v.Status,
-		Environment: v.Environment,
-		Application: v.Application,
-	}
-}
-
-// ValuesRabbitMQMessageQueueProperties - RabbitMQMessageQueue Properties for Mode Values
-type ValuesRabbitMQMessageQueueProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for RabbitMQMessageQueueProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Secrets provided by resources,
-	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the rabbitMQ message queue link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetRabbitMQMessageQueueProperties implements the RabbitMQMessageQueuePropertiesClassification interface for type ValuesRabbitMQMessageQueueProperties.
-func (v *ValuesRabbitMQMessageQueueProperties) GetRabbitMQMessageQueueProperties() *RabbitMQMessageQueueProperties {
-	return &RabbitMQMessageQueueProperties{
 		Mode: v.Mode,
 		ProvisioningState: v.ProvisioningState,
 		Secrets: v.Secrets,

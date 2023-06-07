@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -38,36 +39,37 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 			},
 			InternalMetadata: v1.InternalMetadata{
 				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetRabbitMQMessageQueueProperties().ProvisioningState),
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Environment),
-				Application: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Application),
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
 			},
 		},
 	}
-	switch v := src.Properties.(type) {
-	case *ValuesRabbitMQMessageQueueProperties:
-		if v.Queue == nil {
-			return nil, v1.NewClientErrInvalidRequest("queue is a required property for mode 'values'")
+	properties := src.Properties
+	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(properties.ResourceProvisioning)
+	var found bool
+	for _, k := range PossibleResourceProvisioningValues() {
+		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
+			found = true
+			break
 		}
-		converted.Properties.Queue = to.String(v.Queue)
-		converted.Properties.Mode = datamodel.LinkModeValues
-	case *RecipeRabbitMQMessageQueueProperties:
-		if v.Recipe == nil {
-			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
-		}
-		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
-		converted.Properties.Queue = to.String(v.Queue)
-		converted.Properties.Mode = datamodel.LinkModeRecipe
-	default:
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRabbitMQMessageQueueProperties().Mode))
 	}
-	if src.Properties.GetRabbitMQMessageQueueProperties().Secrets != nil {
+	if !found {
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	}
+	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	converted.Properties.Queue = to.String(properties.Queue)
+	err := converted.VerifyInputs()
+	if err != nil {
+		return nil, err
+	}
+	if src.Properties.Secrets != nil {
 		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
-			ConnectionString: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Secrets.ConnectionString),
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
 		}
 	}
 	return converted, nil
@@ -86,36 +88,18 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 	dst.SystemData = fromSystemDataModel(rabbitmq.SystemData)
 	dst.Location = to.Ptr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
-	switch rabbitmq.Properties.Mode {
-	case datamodel.LinkModeValues:
-		mode := "values"
-		dst.Properties = &ValuesRabbitMQMessageQueueProperties{
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(rabbitmq.Properties.Environment),
-			Application:       to.Ptr(rabbitmq.Properties.Application),
-			Mode:              &mode,
-			Queue:             to.Ptr(rabbitmq.Properties.Queue),
-		}
-	case datamodel.LinkModeRecipe:
-		mode := "recipe"
-		var recipe *Recipe
-		recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
-		dst.Properties = &RecipeRabbitMQMessageQueueProperties{
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
-			},
-			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(rabbitmq.Properties.Environment),
-			Application:       to.Ptr(rabbitmq.Properties.Application),
-			Mode:              &mode,
-			Queue:             to.Ptr(rabbitmq.Properties.Queue),
-			Recipe:            recipe,
-		}
-	default:
-		return fmt.Errorf("unsupported mode %s", rabbitmq.Properties.Mode)
+	dst.Properties = &RabbitMQMessageQueueProperties{
+		Status: &ResourceStatus{
+			OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+		},
+		ProvisioningState:    fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
+		Environment:          to.Ptr(rabbitmq.Properties.Environment),
+		Application:          to.Ptr(rabbitmq.Properties.Application),
+		ResourceProvisioning: fromResourceProvisioningDataModel(rabbitmq.Properties.ResourceProvisioning),
+		Queue:                to.Ptr(rabbitmq.Properties.Queue),
+	}
+	if rabbitmq.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 	return nil
 }

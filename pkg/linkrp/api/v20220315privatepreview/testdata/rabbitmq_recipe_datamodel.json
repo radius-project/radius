@@ -13,6 +13,7 @@
     "tags": {
         "env": "dev"
     },
+    "location": "global",
     "properties": {
         "status": {
             "outputResources": [{
@@ -23,9 +24,10 @@
               }
             }]
         },
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "mode": "recipe",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+        "resourceProvisioning":"recipe",
+        "queue": "testQueue",
         "recipe": {
             "name": "rabbitmq",
             "parameters":{

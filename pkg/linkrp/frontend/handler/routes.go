@@ -523,7 +523,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
+							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -531,7 +540,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
+							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -539,7 +557,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:      converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter:     converter.RabbitMQMessageQueueDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
+					},
+				)
 			},
 		},
 		{

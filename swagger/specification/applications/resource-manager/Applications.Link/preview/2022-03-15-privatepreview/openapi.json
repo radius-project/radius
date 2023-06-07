@@ -2193,10 +2193,6 @@
     "RabbitMQMessageQueueProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for RabbitMQMessageQueueProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the rabbitMQ message queue link at the time the operation was called",
@@ -2205,13 +2201,21 @@
         "secrets": {
           "$ref": "#/definitions/RabbitMQSecrets",
           "description": "Secrets provided by resources,"
+        },
+        "queue": {
+          "type": "string",
+          "description": "The name of the queue"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
         }
       },
       "description": "RabbitMQMessageQueue link properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -2348,29 +2352,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
-    "RecipeRabbitMQMessageQueueProperties": {
-      "type": "object",
-      "properties": {
-        "queue": {
-          "type": "string",
-          "description": "The name of the queue"
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
-        }
-      },
-      "description": "RabbitMQMessageQueue Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
         }
       ],
       "x-ms-discriminator-value": "recipe"
@@ -2776,25 +2757,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
-    },
-    "ValuesRabbitMQMessageQueueProperties": {
-      "type": "object",
-      "properties": {
-        "queue": {
-          "type": "string",
-          "description": "The name of the queue"
-        }
-      },
-      "description": "RabbitMQMessageQueue Properties for Mode Values",
-      "required": [
-        "queue"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
         }
       ],
       "x-ms-discriminator-value": "values"

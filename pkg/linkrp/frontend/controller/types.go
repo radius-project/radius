@@ -34,6 +34,11 @@ var (
 	// AsyncDeleteRedisCacheTimeout is the timeout for async delete redis cache
 	AsyncDeleteRedisCacheTimeout = time.Duration(30) * time.Minute
 
+	// AsyncCreateOrUpdateRabbitMQTimeout is the timeout for async create or update rabbitMQ
+	AsyncCreateOrUpdateRabbitMQTimeout = time.Duration(60) * time.Minute
+	// AsyncDeleteRabbitMQTimeout is the timeout for async delete rabbitMQ
+	AsyncDeleteRabbitMQTimeout = time.Duration(30) * time.Minute
+
 	// AsyncCreateOrUpdateDaprStateStoreTimeout is the timeout for async create or update dapr state store
 	AsyncCreateOrUpdateDaprStateStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprStateStoreTimeout is the timeout for async delete dapr state store
