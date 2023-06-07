@@ -103,7 +103,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
-	options.Recipes.DevRecipes = r.Dev
+	options.Recipes.DevRecipes = !r.Full
 
 	// Update the workspace with the information we captured about the environment.
 	workspace.Name = options.Environment.Name

@@ -64,8 +64,8 @@ func (r *Runner) selectCluster(ctx context.Context) (string, error) {
 		return "", &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
 
-	// In dev mode we will just take the default kubecontext
-	if r.Dev {
+	// When no flags are specified we will just take the default kubecontext
+	if !r.Full {
 		return kubeContextList.CurrentContext, nil
 	}
 

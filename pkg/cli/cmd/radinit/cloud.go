@@ -34,8 +34,8 @@ const (
 )
 
 func (r *Runner) enterCloudProviderOptions(ctx context.Context, options *initOptions) error {
-	// In dev mode we don't want to ask about cloud providers.
-	if r.Dev {
+	// When no flags are specified we don't want to ask about cloud providers.
+	if !r.Full {
 		return nil
 	}
 

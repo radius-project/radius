@@ -84,11 +84,11 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 		return nil, nil
 	}
 
-	// In dev mode, we take the default without asking if it's an option.
+	// Without any flags we take the default without asking if it's an option.
 	//
 	// The best way to accomplish that is to check if there's an environment named "default"
 	// If not, we prompt the user for an input of remaining options
-	if r.Dev {
+	if !r.Full {
 		for _, env := range environments {
 			if strings.EqualFold(defaultEnvironmentName, *env.Name) {
 				return env.Name, nil
@@ -141,8 +141,8 @@ func (r *Runner) buildExistingEnvironmentList(existing []corerp.EnvironmentResou
 }
 
 func (r *Runner) enterEnvironmentName(ctx context.Context) (string, error) {
-	// In dev mode don't ask for a name, just use 'default'
-	if r.Dev {
+	// When no flags are specified we don't ask for a name, just use 'default'
+	if !r.Full {
 		return defaultEnvironmentName, nil
 	}
 
@@ -161,8 +161,8 @@ func (r *Runner) enterEnvironmentName(ctx context.Context) (string, error) {
 }
 
 func (r *Runner) enterEnvironmentNamespace(ctx context.Context) (string, error) {
-	// In dev mode we don't want to ask about namespaces.
-	if r.Dev {
+	// When no flags are specified we don't want to ask about namespaces.
+	if !r.Full {
 		return defaultEnvironmentNamespace, nil
 	}
 
