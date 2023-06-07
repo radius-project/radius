@@ -23,9 +23,12 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
+	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -103,6 +106,20 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 		return &datamodel.DaprPubSubBroker{}, nil
 	case strings.ToLower(linkrp.ExtendersResourceType):
 		return &datamodel.Extender{}, nil
+	case strings.ToLower(linkrp.N_MongoDatabasesResourceType):
+		return &ds_dm.MongoDatabase{}, nil
+	case strings.ToLower(linkrp.N_RedisCachesResourceType):
+		return &ds_dm.RedisCache{}, nil
+	case strings.ToLower(linkrp.N_SqlDatabasesResourceType):
+		return &ds_dm.SqlDatabase{}, nil
+	case strings.ToLower(linkrp.N_DaprStateStoresResourceType):
+		return &dapr_dm.DaprStateStore{}, nil
+	case strings.ToLower(linkrp.N_RabbitMQQueuesResourceType):
+		return &msg_dm.RabbitMQQueue{}, nil
+	case strings.ToLower(linkrp.N_DaprSecretStoresResourceType):
+		return &dapr_dm.DaprSecretStore{}, nil
+	case strings.ToLower(linkrp.N_DaprPubSubBrokersResourceType):
+		return &dapr_dm.DaprPubSubBroker{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}

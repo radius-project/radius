@@ -21,14 +21,24 @@ import (
 
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/project-radius/radius/test/testutil"
 )
 
 const testHeaderfile = "20220315privatepreview_requestheaders.json"
+const n_testHeaderfile = "n_20220315privatepreview_requestheaders.json"
 
 func getTestModels20220315privatepreview() (input *v20220315privatepreview.RabbitMQMessageQueueResource, dataModel *datamodel.RabbitMQMessageQueue, output *v20220315privatepreview.RabbitMQMessageQueueResource) {
 	rawDataModel := testutil.ReadFixture("20220315privatepreview_datamodel.json")
 	dataModel = &datamodel.RabbitMQMessageQueue{}
+	_ = json.Unmarshal(rawDataModel, dataModel)
+
+	return input, dataModel, output
+}
+
+func get_NTestModels20220315privatepreview() (input *v20220315privatepreview.RabbitMQMessageQueueResource, dataModel *msg_dm.RabbitMQQueue, output *v20220315privatepreview.RabbitMQMessageQueueResource) {
+	rawDataModel := testutil.ReadFixture("n_20220315privatepreview_datamodel.json")
+	dataModel = &msg_dm.RabbitMQQueue{}
 	_ = json.Unmarshal(rawDataModel, dataModel)
 
 	return input, dataModel, output
