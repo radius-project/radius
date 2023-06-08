@@ -35,14 +35,12 @@ async function handleIssueCommentCreate({ github, context }) {
     await cmdOkToTest(github, issue, isFromPulls, username)
 
     if (!commentBody) {
-        console.log(
-            '[handleIssueCommentCreate] comment body not found, exiting.'
-        )
-        return
+        console.log('[handleIssueCommentCreate] comment body not found, exiting.');
+        return;
     }
-    const commandParts = commentBody.split(/\s+/)
-    const command = commandParts.shift()
-
+    
+    const commandParts = commentBody.split(/\s+/);
+    const command = commandParts.shift();
 
     switch (command) {
         case '/ok-to-test':
