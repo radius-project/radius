@@ -117,7 +117,7 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
 async function checkTeamMembership(github, org, teamSlug, userName) {
     try {
         const response = await github.teams.getMembershipForUserInOrg({
-            org,
+            org: org,
             team_slug: teamSlug,
             username: userName,
           });
