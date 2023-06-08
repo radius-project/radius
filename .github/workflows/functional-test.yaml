@@ -28,7 +28,7 @@ on:
       - release/*
   # Dispatch on external events
   repository_dispatch:
-    types: [e2e-test]
+    types: [functional-tests]
 
 env:
   # Go version

@@ -11,17 +11,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-      - name: Install Dependencies
-        run: |
-          npm install
-          npm install @octokit/rest
-          npm install @octokit/core
       - name: Comment analyzer
         uses: actions/github-script@v4
+        env:
+          TEAM_SLUG: 'Radius-Eng'
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

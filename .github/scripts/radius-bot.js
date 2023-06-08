@@ -60,9 +60,8 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
 
     // Check if the user has permission to trigger e2e test with an issue comment
     const org = 'project-radius';
-    const teamSlug = 'Radius-Eng';
     console.log(`Checking team membership for: ${userName}`);
-    const isMember = await checkTeamMembership(github, org, teamSlug, userName);
+    const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, userName);
     if (!isMember) {
         console.log(`${userName} is not a member of the ${teamSlug} team.`);
         return;
@@ -90,7 +89,7 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
         await github.repos.createDispatchEvent({
             owner: issue.owner,
             repo: issue.repo,
-            event_type: 'e2e-test',
+            event_type: 'functional-tests',
             client_payload: testPayload,
         });
 
@@ -107,6 +106,7 @@ async function checkTeamMembership(github, org, teamSlug, userName) {
         });
         return response.data.state === 'active';
     } catch (error) {
+        console.log(`error: ${error}`)
         return false;
     }
 }
