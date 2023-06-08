@@ -110,6 +110,6 @@ async function checkTeamMembership(github, org, teamSlug, userName) {
           });
         return response.data.state === 'active';
     } catch (error) {
-        console.error(`An error occurred: ${error}`);
+        return false;
     }
 }
