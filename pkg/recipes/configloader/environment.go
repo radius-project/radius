@@ -110,19 +110,24 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 	if environment.Properties.Recipes == nil {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
+
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
 	}
-	if recipe.Name == "" {
-		recipe.Name = defaultRecipeName
+
+	// TODO Remove this logic to populate recipe name, after https://github.com/project-radius/radius/issues/5649 is implemented
+	recipeName := recipe.Name
+	if recipeName == "" {
+		recipeName = defaultRecipeName
 	}
-	found, ok := environment.Properties.Recipes[resource.Type()][recipe.Name]
+	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
 
 	return &recipes.Definition{
+		Name:         recipeName,
 		Driver:       *found.TemplateKind,
 		ResourceType: resource.Type(),
 		Parameters:   found.Parameters,

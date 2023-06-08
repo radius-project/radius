@@ -45,6 +45,8 @@ type KubernetesRuntime struct {
 
 // Definition represents the recipe configuration details.
 type Definition struct {
+	// Name represents the name of the recipe within the environment
+	Name string
 	// Driver represents the kind of infrastructure language used to define recipe.
 	Driver string
 	// ResourceType represents the type of the link this recipe can be consumed by.
