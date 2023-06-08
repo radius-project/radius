@@ -52,10 +52,9 @@ spec:
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
-{{- if .Values.resources }}
-        resources:
-{{ toYaml .Values.resources | indent 10 }}
-{{- end }}
+        {{- if .Values.resources }}
+        resources:{{ toYaml .Values.resources | nindent 10 }}
+        {{- end }}
       terminationGracePeriodSeconds: 10
 ---
 apiVersion: v1
