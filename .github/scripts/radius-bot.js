@@ -16,11 +16,8 @@ limitations under the License.
 
 module.exports = async ({ github, context }) => {
     await handleIssueCommentCreate({ github, context })
-    if (
-        context.eventName == 'issue_comment' &&
-        context.payload.action == 'created'
-    ) {
-        await handleIssueCommentCreate({ github, context })
+    if (context.eventName === 'issue_comment' && context.payload.action === 'created') {
+        await handleIssueCommentCreate({ github, context });
     }
 }
 
