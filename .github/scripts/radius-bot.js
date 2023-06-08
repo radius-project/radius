@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 module.exports = async ({ github, context }) => {
-    await handleIssueCommentCreate({ github, context })
     if (context.eventName === 'issue_comment' && context.payload.action === 'created') {
         await handleIssueCommentCreate({ github, context });
     }
@@ -29,13 +28,11 @@ async function handleIssueCommentCreate({ github, context }) {
     const commentBody = payload.comment.body;
     const username = context.actor.toLowerCase();
 
-    await cmdOkToTest(github, issue, isFromPulls, username)
-
     if (!commentBody) {
         console.log('[handleIssueCommentCreate] comment body not found, exiting.');
         return;
     }
-    
+
     const commandParts = commentBody.split(/\s+/);
     const command = commandParts.shift();
 
@@ -88,7 +85,7 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
         };
 
         console.log('Creating repository dispatch event for e2e test');
-        
+
         // Fire repository_dispatch event to trigger e2e test
         await github.repos.createDispatchEvent({
             owner: issue.owner,
@@ -107,7 +104,7 @@ async function checkTeamMembership(github, org, teamSlug, userName) {
             org: org,
             team_slug: teamSlug,
             username: userName,
-          });
+        });
         return response.data.state === 'active';
     } catch (error) {
         return false;
