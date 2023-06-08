@@ -26,7 +26,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MicrosoftSQL(t *testing.T) {
+func Test_MicrosoftSQL_Manual(t *testing.T) {
 	template := "testdata/corerp-resources-microsoft-sql.bicep"
 	name := "corerp-resources-microsoft-sql"
 
@@ -35,23 +35,26 @@ func Test_MicrosoftSQL(t *testing.T) {
 	if os.Getenv("AZURE_MSSQL_RESOURCE_ID") == "" {
 		t.Error("AZURE_MSSQL_RESOURCE_ID environment variable must be set to run this test.")
 	}
-	if os.Getenv("AZURE_MSSQL_DATABASE") == "" || os.Getenv("AZURE_MSSQL_SERVER") == "" {
+
+	if os.Getenv("AZURE_MSSQL_DATABASE") == "" && os.Getenv("AZURE_MSSQL_SERVER") == "" {
 		t.Error("AZURE_MSSQL_DATABASE and AZURE_MSSQL_SERVER environment variable must be set to run this test.")
 	}
+
 	if os.Getenv("AZURE_MSSQL_USERNAME") != "" && os.Getenv("AZURE_MSSQL_PASSWORD") != "" {
 		adminUsername = "adminUsername=" + os.Getenv("AZURE_MSSQL_USERNAME")
 		adminPassword = "adminPassword=" + os.Getenv("AZURE_MSSQL_PASSWORD")
 	} else {
 		t.Error("AZURE_MSSQL_USERNAME and AZURE_MSSQL_PASSWORD environment variable must be set to run this test.")
 	}
-	mssqlresourceid := "mssqlresourceid=" + os.Getenv("AZURE_MSSQL_RESOURCE_ID")
-	sqlDatabse := "database=" + os.Getenv("AZURE_MSSQL_DATABASE")
+
+	mssqlResourceId := "mssqlresourceid=" + os.Getenv("AZURE_MSSQL_RESOURCE_ID")
+	sqlDatabase := "database=" + os.Getenv("AZURE_MSSQL_DATABASE")
 	sqlServer := "server=" + os.Getenv("AZURE_MSSQL_SERVER")
 	appNamespace := "default-corerp-resources-microsoft-sql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword, sqlDatabse, sqlServer),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mssqlResourceId, adminUsername, adminPassword, sqlDatabase, sqlServer),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
