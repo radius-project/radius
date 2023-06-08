@@ -1,13 +1,29 @@
 de:
   image: radius.azurecr.io/deployment-engine
   tag: latest
+  resources:
+    requests:
+      # request memory is the average memory usage + 10% buffer.
+      memory: "130Mi"
+    limits:
+      memory: "300Mi"
 ucp:
   image: radius.azurecr.io/ucpd
-  tag: latest 
+  tag: latest
+  resources:
+    requests:
+      memory: "60Mi"
+    limits:
+      memory: "300Mi"
 rp:
   image: radius.azurecr.io/appcore-rp
   tag: latest
   publicEndpointOverride: ""
+  resources:
+    requests:
+      memory: "160Mi"
+    limits:
+      memory: "300Mi"
 global:
   prometheus:
     enabled: true
