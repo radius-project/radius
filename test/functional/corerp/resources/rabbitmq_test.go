@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_RabbitMQ(t *testing.T) {
+func Test_RabbitMQ_Manual(t *testing.T) {
 	template := "testdata/corerp-resources-rabbitmq.bicep"
 	name := "corerp-resources-rabbitmq"
 	appNamespace := "default-corerp-resources-rabbitmq"
@@ -67,6 +67,45 @@ func Test_RabbitMQ(t *testing.T) {
 						validation.NewK8sPodForResource(name, "rmq-app-ctnr"),
 						validation.NewK8sPodForResource(name, "rmq-ctnr"),
 						validation.NewK8sServiceForResource(name, "rmq-rte"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_RabbitMQ_Recipe(t *testing.T) {
+	template := "testdata/corerp-resources-rabbitmq-recipe.bicep"
+	name := "corerp-resources-rabbitmq-recipe"
+	appNamespace := "default-corerp-resources-rabbitmq-recipe"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest", functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-rabbitmq-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "rmq-recipe-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "rmq-recipe-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "rmq-recipe-resource").ValidateLabels(false),
 					},
 				},
 			},

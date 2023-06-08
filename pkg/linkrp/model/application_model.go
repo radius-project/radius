@@ -24,11 +24,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/sdk"
 
@@ -52,14 +49,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 			Renderer:     &mongodatabases.Renderer{},
 		},
 		{
-			ResourceType: linkrp.SqlDatabasesResourceType,
-			Renderer:     &sqldatabases.Renderer{},
-		},
-		{
-			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
-			Renderer:     &rabbitmqmessagequeues.Renderer{},
-		},
-		{
 			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Renderer:     &daprinvokehttproutes.Renderer{},
 		},
@@ -67,12 +56,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Renderer: &daprpubsubbrokers.Renderer{
 				PubSubs: daprpubsubbrokers.SupportedPubSubModes,
-			},
-		},
-		{
-			ResourceType: linkrp.DaprSecretStoresResourceType,
-			Renderer: &daprsecretstores.Renderer{
-				SecretStores: daprsecretstores.SupportedSecretStoreModes,
 			},
 		},
 		{
@@ -107,6 +90,15 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 			},
 			ResourceHandler: handlers.NewAWSHandler(connection),
 		},
+
+		{
+			// Handles any Azure resource type
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AnyResourceType,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
@@ -121,20 +113,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewARMHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureSqlServer,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewARMHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureSqlServerDatabase,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),

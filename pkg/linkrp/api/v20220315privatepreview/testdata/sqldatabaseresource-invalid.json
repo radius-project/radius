@@ -3,7 +3,7 @@
     "name": "sql0",
     "type": "Applications.Link/sqlDatabases",
     "properties": {
-        "resource": 12345,
-        "mode": "resource"
+        "database": 12345,
+        "resourceProvisioning":"manual"
     }
 }

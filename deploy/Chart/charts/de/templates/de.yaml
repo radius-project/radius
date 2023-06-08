@@ -25,7 +25,9 @@ spec:
     spec:
       serviceAccountName: de-manager
       containers:
-      - args:
+      - name: de
+        image: {{ .Values.image }}:{{ .Values.tag }}
+        args:
         - --kubernetes=true
         env:
         - name: SKIP_ARM
@@ -44,14 +46,15 @@ spec:
         - name: ASPNETCORE_Zipkin__Endpoint
           value: {{ .Values.global.zipkin.url }}
         {{ end }}
-        image: {{ .Values.image }}:{{ .Values.tag }}
-        name: de
         ports:
         - containerPort: 6443
           name: bicep-de-api
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
+        {{- if .Values.resources }}
+        resources:{{ toYaml .Values.resources | nindent 10 }}
+        {{- end }}
       terminationGracePeriodSeconds: 10
 ---
 apiVersion: v1

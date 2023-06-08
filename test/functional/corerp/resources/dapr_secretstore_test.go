@@ -25,10 +25,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprSecretStoreGeneric(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
-	name := "corerp-resources-dapr-secretstore-generic"
-	appNamespace := "default-corerp-resources-dapr-secretstore-generic"
+func Test_DaprSecretStore_Manual_Generic(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-secretstore-manual.bicep"
+	name := "corerp-resources-dapr-secretstore-manual"
+	appNamespace := "default-corerp-resources-dapr-secretstore-manual"
 
 	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
 		{
@@ -45,7 +45,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "gnrc-scs",
+						Name: "gnrc-scs-manual",
 						Type: validation.DaprSecretStoresResource,
 						App:  name,
 					},
@@ -55,6 +55,46 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
+					},
+				},
+			},
+		},
+	}, corerp.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
+
+	test.Test(t)
+}
+
+func Test_DaprSecretStore_Recipe(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-secretstore-recipe.bicep"
+	name := "corerp-resources-dapr-secretstore-recipe"
+	appNamespace := "corerp-resources-dapr-secretstore-recipe"
+
+	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "gnrc-scs-ctnr-recipe",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "gnrc-scs-recipe",
+						Type: validation.DaprSecretStoresResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").ValidateLabels(false),
 					},
 				},
 			},

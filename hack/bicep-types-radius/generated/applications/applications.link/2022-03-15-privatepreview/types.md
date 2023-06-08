@@ -200,29 +200,17 @@
 * **Additional Properties Type**: string
 
 ## DaprSecretStoreProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeDaprSecretStoreProperties
-#### Properties
 * **metadata**: any: Any object
-* **mode**: 'recipe' (Required): Discriminator property for DaprSecretStoreProperties.
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string: Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string: Dapr component version
-
-### ValuesDaprSecretStoreProperties
-#### Properties
-* **metadata**: any (Required): Any object
-* **mode**: 'values' (Required): Discriminator property for DaprSecretStoreProperties.
-* **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
-* **version**: string (Required): Dapr component version
-
 
 ## TrackedResourceTags
 ### Properties
@@ -317,25 +305,15 @@
 * **Additional Properties Type**: string
 
 ## RabbitMQMessageQueueProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **queue**: string: The name of the queue
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeRabbitMQMessageQueueProperties
-#### Properties
-* **mode**: 'recipe' (Required): Discriminator property for RabbitMQMessageQueueProperties.
-* **queue**: string: The name of the queue
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-
-### ValuesRabbitMQMessageQueueProperties
-#### Properties
-* **mode**: 'values' (Required): Discriminator property for RabbitMQMessageQueueProperties.
-* **queue**: string (Required): The name of the queue
-
 
 ## RabbitMQSecrets
 ### Properties
@@ -371,33 +349,16 @@
 * **Additional Properties Type**: string
 
 ## SqlDatabaseProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **database**: string: The name of the Sql database.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the SqlDatabase resource
+* **server**: string: The fully qualified domain name of the Sql database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeSqlDatabaseProperties
-#### Properties
-* **database**: string: The name of the Sql database.
-* **mode**: 'recipe' (Required): Discriminator property for SqlDatabaseProperties.
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **server**: string: The fully qualified domain name of the Sql database.
-
-### ResourceSqlDatabaseProperties
-#### Properties
-* **database**: string: The name of the Sql database.
-* **mode**: 'resource' (Required): Discriminator property for SqlDatabaseProperties.
-* **resource**: string (Required): Fully qualified resource ID of a supported resource with Sql API to use for this link
-* **server**: string: The fully qualified domain name of the Sql database.
-
-### ValuesSqlDatabaseProperties
-#### Properties
-* **database**: string (Required): The name of the Sql database.
-* **mode**: 'values' (Required): Discriminator property for SqlDatabaseProperties.
-* **server**: string (Required): The fully qualified domain name of the Sql database.
-
 
 ## TrackedResourceTags
 ### Properties

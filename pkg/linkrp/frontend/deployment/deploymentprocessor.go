@@ -516,22 +516,14 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(linkrp.SqlDatabasesResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.Mode == datamodel.LinkModeRecipe {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
-		}
+		recipe.Name = obj.Properties.Recipe.Name
+		recipe.Parameters = obj.Properties.Recipe.Parameters
+
 	case strings.ToLower(linkrp.RedisCachesResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		basicResource = &obj.Properties.BasicResourceProperties
 		recipe.Name = obj.Properties.Recipe.Name
 		recipe.Parameters = obj.Properties.Recipe.Parameters
-	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
-		obj := resource.(*datamodel.RabbitMQMessageQueue)
-		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.Mode == datamodel.LinkModeRecipe {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
-		}
 	case strings.ToLower(linkrp.ExtendersResourceType):
 		obj := resource.(*datamodel.Extender)
 		basicResource = &obj.Properties.BasicResourceProperties
@@ -539,13 +531,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 		obj := resource.(*datamodel.DaprStateStore)
 		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
-		}
-	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
-		obj := resource.(*datamodel.DaprSecretStore)
-		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
