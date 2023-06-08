@@ -17,37 +17,37 @@ limitations under the License.
 package resource_test
 
 import (
-	"os"
+	"fmt"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprPubSubGeneric(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-pubsub-generic.bicep"
-	name := "corerp-resources-dapr-pubsub-generic"
-	appNamespace := "default-corerp-resources-dapr-pubsub-generic"
+func Test_DaprPubSubBroker_Manual(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-pubsub-broker-manual.bicep"
+	name := "dpsb-manual-app"
+	appNamespace := "default-dpsb-manual-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace)),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-dapr-pubsub-generic",
+						Name: "dpsb-manual-app",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gnrc-publisher",
+						Name: "dpsb-manual-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "gnrc-pubsub",
+						Name: "dpsb-manual",
 						Type: validation.DaprPubSubBrokersResource,
 						App:  name,
 					},
@@ -56,81 +56,68 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-publisher"),
+						validation.NewK8sPodForResource(name, "dpsb-manual-app-ctnr"),
+						validation.NewK8sPodForResource(name, "dpsb-manual-redis").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "dpsb-manual-redis").ValidateLabels(false),
 					},
 				},
 			},
 		},
 	})
 	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
-
 	test.Test(t)
 }
 
-func Test_DaprPubSubServiceBus(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
-	name := "corerp-resources-dapr-pubsub-servicebus"
-
-	if os.Getenv("AZURE_SERVICEBUS_RESOURCE_ID") == "" {
-		t.Error("AZURE_SERVICEBUS_RESOURCE_ID environment variable must be set to run this test.")
-	}
-	namespaceresourceid := "namespaceresourceid=" + os.Getenv("AZURE_SERVICEBUS_RESOURCE_ID")
-	appNamespace := "default-corerp-resources-dapr-pubsub-servicebus"
+func Test_DaprPubSubBroker_Recipe(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-pubsub-broker-recipe.bicep"
+	name := "dpsb-recipe-app"
+	appNamespace := "dpsb-recipe-env"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), namespaceresourceid),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-dapr-pubsub-servicebus",
-						Type: validation.ApplicationsResource,
+						Name: "dpsb-recipe-env",
+						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "sb-publisher",
+						Name: "dpsb-recipe-app",
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "dpsb-recipe-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "sb-pubsub",
+						Name: "dpsb-recipe",
 						Type: validation.DaprPubSubBrokersResource,
 						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderKubernetes,
+								LocalID:  "RecipeResource0",
+							},
+							{
+								Provider: resourcemodel.ProviderKubernetes,
+								LocalID:  "RecipeResource1",
+							},
+						},
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "sb-publisher"),
+						validation.NewK8sPodForResource(name, "dpsb-recipe-ctnr").ValidateLabels(false),
 					},
 				},
 			},
 		},
 	})
 	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
-
-	test.Test(t)
-}
-
-func Test_DaprPubSubServiceInvalid(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-pubsub-servicebus-invalid.bicep"
-	name := "corerp-resources-dapr-pubsub-servicebus-invalid"
-
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInvalid, functional.GetMagpieImage()),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
-					{
-						Name: "corerp-resources-dapr-pubsub-servicebus-invalid",
-						Type: validation.ApplicationsResource,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{},
-		},
-	})
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
-
 	test.Test(t)
 }

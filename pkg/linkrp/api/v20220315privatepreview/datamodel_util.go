@@ -17,7 +17,7 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"time"
+	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -71,15 +71,17 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 	return &converted
 }
 
-func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) linkrp.ResourceProvisioning {
+func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) (linkrp.ResourceProvisioning, error) {
 	if provisioning == nil {
-		return linkrp.ResourceProvisioningRecipe
+		return linkrp.ResourceProvisioningRecipe, nil
 	}
 	switch *provisioning {
 	case ResourceProvisioningManual:
-		return linkrp.ResourceProvisioningManual
+		return linkrp.ResourceProvisioningManual, nil
+	case ResourceProvisioningRecipe:
+		return linkrp.ResourceProvisioningRecipe, nil
 	default:
-		return linkrp.ResourceProvisioning(*provisioning)
+		return "", &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
 	}
 }
 
@@ -93,12 +95,6 @@ func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning)
 	}
 
 	return &converted
-}
-
-func unmarshalTimeString(ts string) *time.Time {
-	var tt timeRFC3339
-	_ = tt.UnmarshalText([]byte(ts))
-	return (*time.Time)(&tt)
 }
 
 func fromSystemDataModel(s v1.SystemData) *SystemData {

@@ -1,0 +1,24 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprPubSubBrokers/test-dpsb",
+    "name": "test-dpsb",
+    "type": "Applications.Link/daprPubSubBrokers",
+    "location": "global",
+    "tags": {
+        "env": "dev"
+    },
+    "properties": {
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+        "resourceProvisioning": "manual",
+        "type": "pubsub.azure.servicebus",
+        "version": "v1",
+        "metadata": {
+            "foo": "bar"
+        },
+        "resources": [
+            {
+                "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"
+            }
+        ]
+    }
+}
