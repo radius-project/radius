@@ -41,13 +41,11 @@ async function handleIssueCommentCreate({ github, context }) {
 
     switch (command) {
         case '/ok-to-test':
-            await cmdOkToTest(github, issue, isFromPulls, username)
-            break
+            await cmdOkToTest(github, issue, isFromPulls, username);
+            break;
         default:
-            console.log(
-                `[handleIssueCommentCreate] command ${command} not found, exiting.`
-            )
-            break
+            console.log(`[handleIssueCommentCreate] command ${command} not found, exiting.`);
+            break;
     }
 }
 
