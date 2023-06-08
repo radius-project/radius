@@ -44,7 +44,7 @@ spec:
         - name: ASPNETCORE_Zipkin__Endpoint
           value: {{ .Values.global.zipkin.url }}
         {{ end }}
-        image: {{ .Values.image }}:{{ .Values.tag }}
+        image: radius.azurecr.io/deployment-engine:0.21
         name: de
         ports:
         - containerPort: 6443
