@@ -251,9 +251,8 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    ```
 5. After pull request is approved, merge into the release branch and tag!
    ```bash
-   # replace v0.10.X with the version we want to patch (if we release 0.10.1 already, we would then release 0.10.2, etc.)
-   git tag v0.10.1 
+   # replace v0.21.X with the version we want to patch (if we release 0.21.1 already, we would then release 0.21.2, etc.)
+   git tag v0.21.1 
    git push --tags
-   ``` 
-   (update tags for repos bicep, de in addition to radius)
+   ```
 
