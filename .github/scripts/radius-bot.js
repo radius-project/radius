@@ -23,11 +23,11 @@ module.exports = async ({ github, context }) => {
 
 // Handle issue comment create event.
 async function handleIssueCommentCreate({ github, context }) {
-    const payload = context.payload
-    const issue = context.issue
-    const isFromPulls = !!payload.issue.pull_request
-    const commentBody = payload.comment.body
-    const username = context.actor.toLowerCase()
+    const payload = context.payload;
+    const issue = context.issue;
+    const isFromPulls = !!payload.issue.pull_request;
+    const commentBody = payload.comment.body;
+    const username = context.actor.toLowerCase();
 
     await cmdOkToTest(github, issue, isFromPulls, username)
 
