@@ -57,29 +57,26 @@ async function handleIssueCommentCreate({ github, context }) {
  */
 async function cmdOkToTest(github, issue, isFromPulls, userName) {
     if (!isFromPulls) {
-        console.log(
-            '[cmdOkToTest] only pull requests supported, skipping command execution.'
-        )
-        return
+        console.log('[cmdOkToTest] only pull requests supported, skipping command execution.');
+        return;
     }
 
     // Check if the user has permission to trigger e2e test with an issue comment
-    const org = `project-radius`
-    const teamSlug = `Radius-Eng`
-    console.log(`Checking team membership for: ${userName}`)
+    const org = 'project-radius';
+    const teamSlug = 'Radius-Eng';
+    console.log(`Checking team membership for: ${userName}`);
     const isMember = await checkTeamMembership(github, org, teamSlug, userName);
     if (!isMember) {
         console.log(`${userName} is not a member of the ${teamSlug} team.`);
-        return
+        return;
     }
-
 
     // Get pull request
     const pull = await github.pulls.get({
         owner: issue.owner,
         repo: issue.repo,
         pull_number: issue.number,
-    })
+    });
 
     if (pull && pull.data) {
         // Get commit id and repo from pull head
@@ -88,22 +85,19 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
             pull_head_repo: pull.data.head.repo.full_name,
             command: 'ok-to-test',
             issue: issue,
-        }
+        };
 
-        console.log(`Creating repository dispatch event for e2e test`)
+        console.log('Creating repository dispatch event for e2e test');
+        
         // Fire repository_dispatch event to trigger e2e test
         await github.repos.createDispatchEvent({
             owner: issue.owner,
             repo: issue.repo,
             event_type: 'e2e-test',
             client_payload: testPayload,
-        })
+        });
 
-        console.log(
-            `[cmdOkToTest] triggered E2E test for ${JSON.stringify(
-                testPayload
-            )}`
-        )
+        console.log(`[cmdOkToTest] triggered E2E test for ${JSON.stringify(testPayload)}`);
     }
 }
 
