@@ -108,7 +108,7 @@ async function checkTeamMembership(github, org, teamSlug, userName) {
             team_slug: teamSlug,
             username: userName,
           });
-        return response.data.state === 'active'
+        return response.data.state === 'active';
     } catch (error) {
         console.error(`An error occurred: ${error}`);
     }
