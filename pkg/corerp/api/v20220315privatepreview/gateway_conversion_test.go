@@ -163,12 +163,70 @@ func TestGatewayTLSTerminationConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", gw.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, "secretname", gw.Properties.TLS.CertificateFrom)
-	require.Equal(t, datamodel.TLSMinVersion12, gw.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, datamodel.TLSMinVersion13, gw.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayTLSTerminationConvertDataModelToVersioned(t *testing.T) {
 	// arrange
 	rawPayload := testutil.ReadFixture("gatewayresourcedatamodel-with-tlstermination.json")
+	r := &datamodel.Gateway{}
+	err := json.Unmarshal(rawPayload, r)
+	require.NoError(t, err)
+
+	// act
+	versioned := &GatewayResource{}
+	err = versioned.ConvertFrom(r)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/gateway0", *versioned.ID)
+	require.Equal(t, "gateway0", *versioned.Name)
+	require.Equal(t, "Applications.Core/gateways", *versioned.Type)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", *versioned.Properties.Application)
+	require.Equal(t, "myapp.mydomain.com", *versioned.Properties.Hostname.FullyQualifiedHostname)
+	require.Equal(t, "myprefix", *versioned.Properties.Hostname.Prefix)
+	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
+	require.Equal(t, "mypath", *versioned.Properties.Routes[0].Path)
+	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
+	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
+	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
+	require.Equal(t, TLSMinVersionOne3, *versioned.Properties.TLS.MinimumProtocolVersion)
+}
+
+func TestGatewayTLSTerminationConvertVersionedToDataModel_NoMinProtocolVersion(t *testing.T) {
+	// arrange
+	rawPayload := testutil.ReadFixture("gatewayresource-with-tlstermination-nominprotocolversion.json")
+	r := &GatewayResource{}
+	err := json.Unmarshal(rawPayload, r)
+	require.NoError(t, err)
+
+	// act
+	dm, err := r.ConvertTo()
+
+	// assert
+	require.NoError(t, err)
+	gw := dm.(*datamodel.Gateway)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/gateway0", gw.ID)
+	require.Equal(t, "gateway0", gw.Name)
+	require.Equal(t, "Applications.Core/gateways", gw.Type)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", gw.Properties.Application)
+	require.Equal(t, "myapp.mydomain.com", gw.Properties.Hostname.FullyQualifiedHostname)
+	require.Equal(t, "myprefix", gw.Properties.Hostname.Prefix)
+	require.Equal(t, "mydestination", gw.Properties.Routes[0].Destination)
+	require.Equal(t, "mypath", gw.Properties.Routes[0].Path)
+	require.Equal(t, "myreplaceprefix", gw.Properties.Routes[0].ReplacePrefix)
+	require.Equal(t, "http://myprefix.myapp.mydomain.com", gw.Properties.URL)
+	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
+	require.Equal(t, "2022-03-15-privatepreview", gw.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "secretname", gw.Properties.TLS.CertificateFrom)
+	require.Equal(t, datamodel.TLSMinVersion12, gw.Properties.TLS.MinimumProtocolVersion)
+}
+
+func TestGatewayTLSTerminationConvertDataModelToVersioned_NoMinProtocolVersion(t *testing.T) {
+	// arrange
+	rawPayload := testutil.ReadFixture("gatewayresourcedatamodel-with-tlstermination-nominprotocolversion.json")
 	r := &datamodel.Gateway{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)

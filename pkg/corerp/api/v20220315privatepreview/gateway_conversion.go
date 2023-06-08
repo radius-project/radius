@@ -25,7 +25,6 @@ import (
 
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
-
 	tls := &datamodel.GatewayPropertiesTLS{}
 	if src.Properties.TLS == nil {
 		tls = nil
@@ -151,12 +150,16 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 }
 
 func toTLSMinVersionDataModel(tlsMinVersion *TLSMinVersion) datamodel.MinimumTLSProtocolVersion {
-	switch *tlsMinVersion {
-	case TLSMinVersionOne2:
-		return datamodel.TLSMinVersion12
-	case TLSMinVersionOne3:
-		return datamodel.TLSMinVersion13
-	default:
+	if tlsMinVersion != nil {
+		switch *tlsMinVersion {
+		case TLSMinVersionOne2:
+			return datamodel.TLSMinVersion12
+		case TLSMinVersionOne3:
+			return datamodel.TLSMinVersion13
+		default:
+			return datamodel.TLSMinVersion12
+		}
+	} else {
 		return datamodel.TLSMinVersion12
 	}
 }
