@@ -122,6 +122,10 @@ func (d *DeleteResource) deleteResources(ctx context.Context, id string, outputR
 			return err
 		}
 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
+			continue
+		}
+
 		err = d.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
 		if err != nil {
 			return err

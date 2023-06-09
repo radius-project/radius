@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -39,10 +40,10 @@ var outputResource = rpv1.OutputResource{
 		Type:     "Microsoft.DocumentDB/databaseAccounts/mongoDatabases",
 		Provider: resourcemodel.ProviderAzure,
 	}, outputResourceResourceID, "2022-01-01"),
+	RadiusManaged: to.Ptr(true),
 }
 
 func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
-
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
@@ -116,7 +117,6 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 					Delete(gomock.Any(), outputResourceResourceID, resourcemodel.APIVersionUnknown).
 					Return(tt.clientDelErr).
 					Times(1)
-
 				if tt.clientDelErr == nil {
 					msc.EXPECT().
 						Delete(gomock.Any(), gomock.Any()).
