@@ -18,7 +18,9 @@
               "resourceProvisioning": "manual",
               "host": "testAccount1.mongo.cosmos.azure.com",
               "port": 10255,
-              "resources": [{"id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"}],
+              "resources": [
+                {"id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"}
+              ],
               "database": "mongo0"
             }
           },

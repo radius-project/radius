@@ -48,9 +48,9 @@ type MongoDatabaseProperties struct {
 	Port int32 `json:"port,omitempty"`
 	// Database name of the target Mongo database
 	Database string `json:"database,omitempty"`
-	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
+	// The recipe used to automatically deploy underlying infrastructure for the MongoDB link
 	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
-	// List of the resource IDs that support the Redis resource
+	// List of the resource IDs that support the MongoDB resource
 	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
