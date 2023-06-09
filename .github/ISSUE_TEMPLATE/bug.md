@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report broken functionality within Project Radius
+about: Report broken functionality within Radius
 title: "<BUG TITLE>"
 assignees: ''
 labels: ["bug"]
