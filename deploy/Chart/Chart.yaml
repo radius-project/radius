@@ -1,14 +1,10 @@
 apiVersion: v2
 description: Radius provides a declarative way to manage your infrastructure and applications.
 name: radius
-# We automate versioning of the chart during publishing.
-# The value here is only used for a dev build.
+# version is the chart version, which will be replaced when this chart is packaged.
 version: '0.42.42-dev'
+# appVersion is the version of Radius, which will be replaced when this chart is packaged.
 appVersion: 'latest'
-keywords:
-  - radius
-  - iac
-  - bicep
 home: https://radapp.dev
 sources:
   - https://github.com/project-radius/radius/tree/main/deploy/Chart
@@ -16,3 +12,7 @@ maintainers:
   - name: Radius Authors
     url: https://github.com/project-radius/radius
 icon: https://radapp.dev/images/logo.png
+keywords:
+  - radius
+  - iac
+  - bicep

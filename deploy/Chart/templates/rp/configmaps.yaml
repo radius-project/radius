@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: appcore-rp
+  name: appcore-rp-config
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: appcore-rp

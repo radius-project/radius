@@ -112,12 +112,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: applications-rp
+  name: appcore-rp
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: applications-rp
+  name: appcore-rp
 subjects:
 - kind: ServiceAccount
-  name: applications-rp
+  name: appcore-rp
   namespace: {{ .Release.Namespace }}

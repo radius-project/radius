@@ -9,27 +9,30 @@ global:
   # zipkin:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
+
 de:
   image: radius.azurecr.io/deployment-engine
-  tag: latest
+  # tag: latest
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
       memory: "130Mi"
     limits:
       memory: "300Mi"
+
 ucp:
   image: radius.azurecr.io/ucpd
-  tag: latest
+  # tag: latest
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
       memory: "60Mi"
     limits:
       memory: "300Mi"
+
 rp:
   image: radius.azurecr.io/appcore-rp
-  tag: latest
+  # tag: latest
   publicEndpointOverride: ""
   resources:
     requests:

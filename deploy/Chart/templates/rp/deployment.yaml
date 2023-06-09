@@ -71,4 +71,4 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: applications-rp-config
+            name: appcore-rp-config
