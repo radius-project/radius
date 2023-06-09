@@ -32,3 +32,5 @@ helm delete radius
 ```
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.
+
+Uninstalling the chart will not delete any data stored by Radius. To clean up any remaining data, delete the radius-system namespace. 
