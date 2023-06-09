@@ -34,8 +34,13 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # Go version to install
   GOVER: '^1.20'
+  GOPROXY: https://proxy.golang.org
+  
+  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUMVERSION: 1.10.0
+
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
   DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 

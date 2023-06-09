@@ -35,6 +35,9 @@ env:
   GOVER: '^1.20'
   GOPROXY: https://proxy.golang.org
 
+  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
+  GOTESTSUM_VER: 1.10.0
+
   # Helm version
   HELM_VER: 'v3.11.3'
   # KinD cluster version
@@ -155,6 +158,7 @@ jobs:
             <details>
             <summary> Click here to see the list of tools in the current test run</summary>
 
+            * gotestsum ${{ env.GOTESTSUM_VER }}
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
@@ -387,6 +391,9 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
+      - name: Install gotestsum (test reporting tool)
+        run: |
+          go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
