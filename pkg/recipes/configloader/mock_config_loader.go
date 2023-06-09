@@ -51,7 +51,7 @@ func (mr *MockConfigurationLoaderMockRecorder) LoadConfiguration(arg0, arg1 inte
 }
 
 // LoadRecipe mocks base method.
-func (m *MockConfigurationLoader) LoadRecipe(arg0 context.Context, arg1 recipes.Metadata) (*recipes.Definition, error) {
+func (m *MockConfigurationLoader) LoadRecipe(arg0 context.Context, arg1 *recipes.Metadata) (*recipes.Definition, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LoadRecipe", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.Definition)
