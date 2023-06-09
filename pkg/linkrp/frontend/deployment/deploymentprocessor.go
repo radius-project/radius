@@ -461,20 +461,6 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 			return nil, fmt.Errorf("failed to fetch secret %s for resource %s: %w", k, resourceData.ID.String(), err)
 		}
 
-		if (secretReference.Transformer != resourcemodel.ResourceType{}) {
-			outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(secretReference.Transformer)
-			if err != nil {
-				return nil, err
-			} else if outputResourceModel.SecretValueTransformer == nil {
-				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
-			}
-
-			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, resourceData.ComputedValues, secret)
-			if err != nil {
-				return nil, fmt.Errorf("failed to transform secret %s for resource %s: %w", k, resourceData.ID.String(), err)
-			}
-		}
-
 		secretValues[k] = secret
 	}
 
@@ -506,23 +492,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rpv1.BasicResourceProperties, recipe linkrp.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		obj := resource.(*datamodel.MongoDatabase)
-		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.Mode == datamodel.LinkModeRecipe {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
-		}
-	case strings.ToLower(linkrp.SqlDatabasesResourceType):
-		obj := resource.(*datamodel.SqlDatabase)
-		basicResource = &obj.Properties.BasicResourceProperties
-		recipe.Name = obj.Properties.Recipe.Name
-		recipe.Parameters = obj.Properties.Recipe.Parameters
-	case strings.ToLower(linkrp.RedisCachesResourceType):
-		obj := resource.(*datamodel.RedisCache)
-		basicResource = &obj.Properties.BasicResourceProperties
-		recipe.Name = obj.Properties.Recipe.Name
-		recipe.Parameters = obj.Properties.Recipe.Parameters
 	case strings.ToLower(linkrp.ExtendersResourceType):
 		obj := resource.(*datamodel.Extender)
 		basicResource = &obj.Properties.BasicResourceProperties

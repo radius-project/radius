@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rediscaches
+package mongodatabases
 
 import (
 	"context"
@@ -31,29 +31,31 @@ import (
 func Test_Process(t *testing.T) {
 	processor := Processor{}
 
-	const azureRedisResourceID1 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis1"
-	const azureRedisResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis2"
-	const host = "myredis.redis.cache.windows.net"
-	const connectionString = "myredis.redis.cache.windows.net:6380,abortConnect=False,ssl=True,user=testuser,password=testpassword"
+	const azureMongoResourceID1 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.DocumentDB/mongo/mongodb1"
+	const azureMongoResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.DocumentDB/mongo/mongodb2"
+
+	const host = "test.mongo.cosmos.azure.com"
+	const port = 10255
 	const username = "testuser"
 	const password = "testpassword"
+	const database = "authdb"
+	const connectionString = "mongodb://testuser:testpassword@test.mongo.cosmos.azure.com:10255/authdb"
 
 	t.Run("success - recipe", func(t *testing.T) {
-		resource := &datamodel.RedisCache{}
+		resource := &datamodel.MongoDatabase{}
 		options := processors.Options{
 			RecipeOutput: &recipes.RecipeOutput{
 				Resources: []string{
-					azureRedisResourceID1,
+					azureMongoResourceID1,
 				},
 				Values: map[string]any{
 					"host":     host,
-					"port":     RedisSSLPort,
+					"port":     port,
+					"database": database,
 					"username": username,
 				},
 				Secrets: map[string]any{
 					"password": password,
-					// Let the connection string be computed, it will result in the same value
-					// as the variable 'connectionString'
 				},
 			},
 		}
@@ -62,14 +64,16 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, host, resource.Properties.Host)
-		require.Equal(t, int32(RedisSSLPort), resource.Properties.Port)
+		require.Equal(t, int32(port), resource.Properties.Port)
+		require.Equal(t, database, resource.Properties.Database)
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
 
 		expectedValues := map[string]any{
 			"host":     host,
-			"port":     int32(RedisSSLPort),
+			"port":     int32(port),
+			"database": database,
 			"username": username,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
@@ -90,13 +94,14 @@ func Test_Process(t *testing.T) {
 	})
 
 	t.Run("success - manual", func(t *testing.T) {
-		resource := &datamodel.RedisCache{
-			Properties: datamodel.RedisCacheProperties{
-				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+		resource := &datamodel.MongoDatabase{
+			Properties: datamodel.MongoDatabaseProperties{
+				Resources: []*linkrp.ResourceReference{{ID: azureMongoResourceID1}},
 				Host:      host,
-				Port:      RedisSSLPort,
+				Port:      port,
+				Database:  database,
 				Username:  username,
-				Secrets: datamodel.RedisCacheSecrets{
+				Secrets: datamodel.MongoDatabaseSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
 				},
@@ -106,14 +111,16 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, host, resource.Properties.Host)
-		require.Equal(t, int32(RedisSSLPort), resource.Properties.Port)
+		require.Equal(t, int32(port), resource.Properties.Port)
+		require.Equal(t, database, resource.Properties.Database)
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
 
 		expectedValues := map[string]any{
 			"host":     host,
-			"port":     int32(RedisSSLPort),
+			"port":     int32(port),
+			"database": database,
 			"username": username,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
@@ -127,7 +134,7 @@ func Test_Process(t *testing.T) {
 
 		expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*linkrp.ResourceReference{
 			{
-				ID: azureRedisResourceID1,
+				ID: azureMongoResourceID1,
 			},
 		})
 		require.NoError(t, err)
@@ -138,14 +145,14 @@ func Test_Process(t *testing.T) {
 	})
 
 	t.Run("success - recipe with value overrides", func(t *testing.T) {
-		resource := &datamodel.RedisCache{
-			Properties: datamodel.RedisCacheProperties{
-				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+		resource := &datamodel.MongoDatabase{
+			Properties: datamodel.MongoDatabaseProperties{
+				Resources: []*linkrp.ResourceReference{{ID: azureMongoResourceID1}},
 				Host:      host,
-				Port:      RedisSSLPort,
+				Port:      port,
+				Database:  database,
 				Username:  username,
-
-				Secrets: datamodel.RedisCacheSecrets{
+				Secrets: datamodel.MongoDatabaseSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
 				},
@@ -154,13 +161,14 @@ func Test_Process(t *testing.T) {
 		options := processors.Options{
 			RecipeOutput: &recipes.RecipeOutput{
 				Resources: []string{
-					azureRedisResourceID2,
+					azureMongoResourceID2,
 				},
 				// Values and secrets will be overridden by the resource.
 				Values: map[string]any{
 					"host":     "asdf",
 					"port":     3333,
-					"username": "asdf",
+					"database": "asdf",
+					"username": username,
 				},
 				Secrets: map[string]any{
 					"password":         "asdf",
@@ -173,14 +181,16 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, host, resource.Properties.Host)
-		require.Equal(t, int32(RedisSSLPort), resource.Properties.Port)
+		require.Equal(t, int32(port), resource.Properties.Port)
+		require.Equal(t, database, resource.Properties.Database)
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
 
 		expectedValues := map[string]any{
 			"host":     host,
-			"port":     int32(RedisSSLPort),
+			"port":     int32(port),
+			"database": database,
 			"username": username,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
@@ -200,7 +210,7 @@ func Test_Process(t *testing.T) {
 
 		resourceFieldOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*linkrp.ResourceReference{
 			{
-				ID: azureRedisResourceID1,
+				ID: azureMongoResourceID1,
 			},
 		})
 		require.NoError(t, err)
@@ -212,7 +222,7 @@ func Test_Process(t *testing.T) {
 	})
 
 	t.Run("failure - missing required values", func(t *testing.T) {
-		resource := &datamodel.RedisCache{}
+		resource := &datamodel.MongoDatabase{}
 		options := processors.Options{RecipeOutput: &recipes.RecipeOutput{}}
 
 		err := processor.Process(context.Background(), resource, options)
@@ -221,6 +231,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, `validation returned multiple errors:
 
 the connection value "host" should be provided by the recipe, set '.properties.host' to provide a value manually
-the connection value "port" should be provided by the recipe, set '.properties.port' to provide a value manually`, err.Error())
+the connection value "port" should be provided by the recipe, set '.properties.port' to provide a value manually
+the connection value "database" should be provided by the recipe, set '.properties.database' to provide a value manually`, err.Error())
 	})
 }

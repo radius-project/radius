@@ -14,22 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// mongodatabases contains the resource processor for Mongo databases. See the processors package for more information.
 package mongodatabases
-
-import (
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-)
-
-var AzureCosmosMongoResourceType = resources.KnownType{
-	Types: []resources.TypeSegment{
-		{
-			Type: azresources.DocumentDBDatabaseAccounts,
-			Name: "*",
-		},
-		{
-			Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			Name: "*",
-		},
-	},
-}

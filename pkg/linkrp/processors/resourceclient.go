@@ -33,7 +33,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -51,11 +53,11 @@ type resourceClient struct {
 	k8sClient runtime_client.Client
 
 	// k8sDiscoveryClient is the Kubernetes client to used for API version lookups on Kubernetes resources. Override this for testing.
-	k8sDiscoveryClient discovery.ServerGroupsInterface
+	k8sDiscoveryClient discovery.ServerResourcesInterface
 }
 
 // NewResourceClient creates a new resource client.
-func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, k8sClient runtime_client.Client, k8sDiscoveryClient discovery.ServerGroupsInterface) *resourceClient {
+func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, k8sClient runtime_client.Client, k8sDiscoveryClient discovery.ServerResourcesInterface) *resourceClient {
 	return &resourceClient{arm: arm, connection: connection, k8sClient: k8sClient, k8sDiscoveryClient: k8sDiscoveryClient}
 }
 
@@ -103,7 +105,6 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 	}
 
 	if apiVersion == "" || apiVersion == resourcemodel.APIVersionUnknown {
-
 		apiVersion, err = c.lookupARMAPIVersion(ctx, id)
 		if err != nil {
 			return err
@@ -140,7 +141,7 @@ func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.I
 	}
 
 	// We need to match on the resource type name without the provider namespace.
-	shortType := strings.TrimPrefix(id.Type(), id.ProviderNamespace()+"/")
+	shortType := strings.TrimPrefix(id.TypeSegments()[0].Type, id.ProviderNamespace()+"/")
 	for _, rt := range resp.ResourceTypes {
 		if !strings.EqualFold(shortType, *rt.ResourceType) {
 			continue
@@ -203,7 +204,7 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 	}
 
 	metadata := map[string]any{
-		name: name,
+		"name": name,
 	}
 	if ns != "" {
 		metadata["namespace"] = ns
@@ -227,32 +228,41 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 
 func (c *resourceClient) lookupKubernetesAPIVersion(ctx context.Context, id resources.ID) (string, error) {
 	identity := resourcemodel.FromUCPID(id, resourcemodel.APIVersionUnknown)
-	gvk, _, _, err := identity.RequireKubernetes()
+	gvk, namespace, _, err := identity.RequireKubernetes()
 	if err != nil {
 		// We don't expect this to fail, but just in case....
 		return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
 	}
 
-	list, err := c.k8sDiscoveryClient.ServerGroups()
-	if err != nil {
-		return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+	var resourceLists []*v1.APIResourceList
+	if namespace == "" {
+		resourceLists, err = c.k8sDiscoveryClient.ServerPreferredResources()
+		if err != nil {
+			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+		}
+	} else {
+		resourceLists, err = c.k8sDiscoveryClient.ServerPreferredNamespacedResources()
+		if err != nil {
+			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+		}
 	}
 
-	for _, group := range list.Groups {
-		if gvk.Group != group.Name {
+	for _, resourceList := range resourceLists {
+		// We know the group but not the version. This will give us the the list of resources and their preferred versions.
+		gv, err := schema.ParseGroupVersion(resourceList.GroupVersion)
+		if err != nil {
+			return "", err
+		}
+
+		if gvk.Group != gv.Group {
 			continue
 		}
 
-		if group.PreferredVersion.Version != "" {
-			return group.PreferredVersion.Version, nil
+		for _, resource := range resourceList.APIResources {
+			if resource.Kind == gvk.Kind {
+				return gv.Version, nil
+			}
 		}
-
-		if len(group.Versions) > 0 {
-			return group.Versions[0].Version, nil
-		}
-
-		return "", fmt.Errorf("could not find API version for type %q, no supported API versions", id.Type())
-
 	}
 
 	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
