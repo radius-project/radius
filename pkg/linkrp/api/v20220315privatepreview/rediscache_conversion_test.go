@@ -184,7 +184,7 @@ func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 			require.Equal(t, &expectedErr, err)
 		}
 		if payload == "rediscacheresource-invalid2.json" {
-			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host is required when resourceProvisioning is %s", ResourceProvisioningManual)}
+			expectedErr := v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual"}
 			_, err = versionedResource.ConvertTo()
 			require.Equal(t, &expectedErr, err)
 		}

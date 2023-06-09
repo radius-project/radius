@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -98,14 +99,28 @@ func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 
 // VerifyInputs checks that the inputs for manual resource provisioning are all provided
 func (redisCache *RedisCache) VerifyInputs() error {
+	msgs := []string{}
 	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		if redisCache.Properties.Host == "" {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
 		}
 		if redisCache.Properties.Port == 0 {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("port is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
 		}
 	}
+
+	if len(msgs) == 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: msgs[0],
+		}
+	} else if len(msgs) > 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: fmt.Sprintf("multiple errors were found:\n\t%v", strings.Join(msgs, "\n\t")),
+		}
+	}
+
 	return nil
 }
 
