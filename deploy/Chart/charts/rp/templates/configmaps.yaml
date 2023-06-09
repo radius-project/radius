@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: appcore-rp
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 5443
+      name: core-http
+      protocol: TCP
+      targetPort: 5443
+    - port: 5444
+      name: link-http
+      protocol: TCP
+      targetPort: 5444
+    {{ if eq .Values.global.prometheus.enabled true }}
+    - port: {{ .Values.global.prometheus.port }}
+      name: metrics-http
+      protocol: TCP
+      targetPort: {{ .Values.global.prometheus.port }}
+    {{ end }}
+  selector:
+    control-plane: appcore-rp

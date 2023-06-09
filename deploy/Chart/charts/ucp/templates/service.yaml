@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ucp
+  namespace: "{{ .Release.Namespace }}"
+spec:
+  ports:
+    - port: 443
+      name: https
+      protocol: TCP
+      targetPort: 9443
+    {{ if eq .Values.global.prometheus.enabled true }}
+    - port: {{ .Values.global.prometheus.port }}
+      name: metrics-http
+      protocol: TCP
+      targetPort: {{ .Values.global.prometheus.port }}
+    {{ end }}
+  selector:
+    control-plane: ucp
