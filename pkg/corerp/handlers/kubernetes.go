@@ -119,7 +119,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	watchErrorCh := make(chan error, 1)
 	go func() {
 		informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
-		handler.WatchUntilReady(ctx, informerFactory, &item, readinessCh, watchErrorCh, nil)
+		handler.WatchUntilReady(ctx, informerFactory, &item, readinessCh, watchErrorCh, nil, cancel)
 	}()
 
 	select {
@@ -183,11 +183,9 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 	return unstructured.Unstructured{Object: c}, nil
 }
 
-func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error, eventHandlerInvokedCh chan struct{}) {
+func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error, eventHandlerInvokedCh chan struct{}, cancel context.CancelFunc) {
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new_obj any) {
 			obj, ok := new_obj.(*v1.Deployment)
