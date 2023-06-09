@@ -164,7 +164,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 			Application:       to.Ptr(mongo.Properties.Application),
 		}
 	default:
-		return fmt.Errorf("Unsupported mode %s", mongo.Properties.Mode)
+		return fmt.Errorf("unsupported mode %s", mongo.Properties.Mode)
 	}
 
 	return nil

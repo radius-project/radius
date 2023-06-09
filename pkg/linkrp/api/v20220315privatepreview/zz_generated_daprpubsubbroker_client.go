@@ -113,28 +113,46 @@ func (client *DaprPubSubBrokerClient) createOrUpdateHandleResponse(resp *http.Re
 	return result, nil
 }
 
-// Delete - Deletes an existing DaprPubSubBrokerResource
+// BeginDelete - Deletes an existing DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprPubSubBrokerName - DaprPubSubBroker name
-// options - DaprPubSubBrokerClientDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.Delete method.
-func (client *DaprPubSubBrokerClient) Delete(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientDeleteOptions) (DaprPubSubBrokerClientDeleteResponse, error) {
+// options - DaprPubSubBrokerClientBeginDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.BeginDelete
+// method.
+func (client *DaprPubSubBrokerClient) BeginDelete(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientBeginDeleteOptions) (*runtime.Poller[DaprPubSubBrokerClientDeleteResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.deleteOperation(ctx, daprPubSubBrokerName, options)
+		if err != nil {
+			return nil, err
+		}
+		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[DaprPubSubBrokerClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+	} else {
+		return runtime.NewPollerFromResumeToken[DaprPubSubBrokerClientDeleteResponse](options.ResumeToken, client.pl, nil)
+	}
+}
+
+// Delete - Deletes an existing DaprPubSubBrokerResource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+func (client *DaprPubSubBrokerClient) deleteOperation(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, daprPubSubBrokerName, options)
 	if err != nil {
-		return DaprPubSubBrokerClientDeleteResponse{}, err
+		return nil, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprPubSubBrokerClientDeleteResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return DaprPubSubBrokerClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return nil, runtime.NewResponseError(resp)
 	}
-	return client.deleteHandleResponse(resp)
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprPubSubBrokerClient) deleteCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientDeleteOptions) (*policy.Request, error) {
+func (client *DaprPubSubBrokerClient) deleteCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprPubSubBrokerName == "" {
@@ -150,20 +168,6 @@ func (client *DaprPubSubBrokerClient) deleteCreateRequest(ctx context.Context, d
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
-}
-
-// deleteHandleResponse handles the Delete response.
-func (client *DaprPubSubBrokerClient) deleteHandleResponse(resp *http.Response) (DaprPubSubBrokerClientDeleteResponse, error) {
-	result := DaprPubSubBrokerClientDeleteResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return DaprPubSubBrokerClientDeleteResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	return result, nil
 }
 
 // Get - Retrieves information about a DaprPubSubBrokerResource

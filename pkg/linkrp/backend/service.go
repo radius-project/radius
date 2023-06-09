@@ -31,6 +31,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/linkrp/processors/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprstatestores"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rabbitmqmessagequeues"
@@ -127,6 +128,10 @@ func (s *Service) Run(ctx context.Context) error {
 		{linkrp.DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &daprsecretstores.Processor{Client: runtimeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &daprpubsubbrokers.Processor{Client: runtimeClient}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](processor, engine, client, configLoader, options)
 		}},
 	}
 

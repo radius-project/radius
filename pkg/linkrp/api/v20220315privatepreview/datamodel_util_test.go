@@ -17,6 +17,7 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -174,13 +175,36 @@ func TestToResourceProvisiongDataModel(t *testing.T) {
 	testset := []struct {
 		versioned ResourceProvisioning
 		datamodel linkrp.ResourceProvisioning
+		err       error
 	}{
-		{ResourceProvisioningManual, linkrp.ResourceProvisioningManual},
-		{ResourceProvisioningRecipe, linkrp.ResourceProvisioningRecipe},
-		{"", ""},
+		{
+			ResourceProvisioningManual,
+			linkrp.ResourceProvisioningManual,
+			nil,
+		},
+		{
+			ResourceProvisioningRecipe,
+			linkrp.ResourceProvisioningRecipe,
+			nil,
+		},
+		{
+			"",
+			"",
+			&v1.ErrModelConversion{
+				PropertyName: "$.properties.resourceProvisioning",
+				ValidValue:   fmt.Sprintf("one of %s", PossibleResourceProvisioningValues()),
+			},
+		},
 	}
 	for _, tt := range testset {
-		sc := toResourceProvisiongDataModel(&tt.versioned)
+		sc, err := toResourceProvisiongDataModel(&tt.versioned)
+
+		if tt.err != nil {
+			require.EqualError(t, err, tt.err.Error())
+			continue
+		}
+
+		require.NoError(t, err)
 		require.Equal(t, tt.datamodel, sc)
 	}
 }

@@ -46,6 +46,10 @@ func DaprPubSubBrokerDataModelFromVersioned(content []byte, version string) (*da
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
+
 		return dm.(*datamodel.DaprPubSubBroker), err
 
 	default:

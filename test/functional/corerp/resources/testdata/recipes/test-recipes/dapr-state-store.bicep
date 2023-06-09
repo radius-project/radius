@@ -2,6 +2,7 @@ import kubernetes as kubernetes {
   namespace: context.runtime.kubernetes.namespace
   kubeConfig: ''
 }
+
 param context object
 
 module redis '../../modules/redis-selfhost.bicep' = {
@@ -13,9 +14,9 @@ module redis '../../modules/redis-selfhost.bicep' = {
   }
 }
 
-resource dapr 'dapr.io/Component@v1alpha1'  = {
+resource dapr 'dapr.io/Component@v1alpha1' = {
   metadata: {
-    name: 'redis-${uniqueString(context.resource.id)}'
+    name: context.resource.name
     namespace: context.runtime.kubernetes.namespace
   }
   spec: {

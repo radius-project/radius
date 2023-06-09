@@ -18,7 +18,6 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -33,21 +32,14 @@ func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
 }
 
-func loadTestData(testfile string) []byte {
-	d, err := os.ReadFile("./testdata/" + testfile)
-	if err != nil {
-		return nil
-	}
-	return d
-}
-
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []string{"mongodatabaseresource2.json", "mongodatabaseresource_recipe.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
+		rawPayload, err := loadTestData("./testdata/" + payload)
+		require.NoError(t, err)
 		versionedResource := &MongoDatabaseResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
+		err = json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
 
 		// act
@@ -75,9 +67,10 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 	testset := []string{"mongodatabaseresource_invalidmode.json", "mongodatabaseresource_invalidmode2.json", "mongodatabaseresource_invalidmode3.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
+		rawPayload, err := loadTestData("./testdata/" + payload)
+		require.NoError(t, err)
 		versionedResource := &MongoDatabaseResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
+		err = json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
 		var expectedErr v1.ErrClientRP
 		if payload == "mongodatabaseresource_invalidmode.json" {
@@ -105,9 +98,10 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []string{"mongodatabaseresourcedatamodel.json", "mongodatabaseresourcedatamodel2.json", "mongodatabaseresourcedatamodel_recipe.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
+		rawPayload, err := loadTestData("./testdata/" + payload)
+		require.NoError(t, err)
 		resource := &datamodel.MongoDatabase{}
-		err := json.Unmarshal(rawPayload, resource)
+		err = json.Unmarshal(rawPayload, resource)
 		require.NoError(t, err)
 
 		// act
@@ -158,9 +152,10 @@ func TestMongoDatabase_ConvertFromValidation(t *testing.T) {
 
 func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("mongodatabasesecrets.json")
+	rawPayload, err := loadTestData("./testdata/mongodatabasesecrets.json")
+	require.NoError(t, err)
 	versioned := &MongoDatabaseSecrets{}
-	err := json.Unmarshal(rawPayload, versioned)
+	err = json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
 
 	// act
@@ -176,9 +171,10 @@ func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestMongoDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("mongodatabasesecretsdatamodel.json")
+	rawPayload, err := loadTestData("./testdata/mongodatabasesecretsdatamodel.json")
+	require.NoError(t, err)
 	secrets := &datamodel.MongoDatabaseSecrets{}
-	err := json.Unmarshal(rawPayload, secrets)
+	err = json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
 
 	// act

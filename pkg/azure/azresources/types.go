@@ -30,7 +30,6 @@ const (
 	ManagedIdentityUserAssignedIdentities      = "Microsoft.ManagedIdentity/userAssignedIdentities"
 	ServiceBusNamespaces                       = "Microsoft.ServiceBus/namespaces"
 	ServiceBusNamespacesQueues                 = "queues"
-	ServiceBusNamespacesTopics                 = "topics"
 	StorageStorageAccounts                     = "Microsoft.Storage/storageAccounts"
 	StorageStorageAccountsTables               = "tables"
 	StorageStorageTableServices                = "tableServices"
