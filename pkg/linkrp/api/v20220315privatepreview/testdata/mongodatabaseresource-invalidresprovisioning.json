@@ -3,6 +3,6 @@
     "name": "mongo0",
     "type": "Applications.Link/mongoDatabases",
     "properties": {
-        "mode": "resource"
+        "resourceProvisioning": "invalid"
     }
 }

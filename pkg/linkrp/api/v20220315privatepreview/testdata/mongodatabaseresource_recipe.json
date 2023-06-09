@@ -5,14 +5,14 @@
     "properties": {
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "mode": "recipe",
         "recipe": {
             "name": "cosmosdb",
             "parameters":{
               "foo":"bar"
             }
         },
-        "host": "testAccount1.mongo.cosmos.azure.com",
+        "resourceProvisioning": "recipe",
+        "host": "testAccount.mongo.cosmos.azure.com",
         "port": 10255
     }
 }
