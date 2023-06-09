@@ -93,7 +93,7 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().CreateUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg", gomock.Any()).Return(true, nil).Times(2)
+		appManagementClient.EXPECT().CreateUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg", gomock.Any()).Return(nil).Times(2)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{

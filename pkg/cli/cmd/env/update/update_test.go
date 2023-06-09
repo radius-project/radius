@@ -233,7 +233,7 @@ func Test_Update(t *testing.T) {
 
 		appManagementClient.EXPECT().
 			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).
-			Return(false, expectedError).
+			Return(expectedError).
 			Times(1)
 
 		workspace := &workspaces.Workspace{
@@ -302,7 +302,7 @@ func Test_Update(t *testing.T) {
 		}
 		appManagementClient.EXPECT().
 			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).
-			Return(true, nil).
+			Return(nil).
 			Times(1)
 
 		workspace := &workspaces.Workspace{
@@ -466,7 +466,7 @@ func Test_Update(t *testing.T) {
 
 				appManagementClient.EXPECT().
 					CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, existingEnvironment.Properties).
-					Return(true, nil).
+					Return(nil).
 					Times(1)
 
 				workspace := &workspaces.Workspace{

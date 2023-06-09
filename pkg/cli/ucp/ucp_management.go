@@ -314,18 +314,18 @@ func (amc *ARMApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 }
 
 // Creates a radius environment resource
-func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerpv20220315.EnvironmentProperties) (bool, error) {
+func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerpv20220315.EnvironmentProperties) error {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	_, err = client.CreateOrUpdate(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20220315.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return true, nil
+	return nil
 
 }
 
@@ -496,19 +496,19 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 	return respFromCtx.StatusCode != 204, nil
 }
 
-func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20220901.ResourceGroupResource) (bool, error) {
+func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20220901.ResourceGroupResource) error {
 	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientCreateOrUpdateOptions
 	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	_, err = resourcegroupClient.CreateOrUpdate(ctx, planeType, planeName, resourceGroupName, resourceGroup, resourceGroupOptions)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {
