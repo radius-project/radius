@@ -25,6 +25,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // DefaultSyncDelete is the controller implementation to delete resource synchronously.
@@ -45,6 +46,7 @@ func NewDefaultSyncDelete[P interface {
 
 // Run executes DefaultSyncDelete operation
 func (e *DefaultSyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	log := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
@@ -53,6 +55,7 @@ func (e *DefaultSyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter
 	}
 
 	if old == nil {
+		log.Info("Resource not found")
 		return rest.NewNoContentResponse(), nil
 	}
 
@@ -68,6 +71,7 @@ func (e *DefaultSyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter
 
 	if err := e.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
+			log.Info("Resource not found")
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err

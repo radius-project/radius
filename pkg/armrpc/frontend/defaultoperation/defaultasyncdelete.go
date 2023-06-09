@@ -23,6 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // DefaultAsyncDelete is the controller implementation to delete async resource.
@@ -43,6 +44,7 @@ func NewDefaultAsyncDelete[P interface {
 
 // Run executes DefaultAsyncDelete operation
 func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	log := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
@@ -50,6 +52,7 @@ func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	if old == nil {
+		log.Info("Resource not found")
 		return rest.NewNoContentResponse(), nil
 	}
 
