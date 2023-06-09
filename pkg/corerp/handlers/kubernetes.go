@@ -35,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -186,6 +185,9 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 
 func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error, eventHandlerInvokedCh chan struct{}) {
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new_obj any) {
 			obj, ok := new_obj.(*v1.Deployment)
@@ -204,7 +206,7 @@ func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerF
 				eventHandlerInvokedCh <- struct{}{}
 			}
 
-			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
+			handler.watchUntilDeploymentReady(ctx, obj, readinessCh, cancel)
 		},
 		UpdateFunc: func(old_obj, new_obj any) {
 			old, ok := old_obj.(*v1.Deployment)
@@ -229,7 +231,7 @@ func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerF
 			}
 
 			if old.ResourceVersion != new.ResourceVersion {
-				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
+				handler.watchUntilDeploymentReady(ctx, new, readinessCh, cancel)
 			}
 		},
 		DeleteFunc: func(obj any) {
@@ -239,11 +241,11 @@ func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerF
 
 	deploymentInformer.AddEventHandler(handlers)
 	// Start the informer
-	informerFactory.Start(wait.NeverStop)
-	informerFactory.WaitForCacheSync(wait.NeverStop)
+	informerFactory.Start(ctx.Done())
+	informerFactory.WaitForCacheSync(ctx.Done())
 }
 
-func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment, readinessCh chan<- bool) {
+func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment, readinessCh chan<- bool, cancel context.CancelFunc) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	for _, c := range obj.Status.Conditions {
 		// check for complete deployment condition
@@ -254,6 +256,8 @@ func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context,
 			if obj.Status.ObservedGeneration >= obj.Generation {
 				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
 				readinessCh <- true
+				// cancel the context to stop the informer
+				cancel()
 			}
 		}
 	}
