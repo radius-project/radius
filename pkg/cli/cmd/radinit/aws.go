@@ -35,6 +35,8 @@ const (
 	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Keys:"
 	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
+
+	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
 )
 
 func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
@@ -44,6 +46,8 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 	} else if err != nil {
 		return nil, err
 	}
+
+	r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
 
 	accessKeyID, err := r.Prompter.GetTextInput(enterAWSIAMAcessKeyIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMAcessKeyIDPlaceholder})
 	if errors.Is(err, &prompt.ErrExitConsole{}) {
