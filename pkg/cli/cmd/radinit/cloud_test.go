@@ -121,7 +121,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.Azure)
 		require.Equal(t, awsProvider, *options.CloudProviders.AWS)
-		require.Empty(t, outputSink.Writes)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: awsAccessKeysCreateInstructionFmt,
+			},
+		}
+		require.Equal(t, expectedWrites, outputSink.Writes)
 	})
 
 	t.Run("azure provider", func(t *testing.T) {
@@ -178,6 +184,9 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
+				Format: awsAccessKeysCreateInstructionFmt,
+			},
+			output.LogOutput{
 				Format: azureServicePrincipalCreateInstructionsFmt,
 				Params: []any{azureProvider.SubscriptionID, azureProvider.ResourceGroup},
 			},
@@ -212,6 +221,15 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Nil(t, options.CloudProviders.Azure)
 		require.Equal(t, awsProvider, *options.CloudProviders.AWS)
 		require.Equal(t, "another-region", options.CloudProviders.AWS.Region)
-		require.Empty(t, outputSink.Writes)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: awsAccessKeysCreateInstructionFmt,
+			},
+			output.LogOutput{
+				Format: awsAccessKeysCreateInstructionFmt,
+			},
+		}
+		require.Equal(t, expectedWrites, outputSink.Writes)
 	})
 }
