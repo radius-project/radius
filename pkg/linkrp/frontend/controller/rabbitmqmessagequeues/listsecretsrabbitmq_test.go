@@ -67,10 +67,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 404, w.Result().StatusCode)
 	})
@@ -102,10 +103,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
@@ -140,10 +142,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
@@ -173,8 +176,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
-
 		require.NoError(t, err)
+
 		_, err = ctl.Run(ctx, w, req)
 		require.Error(t, err)
 	})
