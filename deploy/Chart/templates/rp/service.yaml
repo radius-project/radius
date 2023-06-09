@@ -23,4 +23,4 @@ spec:
       targetPort: {{ .Values.global.prometheus.port }}
     {{ end }}
   selector:
-    control-plane: appcore-rp
+    app.kubernetes.io/name: radius-rp

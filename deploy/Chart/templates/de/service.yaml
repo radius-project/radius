@@ -4,7 +4,7 @@ metadata:
   name: de-api
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: radius-de
+    app.kubernetes.io/name: bicep-de
     app.kubernetes.io/part-of: radius
 spec:
   ports:
@@ -13,4 +13,4 @@ spec:
       protocol: TCP
       targetPort: 6443
   selector:
-    control-plane: de
+    app.kubernetes.io/name: bicep-de

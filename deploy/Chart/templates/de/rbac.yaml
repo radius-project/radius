@@ -3,7 +3,7 @@ kind: ClusterRoleBinding
 metadata:
   name: de-manager-rolebinding
   labels:
-    app.kubernetes.io/name: radius-de
+    app.kubernetes.io/name: bicep-de
     app.kubernetes.io/part-of: radius
 roleRef:
   apiGroup: rbac.authorization.k8s.io

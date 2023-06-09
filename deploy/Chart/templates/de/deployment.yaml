@@ -4,17 +4,17 @@ metadata:
   name: bicep-de
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: radius-de
+    app.kubernetes.io/name: bicep-de
     app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: radius-de
+      app.kubernetes.io/name: bicep-de
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: radius-de
+        app.kubernetes.io/name: bicep-de
         app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}
       annotations:

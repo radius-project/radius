@@ -19,4 +19,4 @@ spec:
       targetPort: {{ .Values.global.prometheus.port }}
     {{ end }}
   selector:
-    control-plane: ucp
+      app.kubernetes.io/name: radius-ucp
