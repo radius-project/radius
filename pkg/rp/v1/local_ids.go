@@ -52,7 +52,6 @@ const (
 	LocalIDAzureFileShareStorageAccount = "AzureFileShareStorageAccount"
 	LocalIDAzureRedis                   = "AzureRedis"
 	LocalIDAzureServiceBusNamespace     = "AzureServiceBusNamespace"
-	LocalIDAzureServiceBusTopic         = "AzureServiceBusTopic"
 	LocalIDAzureServiceBusQueue         = "AzureServiceBusQueue"
 	LocalIDAzureSqlServer               = "AzureSqlServer"
 	LocalIDAzureSqlServerDatabase       = "AzureSqlServerDatabase"

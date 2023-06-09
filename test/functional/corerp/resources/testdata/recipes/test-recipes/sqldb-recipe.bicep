@@ -1,14 +1,17 @@
-param context object
 import kubernetes as kubernetes {
   kubeConfig: ''
   namespace: context.runtime.kubernetes.namespace
 }
+
+param context object
+
 @description('Specifies the SQL username.')
 param username string
 
 @description('Specifies the SQL password.')
 @secure()
 param password string
+
 resource sql 'apps/Deployment@v1' = {
   metadata: {
     name: 'sql-${uniqueString(context.resource.id)}'
@@ -68,7 +71,6 @@ resource sql 'apps/Deployment@v1' = {
     }
   }
 }
-
 
 @description('Configure back-end service')
 resource svc 'core/Service@v1' = {

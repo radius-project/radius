@@ -51,25 +51,23 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	properties := src.Properties
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(properties.ResourceProvisioning)
-	var found bool
-	for _, k := range PossibleResourceProvisioningValues() {
-		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
-			found = true
-			break
-		}
+
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
-	if !found {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
-	}
+
 	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
 	converted.Properties.Database = to.String(properties.Database)
 	converted.Properties.Server = to.String(properties.Server)
-	err := src.verifyManualInputs()
+
+	err = src.verifyManualInputs()
 	if err != nil {
 		return nil, err
 	}
+
 	return converted, nil
 }
 

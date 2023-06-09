@@ -19,7 +19,6 @@ package converter
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -27,14 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
-
-func loadTestData(testfile string) []byte {
-	d, err := os.ReadFile(testfile)
-	if err != nil {
-		return nil
-	}
-	return d
-}
 
 // Validates type conversion between versioned client side data model and RP data model.
 func TestMongoDatabaseDataModelToVersioned(t *testing.T) {

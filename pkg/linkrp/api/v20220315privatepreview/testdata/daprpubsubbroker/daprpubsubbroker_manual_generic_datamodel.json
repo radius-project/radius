@@ -1,0 +1,40 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprPubSubBrokers/test-dpsb",
+    "name": "test-dpsb",
+    "type": "Applications.Link/daprPubSubBrokers",
+    "location": "global",
+    "systemData": {
+        "createdBy": "fakeid@live.com",
+        "createdByType": "User",
+        "createdAt": "2021-09-24T19:09:54.2403864Z",
+        "lastModifiedBy": "fakeid@live.com",
+        "lastModifiedByType": "User",
+        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+    },
+    "tags": {
+        "env": "dev"
+    },
+    "properties": {
+        "componentName": "test-dpsb",
+        "status": {
+            "outputResources": [
+                {
+                    "LocalID": "Deployment",
+                    "ResourceType": {
+                        "Type": "DaprPubSubProvider",
+                        "Provider": "kubernetes"
+                    }
+                }
+            ]
+        },
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+        "kind": "generic",
+        "resourceProvisioning": "manual",
+        "type": "pubsub.kafka",
+        "version": "v1",
+        "metadata": {
+            "foo": "bar"
+        }
+    }
+}
