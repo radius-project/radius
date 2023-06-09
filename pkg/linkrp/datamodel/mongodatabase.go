@@ -18,6 +18,7 @@ package datamodel
 
 import (
 	"fmt"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -69,17 +70,31 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 
 // VerifyInputs checks that the inputs for manual resource provisioning are all provided
 func (mongodb *MongoDatabase) VerifyInputs() error {
+	msgs := []string{}
 	if mongodb.Properties.ResourceProvisioning != "" && mongodb.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		if mongodb.Properties.Host == "" {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
 		}
 		if mongodb.Properties.Port == 0 {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("port is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
 		}
 		if mongodb.Properties.Database == "" {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("database is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+			msgs = append(msgs, "database must be specified when resourceProvisioning is set to manual")
 		}
 	}
+
+	if len(msgs) == 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: msgs[0],
+		}
+	} else if len(msgs) > 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: fmt.Sprintf("multiple errors were found:\n\t%v", strings.Join(msgs, "\n\t")),
+		}
+	}
+
 	return nil
 }
 

@@ -203,7 +203,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 		{
 			payload: "mongodatabaseresource-missinginputs.json",
 			errType: &v1.ErrClientRP{},
-			message: "code Bad Request: err host is required when resourceProvisioning is manual",
+			message: "code BadRequest: err multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual",
 		},
 	}
 	for _, test := range testset {
