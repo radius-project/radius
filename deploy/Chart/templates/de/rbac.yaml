@@ -2,6 +2,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: de-manager-rolebinding
+  labels:
+    app.kubernetes.io/name: radius-de
+    app.kubernetes.io/part-of: radius
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: ucp
   namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: radius-ucp
+    app.kubernetes.io/part-of: radius
 spec:
   ports:
     - port: 443

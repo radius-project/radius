@@ -1,17 +1,18 @@
 apiVersion: v2
+description: Radius provides a declarative way to manage your infrastructure and applications.
 name: radius
-description: Radius controller for Kubernetes
-type: application
 # We automate versioning of the chart during publishing.
 # The value here is only used for a dev build.
-version: '42.42.42-dev'
-dependencies:
-  - name: de
-    version: '42.42.42-dev'
-    repository: "file://de"
-  - name: ucp
-    version: '42.42.42-dev'
-    repository: "file://ucp"
-  - name: rp
-    version: '42.42.42-dev'
-    repository: "file://rp"
+version: '0.0.0-dev'
+appVersion: 'latest'
+keywords:
+  - radius
+  - iac
+  - bicep
+home: https://radapp.dev
+sources:
+  - https://github.com/project-radius/radius/tree/main/deploy/Chart
+maintainers:
+  - name: Radius Authors
+    url: https://github.com/project-radius/radius
+icon: https://radapp.dev/images/logo.png

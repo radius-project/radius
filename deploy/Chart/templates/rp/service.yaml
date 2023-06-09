@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: appcore-rp
   namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-rp
+    app.kubernetes.io/part-of: radius
 spec:
   ports:
     - port: 5443

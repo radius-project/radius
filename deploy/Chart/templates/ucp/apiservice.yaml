@@ -13,7 +13,8 @@ metadata:
   name: ucp-cert
   namespace: {{ .Release.Namespace }}
   labels:
-    app: ucp
+    app.kubernetes.io/name: radius-ucp
+    app.kubernetes.io/part-of: radius
 data:
   {{ if $existingSecret }}tls.crt: {{ index $existingSecret.data "tls.crt" }}
   {{ else }}tls.crt: {{ b64enc $cert.Cert }}
@@ -27,6 +28,9 @@ apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
   name: v1alpha3.api.ucp.dev
+  labels:
+    app.kubernetes.io/name: radius-ucp
+    app.kubernetes.io/part-of: radius
 spec:
   group: api.ucp.dev
   groupPriorityMinimum: 1000

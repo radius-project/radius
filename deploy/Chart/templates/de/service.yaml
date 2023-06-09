@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: de-api
   namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-de
+    app.kubernetes.io/part-of: radius
 spec:
   ports:
     - port: 6443

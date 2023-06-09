@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    control-plane: ucp
-    app.kubernetes.io/part-of: radius-control-plane
   name: ucp
   namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: radius-ucp
+    app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: ucp
+      app.kubernetes.io/name: radius-ucp
   template:
     metadata:
       labels:
-        control-plane: ucp
-        app.kubernetes.io/part-of: radius-control-plane
+        app.kubernetes.io/name: radius-ucp
+        app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
@@ -26,7 +26,7 @@ spec:
       serviceAccountName: ucp
       containers:
       - name: ucp
-        image: "{{ .Values.image }}:{{ .Values.tag }}"
+        image: "{{ .Values.ucp.image }}:{{ .Values.ucp.tag | default .Chart.AppVersion }}"
         env:
         - name: UCP_CONFIG
           value: /etc/config/ucp-config.yaml
@@ -47,8 +47,8 @@ spec:
         {{ end }}
         securityContext:
           allowPrivilegeEscalation: false
-        {{- if .Values.resources }}
-        resources:{{ toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.ucp.resources }}
+        resources:{{ toYaml .Values.ucp.resources | nindent 10 }}
         {{- end }}
         volumeMounts:
         - name: config-volume

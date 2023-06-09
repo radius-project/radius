@@ -1,3 +1,14 @@
+global:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 9090
+  #
+  # Configure global.zipkin.url to enable distributed trace. Replace the example url
+  # below with the environment specific url
+  # zipkin:
+  #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
+  #
 de:
   image: radius.azurecr.io/deployment-engine
   tag: latest
@@ -12,6 +23,7 @@ ucp:
   tag: latest
   resources:
     requests:
+      # request memory is the average memory usage + 10% buffer.
       memory: "60Mi"
     limits:
       memory: "300Mi"
@@ -21,17 +33,7 @@ rp:
   publicEndpointOverride: ""
   resources:
     requests:
+      # request memory is the average memory usage + 10% buffer.
       memory: "160Mi"
     limits:
       memory: "300Mi"
-global:
-  prometheus:
-    enabled: true
-    path: "/metrics"
-    port: 9090
-  #
-  # Configure global.zipkin.url to enable distributed trace. Replace the example url
-  # below with the environment specific url
-  # zipkin:
-  #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
-  #

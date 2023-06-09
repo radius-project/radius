@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    control-plane: appcore-rp
-    app.kubernetes.io/part-of: radius-control-plane
+    app.kubernetes.io/name: radius-rp
+    app.kubernetes.io/part-of: radius
   name: appcore-rp
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: appcore-rp
+     app.kubernetes.io/name: radius-rp
   template:
     metadata:
       labels:
-        control-plane: appcore-rp
-        app.kubernetes.io/part-of: radius-control-plane
+        app.kubernetes.io/name: radius-rp
+        app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
@@ -26,7 +26,7 @@ spec:
       serviceAccountName: appcore-rp
       containers:
       - name: appcore-rp
-        image: {{ .Values.image }}:{{ .Values.tag }}
+        image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default .Chart.AppVersion }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-link
@@ -63,8 +63,8 @@ spec:
           mountPath: /etc/config
         securityContext:
           allowPrivilegeEscalation: false
-        {{- if .Values.resources }}
-        resources:{{ toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.rp.resources }}
+        resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
       volumes:
         - name: config-volume

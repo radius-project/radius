@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    control-plane: de
-    app.kubernetes.io/part-of: radius-control-plane
   name: bicep-de
   namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-de
+    app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: de
+      app.kubernetes.io/name: radius-de
   template:
     metadata:
       labels:
-        control-plane: de
-        app.kubernetes.io/part-of: radius-control-plane
+        app.kubernetes.io/name: radius-de
+        app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "/metrics"
@@ -26,7 +26,7 @@ spec:
       serviceAccountName: de-manager
       containers:
       - name: de
-        image: {{ .Values.image }}:{{ .Values.tag }}
+        image: "{{ .Values.de.image }}:{{ .Values.de.tag | default .Chart.AppVersion }}"
         args:
         - --kubernetes=true
         env:
@@ -52,7 +52,7 @@ spec:
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
-        {{- if .Values.resources }}
-        resources:{{ toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.de.resources }}
+        resources:{{ toYaml .Values.de.resources | nindent 10 }}
         {{- end }}
       terminationGracePeriodSeconds: 10
