@@ -229,7 +229,7 @@ type DaprSecretStoreClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprSecretStoreProperties - DaprSecretStore link properties.
+// DaprSecretStoreProperties - DaprSecretStore link properties
 type DaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
