@@ -25,7 +25,7 @@ spec:
         prometheus.io/scrape: "true"
       {{ end }}
     spec:
-      serviceAccountName: de-manager
+      serviceAccountName: bicep-de
       containers:
       - name: de
         image: "{{ .Values.de.image }}:{{ .Values.de.tag | default .Chart.AppVersion }}"
