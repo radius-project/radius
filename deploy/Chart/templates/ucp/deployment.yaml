@@ -4,17 +4,19 @@ metadata:
   name: ucp
   namespace: "{{ .Release.Namespace }}"
   labels:
-    app.kubernetes.io/name: radius-ucp
+    control-plane: ucp
+    app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: radius-ucp
+      app.kubernetes.io/name: ucp
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: radius-ucp
+        control-plane: ucp
+        app.kubernetes.io/name: ucp
         app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}
       annotations:

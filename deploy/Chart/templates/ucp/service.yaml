@@ -4,7 +4,7 @@ metadata:
   name: ucp
   namespace: "{{ .Release.Namespace }}"
   labels:
-    app.kubernetes.io/name: radius-ucp
+    app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 spec:
   ports:
@@ -19,4 +19,4 @@ spec:
       targetPort: {{ .Values.global.prometheus.port }}
     {{ end }}
   selector:
-      app.kubernetes.io/name: radius-ucp
+      app.kubernetes.io/name: ucp

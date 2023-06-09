@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
   name: ucp
   labels:
-    app.kubernetes.io/name: radius-ucp
+    app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 rules:
 - apiGroups:
@@ -57,7 +57,7 @@ kind: ClusterRoleBinding
 metadata:
   name: ucp
   labels:
-    app.kubernetes.io/name: radius-ucp
+    app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 roleRef:
   apiGroup: rbac.authorization.k8s.io

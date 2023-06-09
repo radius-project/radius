@@ -4,6 +4,7 @@ metadata:
   name: bicep-de
   namespace: {{ .Release.Namespace }}
   labels:
+    control-plane: bicep-de
     app.kubernetes.io/name: bicep-de
     app.kubernetes.io/part-of: radius
 spec:
@@ -14,6 +15,7 @@ spec:
   template:
     metadata:
       labels:
+        control-plane: bicep-de
         app.kubernetes.io/name: bicep-de
         app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}

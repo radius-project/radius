@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: de-api
+  name: bicep-de
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: bicep-de

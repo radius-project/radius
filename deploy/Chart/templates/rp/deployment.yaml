@@ -2,7 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/name: radius-rp
+    control-plane: appcore-rp
+    app.kubernetes.io/name: appcore-rp
     app.kubernetes.io/part-of: radius
   name: appcore-rp
   namespace: {{ .Release.Namespace }}
@@ -10,11 +11,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-     app.kubernetes.io/name: radius-rp
+     app.kubernetes.io/name: appcore-rp
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: radius-rp
+        control-plane: appcore-rp
+        app.kubernetes.io/name: appcore-rp
         app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}
       annotations:
@@ -69,4 +71,4 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: appcore-rp-config
+            name: applications-rp-config

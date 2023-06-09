@@ -4,7 +4,7 @@ metadata:
   name: appcore-rp
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: radius-rp
+    app.kubernetes.io/name: appcore-rp
     app.kubernetes.io/part-of: radius
 spec:
   ports:
@@ -23,4 +23,4 @@ spec:
       targetPort: {{ .Values.global.prometheus.port }}
     {{ end }}
   selector:
-    app.kubernetes.io/name: radius-rp
+    app.kubernetes.io/name: appcore-rp
