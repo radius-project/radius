@@ -12,6 +12,7 @@ global:
 
 de:
   image: radius.azurecr.io/deployment-engine
+  # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
     requests:
@@ -22,6 +23,7 @@ de:
 
 ucp:
   image: radius.azurecr.io/ucpd
+  # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
     requests:
@@ -32,6 +34,7 @@ ucp:
 
 rp:
   image: radius.azurecr.io/appcore-rp
+  # Default tag uses Chart AppVersion.
   # tag: latest
   publicEndpointOverride: ""
   resources:
