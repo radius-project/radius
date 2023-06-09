@@ -56,11 +56,6 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(properties.ResourceProvisioning)
 	if err != nil {
 		return nil, err
-
-	var err error
-	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(properties.ResourceProvisioning)
-	if err != nil {
-		return nil, err
 	}
 
 	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)

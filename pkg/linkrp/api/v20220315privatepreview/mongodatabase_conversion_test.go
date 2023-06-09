@@ -171,9 +171,10 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testset {
 		// arrange
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload := loadTestData(tc.file)
+			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			require.NoError(t, err)
 			versionedResource := &MongoDatabaseResource{}
-			err := json.Unmarshal(rawPayload, versionedResource)
+			err = json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			// act
@@ -207,9 +208,10 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 	}
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload := loadTestData(test.payload)
+			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			require.NoError(t, err)
 			versionedResource := &MongoDatabaseResource{}
-			err := json.Unmarshal(rawPayload, versionedResource)
+			err = json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -319,9 +321,10 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testset {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload := loadTestData(tc.file)
+			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			require.NoError(t, err)
 			resource := &datamodel.MongoDatabase{}
-			err := json.Unmarshal(rawPayload, resource)
+			err = json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &MongoDatabaseResource{}

@@ -2330,34 +2330,6 @@
         "name"
       ]
     },
-    "RecipeMongoDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": "string",
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Mongo database"
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSub link"
-        }
-      },
-      "description": "DaprPubSubBroker Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprPubSubBrokerProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
     "RedisCacheListSecretsResult": {
       "type": "object",
       "properties": {
@@ -2478,37 +2450,6 @@
         }
       },
       "description": "The secret values for the given RedisCache resource"
-    },
-    "ResourceMongoDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec"
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "resource": {
-          "type": "string",
-          "description": "PubSub resource"
-        }
-      },
-      "description": "DaprPubSubBroker Properties for Mode Resource",
-      "required": [
-        "resource"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprPubSubBrokerProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "resource"
     },
     "ResourceProvisioning": {
       "type": "string",
@@ -2632,35 +2573,6 @@
       "required": [
         "value"
       ]
-    },
-    "ValuesDaprPubSubProperties": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec"
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        }
-      },
-      "description": "DaprPubSubBroker Properties for Mode Values",
-      "required": [
-        "metadata",
-        "type",
-        "version"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprPubSubBrokerProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
     },
     "object": {
       "type": "object",
