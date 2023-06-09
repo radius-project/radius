@@ -42,7 +42,7 @@ Visit the Radius [docs site](https://radapp.dev/getting-started/) to get up and 
 
 * See the [quickstarts repository](https://docs.radapp.dev/getting-started/quickstarts/) for code examples that can help you get started with Radius.
 
-## Community
+## Community <remove>
 
 We want your contributions and suggestions! One of the easiest ways to contribute is to participate in discussions on the mailing list, chat on IM or the bi-weekly community calls.
 For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://docs.radapp.dev/community/)
