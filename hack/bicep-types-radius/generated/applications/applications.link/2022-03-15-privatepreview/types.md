@@ -31,7 +31,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties): DaprSecretStore link properties
+* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties): DaprSecretStore link properties.
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprSecretStores' (ReadOnly, DeployTimeConstant): The resource type

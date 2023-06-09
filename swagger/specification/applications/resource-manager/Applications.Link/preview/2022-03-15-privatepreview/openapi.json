@@ -1929,7 +1929,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "DaprSecretStore link properties",
+      "description": "DaprSecretStore link properties.",
       "allOf": [
         {
           "$ref": "#/definitions/BasicDaprResourceProperties"
