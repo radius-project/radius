@@ -274,7 +274,7 @@ jobs:
           HELM_CHARTS_DIR: deploy/Chart
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
-          helm package ${{ env.HELM_CHARTS_DIR }} --version ${{ env.CHART_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+          helm package ${{ env.HELM_CHARTS_DIR }} --version ${{ env.CHART_VERSION }} --app-version ${{ env.REL_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
       - name: az CLI login
         run: |
           az login --service-principal \

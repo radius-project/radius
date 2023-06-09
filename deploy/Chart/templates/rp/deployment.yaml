@@ -1,3 +1,4 @@
+{{- $appversion := include "radius.versiontag" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,7 +29,7 @@ spec:
       serviceAccountName: appcore-rp
       containers:
       - name: appcore-rp
-        image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default .Chart.AppVersion }}"
+        image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-link
