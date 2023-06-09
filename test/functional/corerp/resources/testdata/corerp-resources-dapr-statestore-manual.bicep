@@ -48,16 +48,6 @@ module redis 'modules/redis-selfhost.bicep' = {
   }
 }
 
-output result object = {
-  resources: [
-    redis.outputs.resources
-  ]
-  values: {
-    host: redis.outputs.host
-    port: redis.outputs.port
-  }
-}
-
 
 resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
   name: 'dapr-sts-manual'

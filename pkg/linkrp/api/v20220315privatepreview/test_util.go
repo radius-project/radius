@@ -14,24 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package daprpubsubbrokers
+package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"os"
+	"time"
 )
 
-const (
-	TopicNameKey     = "topic"
-	NamespaceNameKey = "namespace"
-	PubSubNameKey    = "pubSubName"
-)
+func loadTestData(testfile string) ([]byte, error) {
+	d, err := os.ReadFile(testfile)
+	if err != nil {
+		return nil, err
+	}
+	return d, nil
+}
 
-var NamespaceResourceType = resources.KnownType{
-	Types: []resources.TypeSegment{
-		{
-			Type: azresources.ServiceBusNamespaces,
-			Name: "*",
-		},
-	},
+func unmarshalTimeString(ts string) *time.Time {
+	var tt timeRFC3339
+	_ = tt.UnmarshalText([]byte(ts))
+	return (*time.Time)(&tt)
 }

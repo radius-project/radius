@@ -33,7 +33,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprinvokehttproutes"
-	daprPubSub_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprpubsubbrokers"
 	extender_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
@@ -213,14 +212,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			}},
+			},
+		},
 		{
 			ParentRouter: daprHttpRouteResourceRouter,
 			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return daprHttpRoute_ctrl.NewDeleteDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			}},
+			},
+		},
 		{
 			ParentRouter: daprPubSubRTSubrouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
@@ -250,7 +251,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprPubSub_ctrl.NewCreateOrUpdateDaprPubSubBroker(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
+						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
+						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprPubSubBroker]{
+							rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -258,7 +268,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprPubSub_ctrl.NewCreateOrUpdateDaprPubSubBroker(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
+						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
+						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprPubSubBroker]{
+							rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -266,7 +285,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprPubSub_ctrl.NewDeleteDaprPubSubBroker(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
+						RequestConverter:      converter.DaprPubSubBrokerDataModelFromVersioned,
+						ResponseConverter:     converter.DaprPubSubBrokerDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+					},
+				)
 			},
 		},
 		{

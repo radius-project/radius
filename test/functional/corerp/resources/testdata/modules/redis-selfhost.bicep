@@ -1,4 +1,3 @@
-
 import kubernetes as kubernetes {
   kubeConfig: ''
   namespace: namespace

@@ -10,28 +10,6 @@ package v20220315privatepreview
 
 import "encoding/json"
 
-func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (DaprPubSubBrokerPropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b DaprPubSubBrokerPropertiesClassification
-	switch m["mode"] {
-	case "recipe":
-		b = &RecipeDaprPubSubProperties{}
-	case "resource":
-		b = &ResourceDaprPubSubProperties{}
-	case "values":
-		b = &ValuesDaprPubSubProperties{}
-	default:
-		b = &DaprPubSubBrokerProperties{}
-	}
-	return b, json.Unmarshal(rawMsg, b)
-}
-
 func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (MongoDatabasePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

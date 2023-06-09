@@ -3,7 +3,7 @@ import radius as radius
 param magpieimage string
 
 param location string = resourceGroup().location
-param registry string 
+param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
@@ -15,10 +15,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: 'corerp-environment-secretstore-recipes-env'
     }
     recipes: {
-      'Applications.Link/daprSecretStores':{
+      'Applications.Link/daprSecretStores': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/corerp/recipes/dapr-secret-store:${version}' 
+          templatePath: '${registry}/test/functional/corerp/recipes/dapr-secret-store:${version}'
         }
       }
     }
@@ -31,8 +31,8 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-dapr-secretstore-recipe'
+        kind: 'kubernetesNamespace'
+        namespace: 'corerp-resources-dapr-secretstore-recipe'
       }
     ]
   }
@@ -50,9 +50,9 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
     container: {
       image: magpieimage
-      readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
+      readinessProbe: {
+        kind: 'httpGet'
+        containerPort: 3000
         path: '/healthz'
       }
     }
