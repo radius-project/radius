@@ -35,6 +35,10 @@ var handlerTests = []struct {
 	isAzureAPI bool
 }{
 	{
+		url:        "/providers/applications.link/mongodatabases?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -67,6 +71,10 @@ var handlerTests = []struct {
 		method:     http.MethodPut,
 		isAzureAPI: true,
 	}, {
+		url:        "/providers/applications.link/rediscaches?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -89,6 +97,10 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
+		isAzureAPI: false,
+	}, {
+		url:        "/providers/applications.link/rabbitmqmessagequeues?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues?api-version=2022-03-15-privatepreview",
@@ -115,8 +127,12 @@ var handlerTests = []struct {
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases?api-version=2022-03-15-privatepreview",
+		url:        "/providers/applications.link/sqldatabases?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
@@ -133,6 +149,10 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/providers/applications.link/extenders?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/extenders?api-version=2022-03-15-privatepreview",
@@ -154,8 +174,11 @@ var handlerTests = []struct {
 		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
-	},
-	{
+	}, {
+		url:        "/providers/applications.link/daprstatestores?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -174,6 +197,10 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/providers/applications.link/daprsecretstores?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores?api-version=2022-03-15-privatepreview",
@@ -196,6 +223,10 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
+		url:        "/providers/applications.link/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -216,8 +247,12 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes?api-version=2022-03-15-privatepreview",
+		url:        "/providers/applications.link/daprinvokehttproutes?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
@@ -278,7 +313,7 @@ func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovid
 		t.Run(uri, func(t *testing.T) {
 			req, _ := http.NewRequestWithContext(context.Background(), tt.method, uri, nil)
 			var match mux.RouteMatch
-			require.True(t, r.Match(req, &match))
+			require.True(t, r.Match(req, &match), "no route found for %s", uri)
 		})
 	}
 }
