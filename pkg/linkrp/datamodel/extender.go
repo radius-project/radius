@@ -56,6 +56,14 @@ func (extender *Extender) ResourceTypeName() string {
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderProperties struct {
 	rpv1.BasicResourceProperties
+	// Additional properties for the resource
 	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
-	Secrets              map[string]any `json:"secrets,omitempty"`
+	// Secrets values provided for the resource
+	Secrets map[string]any `json:"secrets,omitempty"`
+	// The recipe used to automatically deploy underlying infrastructure for the MongoDB link
+	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	// List of the resource IDs that support the MongoDB resource
+	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
+	// Specifies how the underlying service/resource is provisioned and managed
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }

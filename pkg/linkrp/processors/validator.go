@@ -112,6 +112,18 @@ func (v *Validator) AddOptionalSecretField(name string, ref *string) {
 // it is safe to assume that other non-computed fields have been populated already.
 //
 // The compute function will not be called if a validation error has previously occurred.
+func (v *Validator) AddOptionalComputedField(name string, ref any) {
+	// Note: secrets are always strings
+	// v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "string", convertToString, nil))
+	v.recordValue(name, ref, false)
+}
+
+// AddComputedStringField registers a field containing a computed string connection value. The empty string will be treated as an "unset" value.
+//
+// The compute function will be called if the value is not already set or provided by the recipe. Inside the compute function
+// it is safe to assume that other non-computed fields have been populated already.
+//
+// The compute function will not be called if a validation error has previously occurred.
 func (v *Validator) AddComputedStringField(name string, ref *string, compute func() (string, *ValidationError)) {
 	// Note: secrets are always strings
 	v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "string", convertToString, compute))

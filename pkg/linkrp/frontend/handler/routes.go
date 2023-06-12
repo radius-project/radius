@@ -834,7 +834,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return extender_ctrl.NewCreateOrUpdateExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -842,7 +851,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return extender_ctrl.NewCreateOrUpdateExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+					},
+				)
 			},
 		},
 		{
@@ -850,7 +868,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return extender_ctrl.NewDeleteExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:      converter.ExtenderDataModelFromVersioned,
+						ResponseConverter:     converter.ExtenderDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteExtenderTimeout,
+					},
+				)
 			},
 		},
 		{
