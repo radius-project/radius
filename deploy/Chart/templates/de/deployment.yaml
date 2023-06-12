@@ -1,0 +1,61 @@
+{{- $appversion := include "radius.versiontag" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bicep-de
+  namespace: {{ .Release.Namespace }}
+  labels:
+    control-plane: bicep-de
+    app.kubernetes.io/name: bicep-de
+    app.kubernetes.io/part-of: radius
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bicep-de
+  template:
+    metadata:
+      labels:
+        control-plane: bicep-de
+        app.kubernetes.io/name: bicep-de
+        app.kubernetes.io/part-of: radius
+      {{ if eq .Values.global.prometheus.enabled true }}
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "6443"
+        prometheus.io/scrape: "true"
+      {{ end }}
+    spec:
+      serviceAccountName: bicep-de
+      containers:
+      - name: de
+        image: {{ .Values.de.image }}:{{ .Values.de.tag | default $appversion }}
+        args:
+        - --kubernetes=true
+        env:
+        - name: SKIP_ARM
+          value: "false"
+        - name: ARM_AUTH_METHOD
+          value: "UCPCredential"
+        - name: ASPNETCORE_URLS
+          value: http://+:6443
+        - name: kubernetes
+          value: "true"
+        - name: RADIUSBACKENDURL
+          value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+        - name: ASPNETCORE_Logging__LogLevel__Default
+          value: "Debug"
+        {{ if and .Values.global.zipkin .Values.global.zipkin.url }}
+        - name: ASPNETCORE_Zipkin__Endpoint
+          value: {{ .Values.global.zipkin.url }}
+        {{ end }}
+        ports:
+        - containerPort: 6443
+          name: bicep-de-api
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+        {{- if .Values.de.resources }}
+        resources:{{ toYaml .Values.de.resources | nindent 10 }}
+        {{- end }}
+      terminationGracePeriodSeconds: 10

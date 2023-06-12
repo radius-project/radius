@@ -18,7 +18,9 @@ package datamodel
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -93,6 +95,33 @@ func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
 
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
+}
+
+// VerifyInputs checks that the inputs for manual resource provisioning are all provided
+func (redisCache *RedisCache) VerifyInputs() error {
+	msgs := []string{}
+	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		if redisCache.Properties.Host == "" {
+			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
+		}
+		if redisCache.Properties.Port == 0 {
+			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
+		}
+	}
+
+	if len(msgs) == 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: msgs[0],
+		}
+	} else if len(msgs) > 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: fmt.Sprintf("multiple errors were found:\n\t%v", strings.Join(msgs, "\n\t")),
+		}
+	}
+
+	return nil
 }
 
 type RedisCacheProperties struct {

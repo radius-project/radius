@@ -114,7 +114,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
-		require.Equal(t, expectedSecrets[renderers.UsernameStringValue], *actualOutput.Username)
 		require.Equal(t, expectedSecrets[renderers.PasswordStringHolder], *actualOutput.Password)
 	})
 
@@ -156,7 +155,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		actualOutput := &v20220315privatepreview.MongoDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		require.Equal(t, expectedSecrets[renderers.UsernameStringValue], *actualOutput.Username)
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
 	})
 
