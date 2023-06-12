@@ -157,11 +157,11 @@ func TestListResourcesRun(t *testing.T) {
 			}
 
 			ctrlOpts := ctrl.ResourceOptions[testDataModel]{
-				ResponseConverter: resourceToVersioned,
+				ResponseConverter:  resourceToVersioned,
+				ListRecursiveQuery: tt.planeScope,
 			}
 
 			ctl, err := NewListResources(opts, ctrlOpts)
-			ctl.RecursiveQuery = tt.planeScope
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, w, req)
