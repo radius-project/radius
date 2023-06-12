@@ -133,4 +133,4 @@ else {
     Write-Output "Bicep has been successfully installed"
 }
 
-Write-Output "`r`nTo get started with Project Radius, please visit https://docs.radapp.dev/getting-started/"
+Write-Output "`r`nTo get started with Radius, please visit https://docs.radapp.dev/getting-started/"

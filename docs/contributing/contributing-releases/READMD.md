@@ -1,10 +1,10 @@
-# How to create and publish a Project Radius release
+# How to create and publish a Radius release
 
 > 🚧🚧🚧 Under Construction 🚧🚧🚧
 >
 > This guide refers to resources and processes that can only be accessed by the Radius team. This will be updated as we migrate to public resources like GitHub releases.
 
-Our release process for Project Radius is based on git tags. Pushing a new tag with the format: `v.<major>.<minor>.<patch>` will trigger a release build.
+Our release process for Radius is based on git tags. Pushing a new tag with the format: `v.<major>.<minor>.<patch>` will trigger a release build.
 
 ## Pre-requisites
 

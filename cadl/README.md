@@ -37,7 +37,7 @@ interface InterfaceName
 There may be more or less depending on the  resource being modeled
 
 ## {rootScope}
-At the time of writing this, the Radius team's spec has not been approved by ARM. As a result, the Cadl team has created a custom `RootScopeResourceOperations` object. This makes it so that the paths generated for resources are prepended by `{rootScope}` as required in Project Radius.
+At the time of writing this, the Radius team's spec has not been approved by ARM. As a result, the Cadl team has created a custom `RootScopeResourceOperations` object. This makes it so that the paths generated for resources are prepended by `{rootScope}` as required in Radius.
 
 To utilize this object, do the following:
 1. Import `customRootScope.cadl` into the resource file.
