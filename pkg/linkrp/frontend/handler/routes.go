@@ -63,39 +63,70 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		return err
 	}
 
-	rootScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
-	rootScopeRouter.Use(validator.APIValidator(specLoader))
+	// Used to register routes like:
+	//
+	// /planes/radius/{planeName}/providers/applications.link/mongodatabases
+	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter.Use(validator.APIValidator(specLoader))
 
-	mongoRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/mongodatabases").Subrouter()
-	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabaseName}").Subrouter()
+	// Used to register routes like:
+	//
+	// /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/providers/applications.link/mongodatabases
+	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter.Use(validator.APIValidator(specLoader))
 
-	daprHttpRouteRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprinvokehttproutes").Subrouter()
-	daprHttpRouteResourceRouter := daprHttpRouteRTSubrouter.PathPrefix("/{daprInvokeHttpRouteName}").Subrouter()
+	mongoDatabasePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/mongodatabases").Subrouter()
+	mongoDatabaseResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/mongodatabases").Subrouter()
+	mongoDatabaseResourceRouter := mongoDatabaseResourceGroupRouter.PathPrefix("/{mongoDatabaseName}").Subrouter()
 
-	daprPubSubRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprpubsubbrokers").Subrouter()
-	daprPubSubResourceRouter := daprPubSubRTSubrouter.PathPrefix("/{daprPubSubBrokerName}").Subrouter()
+	daprHttpRoutePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/daprinvokehttproutes").Subrouter()
+	daprHttpRouteResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/daprinvokehttproutes").Subrouter()
+	daprHttpRouteResourceRouter := daprHttpRouteResourceGroupRouter.PathPrefix("/{daprInvokeHttpRouteName}").Subrouter()
 
-	daprSecretStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprsecretstores").Subrouter()
-	daprSecretStoreResourceRouter := daprSecretStoreRTSubrouter.PathPrefix("/{daprSecretStoreName}").Subrouter()
+	daprPubSubBrokerPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/daprpubsubbrokers").Subrouter()
+	daprPubSubBrokerResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/daprpubsubbrokers").Subrouter()
+	daprPubSubBrokerResourceRouter := daprPubSubBrokerResourceGroupRouter.PathPrefix("/{daprPubSubBrokerName}").Subrouter()
 
-	daprStateStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprstatestores").Subrouter()
-	daprStateStoreResourceRouter := daprStateStoreRTSubrouter.PathPrefix("/{daprStateStoreName}").Subrouter()
+	daprSecretStorePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/daprsecretstores").Subrouter()
+	daprSecretStoreResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/daprsecretstores").Subrouter()
+	daprSecretStoreResourceRouter := daprSecretStoreResourceGroupRouter.PathPrefix("/{daprSecretStoreName}").Subrouter()
 
-	extenderRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/extenders").Subrouter()
-	extenderResourceRouter := extenderRTSubrouter.PathPrefix("/{extenderName}").Subrouter()
+	daprStateStorePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/daprstatestores").Subrouter()
+	daprStateStoreResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/daprstatestores").Subrouter()
+	daprStateStoreResourceRouter := daprStateStoreResourceGroupRouter.PathPrefix("/{daprStateStoreName}").Subrouter()
 
-	redisRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/rediscaches").Subrouter()
-	redisResourceRouter := redisRTSubrouter.PathPrefix("/{redisCacheName}").Subrouter()
+	extenderPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/extenders").Subrouter()
+	extenderResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/extenders").Subrouter()
+	extenderResourceRouter := extenderResourceGroupRouter.PathPrefix("/{extenderName}").Subrouter()
 
-	rabbitmqRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/rabbitmqmessagequeues").Subrouter()
-	rabbitmqResourceRouter := rabbitmqRTSubrouter.PathPrefix("/{rabbitMQMessageQueueName}").Subrouter()
+	redisCachePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/rediscaches").Subrouter()
+	redisCacheResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/rediscaches").Subrouter()
+	redisCacheResourceRouter := redisCacheResourceGroupRouter.PathPrefix("/{redisCacheName}").Subrouter()
 
-	sqlRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/sqldatabases").Subrouter()
-	sqlResourceRouter := sqlRTSubrouter.PathPrefix("/{sqlDatabaseName}").Subrouter()
+	rabbitmqMessageQueuePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/rabbitmqmessagequeues").Subrouter()
+	rabbitmqMessageQueueResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/rabbitmqmessagequeues").Subrouter()
+	rabbitmqMessageQueueResourceRouter := rabbitmqMessageQueueResourceGroupRouter.PathPrefix("/{rabbitMQMessageQueueName}").Subrouter()
+
+	sqlDatabasePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/sqldatabases").Subrouter()
+	sqlDatabaseResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/sqldatabases").Subrouter()
+	sqlDatabaseResourceRouter := sqlDatabaseResourceGroupRouter.PathPrefix("/{sqlDatabaseName}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter: mongoRTSubrouter,
+			ParentRouter: mongoDatabasePlaneRouter,
+			ResourceType: linkrp.MongoDatabasesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
+						RequestConverter:   converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter:  converter.MongoDatabaseDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: mongoDatabaseResourceGroupRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -107,7 +138,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: mongoResourceRouter,
+			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -119,7 +150,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: mongoResourceRouter,
+			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -136,7 +167,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: mongoResourceRouter,
+			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -153,7 +184,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: mongoResourceRouter,
+			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -167,7 +198,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: mongoResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ParentRouter: mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       mongo_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -175,7 +206,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprHttpRouteRTSubrouter,
+			ParentRouter: daprHttpRoutePlaneRouter,
+			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
+						RequestConverter:   converter.DaprInvokeHttpRouteDataModelFromVersioned,
+						ResponseConverter:  converter.DaprInvokeHttpRouteDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: daprHttpRouteResourceGroupRouter,
 			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -223,7 +267,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprPubSubRTSubrouter,
+			ParentRouter: daprPubSubBrokerPlaneRouter,
+			ResourceType: linkrp.DaprPubSubBrokersResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
+						RequestConverter:   converter.DaprPubSubBrokerDataModelFromVersioned,
+						ResponseConverter:  converter.DaprPubSubBrokerDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: daprPubSubBrokerResourceGroupRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -235,7 +292,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprPubSubResourceRouter,
+			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -247,7 +304,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprPubSubResourceRouter,
+			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -264,7 +321,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprPubSubResourceRouter,
+			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -281,7 +338,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprPubSubResourceRouter,
+			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -295,7 +352,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprSecretStoreRTSubrouter,
+			ParentRouter: daprSecretStorePlaneRouter,
+			ResourceType: linkrp.DaprSecretStoresResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
+						RequestConverter:   converter.DaprSecretStoreDataModelFromVersioned,
+						ResponseConverter:  converter.DaprSecretStoreDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: daprSecretStoreResourceGroupRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -367,7 +437,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: daprStateStoreRTSubrouter,
+			ParentRouter: daprStateStorePlaneRouter,
+			ResourceType: linkrp.DaprStateStoresResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:   converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter:  converter.DaprStateStoreDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: daprStateStoreResourceGroupRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -439,7 +522,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: redisRTSubrouter,
+			ParentRouter: redisCachePlaneRouter,
+			ResourceType: linkrp.RedisCachesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:   converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter:  converter.RedisCacheDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: redisCacheResourceGroupRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -451,7 +547,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: redisResourceRouter,
+			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -463,7 +559,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: redisResourceRouter,
+			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -480,7 +576,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: redisResourceRouter,
+			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -497,7 +593,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: redisResourceRouter,
+			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -511,7 +607,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: redisResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ParentRouter: redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       redis_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -519,7 +615,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: rabbitmqRTSubrouter,
+			ParentRouter: rabbitmqMessageQueuePlaneRouter,
+			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:   converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter:  converter.RabbitMQMessageQueueDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: rabbitmqMessageQueueResourceGroupRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -531,7 +640,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: rabbitmqResourceRouter,
+			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -543,7 +652,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: rabbitmqResourceRouter,
+			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -560,7 +669,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: rabbitmqResourceRouter,
+			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -577,7 +686,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: rabbitmqResourceRouter,
+			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -591,14 +700,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: rabbitmqResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ParentRouter: rabbitmqMessageQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       rabbitmq_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
-		}, {
-			ParentRouter: sqlRTSubrouter,
+		},
+		{
+			ParentRouter: sqlDatabasePlaneRouter,
+			ResourceType: linkrp.SqlDatabasesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
+						RequestConverter:   converter.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter:  converter.SqlDatabaseDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: sqlDatabaseResourceGroupRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -610,7 +733,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: sqlResourceRouter,
+			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -622,7 +745,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: sqlResourceRouter,
+			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -639,7 +762,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: sqlResourceRouter,
+			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -656,7 +779,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: sqlResourceRouter,
+			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -670,7 +793,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: extenderRTSubrouter,
+			ParentRouter: extenderPlaneRouter,
+			ResourceType: linkrp.ExtendersResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:   converter.ExtenderDataModelFromVersioned,
+						ResponseConverter:  converter.ExtenderDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: extenderResourceGroupRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {

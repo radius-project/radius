@@ -1,21 +1,24 @@
+{{- $appversion := include "radius.versiontag" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    control-plane: ucp
-    app.kubernetes.io/part-of: radius-control-plane
   name: ucp
   namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: ucp
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: ucp
+      app.kubernetes.io/name: ucp
   template:
     metadata:
       labels:
         control-plane: ucp
-        app.kubernetes.io/part-of: radius-control-plane
+        app.kubernetes.io/name: ucp
+        app.kubernetes.io/part-of: radius
       {{ if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
@@ -26,7 +29,7 @@ spec:
       serviceAccountName: ucp
       containers:
       - name: ucp
-        image: "{{ .Values.image }}:{{ .Values.tag }}"
+        image: "{{ .Values.ucp.image }}:{{ .Values.ucp.tag | default $appversion }}"
         env:
         - name: UCP_CONFIG
           value: /etc/config/ucp-config.yaml
@@ -47,8 +50,8 @@ spec:
         {{ end }}
         securityContext:
           allowPrivilegeEscalation: false
-        {{- if .Values.resources }}
-        resources:{{ toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.ucp.resources }}
+        resources:{{ toYaml .Values.ucp.resources | nindent 10 }}
         {{- end }}
         volumeMounts:
         - name: config-volume
@@ -65,35 +68,3 @@ spec:
         - name: cert
           secret:
             secretName: ucp-cert
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ucp
-  namespace: "{{ .Release.Namespace }}"
-spec:
-  ports:
-    - port: 443
-      name: https
-      protocol: TCP
-      targetPort: 9443
-    {{ if eq .Values.global.prometheus.enabled true }}
-    - port: {{ .Values.global.prometheus.port }}
-      name: metrics-http
-      protocol: TCP
-      targetPort: {{ .Values.global.prometheus.port }}
-    {{ end }}
-  selector:
-    control-plane: ucp
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ucp-config
-  namespace: "{{ .Release.Namespace }}"
-  labels:
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    heritage: "{{ .Release.Service }}"
-    release: "{{ .Release.Name }}"
-data:
-  ucp-config.yaml: {{ (include "ucp-config" .) | trim | quote }}
