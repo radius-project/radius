@@ -32,8 +32,11 @@ const (
 	AccountsSegment       = "accounts"
 	RegionsSegment        = "regions"
 
-	CoreRPNamespace = "Applications.Core"
-	LinkRPNamespace = "Applications.Link"
+	CoreRPNamespace       = "Applications.Core"
+	LinkRPNamespace       = "Applications.Link"
+	DatastoresRPNamespace = "Applications.Datastores"
+	DaprRPNamespace       = "Applications.Dapr"
+	MessagingRPNamespace  = "Applications.Messaging"
 
 	PlaneTypePrefix   = "System.Planes"
 	ResourceGroupType = "System.Resources/resourceGroups"
@@ -220,7 +223,10 @@ func (ri ID) ProviderNamespace() string {
 
 func (ri ID) IsRadiusRPResource() bool {
 	return strings.EqualFold(ri.ProviderNamespace(), CoreRPNamespace) ||
-		strings.EqualFold(ri.ProviderNamespace(), LinkRPNamespace)
+		strings.EqualFold(ri.ProviderNamespace(), LinkRPNamespace) ||
+		strings.EqualFold(ri.ProviderNamespace(), DatastoresRPNamespace) ||
+		strings.EqualFold(ri.ProviderNamespace(), DaprRPNamespace) ||
+		strings.EqualFold(ri.ProviderNamespace(), MessagingRPNamespace)
 }
 
 // PlaneNamespace returns the plane part of the UCP ID
