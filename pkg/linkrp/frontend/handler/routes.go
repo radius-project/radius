@@ -773,22 +773,52 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter,
-			ResourceType:   linkrp.ExtendersResourceType,
-			Method:         v1.OperationPut,
-			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+			ParentRouter: extenderResourceRouter,
+			ResourceType: linkrp.ExtendersResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter,
-			ResourceType:   linkrp.ExtendersResourceType,
-			Method:         v1.OperationPatch,
-			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+			ParentRouter: extenderResourceRouter,
+			ResourceType: linkrp.ExtendersResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+					},
+				)
+			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter,
-			ResourceType:   linkrp.ExtendersResourceType,
-			Method:         v1.OperationDelete,
-			HandlerFactory: extender_ctrl.NewDeleteExtender,
+			ParentRouter: extenderResourceRouter,
+			ResourceType: linkrp.ExtendersResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:      converter.ExtenderDataModelFromVersioned,
+						ResponseConverter:     converter.ExtenderDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteExtenderTimeout,
+					},
+				)
+			},
 		},
 		{
 			ParentRouter:   extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
