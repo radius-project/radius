@@ -18,11 +18,10 @@ package credential
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
@@ -80,7 +79,7 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) 
 		}
 		awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSCredentialProperties)
 		if !ok {
-			return ProviderCredentialConfiguration{}, &cli.FriendlyError{Message: fmt.Sprintf("Unable to Find Credentials for %s", name)}
+			return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", name)
 		}
 		providerCredentialConfiguration.AWSCredentials = awsAccessKeyCredentials
 	} else {

@@ -53,8 +53,10 @@ This may take a few minutes as there are several steps.
 If you encounter problems please [open an issue](https://github.com/project-radius/radius/issues/new/choose) so we can help. We're trying to make these instructions as streamlined as possible for contributors, your help in identifying problems with the tools and instructions is very much appreciated!
 
 
-## Troubleshooting make
+## Troubleshooting and getting help
 
 You might encounter error messages while running various `make` commands due to missing dependencies. Review the [prerequisites](./../contributing-code-prerequisites/) page for installation instructions.
 
-If you need to report an issue with the Makefile, we will ask you for a dump of the variables. You can see the state of all of the variables our Makefile defines with `make dump`. The output will be quite large so you might want to redirect this to a file.
+If you get stuck working with the repository, please ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814). We're always interested in ways to improve the tooling, so please feel free to report problems and suggest improvements.
+
+If you need to report an issue with the Makefile, we may ask you for a dump of the variables. You can see the state of all of the variables our Makefile defines with `make dump`. The output will be quite large so you might want to redirect this to a file.

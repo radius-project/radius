@@ -19,7 +19,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	app_switch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
 	app_delete "github.com/project-radius/radius/pkg/cli/cmd/app/delete"
 	app_list "github.com/project-radius/radius/pkg/cli/cmd/app/list"
@@ -147,13 +147,14 @@ func Execute() error {
 	ctx, span := tr.Start(ctx, spanName)
 	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
-	if errors.Is(&cli.FriendlyError{}, err) {
+	if clierrors.IsFriendlyError(err) {
 		fmt.Println(err.Error())
-		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
+		fmt.Println("") // Output an extra blank line for readability
 		return err
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
+		fmt.Println("") // Output an extra blank line for readability
 		return err
 	}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	cli_list "github.com/project-radius/radius/pkg/cli/prompt/list"
 	"github.com/project-radius/radius/pkg/cli/prompt/text"
 )
@@ -36,7 +37,10 @@ const (
 
 //go:generate mockgen -destination=./mock_prompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
 
-// Interface contains operation to get user inputs for cli
+// Interface contains operation to prompt the user interactively.
+//
+// All functions on Interface returns an *ErrExitConsole if the user cancels. This is a friendly error and does not need
+// special handling by calling code.
 type Interface interface {
 	// GetTextInput prompts user for a text input. Will return ErrExitConsole if the user cancels.
 	GetTextInput(prompt string, options TextInputOptions) (string, error)
@@ -107,10 +111,15 @@ func (i *Impl) RunProgram(program *tea.Program) (tea.Model, error) {
 	return program.Run()
 }
 
-var _ error = (*ErrExitConsole)(nil)
+var _ clierrors.FriendlyError = (*ErrExitConsole)(nil)
 
 // ErrExitConsole represents interrupt commands being entered.
 type ErrExitConsole struct {
+}
+
+// IsFriendlyError returns true. Cancelling a command prompt should always be handled gracefully by the CLI.
+func (*ErrExitConsole) IsFriendlyError() bool {
+	return true
 }
 
 // Error returns the error message.
@@ -126,6 +135,9 @@ func (e *ErrExitConsole) Is(target error) bool {
 
 // YesOrNoPrompt Creates a Yes or No prompt where user has to select either a Yes or No as input
 // defaultString decides the first(default) value on the list.
+//
+// Returns an *ErrExitConsole if the user cancels. This is a friendly error and does not need
+// special handling by calling code.
 func YesOrNoPrompt(promptMsg string, defaultString string, prompter Interface) (bool, error) {
 	var valueList []string
 	if strings.EqualFold(ConfirmYes, defaultString) {

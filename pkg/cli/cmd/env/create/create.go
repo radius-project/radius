@@ -18,7 +18,6 @@ package create
 
 import (
 	"context"
-	"fmt"
 
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
@@ -27,6 +26,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -127,7 +127,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.ResourceGroupName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.ResourceGroupName)}
+		return clierrors.Message("Resource group %q could not be found.", r.ResourceGroupName)
 	} else if err != nil {
 		return err
 	}

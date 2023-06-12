@@ -46,6 +46,8 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 > ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
 > test failures.
 
+> ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
+ 
 ### Run 
 
 1. Run:
@@ -72,12 +74,28 @@ You can also run/debug individual tests from VSCode.
 Some of these tests take a few minutes to run since they interact with cloud resources. You should configure VSCode to output verbose output so you can see the progress.
 
 Open your VSCode `settings.json` with the command `Preferences: Open Settings (JSON)` and configure the following options:
-```
+
+```json
 {
     ...
     "go.testTimeout": "60m",
     "go.testFlags": [
         "-v"
-    ]
+    ],
 }
 ```
+
+### Using Codelens (VSCode)
+
+VSCode will start a child process when you execute a `'run test'/'debug test'` codelens action (see image for example). If you are using this to run functional tests, this process may not resolve `rad` correctly. You can specify environment variables for codelens using `settings.json`:
+
+```json
+{
+    ...
+    "go.testEnvVars": {
+        "RAD_PATH": "${workspaceFolder}/dist/linux_amd64/release"
+    },
+}
+```
+
+![Screenshot of VS Code Codelens UI](./vscode_debug_test.png)

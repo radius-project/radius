@@ -22,6 +22,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -436,7 +437,7 @@ func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, e
 	} else if workspace.Scope != "" {
 		return workspace.Scope, nil
 	} else {
-		return "", &FriendlyError{Message: "no resource group set, use `--group` to pass in a resource group name"}
+		return "", clierrors.Message("No resource group set, use `--group` to pass in a resource group name.")
 	}
 }
 
