@@ -33,111 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
-	ctx := context.TODO()
-	// Create first deployment that will be watched
-	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-		},
-		Status: v1.DeploymentStatus{
-			Conditions: []v1.DeploymentCondition{
-				{
-					Type:    v1.DeploymentProgressing,
-					Status:  corev1.ConditionTrue,
-					Reason:  "NewReplicaSetAvailable",
-					Message: "Deployment has minimum availability",
-				},
-			},
-		},
-	}
-
-	deploymentClient := fake.NewSimpleClientset(deployment)
-
-	handler := kubernetesHandler{
-		clientSet:           deploymentClient,
-		deploymentTimeOut:   time.Duration(5) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
-	}
-
-	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
-	require.NoError(t, err, "Failed to wait for deployment to be ready")
-}
-
-func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
-	ctx := context.TODO()
-	// Create first deployment that will be watched
-	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-		},
-		Status: v1.DeploymentStatus{
-			Conditions: []v1.DeploymentCondition{
-				{
-					Type:    v1.DeploymentProgressing,
-					Status:  corev1.ConditionFalse,
-					Reason:  "NewReplicaSetAvailable",
-					Message: "Deployment has minimum availability",
-				},
-			},
-		},
-	}
-
-	deploymentClient := fake.NewSimpleClientset(deployment)
-
-	handler := kubernetesHandler{
-		clientSet:           deploymentClient,
-		deploymentTimeOut:   time.Duration(1) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
-	}
-
-	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
-	require.Error(t, err)
-	require.Equal(t, "deployment timed out, name: test-deployment, namespace test-namespace, status: Deployment has minimum availability, reason: NewReplicaSetAvailable", err.Error())
-}
-
-func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
-	ctx := context.TODO()
-	// Create first deployment that will be watched
-	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-		},
-		Status: v1.DeploymentStatus{
-			Conditions: []v1.DeploymentCondition{
-				{
-					Type:    v1.DeploymentProgressing,
-					Status:  corev1.ConditionTrue,
-					Reason:  "NewReplicaSetAvailable",
-					Message: "Deployment has minimum availability",
-				},
-			},
-		},
-	}
-
-	deploymentClient := fake.NewSimpleClientset(deployment)
-
-	handler := kubernetesHandler{
-		clientSet:           deploymentClient,
-		deploymentTimeOut:   time.Duration(1) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
-	}
-
-	err := handler.waitUntilDeploymentIsReady(ctx, &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "not-matched-deployment",
-			Namespace: "test-namespace",
-		},
-	})
-
-	// It must be timed out because the name of the deployment does not match.
-	require.Error(t, err)
-	require.Equal(t, "deployment timed out, name: not-matched-deployment, namespace test-namespace, error occured while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
-}
-
 func TestPut(t *testing.T) {
 	ctx := context.TODO()
 
@@ -320,4 +215,109 @@ func TestConvertToUnstructured(t *testing.T) {
 			require.Equal(t, tc.out, actual)
 		})
 	}
+}
+
+func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
+		},
+		Status: v1.DeploymentStatus{
+			Conditions: []v1.DeploymentCondition{
+				{
+					Type:    v1.DeploymentProgressing,
+					Status:  corev1.ConditionTrue,
+					Reason:  "NewReplicaSetAvailable",
+					Message: "Deployment has minimum availability",
+				},
+			},
+		},
+	}
+
+	deploymentClient := fake.NewSimpleClientset(deployment)
+
+	handler := kubernetesHandler{
+		clientSet:           deploymentClient,
+		deploymentTimeOut:   time.Duration(5) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
+	require.NoError(t, err, "Failed to wait for deployment to be ready")
+}
+
+func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
+		},
+		Status: v1.DeploymentStatus{
+			Conditions: []v1.DeploymentCondition{
+				{
+					Type:    v1.DeploymentProgressing,
+					Status:  corev1.ConditionFalse,
+					Reason:  "NewReplicaSetAvailable",
+					Message: "Deployment has minimum availability",
+				},
+			},
+		},
+	}
+
+	deploymentClient := fake.NewSimpleClientset(deployment)
+
+	handler := kubernetesHandler{
+		clientSet:           deploymentClient,
+		deploymentTimeOut:   time.Duration(1) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
+	require.Error(t, err)
+	require.Equal(t, "deployment timed out, name: test-deployment, namespace test-namespace, status: Deployment has minimum availability, reason: NewReplicaSetAvailable", err.Error())
+}
+
+func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
+		},
+		Status: v1.DeploymentStatus{
+			Conditions: []v1.DeploymentCondition{
+				{
+					Type:    v1.DeploymentProgressing,
+					Status:  corev1.ConditionTrue,
+					Reason:  "NewReplicaSetAvailable",
+					Message: "Deployment has minimum availability",
+				},
+			},
+		},
+	}
+
+	deploymentClient := fake.NewSimpleClientset(deployment)
+
+	handler := kubernetesHandler{
+		clientSet:           deploymentClient,
+		deploymentTimeOut:   time.Duration(1) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	err := handler.waitUntilDeploymentIsReady(ctx, &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "not-matched-deployment",
+			Namespace: "test-namespace",
+		},
+	})
+
+	// It must be timed out because the name of the deployment does not match.
+	require.Error(t, err)
+	require.Equal(t, "deployment timed out, name: not-matched-deployment, namespace test-namespace, error occured while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
 }
