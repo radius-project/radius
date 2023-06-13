@@ -24,15 +24,106 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"extenderresource.json", "extenderresource2.json"}
+	testset := []struct {
+		file     string
+		desc     string
+		expected *datamodel.Extender
+	}{
+		{
+			file: "extenderresource.json",
+			desc: "extender resource provisioning manual",
+			expected: &datamodel.Extender{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0",
+						Name: "extender0",
+						Type: linkrp.ExtendersResourceType,
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.ExtenderProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
+					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					Secrets:              map[string]any{"accountSid": "sid", "authToken": "token"},
+				},
+			},
+		},
+		{
+			file: "extenderresource2.json",
+			desc: "extender resource provisioning manual (no secrets)",
+			expected: &datamodel.Extender{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0",
+						Name: "extender0",
+						Type: linkrp.ExtendersResourceType,
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.ExtenderProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
+					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+				},
+			},
+		},
+		{
+			file: "extenderresource_recipe.json",
+			desc: "extender resource recipe",
+			expected: &datamodel.Extender{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0",
+						Name: "extender0",
+						Type: linkrp.ExtendersResourceType,
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.ExtenderProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					Recipe:               linkrp.LinkRecipe{Name: "test-recipe"},
+				},
+			},
+		},
+	}
 
 	for _, payload := range testset {
 		// arrange
-		rawPayload, err := loadTestData("./testdata/" + payload)
+		rawPayload, err := loadTestData("./testdata/" + payload.file)
 		require.NoError(t, err)
 		versionedResource := &ExtenderResource{}
 		err = json.Unmarshal(rawPayload, versionedResource)
@@ -44,52 +135,117 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.Extender)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0", convertedResource.ID)
-		require.Equal(t, "extender0", convertedResource.Name)
-		require.Equal(t, linkrp.ExtendersResourceType, convertedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, map[string]any{"fromNumber": "222-222-2222"}, convertedResource.Properties.AdditionalProperties)
 
-		if payload == "extenderresource.json" {
-			require.Equal(t, map[string]any{"accountSid": "sid", "authToken:": "token"}, convertedResource.Properties.Secrets)
-			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-		} else {
-			require.Empty(t, convertedResource.Properties.Secrets)
-			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-		}
+		require.Equal(t, payload.expected, convertedResource)
 	}
 }
 
 func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"extenderresourcedatamodel.json", "extenderresourcedatamodel2.json"}
+	testset := []struct {
+		file     string
+		desc     string
+		expected *ExtenderResource
+	}{
+		{
+			desc: "extender resource provisioning manual datamodel",
+			file: "extenderresourcedatamodel.json",
+			expected: &ExtenderResource{
+				Location: to.Ptr(""),
+				Properties: &ExtenderProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "ExtenderProvider",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0"),
+				Name: to.Ptr("extender0"),
+				Type: to.Ptr(linkrp.ExtendersResourceType),
+			},
+		},
+		{
+			desc: "extender resource provisioning manual datamodel (no secrets)",
+			file: "extenderresourcedatamodel2.json",
+			expected: &ExtenderResource{
+				Location: to.Ptr(""),
+				Properties: &ExtenderProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
+					Status:               &ResourceStatus{},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0"),
+				Name: to.Ptr("extender0"),
+				Type: to.Ptr(linkrp.ExtendersResourceType),
+			},
+		},
+		{
+			desc: "extender resource recipe datamodel",
+			file: "extenderresourcedatamodel_recipe.json",
+			expected: &ExtenderResource{
+				Location: to.Ptr(""),
+				Properties: &ExtenderProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr("test-recipe"), Parameters: nil},
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "ExtenderProvider",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0"),
+				Name: to.Ptr("extender0"),
+				Type: to.Ptr(linkrp.ExtendersResourceType),
+			},
+		},
+	}
 
-	for _, payload := range testset {
-		// arrange
-		rawPayload, err := loadTestData("./testdata/" + payload)
-		require.NoError(t, err)
-		resource := &datamodel.Extender{}
-		err = json.Unmarshal(rawPayload, resource)
-		require.NoError(t, err)
+	for _, tc := range testset {
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			require.NoError(t, err)
+			resource := &datamodel.Extender{}
+			err = json.Unmarshal(rawPayload, resource)
+			require.NoError(t, err)
 
-		// act
-		versionedResource := &ExtenderResource{}
-		err = versionedResource.ConvertFrom(resource)
+			versionedResource := &ExtenderResource{}
+			err = versionedResource.ConvertFrom(resource)
+			require.NoError(t, err)
 
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0", *versionedResource.ID)
-		require.Equal(t, "extender0", *versionedResource.Name)
-		require.Equal(t, linkrp.ExtendersResourceType, *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		require.Equal(t, map[string]any{"fromNumber": "222-222-2222"}, versionedResource.Properties.AdditionalProperties)
-		require.Empty(t, versionedResource.Properties.Secrets) // Secrets are omitted from the versioned data model.
+			// Skip system data comparison
+			versionedResource.SystemData = nil
 
-		if payload == "extenderresourcedatamodel.json" {
-			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "ExtenderProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
-		}
+			require.Equal(t, tc.expected, versionedResource)
+		})
 	}
 }
 
