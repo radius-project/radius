@@ -9,9 +9,6 @@ param magpieImage string
 @description('Specifies the port for the container resource.')
 param magpiePort int = 3000
 
-@description('Specifies the environment for resources.')
-param environment string = 'test'
-
 @description('Specifies the RabbitMQ password.')
 @secure()
 param password string
