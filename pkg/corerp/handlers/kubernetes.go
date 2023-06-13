@@ -131,7 +131,7 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 
 	ctx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
 
-	handler.startDeploymentInformer(ctx, item, doneCh, errCh)
+	_ = handler.startDeploymentInformer(ctx, item, doneCh, errCh)
 	// This ensures that the informer is stopped when this function is returned.
 	defer cancel()
 
@@ -160,7 +160,7 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 	}
 }
 
-func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, item client.Object, doneCh chan<- bool, errCh chan<- error) {
+func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, item client.Object, doneCh chan<- bool, errCh chan<- error) func() bool {
 	informers := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 	deploymentInformer := informers.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -190,9 +190,7 @@ func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, i
 	deploymentInformer.AddEventHandler(handlers)
 	informers.Start(ctx.Done())
 
-	go func(stopCh <-chan struct{}) {
-		cache.WaitForCacheSync(stopCh, deploymentInformer.HasSynced)
-	}(ctx.Done())
+	return deploymentInformer.HasSynced
 }
 
 func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, obj *v1.Deployment, doneCh chan<- bool) {
@@ -207,6 +205,7 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, obj
 			if obj.Status.ObservedGeneration >= obj.Generation {
 				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
 				doneCh <- true
+				return
 			}
 		}
 	}
