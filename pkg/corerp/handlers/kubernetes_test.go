@@ -18,13 +18,18 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -131,4 +136,149 @@ func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
 	// It must be timed out because the name of the deployment does not match.
 	require.Error(t, err)
 	require.Equal(t, "deployment timed out, name: not-matched-deployment, namespace test-namespace, error occured while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
+}
+
+func TestDelete(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
+		},
+	}
+
+	handler := kubernetesHandler{
+		client:              k8sutil.NewFakeKubeClient(nil),
+		deploymentTimeOut:   time.Duration(1) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	err := handler.client.Create(ctx, deployment)
+	require.NoError(t, err)
+
+	t.Run("existing resource", func(t *testing.T) {
+		err := handler.Delete(ctx, &DeleteOptions{
+			Resource: &rpv1.OutputResource{
+				Identity: resourcemodel.ResourceIdentity{
+					Data: map[string]any{
+						"apiVersion": "apps/v1",
+						"kind":       "Deployment",
+						"metadata": map[string]any{
+							"name":      "test-deployment",
+							"namespace": "test-namespace",
+						},
+					},
+				},
+			},
+		})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("existing resource", func(t *testing.T) {
+		err := handler.Delete(ctx, &DeleteOptions{
+			Resource: &rpv1.OutputResource{
+				Identity: resourcemodel.ResourceIdentity{
+					Data: map[string]any{
+						"apiVersion": "apps/v1",
+						"kind":       "Deployment",
+						"metadata": map[string]any{
+							"name":      "test-deployment1",
+							"namespace": "test-namespace",
+						},
+					},
+				},
+			},
+		})
+
+		require.NoError(t, err)
+	})
+}
+
+func TestConvertToUnstructured(t *testing.T) {
+	convertTests := []struct {
+		name string
+		in   rpv1.OutputResource
+		out  unstructured.Unstructured
+		err  error
+	}{
+		{
+			name: "valid resource",
+			in: rpv1.OutputResource{
+				ResourceType: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderKubernetes,
+				},
+				Resource: &v1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-deployment",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			out: unstructured.Unstructured{
+				Object: map[string]any{
+					"metadata": map[string]any{
+						"creationTimestamp": nil,
+						"name":              "test-deployment",
+						"namespace":         "test-namespace",
+					},
+					"spec": map[string]any{
+						"selector": nil,
+						"strategy": map[string]any{},
+						"template": map[string]any{
+							"metadata": map[string]any{
+								"creationTimestamp": nil,
+							},
+							"spec": map[string]any{
+								"containers": nil,
+							},
+						},
+					},
+					"status": map[string]any{},
+				},
+			},
+		},
+		{
+			name: "invalid provider",
+			in: rpv1.OutputResource{
+				ResourceType: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderAzure,
+				},
+				Resource: &v1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-deployment",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			err: errors.New("invalid resource type provider: azure"),
+		},
+		{
+			name: "invalid resource",
+			in: rpv1.OutputResource{
+				ResourceType: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderKubernetes,
+				},
+				Resource: map[string]any{"invalid": "type"},
+			},
+			err: errors.New("inner type was not a runtime.Object"),
+		},
+	}
+
+	for _, tc := range convertTests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual, err := convertToUnstructured(tc.in)
+			if tc.err != nil {
+				require.Error(t, err)
+				require.Equal(t, tc.err.Error(), err.Error())
+				return
+			}
+			require.Equal(t, tc.out, actual)
+		})
+	}
 }

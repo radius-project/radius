@@ -247,7 +247,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOpt
 
 func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructured, error) {
 	if resource.ResourceType.Provider != resourcemodel.ProviderKubernetes {
-		return unstructured.Unstructured{}, errors.New("wrong resource type")
+		return unstructured.Unstructured{}, fmt.Errorf("invalid resource type provider: %s", resource.ResourceType.Provider)
 	}
 
 	obj, ok := resource.Resource.(runtime.Object)
