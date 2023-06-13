@@ -561,6 +561,9 @@ type MongoDatabaseProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// Database name of the target Mongo database
+	Database *string `json:"database,omitempty"`
+
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -581,9 +584,6 @@ type MongoDatabaseProperties struct {
 
 	// Username to use when connecting to the target Mongo database
 	Username *string `json:"username,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -860,14 +860,14 @@ type RedisCacheProperties struct {
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
+	// The username for Redis cache
+	Username *string `json:"username,omitempty"`
+
 	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
 // RedisCacheResource - RedisCache link
