@@ -964,6 +964,15 @@ type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
+// SQLDatabaseListSecretsResult - The secret values for the given SqlDatabase resource
+type SQLDatabaseListSecretsResult struct {
+	// Connection string used to connect to the target Sql database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Sql database
+	Password *string `json:"password,omitempty"`
+}
+
 // SQLDatabaseProperties - SqlDatabase properties
 type SQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
@@ -975,6 +984,9 @@ type SQLDatabaseProperties struct {
 	// The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
+	// Port value of the target Sql database
+	Port *int32 `json:"port,omitempty"`
+
 	// The recipe used to automatically deploy underlying infrastructure for the sqldatabases link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
@@ -984,8 +996,14 @@ type SQLDatabaseProperties struct {
 	// List of the resource IDs that support the SqlDatabase resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
+	// Secret values provided for the resource
+	Secrets *SQLDatabaseSecrets `json:"secrets,omitempty"`
+
 	// The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
+
+	// Username to use when connecting to the target Sql database
+	Username *string `json:"username,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1027,6 +1045,15 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// SQLDatabaseSecrets - The secret values for the given SqlDatabase resource
+type SQLDatabaseSecrets struct {
+	// Connection string used to connect to the target Sql database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Sql database
+	Password *string `json:"password,omitempty"`
+}
+
 // SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate method.
 type SQLDatabasesClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1044,6 +1071,11 @@ type SQLDatabasesClientGetOptions struct {
 
 // SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
 type SQLDatabasesClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesClientListSecretsOptions contains the optional parameters for the SQLDatabasesClient.ListSecrets method.
+type SQLDatabasesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 

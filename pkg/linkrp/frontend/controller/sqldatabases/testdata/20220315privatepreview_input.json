@@ -1,0 +1,17 @@
+{
+  "location": "West US",
+  "properties": {
+      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+      "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+      "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+      "database": "testDatabase",
+      "server": "testAccount1.sql.cosmos.azure.com",
+      "resourceProvisioning": "manual",
+      "port": 1433,
+      "username": "testUser",
+      "secrets": {
+        "password": "testPassword",
+        "connectionString": "Data Source=tcp:testAccount1.sql.cosmos.azure.com,1433;Initial Catalog=testDatabase;User Id=testUser;Password=testPassword;Encrypt=True;TrustServerCertificate=True"
+      }
+  }
+}

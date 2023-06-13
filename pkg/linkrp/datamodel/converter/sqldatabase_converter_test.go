@@ -101,3 +101,40 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 		})
 	}
 }
+
+func TestSqlDatabaseSecretsDataModelToVersioned(t *testing.T) {
+	testset := []struct {
+		dataModelFile string
+		apiVersion    string
+		apiModelType  any
+		err           error
+	}{
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_secrets_datamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.SQLDatabaseSecrets{},
+			nil,
+		},
+		{
+			"",
+			"unsupported",
+			nil,
+			v1.ErrUnsupportedAPIVersion,
+		},
+	}
+
+	for _, tc := range testset {
+		t.Run(tc.apiVersion, func(t *testing.T) {
+			c := loadTestData(tc.dataModelFile)
+			dm := &datamodel.SqlDatabaseSecrets{}
+			_ = json.Unmarshal(c, dm)
+			am, err := SqlDatabaseSecretsDataModelToVersioned(dm, tc.apiVersion)
+			if tc.err != nil {
+				require.ErrorAs(t, tc.err, &err)
+			} else {
+				require.NoError(t, err)
+				require.IsType(t, tc.apiModelType, am)
+			}
+		})
+	}
+}

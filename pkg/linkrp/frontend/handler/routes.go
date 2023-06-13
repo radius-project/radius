@@ -37,6 +37,7 @@ import (
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
+	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
@@ -790,6 +791,14 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteSqlDatabaseTimeout,
 					},
 				)
+			},
+		},
+		{
+			ParentRouter: sqlDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: linkrp.SqlDatabasesResourceType,
+			Method:       sql_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return sql_ctrl.NewListSecretsSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
 		},
 		{

@@ -68,6 +68,12 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					Database: "testDatabase",
 					Server:   "testAccount1.sql.cosmos.azure.com",
+					Port:     1433,
+					Username: "testUser",
+					Secrets: datamodel.SqlDatabaseSecrets{
+						Password:         "testPassword",
+						ConnectionString: "test-connection-string",
+					},
 				},
 			},
 		},
@@ -151,6 +157,8 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 					},
 					Database:          to.Ptr("testDatabase"),
 					Server:            to.Ptr("testAccount1.sql.cosmos.azure.com"),
+					Port:              to.Ptr(int32(1433)),
+					Username:          to.Ptr("testUser"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
@@ -180,6 +188,8 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					Database:             to.Ptr("testDatabase"),
+					Port:                 to.Ptr(int32(1433)),
+					Username:             to.Ptr("testUser"),
 					Server:               to.Ptr("testAccount1.sql.cosmos.azure.com"),
 					Recipe: &Recipe{
 						Name: to.Ptr("sql-test"),
@@ -236,7 +246,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 		{
 			"sqldatabase_invalid_properties_resource.json",
 			&v1.ErrClientRP{},
-			"code Bad Request: err database and server are required when resourceProvisioning is manual",
+			"code BadRequest: err multiple errors were found:\n\tserver must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual",
 		},
 		{
 			"sqldatabase_invalid_resourceprovisioning_resource.json",
@@ -278,7 +288,54 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 	}
 }
 
-type TestData struct {
-	Description string          `json:"description,omitempty"`
-	Payload     json.RawMessage `json:"payload,omitempty"`
+func TestSqlDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
+	// arrange
+	rawPayload, err := loadTestData("./testdata/sqldatabase_secrets.json")
+	require.NoError(t, err)
+	versioned := &SQLDatabaseSecrets{}
+	err = json.Unmarshal(rawPayload, versioned)
+	require.NoError(t, err)
+
+	// act
+	dm, err := versioned.ConvertTo()
+
+	// assert
+	require.NoError(t, err)
+	converted := dm.(*datamodel.SqlDatabaseSecrets)
+	require.Equal(t, "test-connection-string", converted.ConnectionString)
+	require.Equal(t, "testPassword", converted.Password)
+}
+
+func TestSqlDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
+	// arrange
+	rawPayload, err := loadTestData("./testdata/sqldatabase_secrets_datamodel.json")
+	require.NoError(t, err)
+	secrets := &datamodel.SqlDatabaseSecrets{}
+	err = json.Unmarshal(rawPayload, secrets)
+	require.NoError(t, err)
+
+	// act
+	versionedResource := &SQLDatabaseSecrets{}
+	err = versionedResource.ConvertFrom(secrets)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+	require.Equal(t, "testPassword", secrets.Password)
+}
+
+func TestSqlDatabaseSecrets_ConvertFromValidation(t *testing.T) {
+	validationTests := []struct {
+		src v1.DataModelInterface
+		err error
+	}{
+		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{nil, v1.ErrInvalidModelConversion},
+	}
+
+	for _, tc := range validationTests {
+		versioned := &SQLDatabaseSecrets{}
+		err := versioned.ConvertFrom(tc.src)
+		require.ErrorAs(t, tc.err, &err)
+	}
 }
