@@ -60,10 +60,8 @@ type ExtenderProperties struct {
 	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
 	// Secrets values provided for the resource
 	Secrets map[string]any `json:"secrets,omitempty"`
-	// The recipe used to automatically deploy underlying infrastructure for the MongoDB link
+	// The recipe used to automatically deploy underlying infrastructure for the Extender
 	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
-	// List of the resource IDs that support the MongoDB resource
-	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }

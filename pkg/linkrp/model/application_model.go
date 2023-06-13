@@ -23,7 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/sdk"
 
@@ -45,10 +44,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		{
 			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
 			Renderer:     &daprinvokehttproutes.Renderer{},
-		},
-		{
-			ResourceType: linkrp.ExtendersResourceType,
-			Renderer:     &extenders.Renderer{},
 		},
 	}
 
