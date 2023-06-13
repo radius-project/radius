@@ -8,11 +8,9 @@
         "properties": {
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-          "secrets": {
-              "accountSid": "sid",
-              "authToken:": "token"
-          },
-          "resourceProvisioning": "manual"
+          "recipe": {
+            "name": "s3"
+          }
         }
       }
     },
@@ -27,12 +25,9 @@
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
             "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "fromNumber": "222-222-2222",
-            "secrets": {
-                "accountSid": "sid",
-                "authToken:": "token"
-            },
-            "resourceProvisioning": "manual"
+            "recipe": {
+                "name": "s3"
+              }
           }
         }
       },
@@ -46,12 +41,9 @@
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
             "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "fromNumber": "222-222-2222",
-            "secrets": {
-                "accountSid": "sid",
-                "authToken:": "token"
-            },
-            "resourceProvisioning": "manual"
+            "recipe": {
+                "name": "s3"
+              }
           }
         }
       }
