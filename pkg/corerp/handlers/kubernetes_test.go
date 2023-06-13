@@ -138,6 +138,45 @@ func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
 	require.Equal(t, "deployment timed out, name: not-matched-deployment, namespace test-namespace, error occured while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
 }
 
+func TestPut(t *testing.T) {
+	ctx := context.TODO()
+
+	handler := kubernetesHandler{
+		client:              k8sutil.NewFakeKubeClient(nil),
+		deploymentTimeOut:   time.Duration(1) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	putOption := &PutOptions{
+		Resource: &rpv1.OutputResource{
+			ResourceType: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			Resource: &v1.ReplicaSet{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ReplicaSet",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-replica",
+					Namespace: "test-namespace",
+				},
+			},
+		},
+	}
+
+	props, err := handler.Put(ctx, putOption)
+	require.NoError(t, err)
+	expected := map[string]string{
+		"kubernetesapiversion": "apps/v1",
+		"kuberneteskind":       "ReplicaSet",
+		"kubernetesnamespace":  "test-namespace",
+		"resourcename":         "test-replica",
+	}
+
+	require.Equal(t, expected, props)
+}
+
 func TestDelete(t *testing.T) {
 	ctx := context.TODO()
 	// Create first deployment that will be watched
