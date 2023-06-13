@@ -30,46 +30,102 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestPut(t *testing.T) {
-	ctx := context.TODO()
-
-	handler := kubernetesHandler{
-		client:              k8sutil.NewFakeKubeClient(nil),
-		deploymentTimeOut:   time.Duration(1) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
-	}
-
-	putOption := &PutOptions{
-		Resource: &rpv1.OutputResource{
-			ResourceType: resourcemodel.ResourceType{
-				Provider: resourcemodel.ProviderKubernetes,
+	putTests := []struct {
+		name string
+		in   *PutOptions
+		out  map[string]string
+	}{
+		{
+			name: "secret resource",
+			in: &PutOptions{
+				Resource: &rpv1.OutputResource{
+					ResourceType: resourcemodel.ResourceType{
+						Provider: resourcemodel.ProviderKubernetes,
+					},
+					Resource: &corev1.Secret{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "Secret",
+							APIVersion: "core/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-secret",
+							Namespace: "test-namespace",
+						},
+					},
+				},
 			},
-			Resource: &v1.ReplicaSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ReplicaSet",
-					APIVersion: "apps/v1",
+			out: map[string]string{
+				"kubernetesapiversion": "core/v1",
+				"kuberneteskind":       "Secret",
+				"kubernetesnamespace":  "test-namespace",
+				"resourcename":         "test-secret",
+			},
+		},
+		{
+			name: "deploment resource",
+			in: &PutOptions{
+				Resource: &rpv1.OutputResource{
+					ResourceType: resourcemodel.ResourceType{
+						Provider: resourcemodel.ProviderKubernetes,
+					},
+					Resource: &v1.Deployment{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "Deployment",
+							APIVersion: "apps/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-deployment",
+							Namespace: "test-namespace",
+						},
+						Status: v1.DeploymentStatus{
+							Conditions: []v1.DeploymentCondition{
+								{
+									Type:    v1.DeploymentProgressing,
+									Status:  corev1.ConditionTrue,
+									Reason:  "NewReplicaSetAvailable",
+									Message: "Deployment has minimum availability",
+								},
+							},
+						},
+					},
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-replica",
-					Namespace: "test-namespace",
-				},
+			},
+			out: map[string]string{
+				"kubernetesapiversion": "apps/v1",
+				"kuberneteskind":       "Deployment",
+				"kubernetesnamespace":  "test-namespace",
+				"resourcename":         "test-deployment",
 			},
 		},
 	}
 
-	props, err := handler.Put(ctx, putOption)
-	require.NoError(t, err)
-	expected := map[string]string{
-		"kubernetesapiversion": "apps/v1",
-		"kuberneteskind":       "ReplicaSet",
-		"kubernetesnamespace":  "test-namespace",
-		"resourcename":         "test-replica",
-	}
+	for _, tc := range putTests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.TODO()
 
-	require.Equal(t, expected, props)
+			handler := kubernetesHandler{
+				client:              k8sutil.NewFakeKubeClient(nil),
+				clientSet:           nil,
+				deploymentTimeOut:   time.Duration(5) * time.Second,
+				cacheResyncInterval: time.Duration(10) * time.Second,
+			}
+
+			// only deployment resources need to be watched.
+			if _, ok := tc.in.Resource.Resource.(*v1.Deployment); ok {
+				handler.clientSet = fake.NewSimpleClientset(tc.in.Resource.Resource.(runtime.Object))
+			}
+
+			props, err := handler.Put(ctx, tc.in)
+			require.NoError(t, err)
+
+			require.Equal(t, tc.out, props)
+		})
+	}
 }
 
 func TestDelete(t *testing.T) {

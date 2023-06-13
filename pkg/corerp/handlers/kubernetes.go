@@ -162,12 +162,7 @@ func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, i
 	deploymentInformer := informers.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new_obj any) {
-			obj, ok := new_obj.(*v1.Deployment)
-			if !ok {
-				errCh <- errors.New("deployment object is not of appsv1.Deployment type")
-				return
-			}
-
+			obj := new_obj.(*v1.Deployment)
 			// There might be parallel deployments in progress, we need to make sure we are watching the right one
 			if obj.Name != item.GetName() {
 				return
@@ -175,16 +170,8 @@ func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, i
 			handler.checkDeploymentStatus(ctx, obj, doneCh)
 		},
 		UpdateFunc: func(old_obj, new_obj any) {
-			old, ok := old_obj.(*v1.Deployment)
-			if !ok {
-				errCh <- errors.New("old deployment object is not of appsv1.Deployment type")
-				return
-			}
-			new, ok := new_obj.(*v1.Deployment)
-			if !ok {
-				errCh <- errors.New("new deployment object is not of appsv1.Deployment type")
-				return
-			}
+			old := old_obj.(*v1.Deployment)
+			new := new_obj.(*v1.Deployment)
 
 			// There might be parallel deployments in progress, we need to make sure we are watching the right one
 			if new.Name != item.GetName() {
@@ -195,16 +182,13 @@ func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, i
 				handler.checkDeploymentStatus(ctx, new, doneCh)
 			}
 		},
-		DeleteFunc: func(obj any) {
-			// no-op here
-		},
 	}
-	deploymentInformer.AddEventHandler(handlers)
 
-	// Start the informer
+	deploymentInformer.AddEventHandler(handlers)
+	informers.Start(ctx.Done())
+
 	go func(stopCh <-chan struct{}) {
-		informers.Start(stopCh)
-		informers.WaitForCacheSync(stopCh)
+		cache.WaitForCacheSync(stopCh, deploymentInformer.HasSynced)
 	}(ctx.Done())
 }
 
