@@ -492,9 +492,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rpv1.BasicResourceProperties, recipe linkrp.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
-	case strings.ToLower(linkrp.ExtendersResourceType):
-		obj := resource.(*datamodel.Extender)
-		basicResource = &obj.Properties.BasicResourceProperties
 	case strings.ToLower(linkrp.DaprStateStoresResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
 		basicResource = &obj.Properties.BasicResourceProperties
