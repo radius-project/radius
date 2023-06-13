@@ -244,7 +244,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 	// Note: unfortunately there isn't a great way to test a deletion failure with the runtime client.
 
-	t.Run("success - lookup API Version (preferred)", func(t *testing.T) {
+	t.Run("success - lookup API Version (preferred namespaced resources)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-name",
@@ -253,47 +253,14 @@ func Test_Delete_Kubernetes(t *testing.T) {
 		}).Build()
 
 		dc := &discoveryClient{
-			Groups: &metav1.APIGroupList{
-				Groups: []metav1.APIGroup{
-					{
-						Name:             "apps",
-						PreferredVersion: metav1.GroupVersionForDiscovery{GroupVersion: "apps/v1", Version: "v1"},
-					},
-					{
-						Name:             "",
-						PreferredVersion: metav1.GroupVersionForDiscovery{GroupVersion: "v1", Version: "v1"},
-					},
-				},
-			},
-		}
-
-		c := NewResourceClient(nil, nil, client, dc)
-
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "")
-		require.NoError(t, err)
-	})
-
-	t.Run("success - lookup API Version (first available)", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
-		}).Build()
-
-		dc := &discoveryClient{
-			Groups: &metav1.APIGroupList{
-				Groups: []metav1.APIGroup{
-					{
-						Name:             "apps",
-						PreferredVersion: metav1.GroupVersionForDiscovery{GroupVersion: "apps/v1", Version: ""},
-					},
-					{
-						Name:             "",
-						PreferredVersion: metav1.GroupVersionForDiscovery{},
-						Versions: []metav1.GroupVersionForDiscovery{
-							{GroupVersion: "v1", Version: "v1"},
-							{GroupVersion: "v1beta1", Version: "v1beta1"},
+			Resources: []*metav1.APIResourceList{
+				{
+					GroupVersion: "v1",
+					APIResources: []metav1.APIResource{
+						{
+							Name:    "api1",
+							Version: "v1",
+							Kind:    "Secret",
 						},
 					},
 				},
@@ -306,42 +273,23 @@ func Test_Delete_Kubernetes(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("failure - lookup API Version - group not found", func(t *testing.T) {
+	t.Run("success - lookup API Version (preferred empty namespace)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
+				Name: "test-name",
 			},
 		}).Build()
 
 		dc := &discoveryClient{
-			Groups: &metav1.APIGroupList{
-				Groups: []metav1.APIGroup{},
-			},
-		}
-
-		c := NewResourceClient(nil, nil, client, dc)
-
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "")
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "could not find API version for type \"core/Secret\", type was not found")
-	})
-
-	t.Run("failure - lookup API Version - no api versions", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
-		}).Build()
-
-		dc := &discoveryClient{
-			Groups: &metav1.APIGroupList{
-				Groups: []metav1.APIGroup{
-					{
-						Name:             "",
-						PreferredVersion: metav1.GroupVersionForDiscovery{},
-						Versions:         []metav1.GroupVersionForDiscovery{},
+			Resources: []*metav1.APIResourceList{
+				{
+					GroupVersion: "v1",
+					APIResources: []metav1.APIResource{
+						{
+							Name:    "api1",
+							Version: "v1",
+							Kind:    "Secret",
+						},
 					},
 				},
 			},
@@ -350,8 +298,26 @@ func Test_Delete_Kubernetes(t *testing.T) {
 		c := NewResourceClient(nil, nil, client, dc)
 
 		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "")
+		require.NoError(t, err)
+	})
+
+	t.Run("failure - lookup API Version - resource list not found", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-name",
+				Namespace: "test-namespace",
+			},
+		}).Build()
+
+		dc := &discoveryClient{
+			Resources: []*metav1.APIResourceList{},
+		}
+
+		c := NewResourceClient(nil, nil, client, dc)
+
+		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "could not find API version for type \"core/Secret\", no supported API versions")
+		require.Contains(t, err.Error(), "could not find API version for type \"core/Secret\", type was not found")
 	})
 }
 
@@ -457,9 +423,27 @@ func (w *wrapper) Do(req *http.Request) (*http.Response, error) {
 }
 
 type discoveryClient struct {
-	Groups *metav1.APIGroupList
+	Groups    *metav1.APIGroupList
+	Resources []*metav1.APIResourceList
+	APIGroup  []*metav1.APIGroup
 }
 
 func (d *discoveryClient) ServerGroups() (*metav1.APIGroupList, error) {
 	return d.Groups, nil
+}
+
+func (d *discoveryClient) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
+	return d.Resources, nil
+}
+
+func (d *discoveryClient) ServerPreferredNamespacedResources() ([]*metav1.APIResourceList, error) {
+	return d.Resources, nil
+}
+
+func (d *discoveryClient) ServerGroupsAndResources() ([]*metav1.APIGroup, []*metav1.APIResourceList, error) {
+	return d.APIGroup, d.Resources, nil
+}
+
+func (d *discoveryClient) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
+	return nil, nil
 }

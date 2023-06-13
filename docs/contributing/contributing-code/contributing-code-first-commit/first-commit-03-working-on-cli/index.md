@@ -51,7 +51,7 @@ You should see the basic help text of the CLI with your changes.
 
 ```txt
 someone new was here
-Project Radius CLI
+Radius CLI
 
 Usage:
   rad [command]
