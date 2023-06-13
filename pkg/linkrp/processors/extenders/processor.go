@@ -9,11 +9,11 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 )
 
-// Processor is a processor for RedisCache resources.
+// Processor is a processor for Extender resources.
 type Processor struct {
 }
 
-// Process implements the processors.Processor interface for RedisCache resources.
+// Process implements the processors.Processor interface for Extender resources.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.Extender, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 
