@@ -358,6 +358,14 @@
         "secrets": {
           "additionalProperties": true,
           "$ref": "#/definitions/ExtenderSecrets"
+        },
+        "resourceProvisioning": {
+          "$ref": "openapi.json#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "recipe": {
+          "$ref": "openapi.json#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link"
         }
       }
     }

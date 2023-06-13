@@ -18,6 +18,7 @@
         "secrets": {
             "accountSid": "sid",
             "authToken:": "token"
-        }            
+        },           
+        "resourceProvisioning": "manual" 
     }
 }

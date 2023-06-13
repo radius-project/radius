@@ -443,6 +443,12 @@ type ExtenderProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
 	// The secret values for the given Extender resource
 	Secrets map[string]interface{} `json:"secrets,omitempty"`
 
