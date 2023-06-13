@@ -29,13 +29,20 @@ import (
 )
 
 func TestDaprInvokeHttpRoute_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"daprinvokehttprouteresource.json", "daprinvokehttprouteresource2.json", "daprinvokehttprouteresource_recipe.json"}
+	testset := []string{
+		"daprinvokehttprouteresource.json",
+		"daprinvokehttprouteresource2.json",
+		"daprinvokehttprouteresource_recipe.json",
+	}
 	for _, payload := range testset {
 		// arrange
-		rawPayload, err := loadTestData("./testdata/" + payload)
+		reader, err := loadTestDataAsReader("./testdata/" + payload)
 		require.NoError(t, err)
+
 		versionedResource := &DaprInvokeHTTPRouteResource{}
-		err = json.Unmarshal(rawPayload, versionedResource)
+		decoder := json.NewDecoder(reader)
+		decoder.DisallowUnknownFields()
+		err = decoder.Decode(versionedResource)
 		require.NoError(t, err)
 
 		// act

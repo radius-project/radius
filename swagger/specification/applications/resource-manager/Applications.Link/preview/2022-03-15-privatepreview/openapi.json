@@ -2141,8 +2141,7 @@
         },
         "database": {
           "type": "string",
-          "description": "Database name of the target Mongo database",
-          "readOnly": true
+          "description": "Database name of the target Mongo database"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -2405,8 +2404,7 @@
         },
         "username": {
           "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
+          "description": "The username for Redis cache"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",

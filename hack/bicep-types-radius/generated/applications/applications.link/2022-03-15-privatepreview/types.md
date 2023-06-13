@@ -248,7 +248,7 @@
 ## MongoDatabaseProperties
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **database**: string (ReadOnly): Database name of the target Mongo database
+* **database**: string: Database name of the target Mongo database
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **host**: string: Host name of the target Mongo database
 * **port**: int: Port value of the target Mongo database
@@ -302,7 +302,7 @@
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the Redis resource
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-* **username**: string (ReadOnly): The username for Redis cache
+* **username**: string: The username for Redis cache
 
 ## RedisCacheSecrets
 ### Properties
