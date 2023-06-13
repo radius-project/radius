@@ -14,7 +14,6 @@ storageProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-=======
     namespace: 'radius-testing'
 queueProvider:
   provider: "apiserver"

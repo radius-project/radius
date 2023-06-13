@@ -17,6 +17,8 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"time"
 )
@@ -27,6 +29,14 @@ func loadTestData(testfile string) ([]byte, error) {
 		return nil, err
 	}
 	return d, nil
+}
+
+func loadTestDataAsReader(testfile string) (io.Reader, error) {
+	d, err := os.ReadFile(testfile)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(d), nil
 }
 
 func unmarshalTimeString(ts string) *time.Time {

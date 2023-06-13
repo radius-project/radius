@@ -11,13 +11,13 @@ param version string
 param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-recipes-env'
+  name: 'corerp-resources-mongodb-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-recipes-env'
+      namespace: 'corerp-resources-mongodb-recipe-env'
     }
     providers: {
       azure: {
@@ -26,9 +26,9 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     recipes: {
       'Applications.Link/mongoDatabases':{
-        mongodb: {
+        mongoazure: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/corerp/recipes/mongodb-recipe-kubernetes:${version}'
+          templatePath: '${registry}/test/functional/corerp/recipes/mongodb-recipe-kubernetes:${version}' 
         }
       }
     }
@@ -50,7 +50,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mongodb-recipe-app-ctnr'
+  name: 'mongodb-app-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -74,14 +74,13 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongo-recipe-db'
+  name: 'mongodb-db'
   location: 'global'
   properties: {
     application: app.id
     environment: env.id
-    mode: 'recipe'
     recipe: {
-      name: 'mongodb'
+      name: 'mongoazure'
     }
   }
 }

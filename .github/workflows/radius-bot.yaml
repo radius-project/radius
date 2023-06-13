@@ -1,0 +1,22 @@
+name: radius-bot
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  radius-bot:
+    name: Run Radius Bot script
+    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Comment analyzer
+        uses: actions/github-script@v4
+        env:
+          TEAM_SLUG: 'Radius-Eng'
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            const script = require('./.github/scripts/radius-bot.js')
+            await script({github, context})

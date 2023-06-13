@@ -34,7 +34,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
@@ -101,14 +100,6 @@ func setup(t *testing.T) SharedMocks {
 					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
-			},
-			{
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureCosmosDBMongo,
-					Provider: resourcemodel.ProviderAzure,
-				},
-				ResourceHandler:        resourceHandler,
-				SecretValueTransformer: &mongodatabases.AzureTransformer{},
 			},
 		},
 		map[string]bool{
@@ -191,7 +182,6 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
-			Mode: linkrp_dm.LinkModeRecipe,
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
 			RecipeData: linkrp.RecipeData{
@@ -221,10 +211,6 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 		LocalID:       rpv1.LocalIDAzureCosmosAccount,
 		Action:        "listConnectionStrings",
 		ValueSelector: "/connectionStrings/0/connectionString",
-		Transformer: resourcemodel.ResourceType{
-			Provider: resourcemodel.ProviderAzure,
-			Type:     resourcekinds.AzureCosmosDBMongo,
-		},
 	}
 
 	computedValues := map[string]any{
@@ -396,7 +382,6 @@ func Test_Render(t *testing.T) {
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
-				Mode: linkrp_dm.LinkModeValues,
 			},
 		}
 		mr := store.Object{

@@ -18,44 +18,268 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestDeploymentWatcher(t *testing.T) {
-	ctx := context.Background()
-	deploymentName := "test-deployment"
-	deploymentNamespace := "test-namespace"
-
-	// Create first deployment that will be watched
-	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      deploymentName,
-			Namespace: deploymentNamespace,
-		},
-		Status: v1.DeploymentStatus{
-			Conditions: []v1.DeploymentCondition{
-				{
-					Type:    v1.DeploymentProgressing,
-					Status:  corev1.ConditionTrue,
-					Reason:  "NewReplicaSetAvailable",
-					Message: "Deployment has minimum availability",
+func TestPut(t *testing.T) {
+	putTests := []struct {
+		name string
+		in   *PutOptions
+		out  map[string]string
+	}{
+		{
+			name: "secret resource",
+			in: &PutOptions{
+				Resource: &rpv1.OutputResource{
+					ResourceType: resourcemodel.ResourceType{
+						Provider: resourcemodel.ProviderKubernetes,
+					},
+					Resource: &corev1.Secret{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "Secret",
+							APIVersion: "core/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-secret",
+							Namespace: "test-namespace",
+						},
+					},
 				},
+			},
+			out: map[string]string{
+				"kubernetesapiversion": "core/v1",
+				"kuberneteskind":       "Secret",
+				"kubernetesnamespace":  "test-namespace",
+				"resourcename":         "test-secret",
+			},
+		},
+		{
+			name: "deploment resource",
+			in: &PutOptions{
+				Resource: &rpv1.OutputResource{
+					ResourceType: resourcemodel.ResourceType{
+						Provider: resourcemodel.ProviderKubernetes,
+					},
+					Resource: &v1.Deployment{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "Deployment",
+							APIVersion: "apps/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-deployment",
+							Namespace: "test-namespace",
+						},
+						Status: v1.DeploymentStatus{
+							Conditions: []v1.DeploymentCondition{
+								{
+									Type:    v1.DeploymentProgressing,
+									Status:  corev1.ConditionTrue,
+									Reason:  "NewReplicaSetAvailable",
+									Message: "Deployment has minimum availability",
+								},
+							},
+						},
+					},
+				},
+			},
+			out: map[string]string{
+				"kubernetesapiversion": "apps/v1",
+				"kuberneteskind":       "Deployment",
+				"kubernetesnamespace":  "test-namespace",
+				"resourcename":         "test-deployment",
 			},
 		},
 	}
 
-	// Create another deployment that should not be watched
-	deploymentUnrelated := &v1.Deployment{
+	for _, tc := range putTests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.TODO()
+
+			handler := kubernetesHandler{
+				client:              k8sutil.NewFakeKubeClient(nil),
+				clientSet:           nil,
+				deploymentTimeOut:   time.Duration(5) * time.Second,
+				cacheResyncInterval: time.Duration(10) * time.Second,
+			}
+
+			// only deployment resources need to be watched.
+			if _, ok := tc.in.Resource.Resource.(*v1.Deployment); ok {
+				handler.clientSet = fake.NewSimpleClientset(tc.in.Resource.Resource.(runtime.Object))
+			}
+
+			props, err := handler.Put(ctx, tc.in)
+			require.NoError(t, err)
+
+			require.Equal(t, tc.out, props)
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "apps/v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unrelated-deployment",
-			Namespace: deploymentNamespace,
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
+		},
+	}
+
+	handler := kubernetesHandler{
+		client:              k8sutil.NewFakeKubeClient(nil),
+		deploymentTimeOut:   time.Duration(1) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	err := handler.client.Create(ctx, deployment)
+	require.NoError(t, err)
+
+	t.Run("existing resource", func(t *testing.T) {
+		err := handler.Delete(ctx, &DeleteOptions{
+			Resource: &rpv1.OutputResource{
+				Identity: resourcemodel.ResourceIdentity{
+					Data: map[string]any{
+						"apiVersion": "apps/v1",
+						"kind":       "Deployment",
+						"metadata": map[string]any{
+							"name":      "test-deployment",
+							"namespace": "test-namespace",
+						},
+					},
+				},
+			},
+		})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("existing resource", func(t *testing.T) {
+		err := handler.Delete(ctx, &DeleteOptions{
+			Resource: &rpv1.OutputResource{
+				Identity: resourcemodel.ResourceIdentity{
+					Data: map[string]any{
+						"apiVersion": "apps/v1",
+						"kind":       "Deployment",
+						"metadata": map[string]any{
+							"name":      "test-deployment1",
+							"namespace": "test-namespace",
+						},
+					},
+				},
+			},
+		})
+
+		require.NoError(t, err)
+	})
+}
+
+func TestConvertToUnstructured(t *testing.T) {
+	convertTests := []struct {
+		name string
+		in   rpv1.OutputResource
+		out  unstructured.Unstructured
+		err  error
+	}{
+		{
+			name: "valid resource",
+			in: rpv1.OutputResource{
+				ResourceType: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderKubernetes,
+				},
+				Resource: &v1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-deployment",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			out: unstructured.Unstructured{
+				Object: map[string]any{
+					"metadata": map[string]any{
+						"creationTimestamp": nil,
+						"name":              "test-deployment",
+						"namespace":         "test-namespace",
+					},
+					"spec": map[string]any{
+						"selector": nil,
+						"strategy": map[string]any{},
+						"template": map[string]any{
+							"metadata": map[string]any{
+								"creationTimestamp": nil,
+							},
+							"spec": map[string]any{
+								"containers": nil,
+							},
+						},
+					},
+					"status": map[string]any{},
+				},
+			},
+		},
+		{
+			name: "invalid provider",
+			in: rpv1.OutputResource{
+				ResourceType: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderAzure,
+				},
+				Resource: &v1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-deployment",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			err: errors.New("invalid resource type provider: azure"),
+		},
+		{
+			name: "invalid resource",
+			in: rpv1.OutputResource{
+				ResourceType: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderKubernetes,
+				},
+				Resource: map[string]any{"invalid": "type"},
+			},
+			err: errors.New("inner type was not a runtime.Object"),
+		},
+	}
+
+	for _, tc := range convertTests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual, err := convertToUnstructured(tc.in)
+			if tc.err != nil {
+				require.Error(t, err)
+				require.Equal(t, tc.err.Error(), err.Error())
+				return
+			}
+			require.Equal(t, tc.out, actual)
+		})
+	}
+}
+
+func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
 		},
 		Status: v1.DeploymentStatus{
 			Conditions: []v1.DeploymentCondition{
@@ -70,43 +294,86 @@ func TestDeploymentWatcher(t *testing.T) {
 	}
 
 	deploymentClient := fake.NewSimpleClientset(deployment)
-	err := deploymentClient.Tracker().Add(deploymentUnrelated)
-	require.NoError(t, err, "Failed to add unrelated deployment to tracker")
 
-	readinessCh := make(chan bool, 2)
-	watchErrorCh := make(chan error)
-	eventHandlerInvokedCh := make(chan struct{}, 2)
 	handler := kubernetesHandler{
-		clientSet: deploymentClient,
+		clientSet:           deploymentClient,
+		deploymentTimeOut:   time.Duration(5) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
 	}
 
-	// Create a fake informer factory
-	informerFactory := informers.NewSharedInformerFactory(deploymentClient, 0)
+	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
+	require.NoError(t, err, "Failed to wait for deployment to be ready")
+}
 
-	go func() {
-		// Watch the first deployment
-		handler.WatchUntilReady(ctx, informerFactory, deployment, readinessCh, watchErrorCh, eventHandlerInvokedCh)
-	}()
-
-	ready := false
-	for {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("Test timed out")
-		case <-readinessCh:
-			t.Logf("Deployment %s in namespace %s is ready", deploymentName, deploymentNamespace)
-			ready = true
-			break
-		case err := <-watchErrorCh:
-			t.Fatalf("Error occured while watching the deployment: %s", err.Error())
-		}
-
-		if ready {
-			break
-		}
+func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
+		},
+		Status: v1.DeploymentStatus{
+			Conditions: []v1.DeploymentCondition{
+				{
+					Type:    v1.DeploymentProgressing,
+					Status:  corev1.ConditionFalse,
+					Reason:  "NewReplicaSetAvailable",
+					Message: "Deployment has minimum availability",
+				},
+			},
+		},
 	}
 
-	// Make sure deploymentUnrelated was not watched. We expect no event handlers to be invoked
-	// for deploymentUnrelated and therefore a single message on the eventHandlerInvokedCh
-	require.Equal(t, 1, len(eventHandlerInvokedCh))
+	deploymentClient := fake.NewSimpleClientset(deployment)
+
+	handler := kubernetesHandler{
+		clientSet:           deploymentClient,
+		deploymentTimeOut:   time.Duration(1) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
+	require.Error(t, err)
+	require.Equal(t, "deployment timed out, name: test-deployment, namespace test-namespace, status: Deployment has minimum availability, reason: NewReplicaSetAvailable", err.Error())
+}
+
+func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
+	ctx := context.TODO()
+	// Create first deployment that will be watched
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "test-namespace",
+		},
+		Status: v1.DeploymentStatus{
+			Conditions: []v1.DeploymentCondition{
+				{
+					Type:    v1.DeploymentProgressing,
+					Status:  corev1.ConditionTrue,
+					Reason:  "NewReplicaSetAvailable",
+					Message: "Deployment has minimum availability",
+				},
+			},
+		},
+	}
+
+	deploymentClient := fake.NewSimpleClientset(deployment)
+
+	handler := kubernetesHandler{
+		clientSet:           deploymentClient,
+		deploymentTimeOut:   time.Duration(1) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
+	}
+
+	err := handler.waitUntilDeploymentIsReady(ctx, &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "not-matched-deployment",
+			Namespace: "test-namespace",
+		},
+	})
+
+	// It must be timed out because the name of the deployment does not match.
+	require.Error(t, err)
+	require.Equal(t, "deployment timed out, name: not-matched-deployment, namespace test-namespace, error occured while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
 }

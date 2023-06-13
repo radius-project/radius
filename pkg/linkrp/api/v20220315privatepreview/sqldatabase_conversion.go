@@ -62,7 +62,6 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
 	converted.Properties.Database = to.String(properties.Database)
 	converted.Properties.Server = to.String(properties.Server)
-
 	err = src.verifyManualInputs()
 	if err != nil {
 		return nil, err

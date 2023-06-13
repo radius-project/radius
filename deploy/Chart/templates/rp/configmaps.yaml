@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: appcore-rp-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: appcore-rp
+    app.kubernetes.io/part-of: radius
+data:
+  radius-self-host.yaml: |-
+    # Radius configuration file.
+    # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
+    environment:
+      name: self-hosted
+      roleLocation: "global"
+    storageProvider:
+      provider: "apiserver"
+      apiserver:
+        context: ""
+        namespace: "radius-system"
+    queueProvider:
+      provider: "apiserver"
+      apiserver:
+        context: ""
+        namespace: "radius-system"
+    metricsProvider:
+      prometheus:
+        enabled: true
+        path: "/metrics"
+        port: 9090
+    profilerProvider:
+      enabled: true
+      port: 6060
+    secretProvider:
+      provider: kubernetes
+    server:
+      host: "0.0.0.0"
+      port: 5443
+    workerServer:
+      maxOperationConcurrency: 3
+      maxOperationRetryCount: 2
+    ucp:
+      kind: kubernetes
+    logging:
+      level: "info"
+      json: true
+    {{ if and .Values.global.zipkin .Values.global.zipkin.url }}
+    tracerProvider:
+      serviceName: "applications.core"
+      zipkin: 
+        url: {{ .Values.global.zipkin.url }}
+    {{ end }}
+
+  link-self-host.yaml: |-
+    # Radius configuration file.
+    # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
+    environment:
+      name: self-hosted
+      roleLocation: "global"
+    storageProvider:
+      provider: "apiserver"
+      apiserver:
+        context: ""
+        namespace: "radius-system"
+    queueProvider:
+      provider: "apiserver"
+      apiserver:
+        context: ""
+        namespace: "radius-system"
+    secretProvider:
+      provider: kubernetes
+    metricsProvider:
+      prometheus:
+        enabled: true
+        path: "/metrics"
+        port: 9090
+    profilerProvider:
+      enabled: true
+      port: 6060
+    server:
+      host: "0.0.0.0"
+      port: 5444
+    workerServer:
+      maxOperationConcurrency: 3
+      maxOperationRetryCount: 2
+    ucp:
+      kind: kubernetes
+    logging:
+      level: "info"
+      json: true
+    {{ if and .Values.global.zipkin .Values.global.zipkin.url }}
+    tracerProvider:
+      serviceName: "applications.link"
+      zipkin: 
+        url: {{ .Values.global.zipkin.url }}
+    {{ end }}
