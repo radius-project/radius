@@ -42,7 +42,9 @@ import (
 )
 
 const (
-	DefaultDeploymentTimeout   = time.Minute * time.Duration(5)
+	// DefaultDeploymentTimeout is the timeout for waiting for a deployment to be ready.
+	DefaultDeploymentTimeout = time.Minute * time.Duration(5)
+	// DefaultCacheResyncInterval is the interval for resyncing informer.
 	DefaultCacheResyncInterval = time.Minute * time.Duration(10)
 )
 
@@ -64,6 +66,7 @@ type kubernetesHandler struct {
 	cacheResyncInterval time.Duration
 }
 
+// Put creates or updates a Kubernetes resource described in PutOptions.
 func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	item, err := convertToUnstructured(*options.Resource)
 	if err != nil {
@@ -209,6 +212,7 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, obj
 	}
 }
 
+// Delete deletes a Kubernetes resource.
 func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	identity := &resourcemodel.KubernetesIdentity{}
 	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {
