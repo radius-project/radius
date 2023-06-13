@@ -82,7 +82,6 @@ model MongoDatabaseProperties extends BasicResourceProperties{
   port?: int32;
 
   @doc("Database name of the target Mongo database")
-  @visibility("read")
   database?: string;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the MongoDB link")
