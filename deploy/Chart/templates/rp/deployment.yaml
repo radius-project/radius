@@ -19,12 +19,12 @@ spec:
         control-plane: appcore-rp
         app.kubernetes.io/name: appcore-rp
         app.kubernetes.io/part-of: radius
-      {{ if eq .Values.global.prometheus.enabled true }}
+      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{ end }}
+      {{- end }}
     spec:
       serviceAccountName: appcore-rp
       containers:
@@ -43,10 +43,10 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
-        {{ if .Values.publicEndpointOverride}}
+        {{- if .Values.publicEndpointOverride}}
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
           value: {{ .Values.publicEndpointOverride }}
-        {{ end }}
+        {{- end }}
         ports:
         - containerPort: 5443
           name: appcore-rp
@@ -54,11 +54,11 @@ spec:
         - containerPort: 5444
           name: applink-rp
           protocol: TCP
-        {{ if eq .Values.global.prometheus.enabled true }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}
           name: metrics
           protocol: TCP
-        {{ end }}
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
