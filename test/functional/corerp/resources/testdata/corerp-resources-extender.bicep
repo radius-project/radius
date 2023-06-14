@@ -21,6 +21,7 @@ resource twilio 'Applications.Link/extenders@2022-03-15-privatepreview' = {
       accountSid: 'sid'
       authToken: 'token'
     }
+    resourceProvisioning: 'manual'
   }
 }
 
@@ -38,6 +39,5 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
       }
     }
     connections: {}
-    resourceProvisioning: 'manual'
   }
 }
