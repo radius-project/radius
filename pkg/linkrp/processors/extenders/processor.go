@@ -25,7 +25,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.Extender, o
 	secretValues := createOutputValues(resource.Properties.Secrets, options.RecipeOutput, true)
 	for k, val := range secretValues {
 		if secret, ok := val.(string); !ok {
-			return &processors.ValidationError{fmt.Sprintf("secret '%s' must be of type string", k)}
+			return &processors.ValidationError{Message: fmt.Sprintf("secret '%s' must be of type string", k)}
 		} else {
 			validator.AddOptionalSecretField(k, &secret)
 		}
