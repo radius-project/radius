@@ -40,9 +40,54 @@ async function handleIssueCommentCreate({ github, context }) {
         case '/ok-to-test':
             await cmdOkToTest(github, issue, isFromPulls, username);
             break;
+        case '/lgtm':
+            await cmdApprovePR(github, issue, isFromPulls, username);
+            break;
         default:
             console.log(`[handleIssueCommentCreate] command ${command} not found, exiting.`);
             break;
+    }
+}
+
+
+/**
+ * Approve the pull request.
+ * @param {*} github GitHub object reference
+ * @param {*} issue GitHub issue object
+ * @param {boolean} isFromPulls is the workflow triggered by a pull request?
+ * @param {string} userName is the user who trigger the command
+ */
+async function cmdApprovePR(github, issue, isFromPulls, userName) {
+    if (!isFromPulls) {
+        console.log('[cmdOkToTest] only pull requests supported, skipping command execution.');
+        return;
+    }
+
+    // Check if the user has permission to trigger e2e test with an issue comment
+    const org = 'project-radius';
+    console.log(`Checking team membership for: ${userName}`);
+    const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, userName);
+    if (!isMember) {
+        console.log(`${userName} is not a member of the ${teamSlug} team.`);
+        return;
+    }
+
+    // Get pull request
+    const pull = await github.pulls.get({
+        owner: issue.owner,
+        repo: issue.repo,
+        pull_number: issue.number,
+    });
+
+    if (pull && pull.data) {
+        await github.rest.pulls.createReview({
+            owner: issue.owner,
+            repo: issue.repo,
+            pull_number: issue.number,
+            event: 'APPROVE',
+        })
+
+        console.log('Approve PR');
     }
 }
 
@@ -51,6 +96,7 @@ async function handleIssueCommentCreate({ github, context }) {
  * @param {*} github GitHub object reference
  * @param {*} issue GitHub issue object
  * @param {boolean} isFromPulls is the workflow triggered by a pull request?
+ * @param {string} userName is the user who trigger the command
  */
 async function cmdOkToTest(github, issue, isFromPulls, userName) {
     if (!isFromPulls) {
