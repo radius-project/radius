@@ -46,6 +46,8 @@ import (
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
+
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -712,7 +714,17 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 			if tc.awsProvider != nil {
 				credentialManagementClient.EXPECT().
-					PutAWS(context.Background(), gomock.Any()).
+					PutAWS(context.Background(), ucp.AWSCredentialResource{
+						Location: to.Ptr(v1.LocationGlobal),
+						Type:     to.Ptr(cli_credential.AWSCredential),
+						Properties: &ucp.AWSAccessKeyCredentialProperties{
+							Storage: &ucp.CredentialStorageProperties{
+								Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+							},
+							AccessKeyID:     to.Ptr(tc.awsProvider.AccessKeyID),
+							SecretAccessKey: to.Ptr(tc.awsProvider.SecretAccessKey),
+						},
+					}).
 					Return(nil).
 					Times(1)
 			}
