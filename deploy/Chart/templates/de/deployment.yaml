@@ -53,10 +53,6 @@ spec:
           value: "true"
         - name: RADIUSBACKENDURL
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
-        {{ if and .Values.global.zipkin .Values.global.zipkin.url }}
-        - name: ASPNETCORE_Zipkin__Endpoint
-          value: {{ .Values.global.zipkin.url }}
-        {{ end }}
         ports:
         - containerPort: 6443
           name: bicep-de-api
