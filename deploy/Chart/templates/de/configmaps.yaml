@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bicep-de-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: bicep-de
+    app.kubernetes.io/part-of: radius
+data:
+  appsettings.Production.json: |-
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning",
+          "Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware": "Warning",
+          "Microsoft.Extensions.Http": "Warning"
+        },
+        "Console": {
+          "FormatterName": "RadiusJsonFormatter"
+        }
+      },
+      "Zipkin": {
+        "Endpoint": "http://localhost:9411/api/v2/spans"
+      },
+      "Prometheus": {
+        "ScrapeEndpointPath": "/metrics"
+      }
+    }
