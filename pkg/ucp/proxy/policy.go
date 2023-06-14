@@ -49,9 +49,9 @@ func trimPlanesPrefix(r *http.Request) {
 // filterKubernetesAPIServerHeaders filters out headers that APIServer sets on the request.
 func filterKubernetesAPIServerHeaders(r *http.Request) {
 	for k := range r.Header {
-		header := http.CanonicalHeaderKey(k)
+		header := strings.ToLower(k)
 		// https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy
-		if header == "X-Remote-User" || header == "X-Remote-Group" || strings.HasPrefix(header, "X-Remote-Extra-") {
+		if header == "x-remote-user" || header == "x-remote-group" || strings.HasPrefix(header, "x-remote-extra-") {
 			r.Header.Del(k)
 		}
 	}
