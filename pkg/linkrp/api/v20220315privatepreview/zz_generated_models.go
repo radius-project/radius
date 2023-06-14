@@ -114,14 +114,15 @@ type DaprInvokeHTTPRouteResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// DaprPubSubBrokerClientBeginDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.BeginDelete method.
+type DaprPubSubBrokerClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // DaprPubSubBrokerClientCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokerClient.CreateOrUpdate
 // method.
 type DaprPubSubBrokerClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprPubSubBrokerClientDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.Delete method.
-type DaprPubSubBrokerClientDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -136,42 +137,42 @@ type DaprPubSubBrokerClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprPubSubBrokerPropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetDaprPubSubBrokerProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprPubSubBrokerProperties, *RecipeDaprPubSubProperties, *ResourceDaprPubSubProperties, *ValuesDaprPubSubProperties
-type DaprPubSubBrokerPropertiesClassification interface {
-	// GetDaprPubSubBrokerProperties returns the DaprPubSubBrokerProperties content of the underlying type.
-	GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties
-}
-
 // DaprPubSubBrokerProperties - DaprPubSubBroker link properties
 type DaprPubSubBrokerProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
-	Mode *string `json:"mode,omitempty"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Topic name of the Azure ServiceBus resource
-	Topic *string `json:"topic,omitempty"`
+	// Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// A collection of references to resources associated with the daprPubSubBroker
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
+	// READ-ONLY; Provisioning state of the daprPubSubBroker resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
-
-// GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type DaprPubSubBrokerProperties.
-func (d *DaprPubSubBrokerProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties { return d }
 
 // DaprPubSubBrokerResource - DaprPubSubBroker link
 type DaprPubSubBrokerResource struct {
@@ -179,7 +180,7 @@ type DaprPubSubBrokerResource struct {
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties DaprPubSubBrokerPropertiesClassification `json:"properties,omitempty"`
+	Properties *DaprPubSubBrokerProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -550,18 +551,6 @@ type MongoDatabaseListSecretsResult struct {
 
 	// Password to use when connecting to the target Mongo database
 	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
-}
-
-// MongoDatabasePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetMongoDatabaseProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *MongoDatabaseProperties, *RecipeMongoDatabaseProperties, *ResourceMongoDatabaseProperties, *ValuesMongoDatabaseProperties
-type MongoDatabasePropertiesClassification interface {
-	// GetMongoDatabaseProperties returns the MongoDatabaseProperties content of the underlying type.
-	GetMongoDatabaseProperties() *MongoDatabaseProperties
 }
 
 // MongoDatabaseProperties - MongoDatabase link properties
@@ -569,14 +558,32 @@ type MongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Secrets values provided for the resource
+	// Database name of the target Mongo database
+	Database *string `json:"database,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the MongoDB link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the MongoDB resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secret values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -585,16 +592,13 @@ type MongoDatabaseProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseProperties.
-func (m *MongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties { return m }
-
 // MongoDatabaseResource - MongoDatabase link
 type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties MongoDatabasePropertiesClassification `json:"properties,omitempty"`
+	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -628,9 +632,6 @@ type MongoDatabaseSecrets struct {
 
 	// Password to use when connecting to the target Mongo database
 	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete method.
@@ -824,101 +825,6 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
-// RecipeDaprPubSubProperties - DaprPubSubBroker Properties for Mode Recipe
-type RecipeDaprPubSubProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprPubSub link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-
-	// Topic name of the Azure ServiceBus resource
-	Topic *string `json:"topic,omitempty"`
-
-	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
-	// Dapr component version
-	Version *string `json:"version,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type RecipeDaprPubSubProperties.
-func (r *RecipeDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
-	return &DaprPubSubBrokerProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Topic: r.Topic,
-		ComponentName: r.ComponentName,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// RecipeMongoDatabaseProperties - MongoDatabase Properties for Mode Recipe
-type RecipeMongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabases link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type RecipeMongoDatabaseProperties.
-func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
 // RedisCacheListSecretsResult - The secret values for the given RedisCache resource
 type RedisCacheListSecretsResult struct {
 	// The connection string used to connect to the Redis cache
@@ -954,14 +860,14 @@ type RedisCacheProperties struct {
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
+	// The username for Redis cache
+	Username *string `json:"username,omitempty"`
+
 	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
 // RedisCacheResource - RedisCache link
@@ -1044,101 +950,6 @@ type Resource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// ResourceDaprPubSubProperties - DaprPubSubBroker Properties for Mode Resource
-type ResourceDaprPubSubProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; PubSub resource
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-
-	// Topic name of the Azure ServiceBus resource
-	Topic *string `json:"topic,omitempty"`
-
-	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
-	// Dapr component version
-	Version *string `json:"version,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type ResourceDaprPubSubProperties.
-func (r *ResourceDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
-	return &DaprPubSubBrokerProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Topic: r.Topic,
-		ComponentName: r.ComponentName,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// ResourceMongoDatabaseProperties - MongoDatabase Properties for Mode Resource
-type ResourceMongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
-func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
 }
 
 // ResourceReference - Describes a reference to an existing resource
@@ -1277,94 +1088,5 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// ValuesDaprPubSubProperties - DaprPubSubBroker Properties for Mode Values
-type ValuesDaprPubSubProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Metadata for the pub sub resource. This should match the values specified in Dapr component spec
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-
-	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
-	// REQUIRED; Dapr component version
-	Version *string `json:"version,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Topic name of the Azure ServiceBus resource
-	Topic *string `json:"topic,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type ValuesDaprPubSubProperties.
-func (v *ValuesDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
-	return &DaprPubSubBrokerProperties{
-		Mode: v.Mode,
-		ProvisioningState: v.ProvisioningState,
-		Topic: v.Topic,
-		ComponentName: v.ComponentName,
-		Status: v.Status,
-		Environment: v.Environment,
-		Application: v.Application,
-	}
-}
-
-// ValuesMongoDatabaseProperties - MongoDatabase Properties for Mode Values
-type ValuesMongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ValuesMongoDatabaseProperties.
-func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		Mode: v.Mode,
-		ProvisioningState: v.ProvisioningState,
-		Secrets: v.Secrets,
-		Status: v.Status,
-		Environment: v.Environment,
-		Application: v.Application,
-	}
 }
 

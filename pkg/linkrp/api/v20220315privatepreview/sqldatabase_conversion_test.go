@@ -111,9 +111,10 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload := loadTestData(tc.file)
+			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			require.NoError(t, err)
 			versionedResource := &SQLDatabaseResource{}
-			err := json.Unmarshal(rawPayload, versionedResource)
+			err = json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			// act
@@ -208,9 +209,10 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload := loadTestData(tc.file)
+			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			require.NoError(t, err)
 			resource := &datamodel.SqlDatabase{}
-			err := json.Unmarshal(rawPayload, resource)
+			err = json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &SQLDatabaseResource{}
@@ -245,9 +247,10 @@ func TestSqlDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload := loadTestData(test.payload)
+			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			require.NoError(t, err)
 			versionedResource := &SQLDatabaseResource{}
-			err := json.Unmarshal(rawPayload, versionedResource)
+			err = json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()

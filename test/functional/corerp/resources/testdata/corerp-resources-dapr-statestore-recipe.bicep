@@ -1,7 +1,7 @@
 import radius as radius
 
-param magpieimage string 
-param registry string 
+param magpieimage string
+param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
@@ -13,10 +13,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: 'corerp-environment-recipes-env'
     }
     recipes: {
-      'Applications.Link/daprStateStores':{
+      'Applications.Link/daprStateStores': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/corerp/recipes/dapr-state-store:${version}' 
+          templatePath: '${registry}/test/functional/corerp/recipes/dapr-state-store:${version}'
         }
       }
     }
@@ -29,13 +29,12 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-dapr-sts-recipe'
+        kind: 'kubernetesNamespace'
+        namespace: 'corerp-resources-dapr-sts-recipe'
       }
     ]
   }
 }
-
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'dapr-sts-recipe-ctnr'
@@ -48,7 +47,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
     container: {
       image: magpieimage
-      readinessProbe:{
+      readinessProbe: {
         kind: 'httpGet'
         containerPort: 3000
         path: '/healthz'

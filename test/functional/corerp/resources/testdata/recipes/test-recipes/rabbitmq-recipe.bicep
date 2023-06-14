@@ -4,6 +4,7 @@ import kubernetes as kubernetes {
 }
 
 param context object
+
 @description('Specifies the RabbitMQ username.')
 param username string = 'guest'
 

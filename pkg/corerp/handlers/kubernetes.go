@@ -35,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -43,22 +42,31 @@ import (
 )
 
 const (
-	DefaultCacheResyncInterval   = time.Minute * 10
-	DefaultDeploymentTimeout     = time.Minute * 5
-	DefaultTestDeploymentTimeout = time.Second * 5
+	// DefaultDeploymentTimeout is the timeout for waiting for a deployment to be ready.
+	DefaultDeploymentTimeout = time.Minute * time.Duration(5)
+	// DefaultCacheResyncInterval is the interval for resyncing informer.
+	DefaultCacheResyncInterval = time.Minute * time.Duration(10)
 )
 
-var TestHook bool
-
+// NewKubernetesHandler creates Kubernetes Resource handler instance.
 func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) ResourceHandler {
-	return &kubernetesHandler{client: client, clientSet: clientSet}
+	return &kubernetesHandler{
+		client:              client,
+		clientSet:           clientSet,
+		deploymentTimeOut:   DefaultDeploymentTimeout,
+		cacheResyncInterval: DefaultCacheResyncInterval,
+	}
 }
 
 type kubernetesHandler struct {
 	client    client.Client
 	clientSet k8s.Interface
+
+	deploymentTimeOut   time.Duration
+	cacheResyncInterval time.Duration
 }
 
+// Put creates or updates a Kubernetes resource described in PutOptions.
 func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	item, err := convertToUnstructured(*options.Resource)
 	if err != nil {
@@ -100,52 +108,110 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		},
 	}
 
-	if !strings.EqualFold(item.GetKind(), "Deployment") {
-		return properties, nil // only checking further the Deployment output resource status
+	// Monitor the created or updated resource until it is ready.
+	switch strings.ToLower(item.GetKind()) {
+	case "deployment":
+		// Monitor the deployment until it is ready.
+		err = handler.waitUntilDeploymentIsReady(ctx, &item)
+		if err != nil {
+			return nil, err
+		}
+		return properties, nil
+	default:
+		// We do not monitor the other resource types.
+		return properties, nil
 	}
+}
 
-	timeout := DefaultDeploymentTimeout
-
-	// Setting the lower limits for testing when TestHook is enabled
-	if TestHook {
-		timeout = DefaultTestDeploymentTimeout
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
+func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context, item client.Object) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	readinessCh := make(chan bool, 1)
-	watchErrorCh := make(chan error, 1)
-	go func() {
-		informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
-		handler.WatchUntilReady(ctx, informerFactory, &item, readinessCh, watchErrorCh, nil)
-	}()
+	doneCh := make(chan bool, 1)
+	errCh := make(chan error, 1)
+
+	ctx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
+
+	_ = handler.startDeploymentInformer(ctx, item, doneCh, errCh)
+	// This ensures that the informer is stopped when this function is returned.
+	defer cancel()
 
 	select {
 	case <-ctx.Done():
 		// Get the final deployment status
 		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
+			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
 		}
+
 		// Now get the latest available observation of deployment current state
 		// note that there can be a race condition here, by the time it fetches the latest status, deployment might be succeeded
 		status := v1.DeploymentCondition{}
-		if len(dep.Status.Conditions) >= 1 {
+		if len(dep.Status.Conditions) > 0 {
 			status = dep.Status.Conditions[len(dep.Status.Conditions)-1]
 		}
+		return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 
-		return nil, fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
-	case <-readinessCh:
+	case <-doneCh:
 		logger.Info(fmt.Sprintf("Marking deployment %s in namespace %s as complete", item.GetName(), item.GetNamespace()))
-		return properties, nil
-	case <-watchErrorCh:
-		return nil, err
+		return nil
+
+	case err := <-errCh:
+		return err
 	}
 }
 
+func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, item client.Object, doneCh chan<- bool, errCh chan<- error) func() bool {
+	informers := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
+	deploymentInformer := informers.Apps().V1().Deployments().Informer()
+	handlers := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(new_obj any) {
+			obj := new_obj.(*v1.Deployment)
+			// There might be parallel deployments in progress, we need to make sure we are watching the right one
+			if obj.Name != item.GetName() {
+				return
+			}
+			handler.checkDeploymentStatus(ctx, obj, doneCh)
+		},
+		UpdateFunc: func(old_obj, new_obj any) {
+			old := old_obj.(*v1.Deployment)
+			new := new_obj.(*v1.Deployment)
+
+			// There might be parallel deployments in progress, we need to make sure we are watching the right one
+			if new.Name != item.GetName() {
+				return
+			}
+
+			if old.ResourceVersion != new.ResourceVersion {
+				handler.checkDeploymentStatus(ctx, new, doneCh)
+			}
+		},
+	}
+
+	deploymentInformer.AddEventHandler(handlers)
+	informers.Start(ctx.Done())
+
+	return deploymentInformer.HasSynced
+}
+
+func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, obj *v1.Deployment, doneCh chan<- bool) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	for _, c := range obj.Status.Conditions {
+		// check for complete deployment condition
+		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
+		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
+			logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s", obj.Name, obj.Namespace, c.Type, c.Status, c.Reason))
+
+			// ObservedGeneration should be updated to latest generation to avoid stale replicas
+			if obj.Status.ObservedGeneration >= obj.Generation {
+				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
+				doneCh <- true
+				return
+			}
+		}
+	}
+}
+
+// Delete deletes a Kubernetes resource.
 func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	identity := &resourcemodel.KubernetesIdentity{}
 	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {
@@ -168,7 +234,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOpt
 
 func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructured, error) {
 	if resource.ResourceType.Provider != resourcemodel.ProviderKubernetes {
-		return unstructured.Unstructured{}, errors.New("wrong resource type")
+		return unstructured.Unstructured{}, fmt.Errorf("invalid resource type provider: %s", resource.ResourceType.Provider)
 	}
 
 	obj, ok := resource.Resource.(runtime.Object)
@@ -182,79 +248,4 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 	}
 
 	return unstructured.Unstructured{Object: c}, nil
-}
-
-func (handler *kubernetesHandler) WatchUntilReady(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error, eventHandlerInvokedCh chan struct{}) {
-	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
-	handlers := cache.ResourceEventHandlerFuncs{
-		AddFunc: func(new_obj any) {
-			obj, ok := new_obj.(*v1.Deployment)
-			if !ok {
-				watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
-				return
-			}
-
-			// There might be parallel deployments in progress, we need to make sure we are watching the right one
-			if obj.Name != item.GetName() {
-				return
-			}
-
-			// This channel is used only by test code to signal that the deployment is being watched
-			if eventHandlerInvokedCh != nil {
-				eventHandlerInvokedCh <- struct{}{}
-			}
-
-			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
-		},
-		UpdateFunc: func(old_obj, new_obj any) {
-			old, ok := old_obj.(*v1.Deployment)
-			if !ok {
-				watchErrorCh <- errors.New("old deployment object is not of appsv1.Deployment type")
-				return
-			}
-			new, ok := new_obj.(*v1.Deployment)
-			if !ok {
-				watchErrorCh <- errors.New("new deployment object not of appsv1.Deployment type")
-				return
-			}
-
-			// There might be parallel deployments in progress, we need to make sure we are watching the right one
-			if new.Name != item.GetName() {
-				return
-			}
-
-			// This channel is used only by test code to signal that the deployment is being watched
-			if eventHandlerInvokedCh != nil {
-				eventHandlerInvokedCh <- struct{}{}
-			}
-
-			if old.ResourceVersion != new.ResourceVersion {
-				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
-			}
-		},
-		DeleteFunc: func(obj any) {
-			// no-op here
-		},
-	}
-
-	deploymentInformer.AddEventHandler(handlers)
-	// Start the informer
-	informerFactory.Start(wait.NeverStop)
-	informerFactory.WaitForCacheSync(wait.NeverStop)
-}
-
-func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment, readinessCh chan<- bool) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	for _, c := range obj.Status.Conditions {
-		// check for complete deployment condition
-		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
-		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
-			logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s", obj.Name, obj.Namespace, c.Type, c.Status, c.Reason))
-			// ObservedGeneration should be updated to latest generation to avoid stale replicas
-			if obj.Status.ObservedGeneration >= obj.Generation {
-				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
-				readinessCh <- true
-			}
-		}
-	}
 }

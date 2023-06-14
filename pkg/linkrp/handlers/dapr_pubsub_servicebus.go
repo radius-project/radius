@@ -37,10 +37,8 @@ import (
 )
 
 const (
-	ServiceBusNamespaceIDKey   = "servicebusid"
-	RootManageSharedAccessKey  = "RootManageSharedAccessKey"
-	ServiceBusTopicNameKey     = "servicebustopic"
-	ServiceBusNamespaceNameKey = "servicebusnamespace"
+	ServiceBusNamespaceIDKey  = "servicebusid"
+	RootManageSharedAccessKey = "RootManageSharedAccessKey"
 )
 
 type daprPubSubServiceBusBaseHandler struct {

@@ -17,10 +17,7 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"fmt"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -51,16 +48,10 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 	v := src.Properties
 
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(v.ResourceProvisioning)
-	var found bool
-	for _, k := range PossibleResourceProvisioningValues() {
-		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
 
 	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
@@ -74,11 +65,10 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 			Password:         to.String(v.Secrets.Password),
 		}
 	}
-	manualInputs := src.verifyManualInputs()
-	if manualInputs != nil {
-		return nil, manualInputs
-	}
 
+	if err = converted.VerifyInputs(); err != nil {
+		return nil, err
+	}
 	return converted, nil
 }
 
@@ -134,14 +124,4 @@ func (src *RedisCacheSecrets) ConvertTo() (v1.DataModelInterface, error) {
 		Password:         to.String(src.Password),
 	}
 	return converted, nil
-}
-
-func (src *RedisCacheResource) verifyManualInputs() error {
-	properties := src.Properties
-	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
-		if properties.Host == nil || properties.Port == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
-		}
-	}
-	return nil
 }

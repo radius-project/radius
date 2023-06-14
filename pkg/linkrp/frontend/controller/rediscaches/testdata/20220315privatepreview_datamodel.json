@@ -1,43 +1,49 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/rediscaches/redis0",
-    "name": "redis0",
-    "type": "applications.link/rediscaches",
-    "location": "West US",
-    "systemData": {
-        "createdAt": "2022-03-22T18:54:52.6857175Z",
-        "createdBy": "fake@hotmail.com",
-        "createdByType": "User",
-        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
-        "lastModifiedBy": "fake@hotmail.com",
-        "lastModifiedByType": "User"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/rediscaches/redis0",
+  "name": "redis0",
+  "type": "applications.link/rediscaches",
+  "location": "West US",
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "LocalID": "AzureRedis",
+          "Dependencies": null,
+          "ResourceType": {
+            "type": "azure.redis",
+            "provider": "azure"
+          }
+        }
+      ]
     },
-    "properties": {
-      "status": {
-        "outputResources": [{
-            "LocalID": "AzureRedis",
-            "Dependencies": null,
-            "ResourceType": {
-              "type": "azure.redis",
-              "provider": "azure"
-            }
-        }]
-      },
-      "provisioningState": "Succeeded",
-      "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-      "mode": "resource",
-      "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache",
-      "host": "myrediscache.redis.cache.windows.net",
-      "port": 10255,
-      "secrets": {
-        "password": "testPassword",
-        "connectionString": "test-connection-string"
-      },
-      "username": "redisusername"
+    "provisioningState": "Succeeded",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+    "resourceProvisioning": "manual",
+    "resources": [
+      {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"
+      }
+    ],
+    "host": "myrediscache.redis.cache.windows.net",
+    "port": 10255,
+    "secrets": {
+      "password": "testPassword",
+      "connectionString": "test-connection-string"
     },
-    "tenantId": "00000000-0000-0000-0000-000000000000",
-    "subscriptionId": "00000000-0000-0000-0000-000000000000",
-    "resourceGroup": "radius-test-rg",
-    "createdApiVersion": "2022-03-15-privatepreview",
-    "updatedApiVersion": "2022-03-15-privatepreview"
+    "username": "redisusername"
+  },
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "radius-test-rg",
+  "createdApiVersion": "2022-03-15-privatepreview",
+  "updatedApiVersion": "2022-03-15-privatepreview"
 }

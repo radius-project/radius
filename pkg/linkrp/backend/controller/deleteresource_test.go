@@ -18,24 +18,37 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
+var outputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/mongoDatabases"
+var outputResource = rpv1.OutputResource{
+	Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
+		Type:     "Microsoft.DocumentDB/databaseAccounts/mongoDatabases",
+		Provider: resourcemodel.ProviderAzure,
+	}, outputResourceResourceID, "2022-01-01"),
+	RadiusManaged: to.Ptr(true),
+}
 
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, *ctrl.Request) {
+func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
-		mdp := deployment.NewMockDeploymentProcessor(mctrl)
+		client := processors.NewMockResourceClient(mctrl)
 
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
@@ -47,40 +60,64 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, msc, mdp, req
+		}, msc, client, req
 	}
 
 	t.Parallel()
 
 	deleteCases := []struct {
-		desc     string
-		getErr   error
-		dpDelErr error
-		scDelErr error
+		desc         string
+		getErr       error
+		clientDelErr error
+		scDelErr     error
 	}{
 		{"delete-existing-resource", nil, nil, nil},
 		{"delete-non-existing-resource", &store.ErrNotFound{}, nil, nil},
-		{"delete-resource-dp-delete-error", nil, errors.New("deployment processor delete error"), nil},
+		{"delete-resource-client-delete-error", nil, errors.New("resource client delete error"), nil},
 		{"delete-resource-delete-from-db-error", nil, nil, errors.New("delete from db error")},
 	}
 
 	for _, tt := range deleteCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, mdp, req := setupTest(t)
+			teardownTest, msc, client, req := setupTest(t)
 			defer teardownTest(t)
+
+			status := rpv1.ResourceStatus{
+				OutputResources: []rpv1.OutputResource{
+					outputResource,
+				},
+			}
+			sb, err := json.Marshal(&status)
+			require.NoError(t, err)
+
+			sm := map[string]interface{}{}
+			err = json.Unmarshal(sb, &sm)
+			require.NoError(t, err)
+
+			data := map[string]any{
+				"name":     "tr",
+				"type":     "Applications.Test/testResources",
+				"id":       TestResourceID,
+				"location": v1.LocationGlobal,
+				"properties": map[string]any{
+					"application":       TestApplicationID,
+					"environment":       TestEnvironmentID,
+					"provisioningState": "Accepted",
+					"status":            sm,
+				},
+			}
 
 			msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{}, tt.getErr).
+				Return(&store.Object{Data: data}, tt.getErr).
 				Times(1)
 
 			if tt.getErr == nil {
-				mdp.EXPECT().
-					Delete(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(tt.dpDelErr).
+				client.EXPECT().
+					Delete(gomock.Any(), outputResourceResourceID, resourcemodel.APIVersionUnknown).
+					Return(tt.clientDelErr).
 					Times(1)
-
-				if tt.dpDelErr == nil {
+				if tt.clientDelErr == nil {
 					msc.EXPECT().
 						Delete(gomock.Any(), gomock.Any()).
 						Return(tt.scDelErr).
@@ -90,17 +127,14 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: msc,
-				GetLinkDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mdp
-				},
 			}
 
-			ctrl, err := NewDeleteResource(opts)
+			ctrl, err := NewDeleteResource(opts, client)
 			require.NoError(t, err)
 
 			_, err = ctrl.Run(context.Background(), req)
 
-			if tt.getErr != nil || tt.dpDelErr != nil || tt.scDelErr != nil {
+			if tt.getErr != nil || tt.clientDelErr != nil || tt.scDelErr != nil {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
@@ -111,11 +145,11 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.T) {
 
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, *ctrl.Request) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
-		mdp := deployment.NewMockDeploymentProcessor(mctrl)
+		client := processors.NewMockResourceClient(mctrl)
 
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
@@ -127,13 +161,13 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, msc, mdp, req
+		}, msc, client, req
 	}
 
 	t.Parallel()
 
 	t.Run("deleting-invalid-resource", func(t *testing.T) {
-		teardownTest, msc, mdp, req := setupTest(t)
+		teardownTest, msc, client, req := setupTest(t)
 		defer teardownTest(t)
 
 		msc.EXPECT().
@@ -142,12 +176,9 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 			Times(1)
 		opts := ctrl.Options{
 			StorageClient: msc,
-			GetLinkDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mdp
-			},
 		}
 
-		ctrl, err := NewDeleteResource(opts)
+		ctrl, err := NewDeleteResource(opts, client)
 		require.NoError(t, err)
 
 		_, err = ctrl.Run(context.Background(), req)

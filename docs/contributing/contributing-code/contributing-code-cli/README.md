@@ -48,7 +48,7 @@ Now use it as-if it were `rad`
 
 ```txt
 ➜ dev-rad env
-Project Radius CLI
+Radius CLI
 
 Usage:
   rad [command]

@@ -29,12 +29,20 @@ import (
 )
 
 func TestDaprInvokeHttpRoute_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"daprinvokehttprouteresource.json", "daprinvokehttprouteresource2.json", "daprinvokehttprouteresource_recipe.json"}
+	testset := []string{
+		"daprinvokehttprouteresource.json",
+		"daprinvokehttprouteresource2.json",
+		"daprinvokehttprouteresource_recipe.json",
+	}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
+		reader, err := loadTestDataAsReader("./testdata/" + payload)
+		require.NoError(t, err)
+
 		versionedResource := &DaprInvokeHTTPRouteResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
+		decoder := json.NewDecoder(reader)
+		decoder.DisallowUnknownFields()
+		err = decoder.Decode(versionedResource)
 		require.NoError(t, err)
 
 		// act
@@ -66,9 +74,10 @@ func TestDaprInvokeHttpRoute_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []string{"daprinvokehttprouteresourcedatamodel.json", "daprinvokehttprouteresourcedatamodel2.json", "daprinvokehttprouteresourcedatamodel_recipe.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
+		rawPayload, err := loadTestData("./testdata/" + payload)
+		require.NoError(t, err)
 		resource := &datamodel.DaprInvokeHttpRoute{}
-		err := json.Unmarshal(rawPayload, resource)
+		err = json.Unmarshal(rawPayload, resource)
 		require.NoError(t, err)
 
 		// act

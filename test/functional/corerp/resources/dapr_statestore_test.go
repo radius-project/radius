@@ -67,7 +67,6 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 		},
 	})
 	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
-
 	test.Test(t)
 }
 
