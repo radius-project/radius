@@ -19,7 +19,7 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
   properties: {
     application: application
     container: {
-      image: '*****'
+      image: 'radius.azurecr.io/tutorial/webapp:edge'
       env: {
         BUCKETNAME: s3Extender.properties.bucketName
       }
