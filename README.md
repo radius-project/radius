@@ -17,24 +17,25 @@ Radius is currently in an invitation-only private release and we are working har
 1. Follow the [installation guide](https://docs.radapp.dev/getting-started/install/) to install Radius if you have not done so already.
 1. Then, follow the [first app guide](https://docs.radapp.dev/getting-started/first-app/) to take a tour of Radius by running your first app.
 
-## Quickstarts and Samples
+## Quickstarts and samples
 
-See the [quickstarts repository](https://docs.radapp.dev/getting-started/quickstarts/) and [samples repository](https://github.com/project-radius/samples) for tutorials and code examples that can help you get started with Radius.
+See the [Radius quickstarts](https://docs.radapp.dev/getting-started/quickstarts/) and [samples repository](https://github.com/project-radius/samples) for tutorials and code examples that can help you get started with Radius.
 
 ## Getting help
 
-1. How do I file an issue 
-1. How do I ask a question
+- ❓ **Have a question?** - Visit our [Discord server](https://discord.gg/SRG3ePMKNy) to post your question and we'll get back to you ASAP
+- ⚠️ **Found an issue?** - Refer to our [Issues guide](docs/contributing/contributing-issues) for instructions on filing a bug report
+- 💡 **Have a proposal?** - Refer to our [Issues guide](docs/contributing/contributing-issues) for instructions on filing a feature request
 
 ## Community
 
-Will Tsai to fill this section :)
+We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the bi-weekly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://github.com/project-radius/community).
 
-### Contact Us
+### Contact us
 
-Will Tsai to fill this section :)
+Please visit our [Discord server](https://discord.gg/SRG3ePMKNy) to contact us and we'll get back to you ASAP.
 
-### Community Calls
+### Community calls
 
 Every month we host a community call to showcase new features, review upcoming milestones, and engage in a Q&A. All are welcome!
 
@@ -61,8 +62,8 @@ Call out this repo as the main repository for Radius, And follow up with per rep
 
 ## Security
 
-Please refer to [Reporting Security Vulnerabilities](https://github.com/project-radius/radius/SECURITY.md)
+Please refer to our guide on [Reporting security vulnerabilities](https://github.com/project-radius/radius/SECURITY.md)
 
-## Code of Conduct
+## Code of conduct
 
-Please refer to our [Radius Community Code Of Conduct](https://github.com/project-radius/radius/CODE_OF_CONDUCT.md)
+Please refer to our [Radius community code Of conduct](https://github.com/project-radius/radius/CODE_OF_CONDUCT.md)
