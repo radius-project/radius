@@ -1,4 +1,11 @@
 {
     "url": "http://ucp.example.com/some-path?query=yes",
-    "method": "GET"
+    "method": "GET",
+    "headers": {
+        "traceparent": ["traceid"],
+        "X-Remote-User": ["fakeUser"],
+        "X-Remote-Group": ["fakeGroup"],
+        "X-Remote-Extra-Name": ["fakeExtraName"],
+        "X-Remote-Extra-Id": ["fakeExtraId"]
+    }
 }
