@@ -73,7 +73,7 @@ rad init --full
 
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
-	cmd.Flags().BoolP("full", "f", false, "Prompt user for all available configuration options")
+	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
 	return cmd, runner
 }
 
