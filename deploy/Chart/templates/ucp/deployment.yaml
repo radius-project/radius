@@ -19,12 +19,12 @@ spec:
         control-plane: ucp
         app.kubernetes.io/name: ucp
         app.kubernetes.io/part-of: radius
-      {{ if eq .Values.global.prometheus.enabled true }}
+      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{ end }}
+      {{- end }}
     spec:
       serviceAccountName: ucp
       containers:
@@ -43,11 +43,11 @@ spec:
         - containerPort: 9443
           name: ucp
           protocol: TCP
-        {{ if eq .Values.global.prometheus.enabled true }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}
           name: metrics
           protocol: TCP
-        {{ end }}
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.ucp.resources }}
