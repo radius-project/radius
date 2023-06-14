@@ -2119,6 +2119,10 @@
         "password": {
           "type": "string",
           "description": "The password for this Redis cache instance"
+        },
+        "url": {
+          "type": "string",
+          "description": "The url used to connect to the Redis cache"
         }
       },
       "description": "The secret values for the given RedisCache resource"
@@ -2147,6 +2151,10 @@
         "username": {
           "type": "string",
           "description": "The username for Redis cache"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to enable non-TLS or TLS connections to the Redis cache"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -2225,6 +2233,10 @@
         "password": {
           "type": "string",
           "description": "The password for this Redis cache instance"
+        },
+        "url": {
+          "type": "string",
+          "description": "The url used to connect to the Redis cache"
         }
       },
       "description": "The secret values for the given RedisCache resource"
