@@ -29,6 +29,12 @@ We expect that contributors have run basic validations (`make build test lint`) 
 
 Keep reading for some tips about how to get your pull requests accepted!
 
+## How to get help with a pull request
+
+* Notify the Radius Core team by commenting with `@project-radius/radius-core-team ` on your pull-request. 
+* Post on discord in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814) to start a conversation.
+
+
 ## Writing a good commit message
 
 We value good commit messages that are descriptive and meaningful at a glance. A good format to follow is like the following:
