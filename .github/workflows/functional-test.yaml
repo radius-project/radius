@@ -88,15 +88,19 @@ jobs:
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Set up checkout target (repository_dispatch)
         if: github.event_name == 'repository_dispatch'
-        uses: actions/github-script@v6.2.0
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
             const testPayload = context.payload.client_payload;
             if (testPayload && testPayload.command === `ok-to-test`) {
-              echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
-              echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
-              echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+              var fs = require('fs');
+              // Set environment variables
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
+                `CHECKOUT_REF=${testPayload.pull_head_ref}\n`+
+                `PR_NUMBER=${testPayload.issue.number}`
+              );
             }
       - name: Check out code
         uses: actions/checkout@v3
@@ -522,6 +526,5 @@ jobs:
               ...context.repo,
               title: `Scheduled functional test failed - Run ID: ${context.runId}`,
               labels: ['bug'],
-              assignees: ['Radius-Eng'],
               body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
