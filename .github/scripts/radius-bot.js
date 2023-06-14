@@ -30,7 +30,7 @@ async function handleIssueCommentCreate({ github, context }) {
     const issue = context.issue;
     const isFromPulls = !!payload.issue.pull_request;
     const commentBody = payload.comment.body;
-    const username = context.actor.toLowerCase();
+    const username = context.actor;
 
     if (!commentBody) {
         console.log('[handleIssueCommentCreate] comment body not found, exiting.');
@@ -55,9 +55,9 @@ async function handleIssueCommentCreate({ github, context }) {
  * @param {*} github GitHub object reference
  * @param {*} issue GitHub issue object
  * @param {boolean} isFromPulls is the workflow triggered by a pull request?
- * @param {string} userName is the user who trigger the command
+ * @param {string} username is the user who trigger the command
  */
-async function cmdOkToTest(github, issue, isFromPulls, userName) {
+async function cmdOkToTest(github, issue, isFromPulls, username) {
     if (!isFromPulls) {
         console.log('[cmdOkToTest] only pull requests supported, skipping command execution.');
         return;
@@ -65,10 +65,10 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
 
     // Check if the user has permission to trigger e2e test with an issue comment
     const org = 'project-radius';
-    console.log(`Checking team membership for: ${userName}`);
-    const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, userName);
+    console.log(`Checking team membership for: ${username}`);
+    const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, username);
     if (!isMember) {
-        console.log(`${userName} is not a member of the ${teamSlug} team.`);
+        console.log(`${username} is not a member of the ${teamSlug} team.`);
         return;
     }
 
@@ -102,12 +102,12 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
     }
 }
 
-async function checkTeamMembership(github, org, teamSlug, userName) {
+async function checkTeamMembership(github, org, teamSlug, username) {
     try {
         const response = await github.rest.teams.getMembershipForUserInOrg({
             org: org,
             team_slug: teamSlug,
-            username: userName,
+            username: username,
         });
         return response.data.state === 'active';
     } catch (error) {
