@@ -288,24 +288,6 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 	}
 }
 
-func TestSqlDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
-	// arrange
-	rawPayload, err := loadTestData("./testdata/sqldatabase_secrets.json")
-	require.NoError(t, err)
-	versioned := &SQLDatabaseSecrets{}
-	err = json.Unmarshal(rawPayload, versioned)
-	require.NoError(t, err)
-
-	// act
-	dm, err := versioned.ConvertTo()
-
-	// assert
-	require.NoError(t, err)
-	converted := dm.(*datamodel.SqlDatabaseSecrets)
-	require.Equal(t, "test-connection-string", converted.ConnectionString)
-	require.Equal(t, "testPassword", converted.Password)
-}
-
 func TestSqlDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
 	rawPayload, err := loadTestData("./testdata/sqldatabase_secrets_datamodel.json")

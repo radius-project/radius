@@ -64,7 +64,15 @@ func (ctrl *ListSecretsSqlDatabase) Run(ctx context.Context, w http.ResponseWrit
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	secrets, err := ctrl.dp.FetchSecrets(ctx,
+		deployment.ResourceData{
+			ID:              sCtx.ResourceID,
+			Resource:        resource,
+			OutputResources: resource.Properties.Status.OutputResources,
+			ComputedValues:  resource.ComputedValues,
+			SecretValues:    resource.SecretValues,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

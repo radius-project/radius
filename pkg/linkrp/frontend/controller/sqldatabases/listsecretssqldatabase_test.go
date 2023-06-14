@@ -28,7 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -37,6 +36,11 @@ import (
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {
+	const (
+		usernameStringValue   string = "username"
+		passwordStringValue   string = "password"
+		connectionStringValue string = "connectionString"
+	)
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -79,9 +83,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
-			renderers.UsernameStringValue:   "testUser",
-			renderers.PasswordStringHolder:  "testPassword",
-			renderers.ConnectionStringValue: "testConnectionString",
+			passwordStringValue:   "testPassword",
+			connectionStringValue: "testConnectionString",
 		}
 
 		mStorageClient.
@@ -113,8 +116,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		actualOutput := &v20220315privatepreview.SQLDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
-		require.Equal(t, expectedSecrets[renderers.PasswordStringHolder], *actualOutput.Password)
+		require.Equal(t, expectedSecrets[connectionStringValue], *actualOutput.ConnectionString)
+		require.Equal(t, expectedSecrets[passwordStringValue], *actualOutput.Password)
 	})
 
 	t.Run("listSecrets existing resource partial secrets", func(t *testing.T) {
@@ -122,8 +125,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
-			renderers.UsernameStringValue:   "testUser",
-			renderers.ConnectionStringValue: "testConnectionString",
+			connectionStringValue: "testConnectionString",
 		}
 
 		mStorageClient.
@@ -155,7 +157,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		actualOutput := &v20220315privatepreview.SQLDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
+		require.Equal(t, expectedSecrets[connectionStringValue], *actualOutput.ConnectionString)
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
