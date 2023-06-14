@@ -19,10 +19,12 @@ data:
         "Console": {
           "FormatterName": "RadiusJsonFormatter"
         }
-      },{{ if and .Values.global.zipkin .Values.global.zipkin.url }}
+      },
+      {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
       "Zipkin": {
         "Endpoint": "{{ .Values.global.zipkin.url }}"
-      },{{ end }}
+      },
+      {{- end }}
       "Prometheus": {
         "ScrapeEndpointPath": "/metrics"
       }
