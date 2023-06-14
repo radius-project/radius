@@ -53,6 +53,14 @@ func (extender *Extender) ResourceTypeName() string {
 	return linkrp.ExtendersResourceType
 }
 
+// Recipe returns the recipe for the Extender resource
+func (extender *Extender) Recipe() *linkrp.LinkRecipe {
+	if extender.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
+	return &extender.Properties.Recipe
+}
+
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderProperties struct {
 	rpv1.BasicResourceProperties
