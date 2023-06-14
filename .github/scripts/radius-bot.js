@@ -16,7 +16,11 @@ limitations under the License.
 
 module.exports = async ({ github, context }) => {
     if (context.eventName === 'issue_comment' && context.payload.action === 'created') {
-        await handleIssueCommentCreate({ github, context });
+        try {
+            await handleIssueCommentCreate({ github, context });
+        } catch (error) {
+            console.log(`[handleIssueCommentCreate] unexpected error: ${error}`);
+        }
     }
 }
 
@@ -26,7 +30,7 @@ async function handleIssueCommentCreate({ github, context }) {
     const issue = context.issue;
     const isFromPulls = !!payload.issue.pull_request;
     const commentBody = payload.comment.body;
-    const username = context.actor.toLowerCase();
+    const username = context.actor;
 
     if (!commentBody) {
         console.log('[handleIssueCommentCreate] comment body not found, exiting.');
@@ -40,54 +44,9 @@ async function handleIssueCommentCreate({ github, context }) {
         case '/ok-to-test':
             await cmdOkToTest(github, issue, isFromPulls, username);
             break;
-        case '/lgtm':
-            await cmdApprovePR(github, issue, isFromPulls, username);
-            break;
         default:
             console.log(`[handleIssueCommentCreate] command ${command} not found, exiting.`);
             break;
-    }
-}
-
-
-/**
- * Approve the pull request.
- * @param {*} github GitHub object reference
- * @param {*} issue GitHub issue object
- * @param {boolean} isFromPulls is the workflow triggered by a pull request?
- * @param {string} userName is the user who trigger the command
- */
-async function cmdApprovePR(github, issue, isFromPulls, userName) {
-    if (!isFromPulls) {
-        console.log('[cmdOkToTest] only pull requests supported, skipping command execution.');
-        return;
-    }
-
-    // Check if the user has permission to trigger e2e test with an issue comment
-    const org = 'project-radius';
-    console.log(`Checking team membership for: ${userName}`);
-    const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, userName);
-    if (!isMember) {
-        console.log(`${userName} is not a member of the ${teamSlug} team.`);
-        return;
-    }
-
-    // Get pull request
-    const pull = await github.rest.pulls.get({
-        owner: issue.owner,
-        repo: issue.repo,
-        pull_number: issue.number,
-    });
-
-    if (pull && pull.data) {
-        await github.rest.pulls.createReview({
-            owner: issue.owner,
-            repo: issue.repo,
-            pull_number: issue.number,
-            event: 'APPROVE',
-        })
-
-        console.log('Approve PR');
     }
 }
 
@@ -96,9 +55,9 @@ async function cmdApprovePR(github, issue, isFromPulls, userName) {
  * @param {*} github GitHub object reference
  * @param {*} issue GitHub issue object
  * @param {boolean} isFromPulls is the workflow triggered by a pull request?
- * @param {string} userName is the user who trigger the command
+ * @param {string} username is the user who trigger the command
  */
-async function cmdOkToTest(github, issue, isFromPulls, userName) {
+async function cmdOkToTest(github, issue, isFromPulls, username) {
     if (!isFromPulls) {
         console.log('[cmdOkToTest] only pull requests supported, skipping command execution.');
         return;
@@ -106,10 +65,10 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
 
     // Check if the user has permission to trigger e2e test with an issue comment
     const org = 'project-radius';
-    console.log(`Checking team membership for: ${userName}`);
-    const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, userName);
+    console.log(`Checking team membership for: ${username}`);
+    const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, username);
     if (!isMember) {
-        console.log(`${userName} is not a member of the ${teamSlug} team.`);
+        console.log(`${username} is not a member of the ${teamSlug} team.`);
         return;
     }
 
@@ -143,12 +102,12 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
     }
 }
 
-async function checkTeamMembership(github, org, teamSlug, userName) {
+async function checkTeamMembership(github, org, teamSlug, username) {
     try {
         const response = await github.rest.teams.getMembershipForUserInOrg({
             org: org,
             team_slug: teamSlug,
-            username: userName,
+            username: username,
         });
         return response.data.state === 'active';
     } catch (error) {
