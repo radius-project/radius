@@ -54,14 +54,14 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "init",
 		Short: "Initialize Radius",
 		Long: `
-Interactively initialize the Radius control-plane, create an environment, and configure a workspace.
+Interactively install Radius control-plane, create an environment, and configure a workspace.
 
-When no flags are specified 'rad init' creates a developer-focused environment named "default" with dev Recipes.
+When no flags are specified 'rad init' creates a developer-focused environment named "default" and includes recipes that support prototyping, development and testing.
 
 When the '--full' flag is specified via 'rad init --full' the command will prompt the user for all optional values to create a new environment.
 `,
 		Example: `
-## Create a new development environment named "dev" with dev Recipes
+## Create a new environment named "default" configured for development
 rad init
 
 ## Prompt the user for all optional values to create a new environment
