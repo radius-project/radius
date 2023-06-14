@@ -1,33 +1,48 @@
-import radius as rad
+import radius as radius
 
-param application string
-param environment string
+param registry string 
 
-resource s3Extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
-  name: 's3'
+param version string
+
+resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+  name: 'corerp-resources-extender-recipe-env'
+  location: 'global'
   properties: {
-    environment: environment
-    application: application
-    recipe: {
-      name: 's3'
+    compute: {
+      kind: 'kubernetes'
+      resourceId: 'self'
+      namespace: 'corerp-resources-extender-recipe-env' 
+    }
+    recipes: {
+      'Applications.Link/extenders':{
+        default: {
+          templateKind: 'bicep'
+          templatePath: '${registry}/test/functional/corerp/recipes/extender-recipe:${version}' 
+        }
+      }
     }
   }
 }
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mycontainer'
+resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+  name: 'corerp-resources-extender-recipe'
+  location: 'global'
   properties: {
-    application: application
-    container: {
-      image: 'radius.azurecr.io/tutorial/webapp:edge'
-      env: {
-        BUCKETNAME: s3Extender.properties.bucketName
+    environment: env.id
+    extensions: [
+      {
+          kind: 'kubernetesNamespace'
+          namespace: 'corerp-resources-extender-recipe-app'
       }
-    }
-    connections: {
-      s3: {
-        source: s3Extender.id
-      }
-    }
+    ]
+  }
+}
+
+resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+  name: 'extender-recipe'
+  location: 'global'
+  properties: {
+    environment: env.id
+    application: app.id
   }
 }
