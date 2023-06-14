@@ -95,6 +95,7 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 	//
 	// There's always a default director so this is safe.
 	rp.Director = appendDirector(rp.Director, workaround28169)
+	rp.Director = appendDirector(rp.Director, filterKubernetesAPIServerHeaders)
 	rp.Director = appendDirector(rp.Director, builder.Directors...)
 
 	// There's never a default responder.
