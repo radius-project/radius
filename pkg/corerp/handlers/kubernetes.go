@@ -43,9 +43,10 @@ import (
 
 const (
 	// DefaultDeploymentTimeout is the timeout for waiting for a deployment to be ready.
-	DefaultDeploymentTimeout = time.Minute * time.Duration(5)
+	// Deployment duration should not reach to this timeout since async operation worker will time out context before this time.
+	DefaultDeploymentTimeout = time.Minute * time.Duration(10)
 	// DefaultCacheResyncInterval is the interval for resyncing informer.
-	DefaultCacheResyncInterval = time.Minute * time.Duration(2)
+	DefaultCacheResyncInterval = time.Second * time.Duration(30)
 )
 
 // NewKubernetesHandler creates Kubernetes Resource handler instance.
