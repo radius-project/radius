@@ -35,6 +35,10 @@ var handlerTests = []struct {
 	isAzureAPI bool
 }{
 	{
+		url:        "/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -49,6 +53,10 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/providers/applications.core/httproutes?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/httproutes?api-version=2022-03-15-privatepreview",
@@ -67,6 +75,10 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
+		url:        "/providers/applications.core/applications?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/applications?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -83,6 +95,10 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
+		url:        "/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -94,6 +110,14 @@ var handlerTests = []struct {
 		url:        "/subscriptions/00000000-0000-0000-0000-000000000000?api-version=2.0",
 		method:     http.MethodPut,
 		isAzureAPI: true,
+	}, {
+		url:        "/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
@@ -109,6 +133,10 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/providers/applications.core/secretstores?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/secretstores?api-version=2022-03-15-privatepreview",
@@ -178,7 +206,7 @@ func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovid
 		t.Run(uri, func(t *testing.T) {
 			req, _ := http.NewRequestWithContext(context.Background(), tt.method, uri, nil)
 			var match mux.RouteMatch
-			require.True(t, r.Match(req, &match))
+			require.True(t, r.Match(req, &match), "no route found for %s", uri)
 		})
 	}
 }

@@ -1,0 +1,70 @@
+{{- $appversion := include "radius.versiontag" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ucp
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: ucp
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ucp
+  template:
+    metadata:
+      labels:
+        control-plane: ucp
+        app.kubernetes.io/name: ucp
+        app.kubernetes.io/part-of: radius
+      {{ if eq .Values.global.prometheus.enabled true }}
+      annotations:
+        prometheus.io/path: "{{ .Values.global.prometheus.path }}"
+        prometheus.io/port: "{{ .Values.global.prometheus.port }}"
+        prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+      {{ end }}
+    spec:
+      serviceAccountName: ucp
+      containers:
+      - name: ucp
+        image: "{{ .Values.ucp.image }}:{{ .Values.ucp.tag | default $appversion }}"
+        env:
+        - name: UCP_CONFIG
+          value: /etc/config/ucp-config.yaml
+        - name: BASE_PATH
+          value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
+        - name: TLS_CERT_DIR
+          value: '/var/tls/cert'
+        - name: PORT
+          value: '9443'
+        ports:
+        - containerPort: 9443
+          name: ucp
+          protocol: TCP
+        {{ if eq .Values.global.prometheus.enabled true }}
+        - containerPort: {{ .Values.global.prometheus.port }}
+          name: metrics
+          protocol: TCP
+        {{ end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+        {{- if .Values.ucp.resources }}
+        resources:{{ toYaml .Values.ucp.resources | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+        - name: cert
+          mountPath: '/var/tls/cert'
+          readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            # Provide the name of the ConfigMap containing the files you want
+            # to add to the container
+            name: ucp-config
+        - name: cert
+          secret:
+            secretName: ucp-cert

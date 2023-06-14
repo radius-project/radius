@@ -98,7 +98,7 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 }
 
 // LoadRecipe fetches the recipe information from the environment.
-func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metadata) (*recipes.Definition, error) {
+func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Metadata) (*recipes.Definition, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {
 		return nil, err
@@ -106,23 +106,28 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe recipes.Metad
 	return getRecipeDefinition(environment, recipe)
 }
 
-func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe recipes.Metadata) (*recipes.Definition, error) {
+func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe *recipes.Metadata) (*recipes.Definition, error) {
 	if environment.Properties.Recipes == nil {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
+
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
 	}
-	if recipe.Name == "" {
-		recipe.Name = defaultRecipeName
+
+	// TODO Remove this logic to populate recipe name, after https://github.com/project-radius/radius/issues/5649 is implemented
+	recipeName := recipe.Name
+	if recipeName == "" {
+		recipeName = defaultRecipeName
 	}
-	found, ok := environment.Properties.Recipes[resource.Type()][recipe.Name]
+	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
 
 	return &recipes.Definition{
+		Name:         recipeName,
 		Driver:       *found.TemplateKind,
 		ResourceType: resource.Type(),
 		Parameters:   found.Parameters,

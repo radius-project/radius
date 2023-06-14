@@ -111,7 +111,7 @@ func Test_Process(t *testing.T) {
 		require.Empty(t, components.Items)
 	})
 
-	t.Run("success - values", func(t *testing.T) {
+	t.Run("success - manual", func(t *testing.T) {
 		processor := Processor{
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
 		}

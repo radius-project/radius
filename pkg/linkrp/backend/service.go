@@ -27,12 +27,12 @@ import (
 	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
-	"github.com/project-radius/radius/pkg/linkrp/model"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/linkrp/processors/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprstatestores"
+	"github.com/project-radius/radius/pkg/linkrp/processors/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/processors/sqldatabases"
@@ -40,7 +40,6 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
 	"github.com/project-radius/radius/pkg/recipes/engine"
-	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/sdk/clients"
 	"k8s.io/client-go/discovery"
@@ -107,7 +106,10 @@ func (s *Service) Run(ctx context.Context) error {
 		TypeName            string
 		CreatePutController func(options ctrl.Options) (ctrl.Controller, error)
 	}{
-		{linkrp.MongoDatabasesResourceType, backend_ctrl.NewLegacyCreateOrUpdateResource},
+		{linkrp.MongoDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &mongodatabases.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.MongoDatabase, datamodel.MongoDatabase](processor, engine, client, configLoader, options)
+		}},
 		{linkrp.RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &rediscaches.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RedisCache, datamodel.RedisCache](processor, engine, client, configLoader, options)
@@ -128,24 +130,22 @@ func (s *Service) Run(ctx context.Context) error {
 			processor := &daprsecretstores.Processor{Client: runtimeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](processor, engine, client, configLoader, options)
 		}},
-	}
-
-	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient, s.Options.UCPConnection)
-	if err != nil {
-		return fmt.Errorf("failed to initialize application model: %w", err)
+		{linkrp.DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &daprpubsubbrokers.Processor{Client: runtimeClient}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](processor, engine, client, configLoader, options)
+		}},
 	}
 
 	opts := ctrl.Options{
 		DataProvider: s.StorageProvider,
 		KubeClient:   s.KubeClient,
-		GetLinkDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, sv.NewSecretValueClient(s.Options.Arm), s.KubeClient)
-		},
 	}
 
 	for _, rt := range resourceTypes {
 		// Register controllers
-		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
+		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, func(options ctrl.Options) (ctrl.Controller, error) {
+			return backend_ctrl.NewDeleteResource(options, client)
+		}, opts)
 		if err != nil {
 			return err
 		}

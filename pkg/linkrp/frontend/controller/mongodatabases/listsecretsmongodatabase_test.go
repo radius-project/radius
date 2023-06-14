@@ -69,6 +69,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
+
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 404, w.Result().StatusCode)
@@ -103,10 +104,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsMongoDatabase(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
@@ -114,7 +116,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
-		require.Equal(t, expectedSecrets[renderers.UsernameStringValue], *actualOutput.Username)
 		require.Equal(t, expectedSecrets[renderers.PasswordStringHolder], *actualOutput.Password)
 	})
 
@@ -146,17 +147,17 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsMongoDatabase(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
 		actualOutput := &v20220315privatepreview.MongoDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		require.Equal(t, expectedSecrets[renderers.UsernameStringValue], *actualOutput.Username)
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
 	})
 
@@ -180,8 +181,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsMongoDatabase(opts)
-
 		require.NoError(t, err)
+
 		_, err = ctl.Run(ctx, w, req)
 		require.Error(t, err)
 	})

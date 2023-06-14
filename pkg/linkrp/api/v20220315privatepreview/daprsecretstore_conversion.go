@@ -51,7 +51,12 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 		},
 	}
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
+	}
+
 	msgs := []string{}
 	if converted.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		if src.Properties.Recipe != nil && (!reflect.ValueOf(*src.Properties.Recipe).IsZero()) {

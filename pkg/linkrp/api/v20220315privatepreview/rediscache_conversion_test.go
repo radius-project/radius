@@ -65,9 +65,10 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload.filename)
+		rawPayload, err := loadTestData("./testdata/" + payload.filename)
+		require.NoError(t, err)
 		versionedResource := &RedisCacheResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
+		err = json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
 
 		// act
@@ -135,9 +136,10 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload.filename)
+		rawPayload, err := loadTestData("./testdata/" + payload.filename)
+		require.NoError(t, err)
 		resource := &datamodel.RedisCache{}
-		err := json.Unmarshal(rawPayload, resource)
+		err = json.Unmarshal(rawPayload, resource)
 		require.NoError(t, err)
 
 		// act
@@ -171,9 +173,10 @@ func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 	testset := []string{"rediscacheresource-invalid.json", "rediscacheresource-invalid2.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
+		rawPayload, err := loadTestData("./testdata/" + payload)
+		require.NoError(t, err)
 		versionedResource := &RedisCacheResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
+		err = json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
 		if payload == "rediscacheresource-invalid.json" {
 			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
@@ -181,7 +184,7 @@ func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 			require.Equal(t, &expectedErr, err)
 		}
 		if payload == "rediscacheresource-invalid2.json" {
-			expectedErr := v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("host and port are required when resourceProvisioning is %s", ResourceProvisioningManual)}
+			expectedErr := v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual"}
 			_, err = versionedResource.ConvertTo()
 			require.Equal(t, &expectedErr, err)
 		}
@@ -206,9 +209,10 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 
 func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("rediscachesecrets.json")
+	rawPayload, err := loadTestData("./testdata/rediscachesecrets.json")
+	require.NoError(t, err)
 	versioned := &RedisCacheSecrets{}
-	err := json.Unmarshal(rawPayload, versioned)
+	err = json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
 
 	// act
@@ -223,9 +227,10 @@ func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("rediscachesecretsdatamodel.json")
+	rawPayload, err := loadTestData("./testdata/rediscachesecretsdatamodel.json")
+	require.NoError(t, err)
 	secrets := &datamodel.RedisCacheSecrets{}
-	err := json.Unmarshal(rawPayload, secrets)
+	err = json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
 
 	// act

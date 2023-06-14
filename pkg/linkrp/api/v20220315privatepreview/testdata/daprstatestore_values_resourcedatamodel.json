@@ -15,6 +15,7 @@
     "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
   },
   "properties": {
+    "componentName": "daprStateStore0",
     "status": {
       "outputResources": [
         {

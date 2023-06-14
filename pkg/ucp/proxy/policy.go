@@ -19,6 +19,7 @@ package proxy
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -43,6 +44,17 @@ func trimPlanesPrefix(r *http.Request) {
 
 	// Success -- truncate the planes prefix
 	r.URL.Path = remainder
+}
+
+// filterKubernetesAPIServerHeaders filters out headers that APIServer sets on the request.
+func filterKubernetesAPIServerHeaders(r *http.Request) {
+	for k := range r.Header {
+		header := strings.ToLower(k)
+		// https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy
+		if header == "x-remote-user" || header == "x-remote-group" || strings.HasPrefix(header, "x-remote-extra-") {
+			r.Header.Del(k)
+		}
+	}
 }
 
 func defaultErrorHandler(w http.ResponseWriter, r *http.Request, err error) {

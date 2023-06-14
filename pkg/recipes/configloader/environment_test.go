@@ -28,7 +28,7 @@ import (
 
 const (
 	kind            = "kubernetes"
-	namespace       = "default"
+	envNamespace    = "default"
 	appNamespace    = "app-default"
 	envResourceId   = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0"
 	appResourceId   = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/app0"
@@ -36,13 +36,15 @@ const (
 	awsScope        = "/planes/aws/aws/accounts/000/regions/cool-region"
 	mongoResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0"
 	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/redisCaches/redis-0"
+
+	recipeName = "cosmosDB"
 )
 
 func Test_GetConfigurationAzure(t *testing.T) {
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
-				EnvironmentNamespace: "default",
+				EnvironmentNamespace: envNamespace,
 			},
 		},
 		Providers: createAzureProvider(),
@@ -51,7 +53,7 @@ func Test_GetConfigurationAzure(t *testing.T) {
 		Properties: &model.EnvironmentProperties{
 			Compute: &model.KubernetesCompute{
 				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(namespace),
+				Namespace:  to.Ptr(envNamespace),
 				ResourceID: to.Ptr(envResourceId),
 			},
 			Providers: &model.Providers{
@@ -70,7 +72,7 @@ func Test_GetConfigurationAWS(t *testing.T) {
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
-				EnvironmentNamespace: "default",
+				EnvironmentNamespace: envNamespace,
 			},
 		},
 		Providers: createAWSProvider(),
@@ -79,7 +81,7 @@ func Test_GetConfigurationAWS(t *testing.T) {
 		Properties: &model.EnvironmentProperties{
 			Compute: &model.KubernetesCompute{
 				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(namespace),
+				Namespace:  to.Ptr(envNamespace),
 				ResourceID: to.Ptr(envResourceId),
 			},
 			Providers: &model.Providers{
@@ -122,7 +124,7 @@ func Test_InvalidApplicationError(t *testing.T) {
 		Properties: &model.EnvironmentProperties{
 			Compute: &model.KubernetesCompute{
 				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(namespace),
+				Namespace:  to.Ptr(envNamespace),
 				ResourceID: to.Ptr(envResourceId),
 			},
 		},
@@ -179,7 +181,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		Properties: &model.EnvironmentProperties{
 			Compute: &model.KubernetesCompute{
 				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(namespace),
+				Namespace:  to.Ptr(envNamespace),
 				ResourceID: to.Ptr(envResourceId),
 			},
 			Providers: &model.Providers{
@@ -189,14 +191,14 @@ func TestGetRecipeDefinition(t *testing.T) {
 			},
 			Recipes: map[string]map[string]*model.EnvironmentRecipeProperties{
 				"Applications.Link/mongoDatabases": {
-					"cosmosDB": {
+					recipeName: {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"),
 						Parameters: map[string]any{
 							"foo": "bar",
 						},
 					},
-					"default": {
+					defaultRecipeName: {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongoDefault/azure:1.0"),
 					},
@@ -205,32 +207,35 @@ func TestGetRecipeDefinition(t *testing.T) {
 		},
 	}
 	recipeMetadata := recipes.Metadata{
-		Name:          "cosmosDB",
+		Name:          recipeName,
 		EnvironmentID: envResourceId,
 		ResourceID:    mongoResourceID,
 	}
 	t.Run("invalid resource id", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.ResourceID = "invalid-id"
-		_, err := getRecipeDefinition(&envResource, metadata)
+		_, err := getRecipeDefinition(&envResource, &metadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to parse resourceID")
 	})
-	t.Run("empty recipe name", func(t *testing.T) {
+	t.Run("empty recipe name loads default recipe", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.Name = ""
-		_, err := getRecipeDefinition(&envResource, metadata)
+		definition, err := getRecipeDefinition(&envResource, &metadata)
 		require.NoError(t, err)
+		require.Equal(t, defaultRecipeName, definition.Name)
+		require.Equal(t, "", metadata.Name)
 	})
-	t.Run("recipe not found", func(t *testing.T) {
+	t.Run("recipe not found for the resource type", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.ResourceID = redisID
-		_, err := getRecipeDefinition(&envResource, metadata)
+		_, err := getRecipeDefinition(&envResource, &metadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
 	t.Run("success", func(t *testing.T) {
 		expected := recipes.Definition{
+			Name:         recipeName,
 			Driver:       recipes.TemplateKindBicep,
 			ResourceType: "Applications.Link/mongoDatabases",
 			TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
@@ -238,14 +243,14 @@ func TestGetRecipeDefinition(t *testing.T) {
 				"foo": "bar",
 			},
 		}
-		recipeDef, err := getRecipeDefinition(&envResource, recipeMetadata)
+		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)
 		require.NoError(t, err)
 		require.Equal(t, recipeDef, &expected)
 	})
-	t.Run("", func(t *testing.T) {
+	t.Run("no recipes registered to the environment", func(t *testing.T) {
 		envResourceNilRecipe := envResource
 		envResourceNilRecipe.Properties.Recipes = nil
-		_, err := getRecipeDefinition(&envResourceNilRecipe, recipeMetadata)
+		_, err := getRecipeDefinition(&envResourceNilRecipe, &recipeMetadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
 	})

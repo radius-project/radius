@@ -36,7 +36,13 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.TrackedResource = trackedResource
 	converted.InternalMetadata = internalMetadata
 	converted.Properties = daprStateStoreProperties
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
+	}
+
 	converted.Properties.Resources = toResourcesDataModel(src.Properties.Resources)
 
 	// Note: The metadata, type, and version fields cannot be specified when using recipes since

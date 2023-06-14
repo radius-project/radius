@@ -234,7 +234,7 @@ planes:
   - id: "/planes/deployments/local"
     properties:
       resourceProviders:
-        Microsoft.Resources: "http://de-api.radius-system:6443"
+        Microsoft.Resources: "http://bicep-de.radius-system:6443"
       kind: "UCPNative"
   - id: "/planes/aws/aws"
     properties:

@@ -227,7 +227,7 @@ func Test_HasUCPHost(t *testing.T) {
 		},
 		{
 			name:       AzureAsyncOperationHeader,
-			header:     []string{"http://de-api.radius-system:6443/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"},
+			header:     []string{"http://bicep-de.radius-system:6443/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"},
 			planeURL:   "http://localhost:9443",
 			planeKind:  rest.PlaneKindAzure,
 			planeID:    "/planes/test/local",
@@ -237,7 +237,7 @@ func Test_HasUCPHost(t *testing.T) {
 		},
 		{
 			name:       LocationHeader,
-			header:     []string{"https://de-api.radius-system:6443/planes/radius/local/resourceGroups/rg/providers/Applications.Core/Containers/test"},
+			header:     []string{"https://bicep-de.radius-system:6443/planes/radius/local/resourceGroups/rg/providers/Applications.Core/Containers/test"},
 			planeURL:   "https://localhost:9443",
 			planeKind:  rest.PlaneKindUCPNative,
 			planeID:    "/planes/radius/local",

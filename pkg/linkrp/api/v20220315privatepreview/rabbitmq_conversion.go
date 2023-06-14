@@ -17,8 +17,6 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"fmt"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -50,23 +48,19 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 		},
 	}
 	properties := src.Properties
-	converted.Properties.ResourceProvisioning = toResourceProvisiongDataModel(properties.ResourceProvisioning)
-	var found bool
-	for _, k := range PossibleResourceProvisioningValues() {
-		if ResourceProvisioning(converted.Properties.ResourceProvisioning) == k {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
-	}
-	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
-	converted.Properties.Queue = to.String(properties.Queue)
-	err := converted.VerifyInputs()
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(properties.ResourceProvisioning)
 	if err != nil {
 		return nil, err
 	}
+
+	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	converted.Properties.Queue = to.String(properties.Queue)
+	err = converted.VerifyInputs()
+	if err != nil {
+		return nil, err
+	}
+
 	if src.Properties.Secrets != nil {
 		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
 			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),

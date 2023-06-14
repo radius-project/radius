@@ -1,65 +1,64 @@
 {
-    "parameters": {
-      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
-      "daprPubSubBrokerName": "daprpubsub0",
-      "api-version": "2022-03-15-privatepreview",
-      "DaprPubSubBrokerParameters": {
+  "parameters": {
+    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "daprPubSubBrokerName": "daprpubsub0",
+    "api-version": "2022-03-15-privatepreview",
+    "DaprPubSubBrokerParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "recipe": {
+          "name": "pubsub-test",
+          "parameters": {
+            "port": 6081
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub0",
+        "name": "daprPubSub0",
+        "type": "Applications.Link/daprPubSubBrokers",
         "location": "West US",
         "properties": {
+          "provisioningState": "Succeeded",
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-          "mode": "recipe",
+          "resourceProvisioning": "recipe",
+          "type": "pubsub.azure.servicebus",
           "recipe": {
             "name": "pubsub-test",
             "parameters": {
-                "port": 6081
+              "port": 6081
             }
           }
         }
       }
     },
-    "responses": {
-      "200": {
-        "body": {
-          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub0",
-          "name": "daprPubSub0",
-          "type": "Applications.Link/daprPubSubBrokers",
-          "location": "West US",
-          "properties": {
-            "provisioningState": "Succeeded",
-            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "kind": "pubsub.azure.servicebus",
-            "mode": "recipe",
-            "recipe": {
-              "name": "pubsub-test",
-              "parameters": {
-                  "port": 6081
-              }
-            }
-          }
-        }
-      },
-      "201": {
-        "body": {
-          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub1",
-          "name": "daprPubSub1",
-          "type": "Applications.Link/daprPubSubBrokers",
-          "location": "West US",
-          "properties": {
-            "provisioningState": "Succeeded",
-            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "mode": "recipe",
-            "recipe": {
-              "name": "pubsub-test",
-              "parameters": {
-                  "port": 6081
-              }
+    "201": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub1",
+        "name": "daprPubSub1",
+        "type": "Applications.Link/daprPubSubBrokers",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "recipe",
+          "type": "pubsub.azure.servicebus",
+          "recipe": {
+            "name": "pubsub-test",
+            "parameters": {
+              "port": 6081
             }
           }
         }
       }
     }
   }
-  
+}

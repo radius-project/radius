@@ -18,7 +18,7 @@ param username string = 'sa'
 @secure()
 param password string = newGuid()
 
-param registry string 
+param registry string
 
 param version string
 
@@ -29,10 +29,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-sql-recipe-env' 
+      namespace: 'corerp-resources-environment-sql-recipe-env'
     }
     recipes: {
-      'Applications.Link/sqlDatabases':{
+      'Applications.Link/sqlDatabases': {
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/corerp/recipes/sqldb-recipe:${version}'
@@ -53,8 +53,8 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-sqldb-recipe-app'
+        kind: 'kubernetesNamespace'
+        namespace: 'corerp-resources-sqldb-recipe-app'
       }
     ]
   }

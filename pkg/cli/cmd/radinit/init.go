@@ -362,7 +362,7 @@ func (r *Runner) getAWSCredential() ucp.AWSCredentialResource {
 				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
 			},
 			AccessKeyID:     &r.Options.CloudProviders.AWS.AccessKeyID,
-			SecretAccessKey: &r.Options.CloudProviders.AWS.AccessKeyID,
+			SecretAccessKey: &r.Options.CloudProviders.AWS.SecretAccessKey,
 		},
 	}
 }

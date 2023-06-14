@@ -18,38 +18,131 @@ package converter
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 // Validates type conversion between versioned client side data model and RP data model.
 func TestDaprPubSubBrokerDataModelToVersioned(t *testing.T) {
+	createdAt, err := time.Parse(time.RFC3339Nano, "2021-09-24T19:09:54.2403864Z")
+	require.NoError(t, err)
+
+	lastModifiedAt, err := time.Parse(time.RFC3339Nano, "2021-09-24T20:09:54.2403864Z")
+	require.NoError(t, err)
+
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
 		apiModelType  any
+		expected      *v20220315privatepreview.DaprPubSubBrokerResource
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerazureresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/daprpubsubbroker/daprpubsubbroker_manual_datamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprPubSubBrokerResource{},
+			&v20220315privatepreview.DaprPubSubBrokerResource{
+				Location: to.Ptr("global"),
+				Properties: &v20220315privatepreview.DaprPubSubBrokerProperties{
+					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					Metadata: map[string]interface{}{
+						"foo": "bar",
+					},
+					Recipe:               nil,
+					ResourceProvisioning: to.Ptr(v20220315privatepreview.ResourceProvisioningManual),
+					Resources: []*v20220315privatepreview.ResourceReference{
+						{
+							ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"),
+						},
+					},
+					Type:              to.Ptr("pubsub.azure.servicebus"),
+					Version:           to.Ptr("v1"),
+					ComponentName:     to.Ptr("test-dpsb"),
+					ProvisioningState: to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
+					Status: &v20220315privatepreview.ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"LocalID":  "Deployment",
+								"Provider": "kubernetes",
+								"Identity": nil,
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprPubSubBrokers/test-dpsb"),
+				Name: to.Ptr("test-dpsb"),
+				SystemData: &v20220315privatepreview.SystemData{
+					CreatedAt:          &createdAt,
+					CreatedBy:          to.Ptr("fakeid@live.com"),
+					CreatedByType:      to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+					LastModifiedAt:     &lastModifiedAt,
+					LastModifiedBy:     to.Ptr("fakeid@live.com"),
+					LastModifiedByType: to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+				},
+				Type: to.Ptr("Applications.Link/daprPubSubBrokers"),
+			},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokergenericresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/daprpubsubbroker/daprpubsubbroker_manual_generic_datamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprPubSubBrokerResource{},
+			&v20220315privatepreview.DaprPubSubBrokerResource{
+				Location: to.Ptr("global"),
+				Properties: &v20220315privatepreview.DaprPubSubBrokerProperties{
+					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					Metadata: map[string]interface{}{
+						"foo": "bar",
+					},
+					Recipe:               nil,
+					ResourceProvisioning: to.Ptr(v20220315privatepreview.ResourceProvisioningManual),
+					Resources:            nil,
+					Type:                 to.Ptr("pubsub.kafka"),
+					Version:              to.Ptr("v1"),
+					ComponentName:        to.Ptr("test-dpsb"),
+					ProvisioningState:    to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
+					Status: &v20220315privatepreview.ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"LocalID":  "Deployment",
+								"Provider": "kubernetes",
+								"Identity": nil,
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprPubSubBrokers/test-dpsb"),
+				Name: to.Ptr("test-dpsb"),
+				SystemData: &v20220315privatepreview.SystemData{
+					CreatedAt:          &createdAt,
+					CreatedBy:          to.Ptr("fakeid@live.com"),
+					CreatedByType:      to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+					LastModifiedAt:     &lastModifiedAt,
+					LastModifiedBy:     to.Ptr("fakeid@live.com"),
+					LastModifiedByType: to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+				},
+				Type: to.Ptr("Applications.Link/daprPubSubBrokers"),
+			},
 			nil,
 		},
 		{
 			"",
 			"unsupported",
+			nil,
 			nil,
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -60,12 +153,14 @@ func TestDaprPubSubBrokerDataModelToVersioned(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
 			dm := &datamodel.DaprPubSubBroker{}
 			_ = json.Unmarshal(c, dm)
+
 			am, err := DaprPubSubBrokerDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
 				require.NoError(t, err)
 				require.IsType(t, tc.apiModelType, am)
+				require.Equal(t, tc.expected, am)
 			}
 		})
 	}
@@ -78,19 +173,30 @@ func TestDaprPubSubBrokerDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerazureresource.json",
+			"../../api/v20220315privatepreview/testdata/daprpubsubbroker/daprpubsubbroker_invalidrecipe_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{
+				Code:    v1.CodeInvalid,
+				Message: "multiple errors were found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)",
+			},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprpubsubbroker/daprpubsubbroker_invalidmanual_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{
+				Code:    "BadRequest",
+				Message: "multiple errors were found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual",
+			},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprpubsubbroker/daprpubsubbroker_recipe_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokergenericresource.json",
+			"../../api/v20220315privatepreview/testdata/daprpubsubbroker/daprpubsubbroker_manual_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
-		},
-		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerresource-invalid.json",
-			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field DaprPubSubBrokerProperties.properties.resource of type string"),
 		},
 		{
 			"",
@@ -104,7 +210,7 @@ func TestDaprPubSubBrokerDataModelFromVersioned(t *testing.T) {
 			c := loadTestData(tc.versionedModelFile)
 			dm, err := DaprPubSubBrokerDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
-				require.ErrorAs(t, tc.err, &err)
+				require.Equal(t, tc.err, err)
 			} else {
 				require.NoError(t, err)
 				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)

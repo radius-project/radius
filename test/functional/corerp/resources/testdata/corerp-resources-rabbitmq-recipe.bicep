@@ -9,14 +9,11 @@ param magpieImage string
 @description('Specifies the port for the container resource.')
 param magpiePort int = 3000
 
-@description('Specifies the environment for resources.')
-param environment string = 'test'
-
 @description('Specifies the RabbitMQ password.')
 @secure()
-param password string 
+param password string
 
-param registry string 
+param registry string
 
 param version string
 
@@ -30,10 +27,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: 'corerp-resources-environment-rabbitmq-recipe-env'
     }
     recipes: {
-      'Applications.Link/rabbitMQMessageQueues':{
+      'Applications.Link/rabbitMQMessageQueues': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/corerp/recipes/rabbitmq-recipe:${version}' 
+          templatePath: '${registry}/test/functional/corerp/recipes/rabbitmq-recipe:${version}'
           parameters: {
             password: password
           }
@@ -50,8 +47,8 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-rabbitmq-default-recipe-app'
+        kind: 'kubernetesNamespace'
+        namespace: 'corerp-resources-rabbitmq-default-recipe-app'
       }
     ]
   }

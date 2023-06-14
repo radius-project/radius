@@ -18,7 +18,9 @@ package delete
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli"
@@ -26,8 +28,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
+)
+
+const (
+	deleteConfirmation = "Are you sure you want to delete resource %v of type %v?"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad resource delete` command.
@@ -50,6 +57,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddConfirmationFlag(cmd)
 
 	return cmd, runner
 }
@@ -63,6 +71,9 @@ type Runner struct {
 	ResourceType      string
 	ResourceName      string
 	Format            string
+
+	InputPrompter     prompt.Interface
+	Confirm         bool
 }
 
 // NewRunner creates a new instance of the `rad resource delete` runner.
@@ -71,6 +82,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder:      factory.GetConfigHolder(),
 		ConnectionFactory: factory.GetConnectionFactory(),
 		Output:            factory.GetOutput(),
+		InputPrompter:     factory.GetPrompter(),
 	}
 }
 
@@ -101,11 +113,32 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
+	yes, err := cmd.Flags().GetBool("yes")
+	if err != nil {
+		return err
+	}
+	r.Confirm = yes
+
 	return nil
 }
 
 // Run runs the `rad resource delete` command.
 func (r *Runner) Run(ctx context.Context) error {
+	// Prompt user to confirm deletion
+	if !r.Confirm {
+		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ResourceName, r.ResourceType), prompt.ConfirmNo, r.InputPrompter)
+		if err != nil {
+			if errors.Is(err, &prompt.ErrExitConsole{}) {
+				return &cli.FriendlyError{Message: err.Error()}
+			}
+			return err
+		}
+		if !confirmed {
+			r.Output.LogInfo("resource %q of type %q NOT deleted", r.ResourceName, r.ResourceType)
+			return nil
+		}
+	}
+
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err

@@ -82,7 +82,6 @@ model RedisCacheProperties extends BasicResourceProperties {
   port?: int32;
 
   @doc("The username for Redis cache")
-  @visibility("read")
   username?: string;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the Redis caches link")

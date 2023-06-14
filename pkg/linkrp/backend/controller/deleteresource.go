@@ -25,8 +25,11 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*DeleteResource)(nil)
@@ -34,11 +37,12 @@ var _ ctrl.Controller = (*DeleteResource)(nil)
 // DeleteResource is the async operation controller to delete Applications.Link resource.
 type DeleteResource struct {
 	ctrl.BaseController
+	client processors.ResourceClient
 }
 
 // NewDeleteResource creates the DeleteResource controller instance.
-func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteResource{ctrl.NewBaseAsyncController(opts)}, nil
+func NewDeleteResource(opts ctrl.Options, client processors.ResourceClient) (ctrl.Controller, error) {
+	return &DeleteResource{ctrl.NewBaseAsyncController(opts), client}, nil
 }
 
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
@@ -67,7 +71,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
 
-	err = c.LinkDeploymentProcessor().Delete(ctx, id, deploymentDataModel.OutputResources())
+	err = c.deleteResources(ctx, id.String(), deploymentDataModel.OutputResources())
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -95,7 +99,40 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 		return &datamodel.RabbitMQMessageQueue{}, nil
 	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
 		return &datamodel.DaprSecretStore{}, nil
+	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
+		return &datamodel.DaprPubSubBroker{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}
+}
+
+func (d *DeleteResource) deleteResources(ctx context.Context, id string, outputResources []rpv1.OutputResource) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
+	if err != nil {
+		return err
+	}
+
+	// Loop over each output resource and delete in reverse dependency order
+	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
+		outputResource := orderedOutputResources[i]
+		id := outputResource.Identity.GetID()
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
+			continue
+		}
+
+		err = d.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+
+	}
+
+	return nil
 }

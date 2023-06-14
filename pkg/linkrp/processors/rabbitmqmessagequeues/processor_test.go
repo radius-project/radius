@@ -64,7 +64,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
 	})
 
-	t.Run("success - values", func(t *testing.T) {
+	t.Run("success - manual", func(t *testing.T) {
 		resource := &datamodel.RabbitMQMessageQueue{
 			Properties: datamodel.RabbitMQMessageQueueProperties{
 				Queue: queue,
