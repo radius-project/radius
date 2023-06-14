@@ -73,7 +73,7 @@ async function cmdApprovePR(github, issue, isFromPulls, userName) {
     }
 
     // Get pull request
-    const pull = await github.pulls.get({
+    const pull = await github.rest.pulls.get({
         owner: issue.owner,
         repo: issue.repo,
         pull_number: issue.number,
@@ -114,7 +114,7 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
     }
 
     // Get pull request
-    const pull = await github.pulls.get({
+    const pull = await github.rest.pulls.get({
         owner: issue.owner,
         repo: issue.repo,
         pull_number: issue.number,
@@ -132,7 +132,7 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
         console.log('Creating repository dispatch event for e2e test');
 
         // Fire repository_dispatch event to trigger e2e test
-        await github.repos.createDispatchEvent({
+        await github.rest.repos.createDispatchEvent({
             owner: issue.owner,
             repo: issue.repo,
             event_type: 'functional-tests',
@@ -145,7 +145,7 @@ async function cmdOkToTest(github, issue, isFromPulls, userName) {
 
 async function checkTeamMembership(github, org, teamSlug, userName) {
     try {
-        const response = await github.teams.getMembershipForUserInOrg({
+        const response = await github.rest.teams.getMembershipForUserInOrg({
             org: org,
             team_slug: teamSlug,
             username: userName,
