@@ -27,12 +27,22 @@ spec:
       {{ end }}
     spec:
       serviceAccountName: bicep-de
+      volumes:
+        - name: appsettings-vol
+          configMap:
+            name: bicep-de-config
       containers:
       - name: de
         image: {{ .Values.de.image }}:{{ .Values.de.tag | default $appversion }}
         args:
         - --kubernetes=true
+        volumeMounts:
+        - name: appsettings-vol
+          mountPath: /app/appsettings.Production.json
+          subPath: appsettings.Production.json
         env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
         - name: SKIP_ARM
           value: "false"
         - name: ARM_AUTH_METHOD
@@ -43,12 +53,6 @@ spec:
           value: "true"
         - name: RADIUSBACKENDURL
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
-        - name: ASPNETCORE_Logging__LogLevel__Default
-          value: "Debug"
-        {{ if and .Values.global.zipkin .Values.global.zipkin.url }}
-        - name: ASPNETCORE_Zipkin__Endpoint
-          value: {{ .Values.global.zipkin.url }}
-        {{ end }}
         ports:
         - containerPort: 6443
           name: bicep-de-api
