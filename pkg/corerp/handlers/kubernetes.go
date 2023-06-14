@@ -165,7 +165,6 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 }
 
 func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, item client.Object, doneCh chan<- bool, errCh chan<- error) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
 	informers := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 	deploymentInformer := informers.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
