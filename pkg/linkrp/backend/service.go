@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprpubsubbrokers"
