@@ -175,8 +175,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	envResource.Properties.Recipes = envRecipes
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
-	if err != nil || !isEnvCreated {
+	err = client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
+	if err != nil {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to register the recipe %s to the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}
 
