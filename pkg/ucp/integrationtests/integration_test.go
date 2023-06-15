@@ -65,7 +65,7 @@ const (
 	rp2URL                    = "127.0.0.1:7442"
 	azureURL                  = "127.0.0.1:9443"
 	testProxyRequestCorePath  = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications"
-	testProxyRequestDSPath    = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Datastores/mongoDatabases"
+	testProxyRequestMsgPath   = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Messaging/rabbitMQQueues"
 	testProxyRequestAzurePath = "/subscriptions/sid/resourceGroups/rg1/providers/Microsoft.Network/virtualNetworks/vnet1"
 	apiVersionQueyParam       = "api-version=2022-09-01-privatepreview"
 	testUCPNativePlaneID      = "/planes/radius/local"
@@ -99,7 +99,7 @@ var testCoreUCPNativePlane = datamodel.Plane{
 	},
 }
 
-var testDSUCPNativePlane = datamodel.Plane{
+var testMsgUCPNativePlane = datamodel.Plane{
 	BaseResource: v1.BaseResource{
 		TrackedResource: armrpc_v1.TrackedResource{
 			ID:   "/planes/radius/local",
@@ -110,7 +110,7 @@ var testDSUCPNativePlane = datamodel.Plane{
 	Properties: datamodel.PlaneProperties{
 		Kind: rest.PlaneKindUCPNative,
 		ResourceProviders: map[string]*string{
-			"Applications.Datastores": to.Ptr("http://" + rp2URL),
+			"Applications.Messaging": to.Ptr("http://" + rp2URL),
 		},
 	},
 }
@@ -127,14 +127,14 @@ var testCoreUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 	},
 }
 
-var testDSUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
+var testMsgUCPNativePlaneVersioned = v20220901privatepreview.PlaneResource{
 	ID:   to.Ptr("/planes/radius/local"),
 	Type: to.Ptr("System.Planes/radius"),
 	Name: to.Ptr("local"),
 	Properties: &v20220901privatepreview.PlaneResourceProperties{
 		Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
 		ResourceProviders: map[string]*string{
-			"Applications.Datastores": to.Ptr("http://" + rp2URL),
+			"Applications.Messaging": to.Ptr("http://" + rp2URL),
 		},
 	},
 }
@@ -208,7 +208,7 @@ func Test_ProxyToRP(t *testing.T) {
 	sendProxyRequest(t, ucp, ucpClient, db, "Core")
 }
 
-func Test_ProxyToDatastoresRP(t *testing.T) {
+func Test_ProxyToMessagingRP(t *testing.T) {
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
@@ -217,9 +217,9 @@ func Test_ProxyToDatastoresRP(t *testing.T) {
 	require.NoError(t, err)
 
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, testProxyRequestDSPath, r.URL.Path)
+		require.Equal(t, testProxyRequestMsgPath, r.URL.Path)
 		w.Header().Add("Content-Type", "application/json")
-		w.Header().Add("Location", ucp.URL+basePath+testProxyRequestDSPath)
+		w.Header().Add("Location", ucp.URL+basePath+testProxyRequestMsgPath)
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(body)
 	}))
@@ -306,13 +306,13 @@ func Test_ProxyToDatastoresRP(t *testing.T) {
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
 
 	// Register RP with UCP
-	registerRP(t, ucp, ucpClient, db, true, "Datastores")
+	registerRP(t, ucp, ucpClient, db, true, "Messaging")
 
 	// Create a Resource group
 	createResourceGroup(t, ucp, ucpClient, db)
 
 	// Send a request that will be proxied to the RP
-	sendProxyRequest(t, ucp, ucpClient, db, "Datastores")
+	sendProxyRequest(t, ucp, ucpClient, db, "Messaging")
 }
 
 func Test_ProxyToRP_NonNativePlane(t *testing.T) {
@@ -416,7 +416,7 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 		//if rp == "Core" {
 		w.Header().Add("Location", "http://"+rpURL+testProxyRequestCorePath)
 		//} else {
-		//	w.Header().Add("Location", "http://"+rpURL+testProxyRequestDSPath)
+		//	w.Header().Add("Location", "http://"+rpURL+testProxyRequestMsgPath)
 		//}
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(body)
@@ -468,12 +468,12 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 				"kind": rest.PlaneKindUCPNative,
 			},
 		}
-	} else if ucpNative && rp == "Datastores" {
+	} else if ucpNative && rp == "Messaging" {
 		requestBody = map[string]any{
 			"location": v1.LocationGlobal,
 			"properties": map[string]any{
 				"resourceProviders": map[string]string{
-					"Applications.Datastores": "http://" + rp2URL,
+					"Applications.Messaging": "http://" + rp2URL,
 				},
 				"kind": rest.PlaneKindUCPNative,
 			},
@@ -517,8 +517,8 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	require.NoError(t, err)
 	if ucpNative && rp == "Core" {
 		require.Equal(t, testCoreUCPNativePlaneVersioned, responsePlane)
-	} else if ucpNative && rp == "Datastores" {
-		require.Equal(t, testDSUCPNativePlaneVersioned, responsePlane)
+	} else if ucpNative && rp == "Messaging" {
+		require.Equal(t, testMsgUCPNativePlaneVersioned, responsePlane)
 	} else {
 		require.Equal(t, testAzurePlane, responsePlane)
 	}
@@ -563,11 +563,11 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 			}, nil
 		})
 	} else {
-		testProxyRequestPath = testProxyRequestDSPath
+		testProxyRequestPath = testProxyRequestMsgPath
 		db.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 			return &store.Object{
 				Metadata: store.Metadata{},
-				Data:     &testDSUCPNativePlane,
+				Data:     &testMsgUCPNativePlane,
 			}, nil
 		})
 	}

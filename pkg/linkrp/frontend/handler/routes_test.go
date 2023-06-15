@@ -247,7 +247,7 @@ var handlerOldTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	},
-	// Split Namespaces
+	// Routes for resources after Split Namespaces
 
 	{
 		url:        "/providers/applications.datastores/mongodatabases?api-version=2022-03-15-privatepreview",
