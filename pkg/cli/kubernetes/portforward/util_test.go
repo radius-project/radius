@@ -19,7 +19,6 @@ package portforward
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/require"
@@ -31,17 +30,13 @@ import (
 )
 
 func Test_findStaleReplicaSets(t *testing.T) {
-	now := time.Now()
-	later := now.Add(time.Hour * 1)
-
 	objs := []runtime.Object{
 
 		// Owned by d1
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
-				Name:              "rs1a",
-				Namespace:         "default",
-				CreationTimestamp: metav1.NewTime(now),
+				Name:      "rs1a",
+				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion: "apps/v1",
@@ -51,14 +46,16 @@ func Test_findStaleReplicaSets(t *testing.T) {
 				},
 				Labels: map[string]string{
 					kubernetes.LabelRadiusApplication: "test-app",
+				},
+				Annotations: map[string]string{
+					"deployment.kubernetes.io/revision": "1",
 				},
 			},
 		},
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
-				Name:              "rs1b",
-				Namespace:         "default",
-				CreationTimestamp: metav1.NewTime(later),
+				Name:      "rs1b",
+				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion: "apps/v1",
@@ -68,14 +65,16 @@ func Test_findStaleReplicaSets(t *testing.T) {
 				},
 				Labels: map[string]string{
 					kubernetes.LabelRadiusApplication: "test-app",
+				},
+				Annotations: map[string]string{
+					"deployment.kubernetes.io/revision": "3",
 				},
 			},
 		},
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
-				Name:              "rs1c",
-				Namespace:         "default",
-				CreationTimestamp: metav1.NewTime(later),
+				Name:      "rs1c",
+				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion: "apps/v1",
@@ -85,6 +84,9 @@ func Test_findStaleReplicaSets(t *testing.T) {
 				},
 				Labels: map[string]string{
 					kubernetes.LabelRadiusApplication: "test-app",
+				},
+				Annotations: map[string]string{
+					"deployment.kubernetes.io/revision": "2",
 				},
 			},
 		},
@@ -92,9 +94,8 @@ func Test_findStaleReplicaSets(t *testing.T) {
 		// Owned by d2 - only one replicaset is here, so it can't be stale
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
-				Name:              "rs2a",
-				Namespace:         "default",
-				CreationTimestamp: metav1.NewTime(now),
+				Name:      "rs2a",
+				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion: "apps/v1",
@@ -105,18 +106,22 @@ func Test_findStaleReplicaSets(t *testing.T) {
 				Labels: map[string]string{
 					kubernetes.LabelRadiusApplication: "test-app",
 				},
+				Annotations: map[string]string{
+					"deployment.kubernetes.io/revision": "5",
+				},
 			},
 		},
 
 		// No owner, ignored
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
-				Name:              "rs3a",
-				Namespace:         "default",
-				CreationTimestamp: metav1.NewTime(now),
-
+				Name:      "rs3a",
+				Namespace: "default",
 				Labels: map[string]string{
 					kubernetes.LabelRadiusApplication: "test-app",
+				},
+				Annotations: map[string]string{
+					"deployment.kubernetes.io/revision": "5",
 				},
 			},
 		},
@@ -124,9 +129,8 @@ func Test_findStaleReplicaSets(t *testing.T) {
 		// Not part of application, ignored
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
-				Name:              "rs4a",
-				Namespace:         "default",
-				CreationTimestamp: metav1.NewTime(now),
+				Name:      "rs4a",
+				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion: "apps/v1",
@@ -134,15 +138,17 @@ func Test_findStaleReplicaSets(t *testing.T) {
 						Name:       "d4",
 					},
 				},
+				Annotations: map[string]string{
+					"deployment.kubernetes.io/revision": "5",
+				},
 			},
 		},
 
 		// Part of other application, ignored
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
-				Name:              "rs5a",
-				Namespace:         "default",
-				CreationTimestamp: metav1.NewTime(now),
+				Name:      "rs5a",
+				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion: "apps/v1",
@@ -152,6 +158,9 @@ func Test_findStaleReplicaSets(t *testing.T) {
 				},
 				Labels: map[string]string{
 					kubernetes.LabelRadiusApplication: "test-app",
+				},
+				Annotations: map[string]string{
+					"deployment.kubernetes.io/revision": "5",
 				},
 			},
 		},

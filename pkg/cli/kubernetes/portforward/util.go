@@ -19,6 +19,7 @@ package portforward
 import (
 	"context"
 	"sort"
+	"strconv"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,6 +27,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	k8sclient "k8s.io/client-go/kubernetes"
+)
+
+const (
+	revisionAnnotation = "deployment.kubernetes.io/revision"
 )
 
 // findStaleReplicaSets finds stale ReplicaSets that we should ignore.
@@ -65,13 +70,12 @@ func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, names
 	for _, values := range grouped {
 		// Sort in place
 		sort.Slice(values, func(i, j int) bool {
-			// Sort by CreationTimestamp using name as tiebreaker
-			if values[i].CreationTimestamp.Equal(&values[j].CreationTimestamp) {
-				return values[i].Name < values[j].Name
-			}
+			// Sort by revision number
+			firstRevision, _ := strconv.Atoi(values[i].Annotations[revisionAnnotation])
+			secondRevision, _ := strconv.Atoi(values[j].Annotations[revisionAnnotation])
 
-			// Newest first
-			return !values[i].CreationTimestamp.Before(&values[j].CreationTimestamp)
+			// Sort in descending order
+			return firstRevision > secondRevision
 		})
 
 		// Skip newest, add rest to outdated list
