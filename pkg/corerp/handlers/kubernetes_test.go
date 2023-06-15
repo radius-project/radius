@@ -316,13 +316,13 @@ func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
 			name:              "context timeout",
 			contextTimeout:    time.Duration(1) * time.Second,
 			deploymentTimeout: time.Duration(5) * time.Minute,
-			expectedError:     "job context timed out, name: test-deployment, namespace test-namespace",
+			expectedError:     "deployment is timed out with the status: Deadline is exceeded (ProgressDeadlineExceeded), name: test-deployment, namespace: test-namespace",
 		},
 		{
 			name:              "deployment timeout",
 			contextTimeout:    time.Duration(5) * time.Minute,
 			deploymentTimeout: time.Duration(1) * time.Second,
-			expectedError:     "kubernetes deployment timed out, name: test-deployment, namespace test-namespace, status: Deployment has minimum availability, reason: NewReplicaSetAvailable",
+			expectedError:     "deployment is timed out with the status: Deadline is exceeded (ProgressDeadlineExceeded), name: test-deployment, namespace: test-namespace",
 		},
 	}
 
@@ -339,6 +339,12 @@ func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
 					Status:  corev1.ConditionFalse,
 					Reason:  "NewReplicaSetAvailable",
 					Message: "Deployment has minimum availability",
+				},
+				{
+					Type:    v1.DeploymentProgressing,
+					Status:  corev1.ConditionFalse,
+					Reason:  "ProgressDeadlineExceeded",
+					Message: "Deadline is exceeded",
 				},
 			},
 		},
@@ -397,5 +403,5 @@ func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
 
 	// It must be timed out because the name of the deployment does not match.
 	require.Error(t, err)
-	require.Equal(t, "kubernetes deployment timed out, name: not-matched-deployment, namespace test-namespace, error occured while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
+	require.Equal(t, "deployment is timed out with the status: unknown status, name: not-matched-deployment, namespace test-namespace", err.Error())
 }
