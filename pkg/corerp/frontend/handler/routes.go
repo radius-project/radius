@@ -26,12 +26,13 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+
+	corerp_config "github.com/project-radius/radius/pkg/corerp/config"
 
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
@@ -311,7 +312,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
-						AsyncOperationTimeout: rpv1.AsyncCreateOrUpdateContainerTimeout,
+						AsyncOperationTimeout: corerp_config.AsyncCreateOrUpdateContainerTimeout,
 					},
 				)
 			},
@@ -329,7 +330,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
-						AsyncOperationTimeout: rpv1.AsyncCreateOrUpdateContainerTimeout,
+						AsyncOperationTimeout: corerp_config.AsyncCreateOrUpdateContainerTimeout,
 					},
 				)
 			},

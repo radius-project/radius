@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	corerp_config "github.com/project-radius/radius/pkg/corerp/config"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -51,7 +52,7 @@ func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) Resourc
 		client:    client,
 		clientSet: clientSet,
 
-		deploymentTimeOut:   rpv1.AsyncCreateOrUpdateContainerTimeout,
+		deploymentTimeOut:   corerp_config.AsyncCreateOrUpdateContainerTimeout,
 		cacheResyncInterval: DefaultCacheResyncInterval,
 	}
 }
