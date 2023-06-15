@@ -46,7 +46,7 @@ const (
 	// Deployment duration should not reach to this timeout since async operation worker will time out context before MaxDeploymentTimeout.
 	MaxDeploymentTimeout = time.Minute * time.Duration(10)
 	// DefaultCacheResyncInterval is the interval for resyncing informer.
-	DefaultCacheResyncInterval = time.Second * time.Duration(30)
+	DefaultCacheResyncInterval = time.Second * time.Duration(10)
 )
 
 // NewKubernetesHandler creates Kubernetes Resource handler instance.
@@ -142,19 +142,21 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 
 	select {
 	case <-ctx.Done():
-		// Get the final deployment status
-		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
+		// Get the final deployment status (do not use 'ctx' here since it is already cancelled)
+		// TODO: Deployment doesn't describe the detail of POD failures, so we should get the errors from POD - https://github.com/project-radius/radius/issues/5686
+		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(context.Background(), item.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
 		}
 
 		// Now get the latest available observation of deployment current state
 		// note that there can be a race condition here, by the time it fetches the latest status, deployment might be succeeded
-		status := v1.DeploymentCondition{}
 		if len(dep.Status.Conditions) > 0 {
-			status = dep.Status.Conditions[len(dep.Status.Conditions)-1]
+			status := dep.Status.Conditions[len(dep.Status.Conditions)-1]
+			return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 		}
-		return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
+
+		return fmt.Errorf("deployment timed out, name: %s, namespace %s", item.GetName(), item.GetNamespace())
 
 	case <-doneCh:
 		logger.Info(fmt.Sprintf("Marking deployment %s in namespace %s as complete", item.GetName(), item.GetNamespace()))
