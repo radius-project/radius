@@ -14,18 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package install
 
-import (
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
-var installCmd = &cobra.Command{
-	Use:   "install",
-	Short: "Installs radius for a given platform",
-	Long:  `Installs radius for a given platform`,
-}
-
-func init() {
-	RootCmd.AddCommand(installCmd)
+// NewCommand returns a new cobra command for `rad install`.
+func NewCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "install",
+		Short: "Installs Radius for a given platform",
+		Long:  `Installs Radius for a given platform`,
+	}
 }
