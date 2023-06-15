@@ -316,13 +316,13 @@ func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
 			name:              "context timeout",
 			contextTimeout:    time.Duration(1) * time.Second,
 			deploymentTimeout: time.Duration(5) * time.Minute,
-			expectedError:     "deployment is timed out with the status: Deadline is exceeded (ProgressDeadlineExceeded), name: test-deployment, namespace: test-namespace",
+			expectedError:     "deployment has timed out with the status: Deadline is exceeded (ProgressDeadlineExceeded), name: test-deployment, namespace: test-namespace",
 		},
 		{
 			name:              "deployment timeout",
 			contextTimeout:    time.Duration(5) * time.Minute,
 			deploymentTimeout: time.Duration(1) * time.Second,
-			expectedError:     "deployment is timed out with the status: Deadline is exceeded (ProgressDeadlineExceeded), name: test-deployment, namespace: test-namespace",
+			expectedError:     "deployment has timed out with the status: Deadline is exceeded (ProgressDeadlineExceeded), name: test-deployment, namespace: test-namespace",
 		},
 	}
 
@@ -403,5 +403,5 @@ func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
 
 	// It must be timed out because the name of the deployment does not match.
 	require.Error(t, err)
-	require.Equal(t, "deployment is timed out with the status: unknown status, name: not-matched-deployment, namespace test-namespace", err.Error())
+	require.Equal(t, "deployment has timed out with the status: unknown status, name: not-matched-deployment, namespace test-namespace", err.Error())
 }

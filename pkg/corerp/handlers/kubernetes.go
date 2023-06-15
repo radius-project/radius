@@ -125,7 +125,7 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	doneCh := make(chan bool, 1)
-	statusCh := make(chan string, 5)
+	statusCh := make(chan string, 1)
 
 	ctx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
 	// This ensures that the informer is stopped when this function is returned.
@@ -144,7 +144,7 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 		select {
 		case <-ctx.Done():
 			// TODO: Deployment doesn't describe the detail of POD failures, so we should get the errors from POD - https://github.com/project-radius/radius/issues/5686
-			err := fmt.Errorf("deployment is timed out with the status: %s", lastStatus)
+			err := fmt.Errorf("deployment has timed out with the status: %s", lastStatus)
 			logger.Error(err, "Kubernetes handler failed")
 			return err
 
