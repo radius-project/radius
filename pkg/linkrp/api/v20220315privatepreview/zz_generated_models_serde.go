@@ -1861,18 +1861,52 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type SQLDatabaseListSecretsResult.
+func (s SQLDatabaseListSecretsResult) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "connectionString", s.ConnectionString)
+	populate(objectMap, "password", s.Password)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type SQLDatabaseListSecretsResult.
+func (s *SQLDatabaseListSecretsResult) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", s, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "connectionString":
+				err = unpopulate(val, "ConnectionString", &s.ConnectionString)
+				delete(rawMsg, key)
+		case "password":
+				err = unpopulate(val, "Password", &s.Password)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", s, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type SQLDatabaseProperties.
 func (s SQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", s.Application)
 	populate(objectMap, "database", s.Database)
 	populate(objectMap, "environment", s.Environment)
+	populate(objectMap, "port", s.Port)
 	populate(objectMap, "provisioningState", s.ProvisioningState)
 	populate(objectMap, "recipe", s.Recipe)
 	populate(objectMap, "resourceProvisioning", s.ResourceProvisioning)
 	populate(objectMap, "resources", s.Resources)
+	populate(objectMap, "secrets", s.Secrets)
 	populate(objectMap, "server", s.Server)
 	populate(objectMap, "status", s.Status)
+	populate(objectMap, "username", s.Username)
 	return json.Marshal(objectMap)
 }
 
@@ -1894,6 +1928,9 @@ func (s *SQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 		case "environment":
 				err = unpopulate(val, "Environment", &s.Environment)
 				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, "Port", &s.Port)
+				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &s.ProvisioningState)
 				delete(rawMsg, key)
@@ -1906,11 +1943,17 @@ func (s *SQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 		case "resources":
 				err = unpopulate(val, "Resources", &s.Resources)
 				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, "Secrets", &s.Secrets)
+				delete(rawMsg, key)
 		case "server":
 				err = unpopulate(val, "Server", &s.Server)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &s.Status)
+				delete(rawMsg, key)
+		case "username":
+				err = unpopulate(val, "Username", &s.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1993,6 +2036,37 @@ func (s *SQLDatabaseResourceListResult) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "value":
 				err = unpopulate(val, "Value", &s.Value)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", s, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type SQLDatabaseSecrets.
+func (s SQLDatabaseSecrets) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "connectionString", s.ConnectionString)
+	populate(objectMap, "password", s.Password)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type SQLDatabaseSecrets.
+func (s *SQLDatabaseSecrets) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", s, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "connectionString":
+				err = unpopulate(val, "ConnectionString", &s.ConnectionString)
+				delete(rawMsg, key)
+		case "password":
+				err = unpopulate(val, "Password", &s.Password)
 				delete(rawMsg, key)
 		}
 		if err != nil {

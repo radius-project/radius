@@ -46,7 +46,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     container: {
       image: magpieImage
       env: {
-        CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},${sqlRoute.properties.port};Initial Catalog=${db.properties.database};User Id=${username};Password=${password};Encrypt=True;TrustServerCertificate=True'
+        CONNECTION_SQL_CONNECTIONSTRING: db.connectionString()
       }
       readinessProbe: {
         kind: 'httpGet'
@@ -66,6 +66,11 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
     server: sqlRoute.properties.hostname
     database: 'master'
     resourceProvisioning: 'manual'
+    port: sqlRoute.properties.port
+    username: username
+    secrets:{
+      password: password
+    }
   }
 }
 

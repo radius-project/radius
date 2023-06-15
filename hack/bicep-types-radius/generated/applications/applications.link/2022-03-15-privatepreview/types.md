@@ -123,6 +123,11 @@
 * **ApiVersion**: 2022-03-15-privatepreview
 * **Output**: [RedisCacheListSecretsResult](#rediscachelistsecretsresult)
 
+## Function listSecrets (Applications.Link/sqlDatabases@2022-03-15-privatepreview)
+* **Resource**: Applications.Link/sqlDatabases
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [SqlDatabaseListSecretsResult](#sqldatabaselistsecretsresult)
+
 ## Function listSecrets (Applications.Link/extenders@2022-03-15-privatepreview)
 * **Resource**: Applications.Link/extenders
 * **ApiVersion**: 2022-03-15-privatepreview
@@ -314,12 +319,20 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **database**: string: The name of the Sql database.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **port**: int: Port value of the target Sql database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the SqlDatabase resource
+* **secrets**: [SqlDatabaseSecrets](#sqldatabasesecrets): The secret values for the given SqlDatabase resource
 * **server**: string: The fully qualified domain name of the Sql database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **username**: string: Username to use when connecting to the target Sql database
+
+## SqlDatabaseSecrets
+### Properties
+* **connectionString**: string: Connection string used to connect to the target Sql database
+* **password**: string: Password to use when connecting to the target Sql database
 
 ## TrackedResourceTags
 ### Properties
@@ -339,6 +352,11 @@
 ### Properties
 * **connectionString**: string (ReadOnly): The connection string used to connect to the Redis cache
 * **password**: string (ReadOnly): The password for this Redis cache instance
+
+## SqlDatabaseListSecretsResult
+### Properties
+* **connectionString**: string (ReadOnly): Connection string used to connect to the target Sql database
+* **password**: string (ReadOnly): Password to use when connecting to the target Sql database
 
 ## ExtenderSecrets
 ### Properties
