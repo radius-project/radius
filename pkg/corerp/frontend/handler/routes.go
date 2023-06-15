@@ -26,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
@@ -310,6 +311,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
+						AsyncOperationTimeout: rpv1.AsyncCreateOrUpdateContainerTimeout,
 					},
 				)
 			},
@@ -327,6 +329,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
+						AsyncOperationTimeout: rpv1.AsyncCreateOrUpdateContainerTimeout,
 					},
 				)
 			},

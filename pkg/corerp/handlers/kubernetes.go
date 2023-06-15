@@ -42,9 +42,8 @@ import (
 )
 
 const (
-	// MaxDeploymentTimeout is the max timeout for waiting for a deployment to be ready.
-	// Deployment duration should not reach to this timeout since async operation worker will time out context before MaxDeploymentTimeout.
-	MaxDeploymentTimeout = time.Minute * time.Duration(10)
+	// DeploymentTimeoutMargin is timeout margin for handling error before the actual timeout.
+	DeploymentTimeoutMargin = time.Second * time.Duration(5)
 	// DefaultCacheResyncInterval is the interval for resyncing informer.
 	DefaultCacheResyncInterval = time.Second * time.Duration(10)
 )
@@ -52,9 +51,10 @@ const (
 // NewKubernetesHandler creates Kubernetes Resource handler instance.
 func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) ResourceHandler {
 	return &kubernetesHandler{
-		client:              client,
-		clientSet:           clientSet,
-		deploymentTimeOut:   MaxDeploymentTimeout,
+		client:    client,
+		clientSet: clientSet,
+
+		deploymentTimeOut:   rpv1.AsyncCreateOrUpdateContainerTimeout - DeploymentTimeoutMargin,
 		cacheResyncInterval: DefaultCacheResyncInterval,
 	}
 }
@@ -130,11 +130,11 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 	doneCh := make(chan bool, 1)
 	errCh := make(chan error, 1)
 
-	ctx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
+	deploymentCtx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
 	// This ensures that the informer is stopped when this function is returned.
 	defer cancel()
 
-	err := handler.startDeploymentInformer(ctx, item, doneCh, errCh)
+	err := handler.startDeploymentInformer(deploymentCtx, item, doneCh, errCh)
 	if err != nil {
 		logger.Error(err, "failed to start deployment informer")
 		return err
@@ -142,21 +142,27 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 
 	select {
 	case <-ctx.Done():
+		// This should not happen.
+		err := fmt.Errorf("job context timed out, name: %s, namespace %s", item.GetName(), item.GetNamespace())
+		logger.Error(err, "Kubernetes resource deployment timed out before deployment context.")
+		return err
+
+	case <-deploymentCtx.Done():
 		// Get the final deployment status (do not use 'ctx' here since it is already cancelled)
 		// TODO: Deployment doesn't describe the detail of POD failures, so we should get the errors from POD - https://github.com/project-radius/radius/issues/5686
 		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(context.Background(), item.GetName(), metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
+			return fmt.Errorf("kubernetes deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
 		}
 
 		// Now get the latest available observation of deployment current state
 		// note that there can be a race condition here, by the time it fetches the latest status, deployment might be succeeded
 		if len(dep.Status.Conditions) > 0 {
 			status := dep.Status.Conditions[len(dep.Status.Conditions)-1]
-			return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
+			return fmt.Errorf("kubernetes deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 		}
 
-		return fmt.Errorf("deployment timed out, name: %s, namespace %s", item.GetName(), item.GetNamespace())
+		return fmt.Errorf("kubernetes deployment timed out, name: %s, namespace %s", item.GetName(), item.GetNamespace())
 
 	case <-doneCh:
 		logger.Info(fmt.Sprintf("Marking deployment %s in namespace %s as complete", item.GetName(), item.GetNamespace()))
