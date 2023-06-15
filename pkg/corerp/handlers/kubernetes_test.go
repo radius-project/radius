@@ -337,12 +337,6 @@ func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
 				{
 					Type:    v1.DeploymentProgressing,
 					Status:  corev1.ConditionFalse,
-					Reason:  "NewReplicaSetAvailable",
-					Message: "Deployment has minimum availability",
-				},
-				{
-					Type:    v1.DeploymentProgressing,
-					Status:  corev1.ConditionFalse,
 					Reason:  "ProgressDeadlineExceeded",
 					Message: "Deadline is exceeded",
 				},

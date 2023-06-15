@@ -201,20 +201,18 @@ func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, i
 func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, obj *v1.Deployment, doneCh chan<- bool, statusCh chan<- string) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	cond := obj.Status.Conditions
-	for i, c := range cond {
-		if i == len(cond)-1 {
-			statusCh <- fmt.Sprintf("%s (%s), name: %s, namespace: %s", c.Message, c.Reason, obj.GetName(), obj.GetNamespace())
-		}
-
+	for _, c := range cond {
 		// check for complete deployment condition
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
-		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
+		if c.Type == v1.DeploymentProgressing {
 			// ObservedGeneration should be updated to latest generation to avoid stale replicas
-			if obj.Status.ObservedGeneration >= obj.Generation {
+			if c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") && obj.Status.ObservedGeneration >= obj.Generation {
 				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
 				doneCh <- true
 				return
 			}
+			// Update the current status of deployment when deployment is progressing. If deployment is failed, the last status will be returned to the caller.
+			statusCh <- fmt.Sprintf("%s (%s), name: %s, namespace: %s", c.Message, c.Reason, obj.GetName(), obj.GetNamespace())
 		}
 	}
 }
