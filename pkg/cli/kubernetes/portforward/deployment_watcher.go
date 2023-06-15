@@ -19,6 +19,7 @@ package portforward
 import (
 	"context"
 	"sort"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+)
+
+const (
+	PodWatchTimeout = 5 * time.Second
 )
 
 type deploymentWatcher struct {
@@ -185,14 +190,21 @@ func (dw *deploymentWatcher) deleted(ctx context.Context, pod *corev1.Pod) {
 }
 
 func (dw *deploymentWatcher) ensureWatcher(ctx context.Context) {
-	if dw.podWatcher == nil && len(dw.pods) > 0 {
-		pod := dw.selectBestPod()
+	if dw.podWatcher == nil {
+		if len(dw.pods) > 0 {
+			pod := dw.selectBestPod()
 
-		ctx, cancel := context.WithCancel(ctx)
-		dw.podWatcher = NewPodWatcher(dw.Options, pod, cancel)
+			ctx, cancel := context.WithCancel(ctx)
+			dw.podWatcher = NewPodWatcher(dw.Options, pod, cancel)
 
-		// will run until canceled
-		go func() { _ = dw.podWatcher.Run(ctx) }()
+			// will run until canceled
+			go func() { _ = dw.podWatcher.Run(ctx) }()
+		} else {
+			// No pods available, wait and try again
+			dw.Options.Out.Write([]byte("No active pods available for port-forwarding.\n"))
+			time.Sleep(PodWatchTimeout)
+			dw.Run(ctx)
+		}
 	}
 }
 
