@@ -42,10 +42,11 @@ import (
 )
 
 const (
-	// DefaultDeploymentTimeout is the timeout for waiting for a deployment to be ready.
-	DefaultDeploymentTimeout = time.Minute * time.Duration(5)
+	// MaxDeploymentTimeout is the max timeout for waiting for a deployment to be ready.
+	// Deployment duration should not reach to this timeout since async operation worker will time out context before MaxDeploymentTimeout.
+	MaxDeploymentTimeout = time.Minute * time.Duration(10)
 	// DefaultCacheResyncInterval is the interval for resyncing informer.
-	DefaultCacheResyncInterval = time.Minute * time.Duration(10)
+	DefaultCacheResyncInterval = time.Second * time.Duration(30)
 )
 
 // NewKubernetesHandler creates Kubernetes Resource handler instance.
@@ -53,7 +54,7 @@ func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) Resourc
 	return &kubernetesHandler{
 		client:              client,
 		clientSet:           clientSet,
-		deploymentTimeOut:   DefaultDeploymentTimeout,
+		deploymentTimeOut:   MaxDeploymentTimeout,
 		cacheResyncInterval: DefaultCacheResyncInterval,
 	}
 }
@@ -130,10 +131,14 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 	errCh := make(chan error, 1)
 
 	ctx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
-
-	_ = handler.startDeploymentInformer(ctx, item, doneCh, errCh)
 	// This ensures that the informer is stopped when this function is returned.
 	defer cancel()
+
+	err := handler.startDeploymentInformer(ctx, item, doneCh, errCh)
+	if err != nil {
+		logger.Error(err, "failed to start deployment informer")
+		return err
+	}
 
 	select {
 	case <-ctx.Done():
@@ -160,7 +165,7 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 	}
 }
 
-func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, item client.Object, doneCh chan<- bool, errCh chan<- error) func() bool {
+func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, item client.Object, doneCh chan<- bool, errCh chan<- error) error {
 	informers := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 	deploymentInformer := informers.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -190,7 +195,13 @@ func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, i
 	deploymentInformer.AddEventHandler(handlers)
 	informers.Start(ctx.Done())
 
-	return deploymentInformer.HasSynced
+	// Wait for the deployment informer's cache to be synced.
+	if !cache.WaitForCacheSync(ctx.Done(), deploymentInformer.HasSynced) {
+		err := fmt.Errorf("cache sync is failed for deployment informer: name: %s, namespace %s", item.GetName(), item.GetNamespace())
+		return err
+	}
+
+	return nil
 }
 
 func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, obj *v1.Deployment, doneCh chan<- bool) {
