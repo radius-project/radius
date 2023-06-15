@@ -44,7 +44,7 @@
             "preLaunchTask": "Build Radius (all)",
             "program": "${workspaceFolder}/cmd/rad/main.go",
             "cwd": "${workspaceFolder}",
-            "args": [],
+            "args": ["run", "${workspaceFolder}/app.bicep", "-a", "willsmith"],
         },
         {
             "name": "Launch Deployment Engine",
