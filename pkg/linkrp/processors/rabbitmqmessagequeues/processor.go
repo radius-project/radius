@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 )
 
 const (
@@ -50,5 +51,26 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 }
 
 func (p *Processor) computeConnectionString(resource *datamodel.RabbitMQMessageQueue) string {
+	return resource.Properties.Secrets.ConnectionString
+}
+
+// Process implements the processors.Processor interface for RedisCache resources.
+func (p *Processor) N_Process(ctx context.Context, resource *msg_dm.RabbitMQQueue, options processors.Options) error {
+	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
+	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
+
+	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
+		return p.N_computeConnectionString(resource), nil
+	})
+
+	err := validator.SetAndValidate(options.RecipeOutput)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Processor) N_computeConnectionString(resource *msg_dm.RabbitMQQueue) string {
 	return resource.Properties.Secrets.ConnectionString
 }

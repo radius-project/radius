@@ -24,11 +24,11 @@ import (
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 )
 
-// Processor is a processor for RabbitMQQueue resource.
+// Processor is a processor for RedisCache resources.
 type N_Processor struct {
 }
 
-// Process implements the processors.Processor interface for RabbitMQQueue resources.
+// Process implements the processors.Processor interface for RedisCache resources.
 func (p *N_Processor) Process(ctx context.Context, resource *msg_dm.RabbitMQQueue, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
