@@ -224,3 +224,47 @@ func TestFromResourceProvisiongDataModel(t *testing.T) {
 		require.Equal(t, testCase.versioned, *sc)
 	}
 }
+func TestToRecipeDataModel(t *testing.T) {
+	testset := []struct {
+		versioned *Recipe
+		datamodel linkrp.LinkRecipe
+	}{
+		{
+			nil,
+			linkrp.LinkRecipe{
+				Name: defaultRecipeName,
+			},
+		},
+		{
+			&Recipe{
+				Name: to.Ptr("test"),
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+			linkrp.LinkRecipe{
+				Name: "test",
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+		},
+		{
+			&Recipe{
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+			linkrp.LinkRecipe{
+				Name: defaultRecipeName,
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+		},
+	}
+	for _, testCase := range testset {
+		sc := toRecipeDataModel(testCase.versioned)
+		require.Equal(t, testCase.datamodel, sc)
+	}
+}
