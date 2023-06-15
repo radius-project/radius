@@ -22,5 +22,5 @@ import (
 
 var (
 	// AsyncCreateOrUpdateContainerTimeout is the timeout for async create or update container.
-	AsyncCreateOrUpdateContainerTimeout = time.Duration(2) * time.Minute
+	AsyncCreateOrUpdateContainerTimeout = time.Duration(125) * time.Second
 )
