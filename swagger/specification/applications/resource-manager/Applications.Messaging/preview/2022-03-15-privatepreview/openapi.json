@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Messaging Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST APIs for Applications.Messaging/rabbitMQQueues",
+    "description": "REST APIs for Applications.Messaging",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"

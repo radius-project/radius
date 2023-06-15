@@ -230,6 +230,9 @@ planes:
       resourceProviders:
         Applications.Core: "http://appcore-rp.radius-system:5443"
         Applications.Link: "http://appcore-rp.radius-system:5444"
+        Applications.Dapr: "http://appcore-rp.radius-system:5444"
+        Applications.Datastores: "http://appcore-rp.radius-system:5444"
+        Applications.Messaging: "http://appcore-rp.radius-system:5444"
       kind: "UCPNative"
   - id: "/planes/deployments/local"
     properties:
