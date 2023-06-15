@@ -4,7 +4,7 @@ name: radius
 # version is the chart version, which will be replaced when this chart is packaged.
 version: '0.42.42-dev'
 # appVersion is the version of Radius, which will be replaced when this chart is packaged.
-appVersion: 'latest'
+appVersion: 'edge'
 home: https://radapp.dev
 sources:
   - https://github.com/project-radius/radius/tree/main/deploy/Chart
