@@ -46,7 +46,7 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     container: {
       image: magpieImage
       env: {
-        CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername}@${db.properties.server};Password=${adminPassword};Encrypt=true'
+        CONNECTION_SQL_CONNECTIONSTRING: db.connectionString()
       }
       readinessProbe: {
         kind: 'httpGet'
@@ -71,5 +71,10 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
     ]
     database: database
     server: server
+    port:1433
+    username: adminUsername
+    secrets: {
+      password: adminPassword
+    }
   }
 }

@@ -155,6 +155,16 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
+				Name: "Applications.Link/sqlDatabases/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "sqlDatabases",
+					Operation:   "List secrets",
+					Description: "Lists sqlDatabase secrets.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
 				Name: "Applications.Link/redisCaches/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
