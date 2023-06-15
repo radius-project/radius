@@ -58,8 +58,10 @@ env:
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
-  # The region for AWS resources.
+  # The region for AWS resources
   AWS_REGION: 'us-west-2'
+    # The AWS account ID
+  AWS_ACCOUNT_ID: '179022619019'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
@@ -434,7 +436,7 @@ jobs:
             --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
 
           echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ env.AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
