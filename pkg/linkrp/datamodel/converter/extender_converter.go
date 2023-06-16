@@ -50,6 +50,9 @@ func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.Extender), err
 
 	default:

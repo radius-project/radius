@@ -46,6 +46,9 @@ func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamod
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.SqlDatabase), err
 
 	default:
