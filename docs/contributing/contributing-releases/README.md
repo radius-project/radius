@@ -162,9 +162,9 @@ If sample validation passes, we can start the process of creating the final rele
    git push origin v0.21
    ```
 
-### Post release sanity check
+### Post release check
 
-After creating a release, it's good to sanity check that the release works in some small mainline scenarios and has the right versions for each container.
+After creating a release candidate and the final release, it's good to check that the release works in some small mainline scenarios and has the right versions for each container.
 
 1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.21), you can use the following URL format:
 
@@ -206,7 +206,9 @@ After creating a release, it's good to sanity check that the release works in so
    kubectl describe pods -n radius-system -l control-plane=ucp
    ```
 
-   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.21 for the 0.21 release for the appcore-rp image.
+   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.21 for the 0.21 release for the appcore-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
+
+   ![Example of version and tag mismatch](images/image-label.png)
 
 5. Execute `rad deploy` to confirm a simple deployment works
 
