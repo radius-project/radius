@@ -36,7 +36,6 @@ type applicationWatcher struct {
 
 	done               chan struct{}
 	deploymentWatchers map[string]*deploymentWatcher
-	staleReplicaSets   map[string]bool
 }
 
 // NewApplicationWatcher creates a new applicationWatcher.
@@ -57,11 +56,6 @@ func (aw *applicationWatcher) Run(ctx context.Context) error {
 	// This can include the user's Radius containers as well as any Kubernetes resources that are labeled
 	// as part of the application (eg: something created with a recipe).
 	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{aw.Options.ApplicationName})
-	if err != nil {
-		return err
-	}
-
-	aw.staleReplicaSets, err = findStaleReplicaSets(ctx, aw.Options.Client, aw.Options.Namespace, aw.Options.ApplicationName)
 	if err != nil {
 		return err
 	}
@@ -135,7 +129,7 @@ func (aw *applicationWatcher) updated(ctx context.Context, deployment *appsv1.De
 
 	// if we get here, it's time to create a new watcher
 	ctx, cancel := context.WithCancel(ctx)
-	entry = NewDeploymentWatcher(aw.Options, deployment.Spec.Selector.MatchLabels, aw.staleReplicaSets, cancel)
+	entry = NewDeploymentWatcher(aw.Options, deployment.Spec.Selector.MatchLabels, cancel)
 
 	aw.deploymentWatchers[deployment.Name] = entry
 

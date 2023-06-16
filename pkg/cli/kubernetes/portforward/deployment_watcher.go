@@ -18,6 +18,7 @@ package portforward
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -48,12 +49,11 @@ type deploymentWatcher struct {
 	podWatcher *podWatcher
 }
 
-func NewDeploymentWatcher(options Options, matchLabels map[string]string, staleReplicaSets map[string]bool, cancel func()) *deploymentWatcher {
+func NewDeploymentWatcher(options Options, matchLabels map[string]string, cancel func()) *deploymentWatcher {
 	return &deploymentWatcher{
-		Cancel:           cancel,
-		MatchLabels:      matchLabels,
-		Options:          options,
-		StaleReplicaSets: staleReplicaSets,
+		Cancel:      cancel,
+		MatchLabels: matchLabels,
+		Options:     options,
 
 		done: make(chan struct{}),
 		pods: map[string]*corev1.Pod{},
@@ -111,7 +111,13 @@ func (dw *deploymentWatcher) Run(ctx context.Context) error {
 
 			switch event.Type {
 			case watch.Added, watch.Modified:
-				dw.updated(ctx, pod)
+				// Find stale replica sets
+				staleReplicaSets, err := findStaleReplicaSets(ctx, dw.Options.Client, dw.Options.Namespace, dw.Options.ApplicationName)
+				if err != nil {
+					dw.Options.Out.Write([]byte(fmt.Sprintf("Cannot list ReplicaSets with error: %v \n", err)))
+				} else {
+					dw.updated(ctx, pod, staleReplicaSets)
+				}
 			case watch.Deleted:
 				dw.deleted(ctx, pod)
 			}
@@ -119,10 +125,11 @@ func (dw *deploymentWatcher) Run(ctx context.Context) error {
 	}
 }
 
-func (dw *deploymentWatcher) ignorePod(pod *corev1.Pod) bool {
+// ignorePod returns true if the pod should be ignored based on the stale replica set list
+func (dw *deploymentWatcher) ignorePod(pod *corev1.Pod, staleReplicaSets map[string]bool) bool {
 	for _, owner := range pod.ObjectMeta.OwnerReferences {
 		if owner.Kind == "ReplicaSet" {
-			_, found := dw.StaleReplicaSets[owner.Name]
+			_, found := staleReplicaSets[owner.Name]
 			return found
 		}
 	}
@@ -130,7 +137,7 @@ func (dw *deploymentWatcher) ignorePod(pod *corev1.Pod) bool {
 	return false
 }
 
-func (dw *deploymentWatcher) updated(ctx context.Context, pod *corev1.Pod) {
+func (dw *deploymentWatcher) updated(ctx context.Context, pod *corev1.Pod, staleReplicaSets map[string]bool) {
 	// The deployment watcher only wants to watch one replica from each deployment.
 	// We also need to keep a cache of pods which will help us select a new pod when needed.
 
@@ -151,7 +158,7 @@ func (dw *deploymentWatcher) updated(ctx context.Context, pod *corev1.Pod) {
 	if pod.DeletionTimestamp != nil {
 		// Pod is marked for deletion
 		delete(dw.pods, pod.Name)
-	} else if dw.ignorePod(pod) {
+	} else if dw.ignorePod(pod, staleReplicaSets) {
 		// Pod should be ignored, do nothing
 	} else {
 		// Pod is being added/updated
@@ -202,8 +209,6 @@ func (dw *deploymentWatcher) ensureWatcher(ctx context.Context) {
 		} else {
 			// No pods available, wait and try again
 			dw.Options.Out.Write([]byte("No active pods available for port-forwarding.\n"))
-			time.Sleep(PodWatchTimeout)
-			dw.Run(ctx)
 		}
 	}
 }
