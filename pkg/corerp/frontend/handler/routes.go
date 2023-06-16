@@ -32,8 +32,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 
-	corerp_config "github.com/project-radius/radius/pkg/corerp/config"
-
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
@@ -312,7 +310,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
-						AsyncOperationTimeout: corerp_config.AsyncCreateOrUpdateContainerTimeout,
 					},
 				)
 			},
@@ -330,7 +327,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
-						AsyncOperationTimeout: corerp_config.AsyncCreateOrUpdateContainerTimeout,
 					},
 				)
 			},
