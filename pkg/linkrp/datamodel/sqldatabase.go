@@ -80,7 +80,7 @@ type SqlDatabaseProperties struct {
 	// List of the resource IDs that support the SqlDB resource
 	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
 	// Username of the Sql database
-	Username string `json:"username"`
+	Username string `json:"username,omitempty"`
 	// Secrets values provided for the resource
 	Secrets SqlDatabaseSecrets `json:"secrets,omitempty"`
 }

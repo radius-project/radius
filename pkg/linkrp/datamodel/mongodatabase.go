@@ -55,7 +55,7 @@ type MongoDatabaseProperties struct {
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 	// Username of the Mongo database
-	Username string `json:"username"`
+	Username string `json:"username,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
