@@ -8,9 +8,6 @@ param magpieImage string
 @description('Specifies the port for the container resource.')
 param magpiePort int = 3000
 
-@description('Specifies the port for the container resource.')
-param sqlPort int = 1433
-
 @description('Specifies the SQL username.')
 param username string = 'sa'
 
