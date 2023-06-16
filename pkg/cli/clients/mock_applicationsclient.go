@@ -52,12 +52,11 @@ func (mr *MockApplicationsManagementClientMockRecorder) CreateApplicationIfNotFo
 }
 
 // CreateEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2 string, arg3 *v20220315privatepreview.EnvironmentProperties) (bool, error) {
+func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2 string, arg3 *v20220315privatepreview.EnvironmentProperties) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEnvironment", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // CreateEnvironment indicates an expected call of CreateEnvironment.
@@ -81,12 +80,11 @@ func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateApplicatio
 }
 
 // CreateUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20220901privatepreview.ResourceGroupResource) (bool, error) {
+func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20220901privatepreview.ResourceGroupResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUCPGroup", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // CreateUCPGroup indicates an expected call of CreateUCPGroup.
