@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,10 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
-)
-
-const (
-	PodWatchTimeout = 5 * time.Second
 )
 
 type deploymentWatcher struct {
@@ -111,7 +106,6 @@ func (dw *deploymentWatcher) Run(ctx context.Context) error {
 
 			switch event.Type {
 			case watch.Added, watch.Modified:
-				// Find stale replica sets
 				staleReplicaSets, err := findStaleReplicaSets(ctx, dw.Options.Client, dw.Options.Namespace, dw.Options.ApplicationName)
 				if err != nil {
 					dw.Options.Out.Write([]byte(fmt.Sprintf("Cannot list ReplicaSets with error: %v \n", err)))
@@ -125,7 +119,7 @@ func (dw *deploymentWatcher) Run(ctx context.Context) error {
 	}
 }
 
-// ignorePod returns true if the pod should be ignored based on the stale replica set list
+// ignorePod determines if a pod should be ignored based on whether or not the owning ReplicaSet is stale
 func (dw *deploymentWatcher) ignorePod(pod *corev1.Pod, staleReplicaSets map[string]bool) bool {
 	for _, owner := range pod.ObjectMeta.OwnerReferences {
 		if owner.Kind == "ReplicaSet" {
