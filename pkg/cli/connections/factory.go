@@ -29,7 +29,6 @@ import (
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/sdk"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
@@ -175,7 +174,7 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 		return nil, err
 	}
 
-	return &ucp.ARMApplicationsManagementClient{
+	return &clients.UCPApplicationsManagementClient{
 		// The client expects root scope without a leading /
 		RootScope:     strings.TrimPrefix(workspace.Scope, resources.SegmentSeparator),
 		ClientOptions: sdk.NewClientOptions(connection),

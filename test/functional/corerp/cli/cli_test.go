@@ -34,8 +34,8 @@ import (
 	"time"
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
@@ -692,8 +692,8 @@ func GetAvailablePort() (int, error) {
 
 func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options corerp.CoreRPTestOptions, applicationName string) error {
 	client := options.ManagementClient
-	require.IsType(t, client, &ucp.ARMApplicationsManagementClient{})
-	appManagementClient := client.(*ucp.ARMApplicationsManagementClient)
+	require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
+	appManagementClient := client.(*clients.UCPApplicationsManagementClient)
 	appDeleteClient, err := v20220315privatepreview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
 	require.NoError(t, err)
 	// We don't care about the response for tests
