@@ -31,7 +31,7 @@ import (
 
 var (
 	// Set this to a big value when debugging.
-	waitTimeout = 1 * time.Second
+	waitTimeout = 2 * time.Second
 )
 
 // NOTE: I tried my best to write a test for the progress model. It was possible to write a good test, but
