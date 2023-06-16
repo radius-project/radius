@@ -350,7 +350,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				EnvironmentID: TestEnvironmentID,
 				ApplicationID: TestApplicationID,
 				ResourceID:    TestResourceID,
-				Parameters: map[string]any{
+				DeveloperParameters: map[string]any{
 					"p1": "v1",
 				},
 			}

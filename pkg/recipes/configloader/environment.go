@@ -127,10 +127,11 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 	}
 
 	return &recipes.Definition{
-		Name:         recipeName,
-		Driver:       *found.TemplateKind,
-		ResourceType: resource.Type(),
-		Parameters:   found.Parameters,
-		TemplatePath: *found.TemplatePath,
+		Name:               recipeName,
+		Driver:             *found.TemplateKind,
+		ResourceType:       resource.Type(),
+		OperatorParameters: found.Parameters,
+		TemplatePath:       *found.TemplatePath,
+		RecipeMetadata:     *recipe,
 	}, nil
 }

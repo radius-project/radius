@@ -58,7 +58,7 @@ type bicepDriver struct {
 }
 
 // Execute fetches the recipe contents from acr and deploys the recipe by making a call to ucp and returns the recipe result.
-func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.Metadata, definition recipes.Definition) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configuration, definition recipes.Definition) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", definition.Name, definition.TemplatePath))
 
@@ -68,7 +68,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		return nil, err
 	}
 	// create the context object to be passed to the recipe deployment
-	recipeContext, err := createRecipeContextParameter(recipe.ResourceID, recipe.EnvironmentID, configuration.Runtime.Kubernetes.EnvironmentNamespace, recipe.ApplicationID, configuration.Runtime.Kubernetes.Namespace)
+	recipeContext, err := createRecipeContextParameter(definition.RecipeMetadata.ResourceID, definition.RecipeMetadata.EnvironmentID, configuration.Runtime.Kubernetes.EnvironmentNamespace, definition.RecipeMetadata.ApplicationID, configuration.Runtime.Kubernetes.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	_, isContextParameterDefined := recipeData[recipeParameters].(map[string]any)[datamodel.RecipeContextParameter]
-	parameters := createRecipeParameters(recipe.Parameters, definition.Parameters, isContextParameterDefined, recipeContext)
+	parameters := createRecipeParameters(definition.RecipeMetadata.DeveloperParameters, definition.OperatorParameters, isContextParameterDefined, recipeContext)
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)

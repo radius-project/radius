@@ -62,7 +62,7 @@ func Test_Engine_Success(t *testing.T) {
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		Parameters: map[string]any{
+		DeveloperParameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}
@@ -98,7 +98,7 @@ func Test_Engine_Success(t *testing.T) {
 
 	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
 	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
+	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
 
 	result, err := engine.Execute(ctx, recipeMetadata)
 	require.NoError(t, err)
@@ -120,7 +120,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		Parameters: map[string]any{
+		DeveloperParameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}
@@ -139,7 +139,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		Parameters: map[string]any{
+		DeveloperParameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}
@@ -156,7 +156,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		Parameters: map[string]any{
+		DeveloperParameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}

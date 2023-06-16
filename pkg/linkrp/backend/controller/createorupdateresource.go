@@ -128,11 +128,11 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		return nil, nil
 	}
 	request := recipes.Metadata{
-		Name:          input.Name,
-		Parameters:    input.Parameters,
-		EnvironmentID: data.ResourceMetadata().Environment,
-		ApplicationID: data.ResourceMetadata().Application,
-		ResourceID:    data.GetBaseResource().ID,
+		Name:                input.Name,
+		DeveloperParameters: input.Parameters,
+		EnvironmentID:       data.ResourceMetadata().Environment,
+		ApplicationID:       data.ResourceMetadata().Application,
+		ResourceID:          data.GetBaseResource().ID,
 	}
 
 	return c.engine.Execute(ctx, request)

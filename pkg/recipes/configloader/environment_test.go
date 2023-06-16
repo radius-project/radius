@@ -239,8 +239,13 @@ func TestGetRecipeDefinition(t *testing.T) {
 			Driver:       recipes.TemplateKindBicep,
 			ResourceType: "Applications.Link/mongoDatabases",
 			TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
-			Parameters: map[string]any{
+			OperatorParameters: map[string]any{
 				"foo": "bar",
+			},
+			RecipeMetadata: recipes.Metadata{
+				Name:          recipeName,
+				EnvironmentID: envResourceId,
+				ResourceID:    mongoResourceID,
 			},
 		}
 		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)

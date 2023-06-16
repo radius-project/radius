@@ -51,10 +51,12 @@ type Definition struct {
 	Driver string
 	// ResourceType represents the type of the link this recipe can be consumed by.
 	ResourceType string
-	// Parameters represents key/value parameters to pass to the recipe template at deployment.
-	Parameters map[string]any
+	// OperatorParameters represents key/value parameters to pass to the recipe template at deployment.
+	OperatorParameters map[string]any
 	// TemplatePath represents path to the template provided by the recipe.
 	TemplatePath string
+	// RecipeMetadata represents recipe details provided while creating a Link resource.
+	RecipeMetadata Metadata
 }
 
 // Metadata represents recipe details provided while creating a Link resource.
@@ -67,8 +69,8 @@ type Metadata struct {
 	EnvironmentID string
 	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
-	// Parameters represents Key/value parameters to pass into the recipe at deployment
-	Parameters map[string]any
+	// DeveloperParameters represents Key/value parameters to pass into the recipe at deployment
+	DeveloperParameters map[string]any
 }
 
 // RecipeOutput represents recipe deployment output.

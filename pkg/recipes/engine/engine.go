@@ -60,5 +60,5 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.Metadata) (*recipes
 		return nil, err
 	}
 
-	return driver.Execute(ctx, *configuration, recipe, *definition)
+	return driver.Execute(ctx, *configuration, *definition)
 }
