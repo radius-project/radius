@@ -50,6 +50,9 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 			return nil, err
 		}
 		dm, err := versioned.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.RedisCache), err
 
 	default:

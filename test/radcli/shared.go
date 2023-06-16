@@ -53,6 +53,11 @@ type ValidateInput struct {
 	ConfigHolder   framework.ConfigHolder
 	ConfigureMocks func(mocks ValidateMocks)
 
+	// ValidateCallback can be used to support a validation callback that will run after all other validation.
+	//
+	// This can be used to validate side-effects that occur in a Runner's Validate() function.
+	ValidateCallback func(t *testing.T, runner framework.Runner)
+
 	// CreateTempDirectory can be used to create a directory, and change directory into the
 	// newly created directory before calling Validate. Set this field to the name of the directory
 	// you want. The test framework will handle the cleanup.
@@ -160,6 +165,10 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				require.NoError(t, err, "validation should have passed but it failed")
 			} else {
 				require.Error(t, err, "validation should have failed but it passed")
+			}
+
+			if testcase.ValidateCallback != nil {
+				testcase.ValidateCallback(t, runner)
 			}
 		})
 	}

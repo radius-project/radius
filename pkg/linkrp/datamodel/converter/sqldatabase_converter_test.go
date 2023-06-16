@@ -77,9 +77,19 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 			nil,
 		},
 		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resource.json",
+			"2022-03-15-privatepreview",
+			nil,
+		},
+		{
 			"../../api/v20220315privatepreview/testdata/sqldatabaseresource-invalid.json",
 			"2022-03-15-privatepreview",
 			errors.New("json: cannot unmarshal number into Go struct field SqlDatabaseProperties.properties.database of type string"),
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_invalid_properties_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: v1.CodeInvalid, Message: "multiple errors were found:\n\tserver must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual"},
 		},
 		{
 			"",
@@ -111,6 +121,12 @@ func TestSqlDatabaseSecretsDataModelToVersioned(t *testing.T) {
 	}{
 		{
 			"../../api/v20220315privatepreview/testdata/sqldatabase_secrets_datamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.SQLDatabaseSecrets{},
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.SQLDatabaseSecrets{},
 			nil,

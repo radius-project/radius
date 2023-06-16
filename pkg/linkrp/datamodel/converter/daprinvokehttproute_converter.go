@@ -46,6 +46,9 @@ func DaprInvokeHttpRouteDataModelFromVersioned(content []byte, version string) (
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.DaprInvokeHttpRoute), err
 
 	default:

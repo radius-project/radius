@@ -66,7 +66,7 @@ type Runner struct {
 	Output              output.Interface
 	Workspace           *workspaces.Workspace
 	EnvironmentName     string
-	UCPResourceGroup    string
+	ResourceGroupName   string
 	Namespace           string
 	ConnectionFactory   connections.Factory
 	ConfigFileInterface framework.ConfigFileInterface
@@ -99,6 +99,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	r.Workspace.Scope, err = cli.RequireScope(cmd, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
 	r.Namespace, err = cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err
@@ -106,37 +111,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.Namespace = r.EnvironmentName
 	}
 
-	r.UCPResourceGroup, err = cmd.Flags().GetString("group")
-	if err != nil {
-		return err
-	}
-
-	if r.UCPResourceGroup == "" {
-		// If no resource group specified and no default resource group
-		if r.Workspace.Scope == "" {
-			return &cli.FriendlyError{Message: "no resource group specified or set as default. Specify a resource group with '--group' and try again."}
-		}
-		// Use the default scope if no resource group provided
-		scopeId, err := resources.Parse(r.Workspace.Scope)
-		if err != nil {
-			return err
-		}
-		r.UCPResourceGroup = scopeId.FindScope(resources.ResourceGroupsSegment)
-	}
-
-	// If resource group specified but no scope set up in config.yaml
-	if r.Workspace.Scope == "" {
-		r.Workspace.Scope = "/planes/radius/local/resourcegroups/" + r.UCPResourceGroup
-	}
-
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.UCPResourceGroup)
+	// Parse the resource group name so we can use it later. DO NOT use the
+	// --group argument, because we want to find the right group when the user
+	// didn't pass it.
+	scopeId, err := resources.Parse(r.Workspace.Scope)
+	if err != nil {
+		return err
+	}
+	r.ResourceGroupName = scopeId.FindScope(resources.ResourceGroupsSegment)
+
+	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.ResourceGroupName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
+		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.ResourceGroupName)}
 	} else if err != nil {
 		return err
 	}
@@ -164,11 +155,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		},
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, envProperties)
-	if err != nil || !isEnvCreated {
+	err = client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, envProperties)
+	if err != nil {
 		return err
 	}
-	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.UCPResourceGroup)
+	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.ResourceGroupName)
 
 	return nil
 }

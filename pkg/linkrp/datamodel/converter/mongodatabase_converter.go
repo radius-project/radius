@@ -45,6 +45,9 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 			return nil, err
 		}
 		dm, err := versioned.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.MongoDatabase), err
 
 	default:

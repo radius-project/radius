@@ -82,6 +82,11 @@ func TestRabbitMQMessageQueueDataModelFromVersioned(t *testing.T) {
 			errors.New("json: cannot unmarshal number into Go struct field RabbitMQMessageQueueProperties.properties.resource of type string"),
 		},
 		{
+			"../../api/v20220315privatepreview/testdata/rabbitmq_invalid_properties_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "queue is required when resourceProvisioning is manual"},
+		},
+		{
 			"",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
