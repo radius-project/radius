@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var handlerOldTests = []struct {
+var handlerTests = []struct {
 	url        string
 	method     string
 	isAzureAPI bool
@@ -441,7 +441,7 @@ var handlerOldTests = []struct {
 	},
 }
 
-func TestOldHandlers(t *testing.T) {
+func TestHandlers(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -452,16 +452,16 @@ func TestOldHandlers(t *testing.T) {
 	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
 
-	assertOldRouters(t, "", true, mockSP)
-	assertOldRouters(t, "/api.ucp.dev", false, mockSP)
+	assertRouters(t, "", true, mockSP)
+	assertRouters(t, "/api.ucp.dev", false, mockSP)
 }
 
-func assertOldRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovider.MockDataStorageProvider) {
+func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovider.MockDataStorageProvider) {
 	r := mux.NewRouter()
 	err := AddRoutes(context.Background(), r, isARM, ctrl.Options{PathBase: pathBase, DataProvider: mockSP})
 	require.NoError(t, err)
 
-	for _, tt := range handlerOldTests {
+	for _, tt := range handlerTests {
 		if !isARM && tt.isAzureAPI {
 			continue
 		}
