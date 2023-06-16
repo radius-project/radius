@@ -198,10 +198,6 @@ func TestGetRecipeDefinition(t *testing.T) {
 							"foo": "bar",
 						},
 					},
-					defaultRecipeName: {
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongoDefault/azure:1.0"),
-					},
 				},
 			},
 		},
@@ -217,14 +213,6 @@ func TestGetRecipeDefinition(t *testing.T) {
 		_, err := getRecipeDefinition(&envResource, &metadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to parse resourceID")
-	})
-	t.Run("empty recipe name loads default recipe", func(t *testing.T) {
-		metadata := recipeMetadata
-		metadata.Name = ""
-		definition, err := getRecipeDefinition(&envResource, &metadata)
-		require.NoError(t, err)
-		require.Equal(t, defaultRecipeName, definition.Name)
-		require.Equal(t, "", metadata.Name)
 	})
 	t.Run("recipe not found for the resource type", func(t *testing.T) {
 		metadata := recipeMetadata
