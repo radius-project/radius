@@ -57,13 +57,13 @@ func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		worker.Service{
 			Options:      options,
-			ProviderName: handler.ProviderNamespaceName,
+			ProviderName: handler.LinkProviderNamespace,
 		},
 	}
 }
 
 func (s *Service) Name() string {
-	return fmt.Sprintf("%s async worker", handler.ProviderNamespaceName)
+	return fmt.Sprintf("%s async worker", handler.LinkProviderNamespace)
 }
 
 func (s *Service) Run(ctx context.Context) error {

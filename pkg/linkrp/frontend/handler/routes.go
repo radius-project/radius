@@ -29,6 +29,10 @@ import (
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
+	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
+	dapr_conv "github.com/project-radius/radius/pkg/daprrp/datamodel/converter"
+	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	ds_conv "github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
@@ -36,27 +40,23 @@ import (
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
-	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
+	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
+	msg_conv "github.com/project-radius/radius/pkg/messagingrp/datamodel/converter"
 )
 
 const (
-	ProviderNamespaceName = "Applications.Link"
+	LinkProviderNamespace       = "Applications.Link"
+	DaprProviderNamespace       = "Applications.Dapr"
+	DatastoresProviderNamespace = "Applications.Datastores"
+	MessagingProviderNamespace  = "Applications.Messaging"
+	resourceGroupPath           = "/resourcegroups/{resourceGroupName}"
 )
 
-func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
-	rootScopePath := ctrlOpts.PathBase
-	if isARM {
-		rootScopePath += "/subscriptions/{subscriptionID}"
-	} else {
-		rootScopePath += "/planes/radius/{planeName}"
-	}
-	resourceGroupPath := "/resourcegroups/{resourceGroupName}"
+// AddRoutes configures routes and handlers for resourceproviders Datastoresrp, Messagingrp, Daprrp.
+func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
 
-	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, ProviderNamespaceName, NewGetOperations, ctrlOpts)
-	if err != nil {
-		return err
-	}
+	pathBase += getPathBase(isARM)
 
 	// URLs may use either the subscription/plane scope or resource group scope.
 	//
@@ -66,7 +66,783 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 		rootScopePath,
 	}
 
-	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, prefixes, "rootScope")
+	err := AddLinkRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	if err != nil {
+		return err
+	}
+	err = AddDatastoresRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	if err != nil {
+		return err
+	}
+	err = AddDaprRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	if err != nil {
+		return err
+	}
+	err = AddMessagingRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddMessagingRoutes configures routes and handlers for Messagingrp resourceprovider.
+func AddMessagingRoutes(ctx context.Context, router *mux.Router, pathBase string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+
+	// Configure the default ARM handlers.
+	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, MessagingProviderNamespace, NewGetOperations, ctrlOpts)
+	if err != nil {
+		return err
+	}
+
+	msg_specLoader, err := validator.LoadSpec(ctx, MessagingProviderNamespace, swagger.SpecFiles, prefixes, "rootScope")
+	if err != nil {
+		return err
+	}
+
+	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter.Use(validator.APIValidator(msg_specLoader))
+
+	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter.Use(validator.APIValidator(msg_specLoader))
+
+	rabbitmqQueuePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.messaging/rabbitmqqueues").Subrouter()
+	rabbitmqQueueResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.messaging/rabbitmqqueues").Subrouter()
+	rabbitmqQueueResourceRouter := rabbitmqQueueResourceGroupRouter.PathPrefix("/{rabbitMQQueueName}").Subrouter()
+
+	// Datastores handlers:
+	ds_handlerOptions := []server.HandlerOptions{
+		{
+			ParentRouter: rabbitmqQueuePlaneRouter,
+			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
+						RequestConverter:   msg_conv.RabbitMQQueueDataModelFromVersioned,
+						ResponseConverter:  msg_conv.RabbitMQQueueDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: rabbitmqQueueResourceGroupRouter,
+			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
+						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
+						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: rabbitmqQueueResourceRouter,
+			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
+						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
+						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: rabbitmqQueueResourceRouter,
+			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
+						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
+						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[msg_dm.RabbitMQQueue]{
+							rp_frontend.PrepareRadiusResource[*msg_dm.RabbitMQQueue],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: rabbitmqQueueResourceRouter,
+			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
+						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
+						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[msg_dm.RabbitMQQueue]{
+							rp_frontend.PrepareRadiusResource[*msg_dm.RabbitMQQueue],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: rabbitmqQueueResourceRouter,
+			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
+						RequestConverter:      msg_conv.RabbitMQQueueDataModelFromVersioned,
+						ResponseConverter:     msg_conv.RabbitMQQueueDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: rabbitmqQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
+			Method:       rabbitmq_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
+		},
+	}
+
+	for _, h := range ds_handlerOptions {
+		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// AddDaprRoutes configures routes and handlers for resourceprovider Daprrp.
+func AddDaprRoutes(ctx context.Context, router *mux.Router, pathBase string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+
+	// Dapr - Configure the default ARM handlers.
+	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, DaprProviderNamespace, NewGetOperations, ctrlOpts)
+	if err != nil {
+		return err
+	}
+
+	dapr_specLoader, err := validator.LoadSpec(ctx, DaprProviderNamespace, swagger.SpecFiles, prefixes, "rootScope")
+	if err != nil {
+		return err
+	}
+
+	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter.Use(validator.APIValidator(dapr_specLoader))
+
+	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter.Use(validator.APIValidator(dapr_specLoader))
+
+	daprPubSubBrokerPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.dapr/daprpubsubbrokers").Subrouter()
+	daprPubSubBrokerResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.dapr/daprpubsubbrokers").Subrouter()
+	daprPubSubBrokerResourceRouter := daprPubSubBrokerResourceGroupRouter.PathPrefix("/{daprPubSubBrokerName}").Subrouter()
+
+	daprSecretStorePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.dapr/daprsecretstores").Subrouter()
+	daprSecretStoreResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.dapr/daprsecretstores").Subrouter()
+	daprSecretStoreResourceRouter := daprSecretStoreResourceGroupRouter.PathPrefix("/{daprSecretStoreName}").Subrouter()
+
+	daprStateStorePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.dapr/daprstatestores").Subrouter()
+	daprStateStoreResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.dapr/daprstatestores").Subrouter()
+	daprStateStoreResourceRouter := daprStateStoreResourceGroupRouter.PathPrefix("/{daprStateStoreName}").Subrouter()
+
+	// Dapr handlers:
+	ds_handlerOptions := []server.HandlerOptions{
+		{
+			ParentRouter: daprPubSubBrokerPlaneRouter,
+			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprPubSubBroker]{
+						RequestConverter:   dapr_conv.PubSubBrokerDataModelFromVersioned,
+						ResponseConverter:  dapr_conv.PubSubBrokerDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: daprPubSubBrokerResourceGroupRouter,
+			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprPubSubBroker]{
+						RequestConverter:  dapr_conv.PubSubBrokerDataModelFromVersioned,
+						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: daprPubSubBrokerResourceRouter,
+			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprPubSubBroker]{
+						RequestConverter:  dapr_conv.PubSubBrokerDataModelFromVersioned,
+						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: daprPubSubBrokerResourceRouter,
+			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprPubSubBroker]{
+						RequestConverter:  dapr_conv.PubSubBrokerDataModelFromVersioned,
+						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprPubSubBroker]{
+							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprPubSubBroker],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprPubSubBrokerResourceRouter,
+			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprPubSubBroker]{
+						RequestConverter:  dapr_conv.PubSubBrokerDataModelFromVersioned,
+						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprPubSubBroker]{
+							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprPubSubBroker],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprPubSubBrokerResourceRouter,
+			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprPubSubBroker]{
+						RequestConverter:      dapr_conv.PubSubBrokerDataModelFromVersioned,
+						ResponseConverter:     dapr_conv.PubSubBrokerDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprSecretStorePlaneRouter,
+			ResourceType: linkrp.N_DaprSecretStoresResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprSecretStore]{
+						RequestConverter:   dapr_conv.SecretStoreDataModelFromVersioned,
+						ResponseConverter:  dapr_conv.SecretStoreDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: daprSecretStoreResourceGroupRouter,
+			ResourceType: linkrp.N_DaprSecretStoresResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprSecretStore]{
+						RequestConverter:  dapr_conv.SecretStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: linkrp.N_DaprSecretStoresResourceType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprSecretStore]{
+						RequestConverter:  dapr_conv.SecretStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: linkrp.N_DaprSecretStoresResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprSecretStore]{
+						RequestConverter:  dapr_conv.SecretStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprSecretStore]{
+							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprSecretStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: linkrp.N_DaprSecretStoresResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprSecretStore]{
+						RequestConverter:  dapr_conv.SecretStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprSecretStore]{
+							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprSecretStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: linkrp.N_DaprSecretStoresResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprSecretStore]{
+						RequestConverter:      dapr_conv.SecretStoreDataModelFromVersioned,
+						ResponseConverter:     dapr_conv.SecretStoreDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprSecretStoreTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprStateStorePlaneRouter,
+			ResourceType: linkrp.N_DaprStateStoresResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprStateStore]{
+						RequestConverter:   dapr_conv.StateStoreDataModelFromVersioned,
+						ResponseConverter:  dapr_conv.StateStoreDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: daprStateStoreResourceGroupRouter,
+			ResourceType: linkrp.N_DaprStateStoresResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprStateStore]{
+						RequestConverter:  dapr_conv.StateStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: linkrp.N_DaprStateStoresResourceType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprStateStore]{
+						RequestConverter:  dapr_conv.StateStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: linkrp.N_DaprStateStoresResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprStateStore]{
+						RequestConverter:  dapr_conv.StateStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprStateStore]{
+							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprStateStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: linkrp.N_DaprStateStoresResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprStateStore]{
+						RequestConverter:  dapr_conv.StateStoreDataModelFromVersioned,
+						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprStateStore]{
+							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprStateStore],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: linkrp.N_DaprStateStoresResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[dapr_dm.DaprStateStore]{
+						RequestConverter:      dapr_conv.StateStoreDataModelFromVersioned,
+						ResponseConverter:     dapr_conv.StateStoreDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprStateStoreTimeout,
+					},
+				)
+			},
+		},
+	}
+
+	for _, h := range ds_handlerOptions {
+		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// AddDatastoresRoutes configures the routes and handlers for resourceprovider Datastoresrp.
+func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+
+	// Datastores - Configure the default ARM handlers.
+	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, DatastoresProviderNamespace, NewGetOperations, ctrlOpts)
+	if err != nil {
+		return err
+	}
+
+	ds_specLoader, err := validator.LoadSpec(ctx, DatastoresProviderNamespace, swagger.SpecFiles, prefixes, "rootScope")
+	if err != nil {
+		return err
+	}
+
+	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter.Use(validator.APIValidator(ds_specLoader))
+
+	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter.Use(validator.APIValidator(ds_specLoader))
+
+	mongoDatabasePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.datastores/mongodatabases").Subrouter()
+	mongoDatabaseResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.datastores/mongodatabases").Subrouter()
+	mongoDatabaseResourceRouter := mongoDatabaseResourceGroupRouter.PathPrefix("/{mongoDatabaseName}").Subrouter()
+
+	redisCachePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.datastores/rediscaches").Subrouter()
+	redisCacheResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.datastores/rediscaches").Subrouter()
+	redisCacheResourceRouter := redisCacheResourceGroupRouter.PathPrefix("/{redisCacheName}").Subrouter()
+
+	sqlDatabasePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.datastores/sqldatabases").Subrouter()
+	sqlDatabaseResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.datastores/sqldatabases").Subrouter()
+	sqlDatabaseResourceRouter := sqlDatabaseResourceGroupRouter.PathPrefix("/{sqlDatabaseName}").Subrouter()
+
+	// Datastores handlers:
+	ds_handlerOptions := []server.HandlerOptions{
+		{
+			ParentRouter: mongoDatabasePlaneRouter,
+			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
+						RequestConverter:   ds_conv.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter:  ds_conv.MongoDatabaseDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: mongoDatabaseResourceGroupRouter,
+			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
+						RequestConverter:  ds_conv.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.MongoDatabaseDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: mongoDatabaseResourceRouter,
+			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
+						RequestConverter:  ds_conv.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.MongoDatabaseDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: mongoDatabaseResourceRouter,
+			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
+						RequestConverter:  ds_conv.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.MongoDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.MongoDatabase]{
+							rp_frontend.PrepareRadiusResource[*ds_dm.MongoDatabase],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: mongoDatabaseResourceRouter,
+			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
+						RequestConverter:  ds_conv.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.MongoDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.MongoDatabase]{
+							rp_frontend.PrepareRadiusResource[*ds_dm.MongoDatabase],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: mongoDatabaseResourceRouter,
+			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
+						RequestConverter:      ds_conv.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter:     ds_conv.MongoDatabaseDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteMongoDatabaseTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			Method:       mongo_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return mongo_ctrl.NewListSecretsMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
+		},
+
+		{
+			ParentRouter: redisCachePlaneRouter,
+			ResourceType: linkrp.N_RedisCachesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.RedisCache]{
+						RequestConverter:   ds_conv.RedisCacheDataModelFromVersioned,
+						ResponseConverter:  ds_conv.RedisCacheDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: redisCacheResourceGroupRouter,
+			ResourceType: linkrp.N_RedisCachesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.RedisCache]{
+						RequestConverter:  ds_conv.RedisCacheDataModelFromVersioned,
+						ResponseConverter: ds_conv.RedisCacheDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: redisCacheResourceRouter,
+			ResourceType: linkrp.N_RedisCachesResourceType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.RedisCache]{
+						RequestConverter:  ds_conv.RedisCacheDataModelFromVersioned,
+						ResponseConverter: ds_conv.RedisCacheDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: redisCacheResourceRouter,
+			ResourceType: linkrp.N_RedisCachesResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.RedisCache]{
+						RequestConverter:  ds_conv.RedisCacheDataModelFromVersioned,
+						ResponseConverter: ds_conv.RedisCacheDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.RedisCache]{
+							rp_frontend.PrepareRadiusResource[*ds_dm.RedisCache],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: redisCacheResourceRouter,
+			ResourceType: linkrp.N_RedisCachesResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.RedisCache]{
+						RequestConverter:  ds_conv.RedisCacheDataModelFromVersioned,
+						ResponseConverter: ds_conv.RedisCacheDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.RedisCache]{
+							rp_frontend.PrepareRadiusResource[*ds_dm.RedisCache],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: redisCacheResourceRouter,
+			ResourceType: linkrp.N_RedisCachesResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.RedisCache]{
+						RequestConverter:      ds_conv.RedisCacheDataModelFromVersioned,
+						ResponseConverter:     ds_conv.RedisCacheDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRedisCacheTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: linkrp.N_RedisCachesResourceType,
+			Method:       redis_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return redis_ctrl.NewListSecretsRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
+		},
+		{
+			ParentRouter: sqlDatabasePlaneRouter,
+			ResourceType: linkrp.N_SqlDatabasesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.SqlDatabase]{
+						RequestConverter:   ds_conv.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter:  ds_conv.SqlDatabaseDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: sqlDatabaseResourceGroupRouter,
+			ResourceType: linkrp.N_SqlDatabasesResourceType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.SqlDatabase]{
+						RequestConverter:  ds_conv.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.SqlDatabaseDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: sqlDatabaseResourceRouter,
+			ResourceType: linkrp.N_SqlDatabasesResourceType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.SqlDatabase]{
+						RequestConverter:  ds_conv.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.SqlDatabaseDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: sqlDatabaseResourceRouter,
+			ResourceType: linkrp.N_SqlDatabasesResourceType,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.SqlDatabase]{
+						RequestConverter:  ds_conv.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.SqlDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.SqlDatabase]{
+							rp_frontend.PrepareRadiusResource[*ds_dm.SqlDatabase],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: sqlDatabaseResourceRouter,
+			ResourceType: linkrp.N_SqlDatabasesResourceType,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.SqlDatabase]{
+						RequestConverter:  ds_conv.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: ds_conv.SqlDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.SqlDatabase]{
+							rp_frontend.PrepareRadiusResource[*ds_dm.SqlDatabase],
+						},
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: sqlDatabaseResourceRouter,
+			ResourceType: linkrp.N_SqlDatabasesResourceType,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[ds_dm.SqlDatabase]{
+						RequestConverter:      ds_conv.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter:     ds_conv.SqlDatabaseDataModelToVersioned,
+						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteSqlDatabaseTimeout,
+					},
+				)
+			},
+		},
+	}
+
+	for _, h := range ds_handlerOptions {
+		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// AddLinkRoutes configures routes and handlers for the resourprovider linkrp.
+func AddLinkRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+
+	// Configure the default ARM handlers.
+	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, LinkProviderNamespace, NewGetOperations, ctrlOpts)
+	if err != nil {
+		return err
+	}
+
+	specLoader, err := validator.LoadSpec(ctx, LinkProviderNamespace, swagger.SpecFiles, prefixes, "rootScope")
 	if err != nil {
 		return err
 	}
@@ -835,4 +1611,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 	}
 
 	return nil
+}
+
+func getPathBase(isARM bool) string {
+	if isARM {
+		return "/subscriptions/{subscriptionID}"
+	}
+	return "/planes/radius/{planeName}"
 }
