@@ -24,7 +24,8 @@ import (
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 )
 
-// Processor is a processor for RabbitMQQueue resource.
+// N_Processor is a processor for RabbitMQQueue resource.
+// This will be renamed to Processor after Link.RabbitMQMessageQueues is deleted.
 type N_Processor struct {
 }
 
