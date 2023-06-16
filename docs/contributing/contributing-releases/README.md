@@ -21,24 +21,24 @@ If we find issues in validation, we can create additional RC releases until we f
 
 Follow the steps below to create an RC release.
 
-1. In the Bicep fork on the `bicep-extensibility`
+1. In the project-radius/bicep repo, [bicep-extensibility branch](https://github.com/project-radius/bicep/tree/bicep-extensibility)
 
    ```bash
    git checkout bicep-extensibility
    git pull origin bicep-extensibility
-   git checkout -b release/0.17 # ensure branch is created
-   git pull origin release/0.17 # ensure branch is up to date
-   git tag v0.17.0-rc1 # Update to the next RC version if doing a new release
+   git checkout -b release/0.21 # ensure branch is created
+   git pull origin release/0.21 # ensure branch is up to date
+   git tag v0.21.0-rc1 # Update to the next RC version if doing a new release
    git push origin --tags # push the tag
-   git push origin release/0.17 # push the branch up to origin
+   git push origin release/0.21 # push the branch up to origin
    ```
    
    Side note, in the bicep-extensibility branch, we have seen the build fail to trigger after pushing the tag once, but works after recreation. To delete and recreate:
    
    ```
-   git tag delete v0.17.0-rc1
+   git tag delete v0.21.0-rc1
    git push origin --tags
-   git tag v0.17.0-rc1 # Update to the next RC version if doing a new release
+   git tag v0.21.0-rc1 # Update to the next RC version if doing a new release
    git push origin --tags
    ```
 
@@ -53,32 +53,32 @@ Follow the steps below to create an RC release.
 
 2. In the project-radius/deployment-engine repo:
 
-   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
+   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.21`. This branch will be used for patching/servicing.
    
    ```bash
    git checkout main
    git pull origin main
-   git checkout -b release/0.17
-   git pull origin release/0.17
-   git tag v0.17.0-rc1
+   git checkout -b release/0.21
+   git pull origin release/0.21
+   git tag v0.21.0-rc1
    git push origin --tags
-   git push origin release/0.17
+   git push origin release/0.21
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
 
 3. In the project-radius/radius repo:
 
-   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
+   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.21`. This branch will be used for patching/servicing.
    
    ```bash
    git checkout main
    git pull origin main
-   git checkout -b release/0.17
-   git pull origin release/0.17
-   git tag v0.17.0-rc1
-   git push --tags
-   git push origin release/0.17
+   git checkout -b release/0.21
+   git pull origin release/0.21
+   git tag v0.21.0-rc1
+   git push --tags # wait for ci/cd pipeline to complete and publish binaries before next step
+   git push origin release/0.21
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
@@ -93,12 +93,12 @@ Before a release can be finished, all [tutorials](https://edge.radapp.dev/user-g
 1. Install the latest release candidate of the CLI
 For MacOS
 ```
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.17-rc1
+curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.21.0-rc1
 ```
 
 For Windows
 ```
-$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.17-rc1
+$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.21.0-rc1
 ```
 
 Because we have not forked for samples and docs yet, please use the `edge` channel for validation. Specifically using `edge.radapp.dev` for the docs and following along.
@@ -128,7 +128,7 @@ If sample validation passes, we can start the process of creating the final rele
 
 1. Go through steps 1-3 of "Creating an RC release" above, substituting the final release version instead of the RC version.
 
-   For example, if the RC version is `v0.17.0-rc1`, the final release version would be `v0.17.0`.
+   For example, if the RC version is `v0.21.0-rc1`, the final release version would be `v0.21.0`.
 1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)
 1. Check the stable version marker
 
@@ -138,17 +138,17 @@ If sample validation passes, we can start the process of creating the final rele
 
 1. Update the project-radius/docs repository
 
-   Assuming that we are using v0.16.
+   Assuming that we are using v0.21.
    
-   1. Create a new branch named `v0.16` from `edge`, substituting the new version number
+   1. Create a new branch named `v0.21` from `edge`, substituting the new version number
    1. Within `docs/config.toml`:
       - Change `baseURL` to `https://radapp.dev/` instead of `https://edge.radapp.dev/`
-      - Change `version` to `v0.16` instead of `edge`, substituting the new version number
-      - Change `chart_version` (Helm chart) to `0.16.0`, substituting the new version number
+      - Change `version` to `v0.21` instead of `edge`, substituting the new version number
+      - Change `chart_version` (Helm chart) to `0.21.0`, substituting the new version number
    1. Within `docs/layouts/partials/hooks/body-end.html`:
       - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
-   1. In `docs/content/getting-started/_index.md` update the binary download links with the new version number
-   1. Commit and push updates to be the new `v0.16` branch you created above.
+   1. In `docs/content/getting-started/install/_index.md` update the binary download links with the new version number
+   1. Commit and push updates to be the new `v0.21` branch you created above.
    1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version. This requires Admin/PM action and is restricted to that set of people, so ping one of the PMs to edit this value.
    1. Verify https://radapp.dev now shows the new version.
 
@@ -157,24 +157,24 @@ If sample validation passes, we can start the process of creating the final rele
    ```
    git checkout edge
    git pull origin edge
-   git checkout -b v0.16
-   git pull origin v0.16
-   git push origin v0.16
+   git checkout -b v0.21
+   git pull origin v0.21
+   git push origin v0.21
    ```
 
-### Post release sanity check
+### Post release check
 
-After creating a release, it's good to sanity check that the release works in some small mainline scenarios and has the right versions for each container.
+After creating a release (either an RC release or the final release), it's good to check that the release works in some small mainline scenarios and has the right versions for each container.
 
-1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.12), you can use the following URL format:
+1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.21), you can use the following URL format:
 
 
    ```sh
    Windows:
-   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12
+   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.21
 
    MacOS:
-   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.12
+   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.21
 
    Direct binary downloads
    https://get.radapp.dev/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
@@ -187,7 +187,7 @@ After creating a release, it's good to sanity check that the release works in so
    ```sh
    rad version
    RELEASE     VERSION      BICEP     COMMIT
-   0.12.0-rc3  v0.12.0-rc3  0.7.14    4f8a3ef96ea537a2e9252e0c6a6bcc7a1f3ce782
+   0.21.0-rc3  v0.21.0-rc3  0.7.14    4f8a3ef96ea537a2e9252e0c6a6bcc7a1f3ce782
    ```
 
 3. Install radius on a kubernetes cluster by executing `rad install kubernetes`
@@ -206,7 +206,9 @@ After creating a release, it's good to sanity check that the release works in so
    kubectl describe pods -n radius-system -l control-plane=ucp
    ```
 
-   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.12 for the 0.12 release for the appcore-rp image.
+   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.21 for the 0.21 release for the appcore-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
+
+   ![Example of version and tag mismatch](images/image-label.png)
 
 5. Execute `rad deploy` to confirm a simple deployment works
 
@@ -244,15 +246,15 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    ```bash
    git cherry-pick -x <COMMIT HASH>
    ```
-5. Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.17) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to <major>.<minor> (eg. 0.17) for downloading the `rad-bicep-corerp`.
+5. Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.21) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to <major>.<minor> (eg. 0.21) for downloading the `rad-bicep-corerp`.
 4. Push the commit to the remote and create a pull request targeting the release branch.
    ```bash
    git push origin <USERNAME>/<BRANCHNAME>
    ```
 5. After pull request is approved, merge into the release branch and tag!
    ```bash
-   # replace v0.10.X with the version we want to patch (if we release 0.10.1 already, we would then release 0.10.2, etc.)
-   git tag v0.10.1 
+   # replace v0.21.X with the version we want to patch (if we release 0.21.1 already, we would then release 0.21.2, etc.)
+   git tag v0.21.1 
    git push --tags
-   ``` 
+   ```
 
