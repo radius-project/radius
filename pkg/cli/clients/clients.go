@@ -154,7 +154,7 @@ type ApplicationsManagementClient interface {
 	CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerp.ApplicationResource) error
 
 	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
-	CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerp.EnvironmentProperties) (bool, error)
+	CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerp.EnvironmentProperties) error
 
 	// ListEnvironmentsInResourceGroup lists all environments in the configured scope (assumes configured scope is a resource group)
 	ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerp.EnvironmentResource, error)
@@ -163,7 +163,7 @@ type ApplicationsManagementClient interface {
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)
-	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20220901privatepreview.ResourceGroupResource) (bool, error)
+	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20220901privatepreview.ResourceGroupResource) error
 	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
 	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220901privatepreview.ResourceGroupResource, error)
 	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)

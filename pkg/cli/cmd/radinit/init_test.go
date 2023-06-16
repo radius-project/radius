@@ -678,11 +678,11 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
-				Return(true, nil).
+				Return(nil).
 				Times(1)
 			appManagementClient.EXPECT().
 				CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-				Return(true, nil).
+				Return(nil).
 				Times(1)
 
 			devRecipeClient := NewMockDevRecipeClient(ctrl)
@@ -702,7 +702,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-				Return(true, nil).
+				Return(nil).
 				Times(1)
 
 			credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)

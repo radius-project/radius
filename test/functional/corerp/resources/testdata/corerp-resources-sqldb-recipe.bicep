@@ -8,9 +8,6 @@ param magpieImage string
 @description('Specifies the port for the container resource.')
 param magpiePort int = 3000
 
-@description('Specifies the port for the container resource.')
-param sqlPort int = 1433
-
 @description('Specifies the SQL username.')
 param username string = 'sa'
 
@@ -73,7 +70,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     container: {
       image: magpieImage
       env: {
-        CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},${sqlPort};Initial Catalog=${db.properties.database};User Id=${username};Password=${password};Encrypt=True;TrustServerCertificate=True'
+        CONNECTION_SQL_CONNECTIONSTRING: db.connectionString()
       }
       readinessProbe: {
         kind: 'httpGet'

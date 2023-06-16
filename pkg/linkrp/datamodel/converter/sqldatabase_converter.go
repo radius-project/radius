@@ -46,7 +46,23 @@ func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamod
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.SqlDatabase), err
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+// SqlDatabaseSecretsDataModelFromVersioned converts version agnostic SqlDatabaseSecrets datamodel to versioned model.
+func SqlDatabaseSecretsDataModelToVersioned(model *datamodel.SqlDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
+	switch version {
+	case v20220315privatepreview.Version:
+		versioned := &v20220315privatepreview.SQLDatabaseSecrets{}
+		err := versioned.ConvertFrom(model)
+		return versioned, err
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

@@ -25,6 +25,12 @@
             }
         ],
         "database": "testDatabase",
-        "server":"testAccount1.sql.cosmos.azure.com"
+        "server":"testAccount1.sql.cosmos.azure.com",
+        "port":1433,
+        "username": "testUser",
+        "secrets": {
+          "password": "testPassword",
+          "connectionString": "test-connection-string"
+        }
     }
 }
