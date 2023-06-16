@@ -21,7 +21,7 @@ If we find issues in validation, we can create additional RC releases until we f
 
 Follow the steps below to create an RC release.
 
-1. In the project-radius/bicep repo, bicep-extensibility branch
+1. In the project-radius/bicep repo, [bicep-extensibility branch](https://github.com/project-radius/bicep/tree/bicep-extensibility)
 
    ```bash
    git checkout bicep-extensibility
@@ -164,7 +164,7 @@ If sample validation passes, we can start the process of creating the final rele
 
 ### Post release check
 
-After creating a release candidate and the final release, it's good to check that the release works in some small mainline scenarios and has the right versions for each container.
+After creating a release (either an RC release or the final release), it's good to check that the release works in some small mainline scenarios and has the right versions for each container.
 
 1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.21), you can use the following URL format:
 
