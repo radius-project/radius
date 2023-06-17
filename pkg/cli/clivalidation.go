@@ -22,9 +22,9 @@ import (
 	"path"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/config"
-	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
@@ -235,7 +235,7 @@ func RequireResourceType(args []string) (string, error) {
 	}
 	resourceTypeName := args[0]
 	supportedTypes := []string{}
-	for _, resourceType := range ucp.ResourceTypesList {
+	for _, resourceType := range clients.ResourceTypesList {
 		supportedType := strings.Split(resourceType, "/")[1]
 		supportedTypes = append(supportedTypes, supportedType)
 		if strings.EqualFold(supportedType, resourceTypeName) {

@@ -33,31 +33,37 @@ import (
 )
 
 const (
-	envRoute           = "/providers/applications.core/environments/{environmentName}"
-	armIDUrl           = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	ucpIDUrl           = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	longarmIDUrl       = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
-	longucpIDUrl       = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
-	underscorearmIDUrl = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
-	underscoreucpIDUrl = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
-	digitarmIDUrl      = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
-	digitucpIDUrl      = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
+	environmentCollectionRoute        = "/providers/applications.core/environments"
+	environmentResourceRoute          = "/providers/applications.core/environments/{environmentName}"
+	armResourceGroupScopedResourceURL = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	ucpResourceGroupScopedResourceURL = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	longARMResourceURL                = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	longUCPResourceURL                = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	underscoreARMResourceURL          = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
+	underscoreUCPResourceURL          = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
+	digitARMResourceURL               = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
+	digitUCPResourceURL               = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
+
+	armResourceGroupScopedCollectionURL = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments"
+	armSubscriptionScopedCollectionURL  = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments"
+	ucpResourceGroupScopeCollectionURL  = "http://localhost:8080/planes/radius/local/providers/applications.core/environments"
+	ucpPlaneScopedCollectionURL         = "http://localhost:8080/planes/radius/local/providers/applications.core/environments"
 
 	operationGetRoute    = "/providers/applications.core/operations"
 	subscriptionPUTRoute = "/subscriptions/{subscriptions}/resourceGroups/{resourceGroup}"
 )
 
-func TestAPIValidator_ARMID(t *testing.T) {
-	runTest(t, armIDUrl)
+func Test_APIValidator_ARMID(t *testing.T) {
+	runTest(t, armResourceGroupScopedResourceURL)
 }
 
-func TestAPIValidator_UCPID(t *testing.T) {
-	runTest(t, ucpIDUrl)
+func Test_APIValidator_UCPID(t *testing.T) {
+	runTest(t, ucpResourceGroupScopedResourceURL)
 }
 
 func runTest(t *testing.T, resourceIDUrl string) {
 	// Load OpenAPI Spec for applications.core provider.
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "/{rootScope:.*}", "rootScope")
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"/{rootScope:.*}"}, "rootScope")
 
 	require.NoError(t, err)
 
@@ -128,7 +134,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "valid environment resource",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
 			url:             resourceIDUrl,
@@ -139,7 +145,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "valid environment resource for selfhost",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid-selfhost.json",
 			url:             resourceIDUrl,
@@ -150,9 +156,49 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:          "valid get-environment with azure resource id",
 			method:        http.MethodGet,
 			rootScope:     "/{rootScope:.*}",
-			route:         envRoute,
+			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
+			desc:          "valid list-environment with azure resource group",
+			method:        http.MethodGet,
+			rootScope:     "/{rootScope:.*}",
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           armResourceGroupScopedCollectionURL,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
+			desc:          "valid list-environment with azure subscription",
+			method:        http.MethodGet,
+			rootScope:     "/{rootScope:.*}",
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           armSubscriptionScopedCollectionURL,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
+			desc:          "valid list-environment with UCP resource group",
+			method:        http.MethodGet,
+			rootScope:     "/{rootScope:.*}",
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           ucpResourceGroupScopeCollectionURL,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
+			desc:          "valid list-environment with UCP plane",
+			method:        http.MethodGet,
+			rootScope:     "/{rootScope:.*}",
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           ucpPlaneScopedCollectionURL,
 			responseCode:  http.StatusAccepted,
 			validationErr: nil,
 		},
@@ -160,7 +206,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:          "valid delete-environment with azure resource id",
 			method:        http.MethodDelete,
 			rootScope:     "/{rootScope:.*}",
-			route:         envRoute,
+			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
 			responseCode:  http.StatusAccepted,
@@ -170,7 +216,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "invalid put-environment with invalid api-version",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-06-20-privatepreview", // unsupported api version
 			contentFilePath: "put-environments-valid.json",
 			url:             resourceIDUrl,
@@ -186,7 +232,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "invalid put-environment with missing location property bag",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-location.json",
 			url:             resourceIDUrl,
@@ -209,7 +255,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "invalid put-environment with missing kind property",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-kind.json",
 			url:             resourceIDUrl,
@@ -232,7 +278,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "invalid put-environment with multiple errors",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-locationandkind.json",
 			url:             resourceIDUrl,
@@ -259,7 +305,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "invalid put-environment with invalid json doc",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-json.json",
 			url:             resourceIDUrl,
@@ -282,10 +328,10 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "env name too long",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             longarmIDUrl,
+			url:             longARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
@@ -305,10 +351,10 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "env name too long",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             longucpIDUrl,
+			url:             longUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
@@ -328,10 +374,10 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             underscorearmIDUrl,
+			url:             underscoreARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
@@ -351,10 +397,10 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             underscoreucpIDUrl,
+			url:             underscoreUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
@@ -374,10 +420,10 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             digitarmIDUrl,
+			url:             digitARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
@@ -397,10 +443,10 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             digitucpIDUrl,
+			url:             digitUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{

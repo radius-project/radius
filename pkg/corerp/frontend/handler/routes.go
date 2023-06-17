@@ -60,7 +60,15 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		return err
 	}
 
-	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath, "rootScope")
+	// URLs may use either the subscription/plane scope or resource group scope.
+	//
+	// These paths are order sensitive and the longer path MUST be registered first.
+	prefixes := []string{
+		pathBase + resourceGroupPath,
+		pathBase,
+	}
+
+	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, prefixes, "rootScope")
 	if err != nil {
 		return err
 	}
