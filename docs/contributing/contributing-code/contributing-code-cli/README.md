@@ -4,6 +4,10 @@ For a lot of your development tasks you will need to build `rad` from source ins
 
 This is the best way to test changes, and to make sure you have the latest bits (other people's changes).
 
+## Making code changes to the CLI
+
+If you're working on the CLI then you will need to test out your changes. This section describes ways you might want to use a custom build of the CLI.
+
 ## Debugging in VS Code
 
 We provide a debug target `Launch rad CLI` as part of our repo's VS Code configuration. Select `Launch rad CLI` from the drop-down press the Debug button to launch.
@@ -66,25 +70,39 @@ Flags:
 Use "rad [command] --help" for more information about a command.
 ```
 
-## Using your $PATH variable to resolve the debug version of `rad` before the release version (MacOS/Linux)
+### Using your $PATH variable to resolve the debug version of `rad` before the release version (MacOS/Linux)
 
-Update your $PATH variable to resolve the debug bits folder in your /zsrc/.bashrc file
+You can update your `$PATH` environment variable to resolve to a custom build of `rad` by updating your shell profile. For ZSH users this is your `~/.zshrc` file:
 
 ```bash
 # add debug rad bits to $PATH resolution
 export PATH="$(pwd)/dist/linux_amd64/release:$PATH"
 ```
 
-## Enabling VSCode debugging using codelenses
+Make sure to set the appropriate path based on your OS and CPU type.
 
-VSCode will start a child process when you execute a `'run test'/'debug test'` codelens (see image for example), this process may not resolve `rad` to the debug bits folder. To allow VSCode to correctly resolve the debug bits,  in your `settings.json` file specify:
+## Writing code for the CLI
 
-```json
+### Error handling in the CLI
 
- "go.testEnvVars": {
-        "RAD_PATH": "${workspaceFolder}/dist/linux_amd64/release"
-    },
+In the `rad` CLI we try to classify errors into *expected* and *unexpected* errors. 
 
+- Expected: a known state we expect to encounter, that is not a bug in Radius. eg: application is not found.
+- Unexpected: an unknown state that could be a bug in Radius. eg: a partial HTTP response was sent by the server.
+
+*Expected* errors should be returned to the user as a normal error message. For these cases use the `clierrors.Message` and `clierrors.MessageWithCause` functions to create and return an error. When creating error messages for *expected* errors, write in complete sentences and end with a period. eg: `"The application could not be found."`
+
+We want *unexpected* errors to be shown to the user with full troubleshooting information. For these cases, return the error as-is. If it makes sense for the scenario it's useful to wrap the error with additional context as shown in the example below.
+
+**Example:**
+
+```go
+// Good: classify expected errors and return them as basic user-facing messages.
+result, err := findApplication(id)
+if errors.Is(err, NotFoundError{}) {
+   return clierrors.Message("The application %q could not be found.", applicationName)
+} else if err != nil {
+  // optional: wrapping the error to add context.
+  return fmt.Errorf("error retrieving application: %w", err)
+}
 ```
-
-![](https://user-images.githubusercontent.com/9611108/174677971-673e220b-7447-4330-b25b-9a6e0d01b351.png)

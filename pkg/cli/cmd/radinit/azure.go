@@ -18,15 +18,14 @@ package radinit
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 )
 
@@ -49,16 +48,12 @@ const (
 
 func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptions) (*azure.Provider, error) {
 	subscription, err := r.selectAzureSubscription(ctx)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	resourceGroup, err := r.selectAzureResourceGroup(ctx, *subscription)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -68,16 +63,12 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptio
 		Placeholder: enterAzureServicePrincipalAppIDPlaceholder,
 		Validate:    prompt.ValidateUUIDv4,
 	})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	clientSecret, err := r.Prompter.GetTextInput(enterAzureServicePrincipalPasswordPrompt, prompt.TextInputOptions{Placeholder: enterAzureServicePrincipalPasswordPlaceholder, EchoMode: textinput.EchoPassword})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -85,9 +76,7 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptio
 		Placeholder: enterAzureServicePrincipalTenantIDPlaceholder,
 		Validate:    prompt.ValidateUUIDv4,
 	})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -105,15 +94,13 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptio
 func (r *Runner) selectAzureSubscription(ctx context.Context) (*azure.Subscription, error) {
 	subscriptions, err := r.azureClient.Subscriptions(ctx)
 	if err != nil {
-		return nil, &cli.FriendlyError{Message: fmt.Sprintf("failed to list subscriptions: %s", err.Error())}
+		return nil, clierrors.MessageWithCause(err, "Failed to list Azure subscriptions.")
 	}
 
 	// Users can configure a default subscription with `az account set`. If they did, then ask about that first.
 	if subscriptions.Default != nil {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAzureSubscriptionPromptFmt, subscriptions.Default.Name), prompt.ConfirmYes, r.Prompter)
-		if errors.Is(err, &prompt.ErrExitConsole{}) {
-			return nil, &cli.FriendlyError{Message: err.Error()}
-		} else if err != nil {
+		if err != nil {
 			return nil, err
 		}
 
@@ -124,9 +111,7 @@ func (r *Runner) selectAzureSubscription(ctx context.Context) (*azure.Subscripti
 
 	names, subscriptionMap := r.buildAzureSubscriptionListAndMap(subscriptions)
 	name, err := r.Prompter.GetListInput(names, selectAzureSubscriptionPrompt)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -151,9 +136,7 @@ func (r *Runner) buildAzureSubscriptionListAndMap(subscriptions *azure.Subscript
 
 func (r *Runner) selectAzureResourceGroup(ctx context.Context, subscription azure.Subscription) (string, error) {
 	create, err := prompt.YesOrNoPrompt(confirmAzureCreateResourceGroupPrompt, prompt.ConfirmYes, r.Prompter)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return "", &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return "", err
 	}
 
@@ -185,7 +168,7 @@ func (r *Runner) selectAzureResourceGroup(ctx context.Context, subscription azur
 
 	err = r.azureClient.CreateOrUpdateResourceGroup(ctx, subscription.ID, name, *location.Name)
 	if err != nil {
-		return "", &cli.FriendlyError{Message: fmt.Sprintf("Failed to create Azure resource group: %v", err.Error())}
+		return "", clierrors.MessageWithCause(err, "Failed to create Azure resource group.")
 	}
 
 	return name, nil
@@ -194,14 +177,12 @@ func (r *Runner) selectAzureResourceGroup(ctx context.Context, subscription azur
 func (r *Runner) selectExistingAzureResourceGroup(ctx context.Context, subscription azure.Subscription) (string, error) {
 	groups, err := r.azureClient.ResourceGroups(ctx, subscription.ID)
 	if err != nil {
-		return "", &cli.FriendlyError{Message: fmt.Sprintf("Failed to get list Azure resource groups: %v", err.Error())}
+		return "", clierrors.MessageWithCause(err, "Failed to get list Azure resource groups.")
 	}
 
 	names := r.buildAzureResourceGroupList(groups)
 	name, err := r.Prompter.GetListInput(names, selectAzureResourceGroupPrompt)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return "", &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return "", err
 	}
 
@@ -224,9 +205,7 @@ func (r *Runner) enterAzureResourceGroupName(ctx context.Context) (string, error
 		Placeholder: enterAzureResourceGroupNamePlaceholder,
 		Validate:    prompt.ValidateResourceName,
 	})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return "", &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return "", err
 	}
 
@@ -238,7 +217,7 @@ func (r *Runner) selectAzureResourceGroupLocation(ctx context.Context, subscript
 	// alphabetize so the list is stable and scannable
 	locations, err := r.azureClient.Locations(ctx, subscription.ID)
 	if err != nil {
-		return nil, &cli.FriendlyError{Message: fmt.Sprintf("Failed to get list Azure locations: %v", err.Error())}
+		return nil, clierrors.MessageWithCause(err, "Failed to get list Azure locations.")
 	}
 
 	names, locationMap := r.buildAzureResourceGroupLocationListAndMap(locations)

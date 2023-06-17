@@ -17,12 +17,11 @@ limitations under the License.
 package common
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 )
 
 // Used in tests
@@ -42,5 +41,5 @@ func ValidateCloudProviderName(name string) error {
 		}
 	}
 
-	return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider type %q is not supported. ", strings.Join(supportedProviders, " "))}
+	return clierrors.Message("The cloud provider type %q is not supported. Supported providers: %s.", name, strings.Join(supportedProviders, " "))
 }

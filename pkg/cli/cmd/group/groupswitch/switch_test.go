@@ -19,13 +19,13 @@ package groupswitch
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -218,7 +218,7 @@ func Test_Run(t *testing.T) {
 				UCPResourceGroupName: "c",
 			}
 
-			expected := &cli.FriendlyError{Message: fmt.Sprintf("resource group %q does not exist. Run `rad group create` or `rad init` and try again \n", runner.UCPResourceGroupName)}
+			expected := clierrors.Message("The resource group %q does not exist. Run `rad group create` or `rad init` and try again.", runner.UCPResourceGroupName)
 			err = runner.Run(context.Background())
 			require.Equal(t, expected, err)
 		})

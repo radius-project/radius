@@ -24,6 +24,7 @@ import (
 	"github.com/agnivade/levenshtein"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/spf13/cobra"
@@ -63,34 +64,36 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 			return err
 		}
 
-		//Check if the application provided exists or suggest a closest application in the scope
+		// Check if the application provided exists or suggest a closest application in the scope
 		managementClient, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 		if err != nil {
 			return err
 		}
 
-		//ignore applicationresource as we only check for existence of application
+		// Ignore applicationresource as we only check for existence of application
 		_, err = managementClient.ShowApplication(cmd.Context(), application)
 		if err != nil {
 			appNotFound := clients.Is404Error(err)
-			//suggest an application only when an existing one is not found
-			if appNotFound {
-				//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
-				appList, listErr := managementClient.ListApplications(cmd.Context())
-				if listErr != nil {
-					return &cli.FriendlyError{Message: "Unable to list applications"}
-				}
-				msg := fmt.Sprintf("Application %s does not exist.", application)
-				for _, app := range appList {
-					distance := levenshtein.ComputeDistance(*app.Name, application)
-					if distance <= LevenshteinCutoff {
-						msg = msg + fmt.Sprintf("Did you mean %s?", *app.Name)
-						break
-					}
-				}
-				fmt.Println(msg)
+			if !appNotFound {
+				return clierrors.MessageWithCause(err, "Unable to find application %s.", application)
 			}
-			return &cli.FriendlyError{Message: "Unable to expose resource"}
+
+			// Suggest an application only when an existing one is not found.
+			// Ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process.
+			appList, err := managementClient.ListApplications(cmd.Context())
+			if err != nil {
+				return clierrors.MessageWithCause(err, "Unable to list applications.")
+			}
+
+			msg := fmt.Sprintf("Application %s does not exist.", application)
+			for _, app := range appList {
+				distance := levenshtein.ComputeDistance(*app.Name, application)
+				if distance <= LevenshteinCutoff {
+					msg = msg + fmt.Sprintf("Did you mean %s?", *app.Name)
+					break
+				}
+			}
+			fmt.Println(msg)
 		}
 
 		resourceType, resourceName, err := cli.RequireResource(cmd, args)

@@ -179,8 +179,11 @@ func Test_Run(t *testing.T) {
 			}
 
 			expectedError := errors.New("failed to unregister recipe from the environment")
-			expectedErrorMessage := fmt.Sprintf("failed to unregister the recipe %s from the environment %s: %s", "cosmosDB",
-				"/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind", expectedError.Error())
+			expectedErrorMessage := fmt.Sprintf(
+				"Failed to unregister the recipe %s from the environment %s. Cause: %s.",
+				"cosmosDB",
+				"/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind",
+				expectedError.Error())
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
