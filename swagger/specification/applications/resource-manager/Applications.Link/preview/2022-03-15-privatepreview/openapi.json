@@ -1668,6 +1668,44 @@
         }
       }
     },
+    "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}/listSecrets": {
+      "post": {
+        "operationId": "SqlDatabases_ListSecrets",
+        "description": "Lists secrets values for the specified SqlDatabase resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase link resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/providers/Applications.Link/operations": {
       "get": {
         "tags": [
@@ -2069,10 +2107,6 @@
     "MongoDatabaseListSecretsResult": {
       "type": "object",
       "properties": {
-        "username": {
-          "type": "string",
-          "description": "Username to use when connecting to the target Mongo database"
-        },
         "password": {
           "type": "string",
           "description": "Password to use when connecting to the target Mongo database"
@@ -2087,10 +2121,6 @@
     "MongoDatabaseProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for MongoDatabaseProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the mongo database link at the time the operation was called",
@@ -2098,14 +2128,43 @@
         },
         "secrets": {
           "$ref": "#/definitions/MongoDatabaseSecrets",
-          "description": "Secrets values provided for the resource"
+          "description": "Secret values provided for the resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host name of the target Mongo database"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Mongo database"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name of the target Mongo database"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the MongoDB link"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          },
+          "x-cadl-name": "ResourceReference[]",
+          "description": "List of the resource IDs that support the MongoDB resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Mongo database"
         }
       },
       "description": "MongoDatabase link properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -2158,10 +2217,6 @@
     "MongoDatabaseSecrets": {
       "type": "object",
       "properties": {
-        "username": {
-          "type": "string",
-          "description": "Username to use when connecting to the target Mongo database"
-        },
         "password": {
           "type": "string",
           "description": "Password to use when connecting to the target Mongo database"
@@ -2312,39 +2367,6 @@
         "name"
       ]
     },
-    "RecipeMongoDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": "string",
-          "description": "Host name of the target Mongo database"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Mongo database"
-        },
-        "database": {
-          "type": "string",
-          "description": "Database name of the target Mongo database",
-          "readOnly": true
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabases link"
-        }
-      },
-      "description": "MongoDatabase Properties for Mode Recipe",
-      "required": [
-        "recipe"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/MongoDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
-    },
     "RedisCacheListSecretsResult": {
       "type": "object",
       "properties": {
@@ -2382,8 +2404,7 @@
         },
         "username": {
           "type": "string",
-          "description": "The username for Redis cache",
-          "readOnly": true
+          "description": "The username for Redis cache"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -2466,39 +2487,6 @@
       },
       "description": "The secret values for the given RedisCache resource"
     },
-    "ResourceMongoDatabaseProperties": {
-      "type": "object",
-      "properties": {
-        "resource": {
-          "type": "string",
-          "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this link"
-        },
-        "host": {
-          "type": "string",
-          "description": "Host name of the target Mongo database"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Mongo database"
-        },
-        "database": {
-          "type": "string",
-          "description": "Database name of the target Mongo database",
-          "readOnly": true
-        }
-      },
-      "description": "MongoDatabase Properties for Mode Resource",
-      "required": [
-        "resource"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/MongoDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "resource"
-    },
     "ResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
@@ -2539,6 +2527,20 @@
       },
       "description": "Status of a resource."
     },
+    "SqlDatabaseListSecretsResult": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "description": "Password to use when connecting to the target Sql database"
+        },
+        "connectionString": {
+          "type": "string",
+          "description": "Connection string used to connect to the target Sql database"
+        }
+      },
+      "description": "The secret values for the given SqlDatabase resource"
+    },
     "SqlDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2555,6 +2557,15 @@
           "type": "string",
           "description": "The fully qualified domain name of the Sql database."
         },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Sql database"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Sql database"
+        },
         "recipe": {
           "$ref": "#/definitions/Recipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
@@ -2570,6 +2581,10 @@
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "secrets": {
+          "$ref": "#/definitions/SqlDatabaseSecrets",
+          "description": "Secret values provided for the resource"
         }
       },
       "description": "SqlDatabase properties",
@@ -2622,35 +2637,19 @@
         "value"
       ]
     },
-    "ValuesMongoDatabaseProperties": {
+    "SqlDatabaseSecrets": {
       "type": "object",
       "properties": {
-        "host": {
+        "password": {
           "type": "string",
-          "description": "Host name of the target Mongo database"
+          "description": "Password to use when connecting to the target Sql database"
         },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Mongo database"
-        },
-        "database": {
+        "connectionString": {
           "type": "string",
-          "description": "Database name of the target Mongo database",
-          "readOnly": true
+          "description": "Connection string used to connect to the target Sql database"
         }
       },
-      "description": "MongoDatabase Properties for Mode Values",
-      "required": [
-        "host",
-        "port"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/MongoDatabaseProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
+      "description": "The secret values for the given SqlDatabase resource"
     },
     "object": {
       "type": "object",

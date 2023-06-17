@@ -70,9 +70,6 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	mongoSecrets := datamodel.MongoDatabaseSecrets{}
-	if username, ok := secrets[renderers.UsernameStringValue].(string); ok {
-		mongoSecrets.Username = username
-	}
 	if password, ok := secrets[renderers.PasswordStringHolder].(string); ok {
 		mongoSecrets.Password = password
 	}

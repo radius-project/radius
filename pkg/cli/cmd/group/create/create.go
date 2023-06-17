@@ -110,7 +110,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
-	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{
+	err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
 	if err != nil {
@@ -119,7 +119,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{
+	err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
 	if err != nil {

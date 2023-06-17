@@ -216,8 +216,8 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Updating Environment...")
 
-	isEnvUpdated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, env.Properties)
-	if err != nil || !isEnvUpdated {
+	err = client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, env.Properties)
+	if err != nil {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to configure cloud provider scope to the environment %s: %s", r.EnvName, err.Error())}
 	}
 

@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ucp-config
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+data:
+  ucp-config.yaml: |-
+    # Radius configuration file.
+    # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
+    storageProvider:
+      provider: "apiserver"
+      apiserver:
+        context: ""
+        namespace: "radius-system"
+
+    secretProvider:
+      provider: kubernetes
+
+    queueProvider:
+      provider: inmemory
+
+    profilerProvider:
+      enabled: true
+      port: 6060
+
+    planes:
+      - id: "/planes/radius/local"
+        properties:
+          resourceProviders:
+            Applications.Core: "http://appcore-rp.radius-system:5443"
+            Applications.Link: "http://appcore-rp.radius-system:5444"
+          kind: "UCPNative"
+      - id: "/planes/deployments/local"
+        properties:
+          resourceProviders:
+            Microsoft.Resources: "http://bicep-de.radius-system:6443"
+          kind: "UCPNative"
+      - id: "/planes/aws/aws"
+        properties:
+          kind: "AWS"
+
+    identity:
+      authMethod: UCPCredential
+
+    ucp:
+      kind: kubernetes
+
+    metricsProvider:
+      prometheus:
+        enabled: true
+        path: "/metrics"
+        port: 9090
+
+    logging:
+      level: "info"
+      json: true
+
+    {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
+    tracerProvider:
+      serviceName: "ucp"
+      zipkin: 
+        url: {{ .Values.global.zipkin.url }}
+    {{- end }}

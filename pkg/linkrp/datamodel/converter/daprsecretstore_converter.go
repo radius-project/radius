@@ -46,6 +46,9 @@ func DaprSecretStoreDataModelFromVersioned(content []byte, version string) (*dat
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.DaprSecretStore), err
 
 	default:

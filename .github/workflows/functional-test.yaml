@@ -28,12 +28,15 @@ on:
       - release/*
   # Dispatch on external events
   repository_dispatch:
-    types: [e2e-test]
+    types: [functional-tests]
 
 env:
   # Go version
   GOVER: '^1.20'
   GOPROXY: https://proxy.golang.org
+
+  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
+  GOTESTSUM_VER: 1.10.0
 
   # Helm version
   HELM_VER: 'v3.11.3'
@@ -85,15 +88,19 @@ jobs:
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Set up checkout target (repository_dispatch)
         if: github.event_name == 'repository_dispatch'
-        uses: actions/github-script@v6.2.0
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
             const testPayload = context.payload.client_payload;
             if (testPayload && testPayload.command === `ok-to-test`) {
-              echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
-              echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
-              echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+              var fs = require('fs');
+              // Set environment variables
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
+                `CHECKOUT_REF=${testPayload.pull_head_ref}\n`+
+                `PR_NUMBER=${testPayload.issue.number}`
+              );
             }
       - name: Check out code
         uses: actions/checkout@v3
@@ -155,6 +162,7 @@ jobs:
             <details>
             <summary> Click here to see the list of tools in the current test run</summary>
 
+            * gotestsum ${{ env.GOTESTSUM_VER }}
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
@@ -387,6 +395,9 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
+      - name: Install gotestsum (test reporting tool)
+        run: |
+          go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -515,6 +526,5 @@ jobs:
               ...context.repo,
               title: `Scheduled functional test failed - Run ID: ${context.runId}`,
               labels: ['bug'],
-              assignees: ['Radius-Eng'],
               body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })

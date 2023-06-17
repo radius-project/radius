@@ -1,0 +1,42 @@
+{{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "ucp-cert"}}
+{{- $existingApiService := lookup "apiregistration.k8s.io/v1" "APIService" .Release.Namespace "v1alpha3.api.ucp.dev"}}
+{{- $ca := genCA "ucp-ca" 3650 }}
+{{- $cn := printf "ucp" }}
+{{- $altName1 := printf "ucp.%s" .Release.Namespace }}
+{{- $altName2 := printf "ucp.%s.svc" .Release.Namespace }}
+{{- $altName3 := printf "ucp.%s.svc.cluster" .Release.Namespace }}
+{{- $altName4 := printf "ucp.%s.svc.cluster.local" .Release.Namespace }}
+{{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3 $altName4) 3650 $ca }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ucp-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+data:
+  {{ if $existingSecret }}tls.crt: {{ index $existingSecret.data "tls.crt" }}
+  {{ else }}tls.crt: {{ b64enc $cert.Cert }}
+  {{ end }}
+
+  {{ if $existingSecret }}tls.key: {{ index $existingSecret.data "tls.key" }}
+  {{ else }}tls.key: {{ b64enc $cert.Key }}
+  {{ end }}
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha3.api.ucp.dev
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+spec:
+  group: api.ucp.dev
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: ucp
+    namespace: {{ .Release.Namespace }}
+  version: v1alpha3
+  caBundle: {{ if $existingApiService }}{{ $existingApiService.spec.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}

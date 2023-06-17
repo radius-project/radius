@@ -37,7 +37,7 @@ You should be able to run the binary that was just produced for the CLI. Copy th
 You should see the basic help text of the CLI. At the time of this writing it looks like:
 
 ```txt
-Project Radius CLI
+Radius CLI
 
 Usage:
   rad [command]

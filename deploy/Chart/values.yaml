@@ -1,29 +1,3 @@
-de:
-  image: radius.azurecr.io/deployment-engine
-  tag: latest
-  resources:
-    requests:
-      # request memory is the average memory usage + 10% buffer.
-      memory: "130Mi"
-    limits:
-      memory: "300Mi"
-ucp:
-  image: radius.azurecr.io/ucpd
-  tag: latest
-  resources:
-    requests:
-      memory: "60Mi"
-    limits:
-      memory: "300Mi"
-rp:
-  image: radius.azurecr.io/appcore-rp
-  tag: latest
-  publicEndpointOverride: ""
-  resources:
-    requests:
-      memory: "160Mi"
-    limits:
-      memory: "300Mi"
 global:
   prometheus:
     enabled: true
@@ -35,3 +9,37 @@ global:
   # zipkin:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
+
+de:
+  image: radius.azurecr.io/deployment-engine
+  # Default tag uses Chart AppVersion.
+  # tag: latest
+  resources:
+    requests:
+      # request memory is the average memory usage + 10% buffer.
+      memory: "130Mi"
+    limits:
+      memory: "300Mi"
+
+ucp:
+  image: radius.azurecr.io/ucpd
+  # Default tag uses Chart AppVersion.
+  # tag: latest
+  resources:
+    requests:
+      # request memory is the average memory usage + 10% buffer.
+      memory: "60Mi"
+    limits:
+      memory: "300Mi"
+
+rp:
+  image: radius.azurecr.io/appcore-rp
+  # Default tag uses Chart AppVersion.
+  # tag: latest
+  publicEndpointOverride: ""
+  resources:
+    requests:
+      # request memory is the average memory usage + 10% buffer.
+      memory: "160Mi"
+    limits:
+      memory: "300Mi"

@@ -123,6 +123,11 @@
 * **ApiVersion**: 2022-03-15-privatepreview
 * **Output**: [RedisCacheListSecretsResult](#rediscachelistsecretsresult)
 
+## Function listSecrets (Applications.Link/sqlDatabases@2022-03-15-privatepreview)
+* **Resource**: Applications.Link/sqlDatabases
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [SqlDatabaseListSecretsResult](#sqldatabaselistsecretsresult)
+
 ## Function listSecrets (Applications.Link/extenders@2022-03-15-privatepreview)
 * **Resource**: Applications.Link/extenders
 * **ApiVersion**: 2022-03-15-privatepreview
@@ -241,43 +246,24 @@
 * **Additional Properties Type**: string
 
 ## MongoDatabaseProperties
-* **Discriminator**: mode
-
-### Base Properties
+### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **database**: string: Database name of the target Mongo database
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **host**: string: Host name of the target Mongo database
+* **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the MongoDB resource
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### RecipeMongoDatabaseProperties
-#### Properties
-* **database**: string (ReadOnly): Database name of the target Mongo database
-* **host**: string: Host name of the target Mongo database
-* **mode**: 'recipe' (Required): Discriminator property for MongoDatabaseProperties.
-* **port**: int: Port value of the target Mongo database
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-
-### ResourceMongoDatabaseProperties
-#### Properties
-* **database**: string (ReadOnly): Database name of the target Mongo database
-* **host**: string: Host name of the target Mongo database
-* **mode**: 'resource' (Required): Discriminator property for MongoDatabaseProperties.
-* **port**: int: Port value of the target Mongo database
-* **resource**: string (Required): Fully qualified resource ID of a supported resource with Mongo API to use for this link
-
-### ValuesMongoDatabaseProperties
-#### Properties
-* **database**: string (ReadOnly): Database name of the target Mongo database
-* **host**: string (Required): Host name of the target Mongo database
-* **mode**: 'values' (Required): Discriminator property for MongoDatabaseProperties.
-* **port**: int (Required): Port value of the target Mongo database
-
+* **username**: string: Username to use when connecting to the target Mongo database
 
 ## MongoDatabaseSecrets
 ### Properties
 * **connectionString**: string: Connection string used to connect to the target Mongo database
 * **password**: string: Password to use when connecting to the target Mongo database
-* **username**: string: Username to use when connecting to the target Mongo database
 
 ## TrackedResourceTags
 ### Properties
@@ -316,7 +302,7 @@
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the Redis resource
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-* **username**: string (ReadOnly): The username for Redis cache
+* **username**: string: The username for Redis cache
 
 ## RedisCacheSecrets
 ### Properties
@@ -333,12 +319,20 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **database**: string: The name of the Sql database.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **port**: int: Port value of the target Sql database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the SqlDatabase resource
+* **secrets**: [SqlDatabaseSecrets](#sqldatabasesecrets): The secret values for the given SqlDatabase resource
 * **server**: string: The fully qualified domain name of the Sql database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **username**: string: Username to use when connecting to the target Sql database
+
+## SqlDatabaseSecrets
+### Properties
+* **connectionString**: string: Connection string used to connect to the target Sql database
+* **password**: string: Password to use when connecting to the target Sql database
 
 ## TrackedResourceTags
 ### Properties
@@ -349,7 +343,6 @@
 ### Properties
 * **connectionString**: string (ReadOnly): Connection string used to connect to the target Mongo database
 * **password**: string (ReadOnly): Password to use when connecting to the target Mongo database
-* **username**: string (ReadOnly): Username to use when connecting to the target Mongo database
 
 ## RabbitMQListSecretsResult
 ### Properties
@@ -359,6 +352,11 @@
 ### Properties
 * **connectionString**: string (ReadOnly): The connection string used to connect to the Redis cache
 * **password**: string (ReadOnly): The password for this Redis cache instance
+
+## SqlDatabaseListSecretsResult
+### Properties
+* **connectionString**: string (ReadOnly): Connection string used to connect to the target Sql database
+* **password**: string (ReadOnly): Password to use when connecting to the target Sql database
 
 ## ExtenderSecrets
 ### Properties

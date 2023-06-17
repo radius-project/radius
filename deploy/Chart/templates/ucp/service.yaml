@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ucp
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+spec:
+  ports:
+    - port: 443
+      name: https
+      protocol: TCP
+      targetPort: 9443
+  selector:
+      app.kubernetes.io/name: ucp

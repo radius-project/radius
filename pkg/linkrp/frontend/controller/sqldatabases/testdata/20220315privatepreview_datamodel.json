@@ -1,0 +1,48 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/sqldatabases/sql0",
+  "name": "sql0",
+  "type": "applications.link/sqldatabases",
+  "location": "West US",
+  "systemData": {
+      "createdAt": "2022-03-22T18:54:52.6857175Z",
+      "createdBy": "fake@hotmail.com",
+      "createdByType": "User",
+      "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+      "lastModifiedBy": "fake@hotmail.com",
+      "lastModifiedByType": "User"
+  },
+  "properties": {
+      "status": {
+        "outputResources": [{
+            "LocalID": "AzureSqlServer",
+            "Dependencies": null,
+            "ResourceType": {
+              "type": "azure.sql",
+              "provider": "azure"
+            }
+        }]
+      },
+      "resourceProvisioning": "manual",
+      "provisioningState": "Succeeded",
+      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+      "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+      "resources": [
+        {
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+        }
+      ],
+      "database": "testDatabase",
+      "server": "testAccount1.sql.cosmos.azure.com",
+      "port": 1433,
+      "username": "testUser",
+      "secrets": {
+        "password": "testPassword",
+        "connectionString": "Data Source=tcp:testAccount1.sql.cosmos.azure.com,1433;Initial Catalog=testDatabase;User Id=testUser;Password=testPassword;Encrypt=True;TrustServerCertificate=True"
+      }
+  },
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "radius-test-rg",
+  "createdApiVersion": "2022-03-15-privatepreview",
+  "updatedApiVersion": "2022-03-15-privatepreview"
+}

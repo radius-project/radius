@@ -7,6 +7,7 @@ package sqldatabases
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
@@ -24,6 +25,12 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.SqlDatabase
 	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(renderers.DatabaseNameValue, &resource.Properties.Database)
 	validator.AddRequiredStringField(renderers.ServerNameValue, &resource.Properties.Server)
+	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
+	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
+	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
+	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
+		return p.computeConnectionString(resource), nil
+	})
 
 	err := validator.SetAndValidate(options.RecipeOutput)
 	if err != nil {
@@ -31,4 +38,17 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.SqlDatabase
 	}
 
 	return nil
+}
+
+func (p *Processor) computeConnectionString(resource *datamodel.SqlDatabase) string {
+	var username, password string
+	if resource.Properties.Username != "" {
+		username = "User Id=" + resource.Properties.Username
+	}
+	if resource.Properties.Secrets.Password != "" {
+		password = "Password=" + resource.Properties.Secrets.Password
+	}
+
+	connectionString := fmt.Sprintf("Data Source=tcp:%s,%v;Initial Catalog=%s;%s;%s;Encrypt=True;TrustServerCertificate=True", resource.Properties.Server, resource.Properties.Port, resource.Properties.Database, username, password)
+	return connectionString
 }

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: appcore-rp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: appcore-rp
+    app.kubernetes.io/part-of: radius
+spec:
+  ports:
+    - port: 5443
+      name: core-http
+      protocol: TCP
+      targetPort: 5443
+    - port: 5444
+      name: link-http
+      protocol: TCP
+      targetPort: 5444
+  selector:
+    app.kubernetes.io/name: appcore-rp

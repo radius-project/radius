@@ -56,6 +56,12 @@ model SqlDatabaseProperties extends BasicResourceProperties {
   @doc("The fully qualified domain name of the Sql database.")
   server?: string;
 
+  @doc("Port value of the target Sql database")
+  port?: int32;
+
+  @doc("Username to use when connecting to the target Sql database")
+  username?: string;
+
   @doc("The recipe used to automatically deploy underlying infrastructure for the sqldatabases link")
   recipe?: Recipe;
 
@@ -65,6 +71,20 @@ model SqlDatabaseProperties extends BasicResourceProperties {
   @doc("Specifies how the underlying service/resource is provisioned and managed.")
   resourceProvisioning?: ResourceProvisioning;
 
+  @doc("Secret values provided for the resource")
+  secrets?: SqlDatabaseSecrets;
+}
+
+@doc("The secret values for the given SqlDatabase resource")
+model SqlDatabaseListSecretsResult is SqlDatabaseSecrets;
+
+@doc("The secret values for the given SqlDatabase resource")
+model SqlDatabaseSecrets {
+  @doc("Password to use when connecting to the target Sql database")
+  password?: string;
+
+  @doc("Connection string used to connect to the target Sql database")
+  connectionString?: string;
 }
 
 @doc("SqlDatabase link")
@@ -78,6 +98,20 @@ model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
   @extension("x-ms-parameter-location", "method")
   name: string;
 }
+
+#suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
+@doc("Lists secrets values for the specified SqlDatabase resource")
+@post
+@route("/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}/listSecrets")
+op SqlDatabases_listSecrets(...ApiVersionParameter,
+  ...RootScopeParam,
+  @doc("The name of the SqlDatabase link resource")
+  @maxLength(63)
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
+  @path
+  @extension("x-ms-parameter-location", "method")
+  sqlDatabaseName: string): ArmResponse<SqlDatabaseListSecretsResult>
+   | ErrorResponse;
 
 @armResourceOperations
 interface SqlDatabases

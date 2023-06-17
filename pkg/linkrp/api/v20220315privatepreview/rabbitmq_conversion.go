@@ -48,16 +48,15 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 		},
 	}
 	properties := src.Properties
-
 	var err error
 	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(properties.ResourceProvisioning)
 	if err != nil {
 		return nil, err
 	}
-
-	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	}
 	converted.Properties.Queue = to.String(properties.Queue)
-
 	err = converted.VerifyInputs()
 	if err != nil {
 		return nil, err

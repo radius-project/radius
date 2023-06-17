@@ -30,7 +30,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/kubernetesmetadata"
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
@@ -191,7 +190,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			SecretValueTransformer: &mongodatabases.AzureTransformer{},
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
