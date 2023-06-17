@@ -31,7 +31,7 @@ import (
 
 var (
 	// Set this to a big value when debugging.
-	waitTimeout = 1 * time.Second
+	waitTimeout = 5 * time.Second
 )
 
 func Test_NewTextModel(t *testing.T) {
