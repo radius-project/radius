@@ -38,6 +38,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/processors/sqldatabases"
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
+	"github.com/project-radius/radius/pkg/messagingrp/processors/rabbitmqqueues"
 
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
@@ -144,7 +145,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 		// Updates for Spliting Linkrp Namespace
 		{linkrp.N_RabbitMQQueuesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &rabbitmqmessagequeues.N_Processor{}
+			processor := &rabbitmqqueues.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](processor, engine, client, configLoader, options)
 		}},
 		/*  The following will be worked on and uncommented in upcoming PRs

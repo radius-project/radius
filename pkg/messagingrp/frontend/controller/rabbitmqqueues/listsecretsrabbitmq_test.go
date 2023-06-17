@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rabbitmqmessagequeues
+package rabbitmqqueues
 
 import (
 	"context"
@@ -29,17 +29,16 @@ import (
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	frontend_ctrl "github.com/project-radius/radius/pkg/messagingrp/frontend/controller"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
-// Test_N_ListSecrets_20220315PrivatePreview: These tests are for new resource Messaging.RabbitMQQueues
-// and will be renamed to TestListSecrets_20220315PrivatePreview after Link.RabbitMQMessageQueues is deleted.
-func Test_N_ListSecrets_20220315PrivatePreview(t *testing.T) {
+// Test_ListSecrets_20220315PrivatePreview: These tests are for new resource Messaging.RabbitMQQueues
+func Test_ListSecrets_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -47,11 +46,11 @@ func Test_N_ListSecrets_20220315PrivatePreview(t *testing.T) {
 	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
-	_, rabbitMQDataModel, _ := get_NTestModels20220315privatepreview()
+	_, rabbitMQDataModel, _ := get_TestModel20220315privatepreview()
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, n_testHeaderfile, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -80,7 +79,7 @@ func Test_N_ListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, n_testHeaderfile, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
 			renderers.ConnectionStringValue: "connection://string",
@@ -121,7 +120,7 @@ func Test_N_ListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource empty secrets", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, n_testHeaderfile, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{}
 
@@ -159,7 +158,7 @@ func Test_N_ListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, n_testHeaderfile, nil)
+		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 		w := httptest.NewRecorder()
 
