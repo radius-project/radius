@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package rabbitmqmessagequeues
+package rabbitmqqueues
 
 import (
 	"context"
@@ -25,8 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_N_Process(t *testing.T) {
-	processor := N_Processor{}
+func Test_Process(t *testing.T) {
+	processor := Processor{}
 
 	const queue = "test-queue"
 	const connectionString = "connection://string"

@@ -14,21 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rabbitmqmessagequeues
+package rabbitmqqueues
 
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/messagingrp/api/v20220315privatepreview"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/project-radius/radius/test/testutil"
 )
 
 const testHeaderfile = "20220315privatepreview_requestheaders.json"
 
-func getTestModels20220315privatepreview() (input *v20220315privatepreview.RabbitMQMessageQueueResource, dataModel *datamodel.RabbitMQMessageQueue, output *v20220315privatepreview.RabbitMQMessageQueueResource) {
+func get_TestModel20220315privatepreview() (input *v20220315privatepreview.RabbitMQQueueResource, dataModel *msg_dm.RabbitMQQueue, output *v20220315privatepreview.RabbitMQQueueResource) {
 	rawDataModel := testutil.ReadFixture("20220315privatepreview_datamodel.json")
-	dataModel = &datamodel.RabbitMQMessageQueue{}
+	dataModel = &msg_dm.RabbitMQQueue{}
 	_ = json.Unmarshal(rawDataModel, dataModel)
 
 	return input, dataModel, output
