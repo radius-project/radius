@@ -14,18 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package uninstall
 
-import (
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
-var uninstallCmd = &cobra.Command{
-	Use:   "uninstall",
-	Short: "Uninstall radius for a specific platform",
-	Long:  `Uninstall radius for a specific platform`,
-}
-
-func init() {
-	RootCmd.AddCommand(uninstallCmd)
+// NewCommand returns a new cobra command for `rad uninstall`.
+func NewCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "uninstall",
+		Short: "Uninstall Radius for a specific platform",
+		Long:  `Uninstall Radius for a specific platform`,
+	}
 }

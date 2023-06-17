@@ -45,6 +45,8 @@ import (
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
+	"github.com/project-radius/radius/pkg/cli/cmd/install"
+	install_kubernetes "github.com/project-radius/radius/pkg/cli/cmd/install/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
@@ -54,6 +56,8 @@ import (
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
 	"github.com/project-radius/radius/pkg/cli/cmd/run"
+	"github.com/project-radius/radius/pkg/cli/cmd/uninstall"
+	uninstall_kubernetes "github.com/project-radius/radius/pkg/cli/cmd/uninstall/kubernetes"
 	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	workspace_delete "github.com/project-radius/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/project-radius/radius/pkg/cli/cmd/workspace/list"
@@ -272,6 +276,18 @@ func initSubCommands() {
 
 	bicepPublishCmd, _ := bicep_publish.NewCommand(framework)
 	bicepCmd.AddCommand(bicepPublishCmd)
+
+	installCmd := install.NewCommand()
+	RootCmd.AddCommand(installCmd)
+
+	installKubernetesCmd, _ := install_kubernetes.NewCommand(framework)
+	installCmd.AddCommand(installKubernetesCmd)
+
+	uninstallCmd := uninstall.NewCommand()
+	RootCmd.AddCommand(uninstallCmd)
+
+	uninstallKubernetesCmd, _ := uninstall_kubernetes.NewCommand(framework)
+	uninstallCmd.AddCommand(uninstallKubernetesCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
