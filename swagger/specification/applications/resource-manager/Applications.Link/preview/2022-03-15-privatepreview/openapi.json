@@ -1668,6 +1668,44 @@
         }
       }
     },
+    "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}/listSecrets": {
+      "post": {
+        "operationId": "SqlDatabases_ListSecrets",
+        "description": "Lists secrets values for the specified SqlDatabase resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase link resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/providers/Applications.Link/operations": {
       "get": {
         "tags": [
@@ -2489,6 +2527,20 @@
       },
       "description": "Status of a resource."
     },
+    "SqlDatabaseListSecretsResult": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "description": "Password to use when connecting to the target Sql database"
+        },
+        "connectionString": {
+          "type": "string",
+          "description": "Connection string used to connect to the target Sql database"
+        }
+      },
+      "description": "The secret values for the given SqlDatabase resource"
+    },
     "SqlDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2505,6 +2557,15 @@
           "type": "string",
           "description": "The fully qualified domain name of the Sql database."
         },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Sql database"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Sql database"
+        },
         "recipe": {
           "$ref": "#/definitions/Recipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
@@ -2520,6 +2581,10 @@
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "secrets": {
+          "$ref": "#/definitions/SqlDatabaseSecrets",
+          "description": "Secret values provided for the resource"
         }
       },
       "description": "SqlDatabase properties",
@@ -2571,6 +2636,20 @@
       "required": [
         "value"
       ]
+    },
+    "SqlDatabaseSecrets": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "description": "Password to use when connecting to the target Sql database"
+        },
+        "connectionString": {
+          "type": "string",
+          "description": "Connection string used to connect to the target Sql database"
+        }
+      },
+      "description": "The secret values for the given SqlDatabase resource"
     },
     "object": {
       "type": "object",

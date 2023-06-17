@@ -127,7 +127,7 @@ func Test_Run(t *testing.T) {
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-				Return(true, nil).Times(1)
+				Return(nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -189,7 +189,7 @@ func Test_Run(t *testing.T) {
 				Times(1)
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-				Return(false, expectedError).
+				Return(expectedError).
 				Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -235,7 +235,7 @@ func Test_Run(t *testing.T) {
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-				Return(true, nil).Times(1)
+				Return(nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -406,7 +406,7 @@ func Test_Run(t *testing.T) {
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-				Return(true, nil).Times(1)
+				Return(nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 

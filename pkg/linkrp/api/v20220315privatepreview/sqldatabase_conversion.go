@@ -17,8 +17,6 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"fmt"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -57,12 +55,21 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	}
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
 	converted.Properties.Database = to.String(properties.Database)
 	converted.Properties.Server = to.String(properties.Server)
-	err = src.verifyManualInputs()
+	converted.Properties.Port = to.Int32(properties.Port)
+	converted.Properties.Username = to.String(properties.Username)
+	if properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.SqlDatabaseSecrets{
+			ConnectionString: to.String(properties.Secrets.ConnectionString),
+			Password:         to.String(properties.Secrets.Password),
+		}
+	}
+	err = converted.VerifyInputs()
 	if err != nil {
 		return nil, err
 	}
@@ -88,12 +95,14 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Resources:            fromResourcesDataModel(sql.Properties.Resources),
 		Database:             to.Ptr(sql.Properties.Database),
 		Server:               to.Ptr(sql.Properties.Server),
+		Port:                 to.Ptr(sql.Properties.Port),
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(sql.Properties.Environment),
 		Application:       to.Ptr(sql.Properties.Application),
+		Username:          to.Ptr(sql.Properties.Username),
 	}
 	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
@@ -101,12 +110,24 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func (src *SQLDatabaseResource) verifyManualInputs() error {
-	properties := src.Properties
-	if properties.ResourceProvisioning != nil && *properties.ResourceProvisioning == ResourceProvisioning(linkrp.ResourceProvisioningManual) {
-		if properties.Database == nil || properties.Server == nil {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("database and server are required when resourceProvisioning is %s", ResourceProvisioningManual)}
-		}
+// ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabaseSecrets instance.
+func (dst *SQLDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
+	sqlSecrets, ok := src.(*datamodel.SqlDatabaseSecrets)
+	if !ok {
+		return v1.ErrInvalidModelConversion
 	}
+
+	dst.ConnectionString = to.Ptr(sqlSecrets.ConnectionString)
+	dst.Password = to.Ptr(sqlSecrets.Password)
+
 	return nil
+}
+
+// ConvertTo converts from the versioned SqlDatabaseSecrets instance to version-agnostic datamodel.
+func (src *SQLDatabaseSecrets) ConvertTo() (v1.DataModelInterface, error) {
+	converted := &datamodel.SqlDatabaseSecrets{
+		ConnectionString: to.String(src.ConnectionString),
+		Password:         to.String(src.Password),
+	}
+	return converted, nil
 }

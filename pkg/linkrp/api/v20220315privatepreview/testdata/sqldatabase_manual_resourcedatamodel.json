@@ -33,6 +33,8 @@
         ],
         "database": "testDatabase",
         "server": "testAccount1.sql.cosmos.azure.com",
-        "resourceProvisioning":"manual"
+        "resourceProvisioning":"manual",
+        "username": "testUser",
+        "port":1433
     }
 }

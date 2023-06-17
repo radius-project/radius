@@ -63,6 +63,24 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Create command with explicit resource group",
+			Input:         []string{"testingenv", "-g", "test-resource-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Invalid resource group
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "test-resource-group", r.ResourceGroupName)
+				require.Equal(t, "/planes/radius/local/resourceGroups/test-resource-group", r.Workspace.Scope)
+			},
+		},
+		{
 			Name:          "Create command with invalid resource group",
 			Input:         []string{"testingenv", "-g", "invalidresourcegroup"},
 			ExpectedValid: false,
@@ -145,7 +163,7 @@ func Test_Run(t *testing.T) {
 		}
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-			Return(true, nil).Times(1)
+			Return(nil).Times(1)
 
 		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 		outputSink := &output.MockOutput{}
@@ -154,7 +172,8 @@ func Test_Run(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name: "defaultWorkspace",
+			Name:  "defaultWorkspace",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
 		}
 
 		runner := &Runner{
@@ -163,10 +182,10 @@ func Test_Run(t *testing.T) {
 			Output:              outputSink,
 			Workspace:           workspace,
 			EnvironmentName:     "default",
-			UCPResourceGroup:    "default",
 			Namespace:           "default",
 			NamespaceInterface:  namespaceClient,
 			ConfigFileInterface: configFileInterface,
+			ResourceGroupName:   "test-group",
 		}
 
 		expectedOutput := []any{
@@ -177,7 +196,7 @@ func Test_Run(t *testing.T) {
 				Format: "Successfully created environment %q in resource group %q",
 				Params: []interface{}{
 					"default",
-					"default",
+					"test-group",
 				},
 			},
 		}
@@ -202,7 +221,7 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-			Return(false, expectedError).
+			Return(expectedError).
 			Times(1)
 
 		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
@@ -212,7 +231,8 @@ func Test_Run(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name: "defaultWorkspace",
+			Name:  "defaultWorkspace",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
 		}
 
 		runner := &Runner{
@@ -221,15 +241,21 @@ func Test_Run(t *testing.T) {
 			Output:              outputSink,
 			Workspace:           workspace,
 			EnvironmentName:     "default",
-			UCPResourceGroup:    "default",
 			Namespace:           "default",
 			NamespaceInterface:  namespaceClient,
 			ConfigFileInterface: configFileInterface,
 		}
 
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Creating Environment...",
+			},
+		}
+
 		err := runner.Run(context.Background())
 		require.Error(t, err)
 		require.Equal(t, expectedError, err)
+		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
 }
 

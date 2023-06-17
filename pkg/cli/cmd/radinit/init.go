@@ -202,16 +202,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		//ignore the id of the resource group created
-		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
+		err = client.CreateUCPGroup(ctx, "radius", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
-		if err != nil || !isGroupCreated {
+		if err != nil {
 			return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
 		}
 
 		// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 		// We'll remove this in the future.
-		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
+		err = client.CreateUCPGroup(ctx, "deployments", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil {
@@ -247,11 +247,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			Recipes:   recipes,
 		}
 
-		isEnvCreated, err := client.CreateEnvironment(ctx, r.Options.Environment.Name, v1.LocationGlobal, &envProperties)
+		err = client.CreateEnvironment(ctx, r.Options.Environment.Name, v1.LocationGlobal, &envProperties)
 		if err != nil {
 			return &cli.FriendlyError{Message: fmt.Sprintf("Failed to create radius environment with error %s", err)}
-		} else if !isEnvCreated {
-			return &cli.FriendlyError{Message: "Failed to create radius environment"}
 		}
 
 		credentialClient, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)

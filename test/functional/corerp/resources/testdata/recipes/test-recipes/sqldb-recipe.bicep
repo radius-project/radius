@@ -102,5 +102,10 @@ output result object = {
   values: {
     server: '${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'
     database: 'master'
+    port: 1433
+    username: username
+  }
+  secrets: {
+    password: password
   }
 }
