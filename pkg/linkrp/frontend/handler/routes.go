@@ -40,9 +40,12 @@ import (
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
+	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	msg_conv "github.com/project-radius/radius/pkg/messagingrp/datamodel/converter"
+	rmq_frnt_ctrl "github.com/project-radius/radius/pkg/messagingrp/frontend/controller"
+	rmq_ctrl "github.com/project-radius/radius/pkg/messagingrp/frontend/controller/rabbitmqqueues"
 )
 
 const (
@@ -59,7 +62,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	pathBase += getPathBase(isARM)
 
 	// URLs may use either the subscription/plane scope or resource group scope.
-	//
 	// These paths are order sensitive and the longer path MUST be registered first.
 	prefixes := []string{
 		rootScopePath + resourceGroupPath,
@@ -70,6 +72,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	if err != nil {
 		return err
 	}
+
+	err = AddMessagingRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	if err != nil {
+		return err
+	}
+
+	/* The following routes will be configured in upcoming PRs
 	err = AddDatastoresRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
 	if err != nil {
 		return err
@@ -78,10 +87,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	if err != nil {
 		return err
 	}
-	err = AddMessagingRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
-	if err != nil {
-		return err
-	}
+	*/
 
 	return nil
 }
@@ -200,9 +206,9 @@ func AddMessagingRoutes(ctx context.Context, router *mux.Router, pathBase string
 		{
 			ParentRouter: rabbitmqQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
-			Method:       rabbitmq_ctrl.OperationListSecret,
+			Method:       rmq_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+				return rmq_ctrl.NewListSecretsRabbitMQQueue(rmq_frnt_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
 		},
 	}
