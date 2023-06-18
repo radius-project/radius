@@ -49,7 +49,6 @@ const (
 	DaprPubSubBrokersResource     = "applications.link/daprPubSubBrokers"
 	DaprSecretStoresResource      = "applications.link/daprSecretStores"
 	DaprStateStoresResource       = "applications.link/daprStateStores"
-	DaprInvokeHttpRoutesResource  = "applications.link/daprInvokeHttpRoutes"
 	ExtendersResource             = "applications.link/extenders"
 )
 

@@ -50,7 +50,6 @@ var (
 		linkrp.DaprStateStoresResourceType,
 		linkrp.DaprSecretStoresResourceType,
 		linkrp.DaprPubSubBrokersResourceType,
-		linkrp.DaprInvokeHttpRoutesResourceType,
 		linkrp.ExtendersResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",

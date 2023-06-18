@@ -8,29 +8,6 @@
 
 package v20220315privatepreview
 
-// DaprInvokeHTTPRouteClientCreateOrUpdateResponse contains the response from method DaprInvokeHTTPRouteClient.CreateOrUpdate.
-type DaprInvokeHTTPRouteClientCreateOrUpdateResponse struct {
-	DaprInvokeHTTPRouteResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprInvokeHTTPRouteClientDeleteResponse contains the response from method DaprInvokeHTTPRouteClient.Delete.
-type DaprInvokeHTTPRouteClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprInvokeHTTPRouteClientGetResponse contains the response from method DaprInvokeHTTPRouteClient.Get.
-type DaprInvokeHTTPRouteClientGetResponse struct {
-	DaprInvokeHTTPRouteResource
-}
-
-// DaprInvokeHTTPRouteClientListByRootScopeResponse contains the response from method DaprInvokeHTTPRouteClient.ListByRootScope.
-type DaprInvokeHTTPRouteClientListByRootScopeResponse struct {
-	DaprInvokeHTTPRouteResourceListResult
-}
-
 // DaprPubSubBrokerClientCreateOrUpdateResponse contains the response from method DaprPubSubBrokerClient.CreateOrUpdate.
 type DaprPubSubBrokerClientCreateOrUpdateResponse struct {
 	DaprPubSubBrokerResource

@@ -250,30 +250,6 @@ var handlerTests = []struct {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
-	}, {
-		url:        "/providers/applications.link/daprinvokehttproutes?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
 	},
 }
 

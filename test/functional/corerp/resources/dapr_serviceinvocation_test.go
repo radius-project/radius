@@ -25,10 +25,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprInvokeHttpRoute(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-httproute.bicep"
-	name := "dapr-invokehttproute"
-	appNamespace := "default-dapr-invokehttproute"
+func Test_DaprServiceInvocation(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-serviceinvocation.bicep"
+	name := "dapr-serviceinvocation"
+	appNamespace := "default-dapr-serviceinvocation"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -47,11 +47,6 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 					{
 						Name: "dapr-backend",
 						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "dapr-backend-httproute",
-						Type: validation.DaprInvokeHttpRoutesResource,
 						App:  name,
 					},
 				},

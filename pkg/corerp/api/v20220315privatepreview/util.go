@@ -124,7 +124,6 @@ func stringSlice(s []*string) []string {
 
 func isValidLinkType(link string) bool {
 	linkTypes := []string{
-		linkrp.DaprInvokeHttpRoutesResourceType,
 		linkrp.DaprPubSubBrokersResourceType,
 		linkrp.DaprSecretStoresResourceType,
 		linkrp.DaprStateStoresResourceType,

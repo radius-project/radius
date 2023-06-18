@@ -5,7 +5,7 @@ param environment string
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dapr-invokehttproute'
+  name: 'dapr-serviceinvocation'
   location: location
   properties: {
     environment: environment
@@ -19,15 +19,14 @@ resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     container: {
       image: magpieimage
+      env: {
+        // Used by magpie to communicate with the backend.
+        CONNECTION_DAPRHTTPROUTE_APPID: 'backend'
+      }
       readinessProbe:{
         kind:'httpGet'
         containerPort:3000
         path: '/healthz'
-      }
-    }
-    connections: {
-      daprhttproute: {
-        source: daprBackend.id
       }
     }
     extensions: [
@@ -60,21 +59,10 @@ resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: daprBackend.properties.appId
+        appId: 'backend'
         appPort: 3000
-        provides: daprBackend.id
       }
     ]
-  }
-}
-
-resource daprBackend 'Applications.Link/daprInvokeHttpRoutes@2022-03-15-privatepreview' = {
-  name: 'dapr-backend-httproute'
-  location: location
-  properties: {
-    environment: environment
-    application: app.id
-    appId: 'backend'
   }
 }
 

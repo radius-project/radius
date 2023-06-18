@@ -32,7 +32,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprinvokehttproutes"
 	extender_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
@@ -87,10 +86,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	mongoDatabasePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/mongodatabases").Subrouter()
 	mongoDatabaseResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/mongodatabases").Subrouter()
 	mongoDatabaseResourceRouter := mongoDatabaseResourceGroupRouter.PathPrefix("/{mongoDatabaseName}").Subrouter()
-
-	daprHttpRoutePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/daprinvokehttproutes").Subrouter()
-	daprHttpRouteResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/daprinvokehttproutes").Subrouter()
-	daprHttpRouteResourceRouter := daprHttpRouteResourceGroupRouter.PathPrefix("/{daprInvokeHttpRouteName}").Subrouter()
 
 	daprPubSubBrokerPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.link/daprpubsubbrokers").Subrouter()
 	daprPubSubBrokerResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.link/daprpubsubbrokers").Subrouter()
@@ -212,67 +207,6 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			Method:       mongo_ctrl.OperationListSecret,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return mongo_ctrl.NewListSecretsMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
-		},
-		{
-			ParentRouter: daprHttpRoutePlaneRouter,
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
-			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt,
-					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
-						RequestConverter:   converter.DaprInvokeHttpRouteDataModelFromVersioned,
-						ResponseConverter:  converter.DaprInvokeHttpRouteDataModelToVersioned,
-						ListRecursiveQuery: true,
-					})
-			},
-		},
-		{
-			ParentRouter: daprHttpRouteResourceGroupRouter,
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
-			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt,
-					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
-						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
-						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
-					})
-			},
-		},
-		{
-			ParentRouter: daprHttpRouteResourceRouter,
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
-			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt,
-					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
-						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
-						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
-					})
-			},
-		},
-		{
-			ParentRouter: daprHttpRouteResourceRouter,
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
-			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
-		},
-		{
-			ParentRouter: daprHttpRouteResourceRouter,
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
-			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
-		},
-		{
-			ParentRouter: daprHttpRouteResourceRouter,
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
-			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return daprHttpRoute_ctrl.NewDeleteDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
 			},
 		},
 		{

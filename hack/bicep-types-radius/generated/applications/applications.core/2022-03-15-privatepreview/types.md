@@ -295,7 +295,6 @@
 * **config**: string: Specifies the Dapr configuration to use for the resource.
 * **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
-* **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
 
 ### ContainerKubernetesMetadataExtension
 #### Properties

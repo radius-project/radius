@@ -228,7 +228,6 @@ func getTestContainerExtensions(t *testing.T) []datamodel.Extension {
 				AppPort:  80,
 				Config:   "config",
 				Protocol: "http",
-				Provides: "provides",
 			},
 		},
 		{
@@ -266,7 +265,6 @@ func getTestContainerEmptyKuberenetesMetadataExt(t *testing.T) []datamodel.Exten
 				AppPort:  80,
 				Config:   "config",
 				Protocol: "http",
-				Provides: "provides",
 			},
 		},
 		{
