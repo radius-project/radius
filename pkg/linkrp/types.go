@@ -85,7 +85,6 @@ type Kubernetes struct {
 }
 
 const (
-	DaprInvokeHttpRoutesResourceType  = "Applications.Link/daprInvokeHttpRoutes"
 	DaprPubSubBrokersResourceType     = "Applications.Link/daprPubSubBrokers"
 	DaprSecretStoresResourceType      = "Applications.Link/daprSecretStores"
 	DaprStateStoresResourceType       = "Applications.Link/daprStateStores"

@@ -689,10 +689,6 @@
             "name": "Protocol",
             "modelAsString": true
           }
-        },
-        "provides": {
-          "description": "Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.",
-          "type": "string"
         }
       },
       "additionalProperties": false,

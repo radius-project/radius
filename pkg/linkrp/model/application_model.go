@@ -22,7 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -43,24 +42,12 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 
 	radiusResourceModel := []RadiusResourceModel{
 		{
-			ResourceType: linkrp.DaprInvokeHttpRoutesResourceType,
-			Renderer:     &daprinvokehttproutes.Renderer{},
-		},
-		{
 			ResourceType: linkrp.ExtendersResourceType,
 			Renderer:     &extenders.Renderer{},
 		},
 	}
 
 	outputResourceModel := []OutputResourceModel{
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprComponent,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewDaprComponentHandler(k8s),
-		},
-
 		{
 			// Handles any Kubernetes resource type
 			ResourceType: resourcemodel.ResourceType{
@@ -137,13 +124,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
 		},
 	}
 

@@ -495,20 +495,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(linkrp.ExtendersResourceType):
 		obj := resource.(*datamodel.Extender)
 		basicResource = &obj.Properties.BasicResourceProperties
-	case strings.ToLower(linkrp.DaprStateStoresResourceType):
-		obj := resource.(*datamodel.DaprStateStore)
-		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
-		}
-	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
-		obj := resource.(*datamodel.DaprInvokeHttpRoute)
-		basicResource = &obj.Properties.BasicResourceProperties
-		if obj.Properties.Recipe.Name != "" {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
-		}
 	default:
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
 		err = fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())

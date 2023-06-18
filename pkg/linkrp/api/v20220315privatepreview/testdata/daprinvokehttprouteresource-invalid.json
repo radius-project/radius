@@ -1,8 +1,0 @@
-{
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprInvokeHttpRoutes/daprHttpRoute0",
-    "name": "daprHttpRoute0",
-    "type": "Applications.Link/daprInvokeHttpRoutes",
-    "properties": {
-        "appId": 123456
-    }
-}

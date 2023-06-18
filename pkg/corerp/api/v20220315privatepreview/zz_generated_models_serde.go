@@ -706,7 +706,6 @@ func (d DaprSidecarExtension) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "config", d.Config)
 	objectMap["kind"] = "daprSidecar"
 	populate(objectMap, "protocol", d.Protocol)
-	populate(objectMap, "provides", d.Provides)
 	return json.Marshal(objectMap)
 }
 
@@ -733,9 +732,6 @@ func (d *DaprSidecarExtension) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "protocol":
 				err = unpopulate(val, "Protocol", &d.Protocol)
-				delete(rawMsg, key)
-		case "provides":
-				err = unpopulate(val, "Provides", &d.Provides)
 				delete(rawMsg, key)
 		}
 		if err != nil {
