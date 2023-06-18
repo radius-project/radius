@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
 )
 
@@ -34,7 +35,7 @@ const (
 )
 
 func Test_AWSPlane_PUT_Create(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", awsPlaneResourceURL, awsPlaneRequestFixture)
@@ -42,7 +43,7 @@ func Test_AWSPlane_PUT_Create(t *testing.T) {
 }
 
 func Test_AWSPlane_PUT_Update(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", awsPlaneResourceURL, awsPlaneRequestFixture)
@@ -53,7 +54,7 @@ func Test_AWSPlane_PUT_Update(t *testing.T) {
 }
 
 func Test_AWSPlane_GET_Empty(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeRequest("GET", awsPlaneResourceURL, nil)
@@ -61,7 +62,7 @@ func Test_AWSPlane_GET_Empty(t *testing.T) {
 }
 
 func Test_AWSPlane_GET_Found(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", awsPlaneResourceURL, awsPlaneRequestFixture)
@@ -74,7 +75,7 @@ func Test_AWSPlane_GET_Found(t *testing.T) {
 func Test_AWSPlane_LIST(t *testing.T) {
 	t.Skip("This functionality is currently broken. See https://github.com/project-radius/radius/issues/4878")
 
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", awsPlaneResourceURL, awsPlaneRequestFixture)
@@ -85,7 +86,7 @@ func Test_AWSPlane_LIST(t *testing.T) {
 }
 
 func Test_AWSPlane_DELETE_DoesNotExist(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeRequest("DELETE", awsPlaneResourceURL, nil)
@@ -93,7 +94,7 @@ func Test_AWSPlane_DELETE_DoesNotExist(t *testing.T) {
 }
 
 func Test_AWSPlane_DELETE_Found(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", awsPlaneResourceURL, awsPlaneRequestFixture)

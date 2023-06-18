@@ -19,6 +19,7 @@ package planes
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
 )
 
@@ -29,7 +30,7 @@ const (
 )
 
 func Test_AllPlanes_LIST(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
@@ -40,7 +41,7 @@ func Test_AllPlanes_LIST(t *testing.T) {
 }
 
 func Test_AllPlanes_LIST_BY_TYPE(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)

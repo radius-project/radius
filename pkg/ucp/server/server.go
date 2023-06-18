@@ -53,6 +53,7 @@ const (
 )
 
 type Options struct {
+	Config                  *hostoptions.UCPConfig
 	Port                    string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
 	LoggingOptions          ucplog.LoggingOptions
@@ -128,6 +129,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	}
 
 	return Options{
+		Config:                  opts.Config,
 		Port:                    port,
 		TLSCertDir:              tlsCertDir,
 		PathBase:                basePath,
@@ -153,15 +155,16 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		api.NewService(api.ServiceOptions{
 			ProviderName:           UCPProviderName,
 			Address:                ":" + options.Port,
-			TLSCertDir:             options.TLSCertDir,
 			PathBase:               options.PathBase,
+			Config:                 options.Config,
+			Location:               options.Location,
+			TLSCertDir:             options.TLSCertDir,
 			StorageProviderOptions: options.StorageProviderOptions,
 			SecretProviderOptions:  options.SecretProviderOptions,
 			QueueProviderOptions:   options.QueueProviderOptions,
 			InitialPlanes:          options.InitialPlanes,
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
-			Location:               options.Location,
 		}),
 	}
 
