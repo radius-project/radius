@@ -51,18 +51,20 @@ var (
 		linkrp.DaprSecretStoresResourceType,
 		linkrp.DaprPubSubBrokersResourceType,
 		linkrp.ExtendersResourceType,
-		linkrp.N_MongoDatabasesResourceType,
 		linkrp.N_RabbitMQQueuesResourceType,
+		/* routes will be setup for following resource types in upcoming PRs
+		linkrp.N_MongoDatabasesResourceType,
 		linkrp.N_RedisCachesResourceType,
 		linkrp.N_SqlDatabasesResourceType,
 		linkrp.N_DaprStateStoresResourceType,
 		linkrp.N_DaprSecretStoresResourceType,
 		linkrp.N_DaprPubSubBrokersResourceType,
+		"Applications.Core/extenders",
+		*/
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
 		"Applications.Core/secretStores",
-		"Applications.Core/extenders",
 	}
 )
 
