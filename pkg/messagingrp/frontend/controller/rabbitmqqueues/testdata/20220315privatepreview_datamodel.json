@@ -21,7 +21,15 @@
         "resourceProvisioning": "manual",
         "queue": "testQueue",
         "secrets": {
-          "connectionString": "connection://string"
+            "connectionString": "connection://string"
+        }
+    },
+    "computedValues": {
+        "queue": "testQueue"
+    },
+    "secretValues": {
+        "connectionString": {
+            "value": "connection://string"
         }
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",

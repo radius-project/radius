@@ -26,7 +26,7 @@ import (
 
 const testHeaderfile = "20220315privatepreview_requestheaders.json"
 
-func get_TestModel20220315privatepreview() (input *v20220315privatepreview.RabbitMQQueueResource, dataModel *msg_dm.RabbitMQQueue, output *v20220315privatepreview.RabbitMQQueueResource) {
+func getTest_Model20220315privatepreview() (input *v20220315privatepreview.RabbitMQQueueResource, dataModel *msg_dm.RabbitMQQueue, output *v20220315privatepreview.RabbitMQQueueResource) {
 	rawDataModel := testutil.ReadFixture("20220315privatepreview_datamodel.json")
 	dataModel = &msg_dm.RabbitMQQueue{}
 	_ = json.Unmarshal(rawDataModel, dataModel)
