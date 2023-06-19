@@ -26,9 +26,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -36,37 +33,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, rpv1.DeploymentOutput) {
-	rendererOutput := renderers.RendererOutput{
-		SecretValues: map[string]rpv1.SecretValueReference{
-			"secretname": {
-				Value: "secretvalue",
-			},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			"foo": {
-				Value: "bar",
-			},
-		},
-	}
-
-	deploymentOutput := rpv1.DeploymentOutput{
-		DeployedOutputResources: []rpv1.OutputResource{},
-	}
-
-	return rendererOutput, deploymentOutput
-}
-
 func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, renderers.RendererOutput, rpv1.DeploymentOutput) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient) {
 		mctrl := gomock.NewController(t)
-		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
-		rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 		mds := store.NewMockStorageClient(mctrl)
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, mds, mDeploymentProcessor, rendererOutput, deploymentOutput
+		}, mds
 	}
 	createNewResourceTestCases := []struct {
 		desc               string
@@ -84,7 +58,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
+			teardownTest, mds := setupTest(t)
 			defer teardownTest(t)
 
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
@@ -105,9 +79,6 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
-				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-
 				mds.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -124,7 +95,6 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 				Options: ctrl.Options{
 					StorageClient: mds,
 				},
-				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateExtender(opts)
@@ -136,7 +106,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 			if !testcase.shouldFail {
 				actualOutput := &v20220315privatepreview.ExtenderResponseResource{}
-				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+				err := json.Unmarshal(w.Body.Bytes(), actualOutput)
+				require.NoError(t, err)
 				require.Equal(t, expectedOutput, actualOutput)
 
 				require.Equal(t, "new-resource-etag", w.Header().Get("ETag"))
@@ -163,7 +134,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
+			teardownTest, mds := setupTest(t)
 			defer teardownTest(t)
 
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
@@ -187,10 +158,6 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
-				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
-
 				mds.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -205,7 +172,6 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 				Options: ctrl.Options{
 					StorageClient: mds,
 				},
-				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewCreateOrUpdateExtender(opts)

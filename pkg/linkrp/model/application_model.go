@@ -20,9 +20,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/sdk"
 
@@ -40,12 +38,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client, connection s
 		supportedProviders[resourcemodel.ProviderAzure] = true
 	}
 
-	radiusResourceModel := []RadiusResourceModel{
-		{
-			ResourceType: linkrp.ExtendersResourceType,
-			Renderer:     &extenders.Renderer{},
-		},
-	}
+	radiusResourceModel := []RadiusResourceModel{}
 
 	outputResourceModel := []OutputResourceModel{
 		{

@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -36,7 +35,6 @@ var _ ctrl.Controller = (*DeleteExtender)(nil)
 // DeleteExtender is the controller implementation to delete extender link resource.
 type DeleteExtender struct {
 	ctrl.Operation[*datamodel.Extender, datamodel.Extender]
-	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteExtender creates a new instance DeleteExtender.
@@ -47,7 +45,6 @@ func NewDeleteExtender(opts frontend_ctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -70,11 +67,6 @@ func (extender *DeleteExtender) Run(ctx context.Context, w http.ResponseWriter, 
 	r, err := extender.PrepareResource(ctx, req, nil, old, etag)
 	if r != nil || err != nil {
 		return r, err
-	}
-
-	err = extender.dp.Delete(ctx, serviceCtx.ResourceID, old.Properties.Status.OutputResources)
-	if err != nil {
-		return nil, err
 	}
 
 	err = extender.StorageClient().Delete(ctx, serviceCtx.ResourceID.String())
