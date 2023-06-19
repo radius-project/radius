@@ -434,9 +434,6 @@ type DaprSidecarExtension struct {
 
 	// Specifies the Dapr app-protocol to use for the resource.
 	Protocol *Protocol `json:"protocol,omitempty"`
-
-	// Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
-	Provides *string `json:"provides,omitempty"`
 }
 
 // GetContainerExtension implements the ContainerExtensionClassification interface for type DaprSidecarExtension.

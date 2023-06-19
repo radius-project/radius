@@ -18,11 +18,9 @@ package radinit
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -98,9 +96,7 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 
 	items := r.buildExistingEnvironmentList(environments)
 	name, err := r.Prompter.GetListInput(items, selectExistingEnvironmentPrompt)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -151,10 +147,8 @@ func (r *Runner) enterEnvironmentName(ctx context.Context) (string, error) {
 		Placeholder: defaultEnvironmentName,
 		Validate:    prompt.ValidateResourceNameOrDefault,
 	})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return "", &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
-		return "", &cli.FriendlyError{Message: "Failed to read env name"}
+	if err != nil {
+		return "", err
 	}
 
 	return name, nil
@@ -171,10 +165,8 @@ func (r *Runner) enterEnvironmentNamespace(ctx context.Context) (string, error) 
 		Placeholder: defaultEnvironmentNamespace,
 		Validate:    prompt.ValidateResourceNameOrDefault,
 	})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return "", &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
-		return "", &cli.FriendlyError{Message: "Namespace not specified"}
+	if err != nil {
+		return "", err
 	}
 
 	return namespace, nil

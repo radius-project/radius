@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -200,7 +199,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		err := runner.Run(context.Background())
-		require.Equal(t, err, &cli.FriendlyError{Message: prompt.ErrExitConsoleMessage})
+		require.Equal(t, &prompt.ErrExitConsole{}, err)
 		require.Empty(t, outputSink.Writes)
 	})
 }

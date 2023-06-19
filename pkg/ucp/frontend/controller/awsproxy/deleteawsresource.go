@@ -38,7 +38,6 @@ var _ armrpc_controller.Controller = (*DeleteAWSResource)(nil)
 type DeleteAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
-	basePath   string
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
@@ -48,13 +47,12 @@ func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, erro
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
-		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
 	if errResponse != nil {
 		return errResponse, nil
 	}
@@ -76,6 +74,6 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.basePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]any{}, v1.LocationGlobal, 202, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.Options().PathBase)
 	return resp, nil
 }

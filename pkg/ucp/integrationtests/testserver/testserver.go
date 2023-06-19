@@ -126,7 +126,7 @@ func Start(t *testing.T) *TestServer {
 	require.NoError(t, err)
 
 	// Generate a random base path to ensure we're handling it correctly.
-	basePath := "/" + uuid.New().String()
+	pathBase := "/" + uuid.New().String()
 
 	// TODO: remove this to align on design with the RPs
 	storageClient, err := dataprovider.NewStorageProvider(storageOptions).GetStorageClient(ctx, "ucp")
@@ -134,7 +134,7 @@ func Start(t *testing.T) *TestServer {
 
 	router := mux.NewRouter()
 
-	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
+	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 
 	app := http.Handler(router)
 	app = middleware.NormalizePath(app)
@@ -144,13 +144,11 @@ func Start(t *testing.T) *TestServer {
 	}
 	err = api.Register(ctx, router, controller.Options{
 		Options: armrpc_controller.Options{
+			Address:       server.URL,
+			PathBase:      pathBase,
 			DataProvider:  dataprovider.NewStorageProvider(storageOptions),
 			StorageClient: storageClient,
 		},
-		// TODO: we're doing lots of cleanup on controller.Options that will lead
-		// to small changes here.
-		Address:  server.URL,
-		BasePath: basePath,
 
 		// TODO: remove this to align on design with the RPs
 		SecretClient: secretClient,
@@ -171,7 +169,7 @@ func Start(t *testing.T) *TestServer {
 	logger.Info("Connected to data store")
 
 	return &TestServer{
-		BaseURL:     server.URL + basePath,
+		BaseURL:     server.URL + pathBase,
 		cancel:      cancel,
 		server:      server,
 		etcdService: etcd,

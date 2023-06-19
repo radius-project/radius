@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -102,7 +103,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	_, err = client.ShowUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
 	if err != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("resource group %q does not exist. Run `rad group create` or `rad init` and try again \n", r.UCPResourceGroupName)}
+		return clierrors.Message("The resource group %q does not exist. Run `rad group create` or `rad init` and try again.", r.UCPResourceGroupName)
 	}
 
 	scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.UCPResourceGroupName)

@@ -39,7 +39,6 @@ var _ armrpc_controller.Controller = (*ListPlanesByType)(nil)
 // ListPlanesByType is the controller implementation to get the list of UCP planes.
 type ListPlanesByType struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
-	basePath string
 }
 
 // NewListPlanesByType creates a new ListPlanesByType.
@@ -51,12 +50,11 @@ func NewListPlanesByType(opts ctrl.Options) (armrpc_controller.Controller, error
 				ResponseConverter: converter.PlaneDataModelToVersioned,
 			},
 		),
-		basePath: opts.BasePath,
 	}, nil
 }
 
 func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	path := middleware.GetRelativePath(e.basePath, req.URL.Path)
+	path := middleware.GetRelativePath(e.Options().PathBase, req.URL.Path)
 	// The path is /planes/{planeType}
 	planeType := strings.Split(path, resources.SegmentSeparator)[2]
 	query := store.Query{

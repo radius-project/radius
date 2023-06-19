@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -134,7 +135,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	kubeContext, ok := r.Workspace.KubernetesContext()
 	if !ok {
-		return &cli.FriendlyError{Message: "A Kubernetes connection is required."}
+		return clierrors.Message("A Kubernetes connection is required.")
 	}
 	r.KubeContext = kubeContext
 

@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	credentials "github.com/oras-project/oras-credentials-go"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -118,10 +118,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if !strings.HasPrefix(target, "br:") {
-		return &cli.FriendlyError{
-			Message: fmt.Sprintf("Invalid target %q. The target must be in the format 'br:HOST/PATH:TAG'.", target),
-		}
+		return clierrors.Message("Invalid target %q. The target must be in the format 'br:HOST/PATH:TAG'.", target)
 	}
+
 	r.Target = strings.TrimPrefix(target, "br:")
 
 	return nil
@@ -131,7 +130,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	template, err := r.Bicep.PrepareTemplate(r.File)
 	if err != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Failed to prepare Bicep file: %v", err)}
+		return clierrors.MessageWithCause(err, "Failed to prepare Bicep file %q.", r.File)
 	}
 	r.Template = template
 
@@ -149,7 +148,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	err = r.publish(ctx)
 	if err != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Failed to publish Bicep file: %v", err)}
+		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q.", r.File, r.Target)
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)

@@ -32,6 +32,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprsecretstores"
 	"github.com/project-radius/radius/pkg/linkrp/processors/daprstatestores"
+	"github.com/project-radius/radius/pkg/linkrp/processors/extenders"
 	"github.com/project-radius/radius/pkg/linkrp/processors/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
@@ -133,6 +134,10 @@ func (s *Service) Run(ctx context.Context) error {
 		{linkrp.DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
 			processor := &daprpubsubbrokers.Processor{Client: runtimeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.ExtendersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &extenders.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
 		}},
 	}
 

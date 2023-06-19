@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -35,7 +35,7 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 		switch p := provider.(type) {
 		case *azure.Provider:
 			if res.Azure != nil {
-				return res, &cli.FriendlyError{Message: "Only one azure provider can be configured to a scope"}
+				return corerp.Providers{}, clierrors.Message("Only one azure provider can be configured to a scope.")
 			}
 			if p == nil {
 				break
@@ -45,7 +45,7 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 			}
 		case *aws.Provider:
 			if res.Aws != nil {
-				return res, &cli.FriendlyError{Message: "Only one aws provider can be configured to a scope"}
+				return corerp.Providers{}, clierrors.Message("Only one aws provider can be configured to a scope.")
 			}
 			if p == nil {
 				break
@@ -56,7 +56,7 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 		case nil:
 			// skip nil provider
 		default:
-			return res, &cli.FriendlyError{Message: fmt.Sprintf("Internal error: cannot create environment with invalid type '%T'", provider)}
+			return corerp.Providers{}, fmt.Errorf("internal error: cannot create environment with invalid type '%T'", provider)
 		}
 	}
 	return res, nil
@@ -79,7 +79,7 @@ func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagem
 	recipeProperties := envResource.Properties.Recipes
 
 	if recipeProperties[resourceType] == nil || recipeProperties[resourceType][recipeName] == nil {
-		return corerp.EnvironmentResource{}, nil, &cli.FriendlyError{Message: fmt.Sprintf("resource type %q or recipe %q is not part of the environment %q ", resourceType, recipeName, environmentName)}
+		return corerp.EnvironmentResource{}, nil, clierrors.Message("The resource type %q or recipe %q is not part of the environment %q.", resourceType, recipeName, environmentName)
 	}
 
 	return envResource, recipeProperties, nil

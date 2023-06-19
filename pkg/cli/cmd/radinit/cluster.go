@@ -18,11 +18,9 @@ package radinit
 
 import (
 	"context"
-	"errors"
 	"sort"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -40,7 +38,7 @@ func (r *Runner) enterClusterOptions(ctx context.Context, options *initOptions) 
 
 	state, err := r.HelmInterface.CheckRadiusInstall(options.Cluster.Context)
 	if err != nil {
-		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
+		return clierrors.MessageWithCause(err, "Unable to verify Radius installation.")
 	}
 	options.Cluster.Install = !state.Installed
 
@@ -61,7 +59,7 @@ func (r *Runner) enterClusterOptions(ctx context.Context, options *initOptions) 
 func (r *Runner) selectCluster(ctx context.Context) (string, error) {
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
-		return "", &cli.FriendlyError{Message: "Failed to read kube config"}
+		return "", clierrors.MessageWithCause(err, "Failed to read Kubernetes config.")
 	}
 
 	// In dev mode we will just take the default kubecontext
@@ -71,10 +69,8 @@ func (r *Runner) selectCluster(ctx context.Context) (string, error) {
 
 	choices := r.buildClusterList(kubeContextList)
 	cluster, err := r.Prompter.GetListInput(choices, selectClusterPrompt)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return "", &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
-		return "", &cli.FriendlyError{Message: "KubeContext not specified"}
+	if err != nil {
+		return "", err
 	}
 
 	return cluster, nil

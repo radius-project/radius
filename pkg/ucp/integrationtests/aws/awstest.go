@@ -53,7 +53,7 @@ const (
 	testAWSResourceName               = "stream-1"
 	testProxyRequestAWSAsyncPath      = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/locations/global"
 	testAWSRequestToken               = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
-	basePath                          = "/apis/api.ucp.dev/v1alpha3"
+	pathBase                          = "/apis/api.ucp.dev/v1alpha3"
 )
 
 func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudControlClient, *aws.MockAWSCloudFormationClient) {
@@ -68,22 +68,22 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 		AnyTimes()
 
 	router := mux.NewRouter()
-	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
+	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
-		BasePath: basePath,
 		AWSOptions: controller.AWSOptions{
 			AWSCloudControlClient:   cloudControlClient,
 			AWSCloudFormationClient: cloudFormationClient,
 		},
 		Options: armrpc_controller.Options{
+			PathBase:     pathBase,
 			DataProvider: provider,
 		},
 	})
 	require.NoError(t, err)
 
-	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
+	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
 
 	return ucp, ucpClient, cloudControlClient, cloudFormationClient
 }

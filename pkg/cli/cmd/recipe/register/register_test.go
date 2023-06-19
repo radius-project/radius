@@ -211,8 +211,11 @@ func Test_Run(t *testing.T) {
 		}
 
 		expectedError := errors.New("failed to register recipe to the environment")
-		expectedErrorMessage := fmt.Sprintf("failed to register the recipe %s to the environment %s: %s", "cosmosDB_new",
-			"/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind", expectedError.Error())
+		expectedErrorMessage := fmt.Sprintf(
+			"Failed to register the recipe %q to the environment %q. Cause: %s.",
+			"cosmosDB_new",
+			"/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind",
+			expectedError.Error())
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().

@@ -18,9 +18,6 @@ package controller
 
 import (
 	"time"
-
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
 var (
@@ -58,12 +55,9 @@ var (
 	AsyncCreateOrUpdateDaprPubSubBrokerTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprPubSubBrokerTimeout is the timeout for async delete dapr pub sub broker
 	AsyncDeleteDaprPubSubBrokerTimeout = time.Duration(30) * time.Minute
+
+	// AsyncCreateOrUpdateExtenderTimeout is the timeout for async create or update extender
+	AsyncCreateOrUpdateExtenderTimeout = time.Duration(60) * time.Minute
+	// AsyncDeleteExtenderTimeout is the timeout for async delete extender
+	AsyncDeleteExtenderTimeout = time.Duration(30) * time.Minute
 )
-
-// Options is the options to configure LinkRP controller.
-type Options struct {
-	ctrl.Options
-
-	// DeployProcessor is the deployment processor for LinkRP
-	DeployProcessor deployment.DeploymentProcessor
-}

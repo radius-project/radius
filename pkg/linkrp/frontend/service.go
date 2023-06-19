@@ -23,10 +23,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
-	"github.com/project-radius/radius/pkg/linkrp/model"
-	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 )
@@ -53,35 +50,29 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	linkAppModel, err := model.NewApplicationModel(s.Options.Arm, s.KubeClient, s.Options.UCPConnection)
-	if err != nil {
-		return fmt.Errorf("failed to initialize application model: %w", err)
-	}
-
 	opts := ctrl.Options{
+		Address:       fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port),
+		PathBase:      s.Options.Config.Server.PathBase,
 		DataProvider:  s.StorageProvider,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
 	}
 
-	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, sv.NewSecretValueClient(s.Options.Arm), s.KubeClient)
-
-	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
-	err = s.Start(ctx, server.Options{
+	err := s.Start(ctx, server.Options{
+		Address:           opts.Address,
 		ProviderNamespace: s.ProviderName,
-		Address:           address,
 		Location:          s.Options.Config.Env.RoleLocation,
 		PathBase:          s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts, deploymentProcessor)
+			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {
 				return err
 			}
 			return nil
-		}},
-	)
+		},
+	})
 	return err
 }

@@ -18,11 +18,9 @@ package radinit
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 )
 
@@ -35,9 +33,7 @@ const (
 func (r *Runner) enterApplicationOptions(ctx context.Context, options *initOptions) error {
 	var err error
 	options.Application.Scaffold, err = prompt.YesOrNoPrompt(confirmSetupApplicationPrompt, prompt.ConfirmYes, r.Prompter)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 
@@ -83,9 +79,7 @@ func (r *Runner) enterApplicationName(chooseDefault func() (string, error)) (str
 		Placeholder: enterApplicationNamePlaceholder,
 		Validate:    prompt.ValidateResourceName,
 	})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return "", &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return "", err
 	}
 

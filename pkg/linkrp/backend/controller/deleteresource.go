@@ -101,6 +101,8 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 		return &datamodel.DaprSecretStore{}, nil
 	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
 		return &datamodel.DaprPubSubBroker{}, nil
+	case strings.ToLower(linkrp.ExtendersResourceType):
+		return &datamodel.Extender{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}

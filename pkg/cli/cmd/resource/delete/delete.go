@@ -18,9 +18,8 @@ package delete
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"fmt"
+	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli"
@@ -46,7 +45,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Delete a Radius resource",
 		Long:  "Deletes a Radius resource with the given name",
 		Example: `
-		sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+		sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 		
 		# Delete a container named orders
 		rad resource delete containers orders`,
@@ -72,8 +71,8 @@ type Runner struct {
 	ResourceName      string
 	Format            string
 
-	InputPrompter     prompt.Interface
-	Confirm         bool
+	InputPrompter prompt.Interface
+	Confirm       bool
 }
 
 // NewRunner creates a new instance of the `rad resource delete` runner.
@@ -128,9 +127,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !r.Confirm {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ResourceName, r.ResourceType), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
-			if errors.Is(err, &prompt.ErrExitConsole{}) {
-				return &cli.FriendlyError{Message: err.Error()}
-			}
 			return err
 		}
 		if !confirmed {

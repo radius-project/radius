@@ -38,7 +38,6 @@ var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
 type GetAWSOperationStatuses struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
-	basePath   string
 }
 
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
@@ -48,13 +47,12 @@ func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
-		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
 	if errResponse != nil {
 		return errResponse, nil
 	}
