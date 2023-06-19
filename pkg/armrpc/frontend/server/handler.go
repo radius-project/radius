@@ -39,45 +39,96 @@ const (
 
 type ControllerFunc func(ctrl.Options) (ctrl.Controller, error)
 
+// HandlerOptions represents a controller to be registered with the server.
+//
+// Each HandlerOptions should represent either a resource-type-scoped operation
+// (e.g. GET on an `Applications.Core/controllers` resource) or a more general operation that works with
+// multiple types of resources (e.g. PUT on any type of AWS resource):
+// - Set ResourceType for operations that are scoped to a resource type.
+// - Set OperationType for general operations.
+//
+// In the controller options passed to the controller factory:
+//
+// - When ResourceType is set, the StorageClient will be configured to use the resource type.
+// - When OperationType is set, the StorageClient will be generic and not filtered to a specific resource type.
 type HandlerOptions struct {
-	ParentRouter   *mux.Router
-	ResourceType   string
-	Method         v1.OperationMethod
-	HandlerFactory ControllerFunc
+	// ParentRouter is the router to register the handler with.
+	ParentRouter *mux.Router
+
+	// ResourceType is the resource type of the operation. May be blank if Operation is specified.
+	//
+	// If specified the ResourceType will be used to filter the StorageClient.
+	ResourceType string
+
+	// Method is the method of the operation. May be blank if Operation is specified.
+	//
+	// If the specified the Method will be used to filter by HTTP method.
+	Method v1.OperationMethod
+
+	// OperationType designates the operation and should be unique per handler. May be blank if ResourceType and Method are specified.
+	//
+	// The OperationType is used in logs and other mechanisms to identify the kind of operation being performed.
+	// If the OperationType is not specified, it will be inferred from that ResourceType and Method.
+	OperationType *v1.OperationType
+
+	// ControllerFactory is a function invoked to create the controller. Will be invoked once during server startup.
+	ControllerFactory ControllerFunc
 }
 
+// HandlerForController returns a http.HandlerFunc that will run the given controller.
+func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		addRequestAttributes(ctx, req)
+
+		response, err := controller.Run(ctx, w, req)
+		if err != nil {
+			HandleError(ctx, w, req, err)
+			return
+		}
+
+		// The response may be nil in some advanced cases like proxying to another server.
+		if response != nil {
+			err = response.Apply(ctx, w, req)
+			if err != nil {
+				HandleError(ctx, w, req, err)
+				return
+			}
+		}
+	}
+}
+
+// RegisterHandler registers a handler for the given resource type and method. This function should only
+// be used for controllers that process a single resource type.
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Options) error {
+	if opts.OperationType == nil && (opts.ResourceType == "" || opts.Method == "") {
+		return fmt.Errorf("the resource type and method must be specified if the operation type is not specified")
+	}
+
 	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
 		return err
 	}
+
 	ctrlOpts.StorageClient = storageClient
 	ctrlOpts.ResourceType = opts.ResourceType
 
-	ctrl, err := opts.HandlerFactory(ctrlOpts)
+	ctrl, err := opts.ControllerFactory(ctrlOpts)
 	if err != nil {
 		return err
 	}
 
-	fn := func(w http.ResponseWriter, req *http.Request) {
-		hctx := req.Context()
-		addRequestAttributes(hctx, req)
-
-		response, err := ctrl.Run(hctx, w, req)
-		if err != nil {
-			HandleError(hctx, w, req, err)
-			return
-		}
-
-		err = response.Apply(hctx, w, req)
-		if err != nil {
-			HandleError(hctx, w, req, err)
-			return
-		}
+	if opts.OperationType == nil {
+		opts.OperationType = &v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
 	}
 
-	ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
-	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+	handler := HandlerForController(ctrl)
+	if opts.Method == "" {
+		opts.ParentRouter.NewRoute().Handler(handler).Name(opts.OperationType.String())
+	} else {
+		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).Handler(handler).Name(opts.OperationType.String())
+	}
+
 	return nil
 }
 
@@ -109,20 +160,20 @@ func ConfigureDefaultHandlers(
 	if isAzureProvider {
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 		err := RegisterHandler(ctx, HandlerOptions{
-			ParentRouter:   rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-			ResourceType:   rt,
-			Method:         v1.OperationGet,
-			HandlerFactory: operationCtrlFactory,
+			ParentRouter:      rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+			ResourceType:      rt,
+			Method:            v1.OperationGet,
+			ControllerFactory: operationCtrlFactory,
 		}, ctrlOpts)
 		if err != nil {
 			return err
 		}
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 		err = RegisterHandler(ctx, HandlerOptions{
-			ParentRouter:   rootRouter.Path(rootScopePath).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-			ResourceType:   rt,
-			Method:         v1.OperationPut,
-			HandlerFactory: defaultoperation.NewCreateOrUpdateSubscription,
+			ParentRouter:      rootRouter.Path(rootScopePath).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+			ResourceType:      rt,
+			Method:            v1.OperationPut,
+			ControllerFactory: defaultoperation.NewCreateOrUpdateSubscription,
 		}, ctrlOpts)
 		if err != nil {
 			return err
@@ -132,10 +183,10 @@ func ConfigureDefaultHandlers(
 	statusRT := providerNamespace + "/operationstatuses"
 	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", rootScopePath, providerNamespace)
 	err := RegisterHandler(ctx, HandlerOptions{
-		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-		ResourceType:   statusRT,
-		Method:         v1.OperationGetOperationStatuses,
-		HandlerFactory: defaultoperation.NewGetOperationStatus,
+		ParentRouter:      rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:      statusRT,
+		Method:            v1.OperationGetOperationStatuses,
+		ControllerFactory: defaultoperation.NewGetOperationStatus,
 	}, ctrlOpts)
 	if err != nil {
 		return err
@@ -143,10 +194,10 @@ func ConfigureDefaultHandlers(
 
 	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", rootScopePath, providerNamespace)
 	err = RegisterHandler(ctx, HandlerOptions{
-		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-		ResourceType:   statusRT,
-		Method:         v1.OperationGetOperationResult,
-		HandlerFactory: defaultoperation.NewGetOperationResult,
+		ParentRouter:      rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:      statusRT,
+		Method:            v1.OperationGetOperationResult,
+		ControllerFactory: defaultoperation.NewGetOperationResult,
 	}, ctrlOpts)
 	if err != nil {
 		return err

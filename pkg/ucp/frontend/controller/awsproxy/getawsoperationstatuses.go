@@ -27,9 +27,9 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
@@ -37,16 +37,14 @@ var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
 // GetAWSOperationStatuses is the controller implementation to get AWS resource operation status.
 type GetAWSOperationStatuses struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
+	awsClients ucp_aws.Clients
 }
 
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
-func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
@@ -58,7 +56,7 @@ func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	response, err := p.awsOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	response, err := p.awsClients.CloudControl.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
 	if awsclient.IsAWSResourceNotFoundError(err) {

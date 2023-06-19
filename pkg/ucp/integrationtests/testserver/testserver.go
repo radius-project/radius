@@ -35,10 +35,10 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -142,18 +142,12 @@ func Start(t *testing.T) *TestServer {
 	server.Config.BaseContext = func(l net.Listener) context.Context {
 		return ctx
 	}
-	err = api.Register(ctx, router, controller.Options{
-		Options: armrpc_controller.Options{
-			Address:       server.URL,
-			PathBase:      pathBase,
-			DataProvider:  dataprovider.NewStorageProvider(storageOptions),
-			StorageClient: storageClient,
-		},
-
-		// TODO: remove this to align on design with the RPs
-		SecretClient: secretClient,
-	},
-	)
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		Address:       server.URL,
+		PathBase:      pathBase,
+		DataProvider:  dataprovider.NewStorageProvider(storageOptions),
+		StorageClient: storageClient,
+	}, secretClient, ucp_aws.Clients{})
 	require.NoError(t, err)
 
 	logger := logr.FromContextOrDiscard(ctx)

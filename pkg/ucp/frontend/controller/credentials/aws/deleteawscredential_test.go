@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -40,12 +39,7 @@ func Test_Credential_Delete(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewDeleteAWSCredential(ctrl.Options{
-		Options: armrpc_controller.Options{
-			StorageClient: mockStorageClient,
-		},
-		SecretClient: mockSecretClient,
-	})
+	credentialCtrl, err := NewDeleteAWSCredential(armrpc_controller.Options{StorageClient: mockStorageClient}, mockSecretClient)
 	require.NoError(t, err)
 
 	tests := []struct {

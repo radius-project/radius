@@ -46,7 +46,7 @@ func Test_GetOperationResults(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+pathBase+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
+	operationResultsRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := testutil.ARMTestContextFromRequest(operationResultsRequest)

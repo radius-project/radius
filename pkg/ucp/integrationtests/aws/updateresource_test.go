@@ -94,7 +94,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	updateRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+pathBase+testProxyRequestAWSPath, body)
+	updateRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, body)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := testutil.ARMTestContextFromRequest(updateRequest)

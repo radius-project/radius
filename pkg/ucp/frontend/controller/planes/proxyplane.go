@@ -26,7 +26,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -46,9 +45,9 @@ type ProxyPlane struct {
 }
 
 // NewProxyPlane creates a new ProxyPlane.
-func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewProxyPlane(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ProxyPlane{
-		Operation: armrpc_controller.NewOperation(opts.Options, armrpc_controller.ResourceOptions[datamodel.Plane]{}),
+		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.Plane]{}),
 	}, nil
 }
 

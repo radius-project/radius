@@ -49,6 +49,14 @@ var operationMethodToHTTPMethod = map[OperationMethod]string{
 	OperationGetOperationStatuses: http.MethodGet,
 	OperationGetOperationResult:   http.MethodGet,
 	OperationPutSubscriptions:     http.MethodPut,
+
+	// Non-idempotent lifecycle operations.
+	OperationGetImperative:    http.MethodPost,
+	OperationPutImperative:    http.MethodPost,
+	OperationDeleteImperative: http.MethodPost,
+
+	// No defined HTTP method for proxying.
+	OperationProxy: "",
 }
 
 // HTTPMethod converts OperationMethod to HTTP Method.
@@ -75,6 +83,24 @@ const (
 	OperationGetOperationResult   OperationMethod = "GETOPERATIONRESULT"
 	OperationPutSubscriptions     OperationMethod = "PUTSUBSCRIPTIONS"
 	OperationPost                 OperationMethod = "POST"
+
+	// Imperative operation methods for non-idempotent lifecycle operations.
+	// UCP extends the ARM resource lifecycle to support using POST for non-idempotent resource types.
+	//
+	// Normally, the resource URL must include the resource name, but some resource types disallow user-specified
+	// names, so the URL cannot be constructed until after the resource is created.
+
+	// OperationGetImperative is used for non-idempotent GET operations.
+	OperationGetImperative OperationMethod = "GETIMPERATIVE"
+
+	// OperationPutImperative is used for non-idempotent PUT operations.
+	OperationPutImperative OperationMethod = "PUTIMPERATIVE"
+
+	// OperationDeleteImperative is used for non-idempotent DELETE operations.
+	OperationDeleteImperative OperationMethod = "DELETEIMPERATIVE"
+
+	// OperationProxy is used for controllers that proxy the underlying request without classifying the type of operation.
+	OperationProxy OperationMethod = "PROXY"
 
 	Seperator = "|"
 )

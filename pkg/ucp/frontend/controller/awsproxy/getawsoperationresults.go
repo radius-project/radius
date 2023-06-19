@@ -26,9 +26,9 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSOperationResults)(nil)
@@ -36,16 +36,14 @@ var _ armrpc_controller.Controller = (*GetAWSOperationResults)(nil)
 // GetAWSOperationResults is the controller implementation to get AWS resource operation results.
 type GetAWSOperationResults struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
+	awsClients ucp_aws.Clients
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
-func NewGetAWSOperationResults(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewGetAWSOperationResults(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationResults{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
@@ -56,7 +54,7 @@ func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter,
 		return errResponse, nil
 	}
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	response, err := p.awsOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	response, err := p.awsClients.CloudControl.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
 
