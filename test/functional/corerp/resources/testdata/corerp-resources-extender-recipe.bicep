@@ -19,7 +19,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/corerp/recipes/extender-recipe:${version}' 
           parameters: {
-            containerIamge: '${registry}/magpiego:${version}'
+            containerImage: '${registry}/magpiego:${version}'
           }
         }
       }
