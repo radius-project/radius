@@ -63,3 +63,17 @@ func (mr *MockInterfaceMockRecorder) InstallRadius(arg0, arg1, arg2 interface{})
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallRadius", reflect.TypeOf((*MockInterface)(nil).InstallRadius), arg0, arg1, arg2)
 }
+
+// UninstallRadius mocks base method.
+func (m *MockInterface) UninstallRadius(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UninstallRadius", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UninstallRadius indicates an expected call of UninstallRadius.
+func (mr *MockInterfaceMockRecorder) UninstallRadius(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UninstallRadius", reflect.TypeOf((*MockInterface)(nil).UninstallRadius), arg0, arg1)
+}

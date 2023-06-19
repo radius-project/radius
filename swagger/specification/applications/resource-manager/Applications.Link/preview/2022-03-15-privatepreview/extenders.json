@@ -107,7 +107,7 @@
           "200": {
             "description": "Extender resource",
             "schema": {
-              "$ref": "#/definitions/ExtenderResponseResource"
+              "$ref": "#/definitions/ExtenderResource"
             }
           },
           "default": {
@@ -156,13 +156,13 @@
           "200": {
             "description": "The request was successful; response contains the extender resource",
             "schema": {
-              "$ref": "#/definitions/ExtenderResponseResource"
+              "$ref": "#/definitions/ExtenderResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/ExtenderResponseResource"
+              "$ref": "#/definitions/ExtenderResource"
             }
           },
           "default": {
@@ -261,6 +261,35 @@
     }
   },
   "definitions": {
+    "Recipe": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "$ref": "openapi.json#/definitions/Parameters",
+          "description": "Key/value parameters to pass into the recipe at deployment"
+        }
+      },
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "required": [
+        "name"
+      ]
+    },
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
+      "enum": [
+        "recipe",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true
+      }
+    },
     "ExtenderList": {
       "description": "Object that includes an array of Extender and a possible link for next set",
       "type": "object",
@@ -269,7 +298,7 @@
           "description": "List of Extender resources",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ExtenderResponseResource"
+            "$ref": "#/definitions/ExtenderResource"
           }
         },
         "nextLink": {
@@ -299,24 +328,6 @@
         }
       }
     },
-    "ExtenderResponseResource": {
-      "description": "Extender link",
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
-        }
-      ],
-      "required": [
-        "properties"
-      ],
-      "properties": {
-        "properties": {
-          "x-ms-client-flatten": true,
-          "$ref": "#/definitions/ExtenderResponseProperties"
-        }
-      }
-    },
     "ExtenderListSecretsResult": {
       "description": "The secret values for the given Extender resource",
       "$ref": "#/definitions/ExtenderSecrets"
@@ -326,7 +337,7 @@
       "additionalProperties": true,
       "properties": {}
     },
-    "ExtenderResponseProperties": {
+    "ExtenderProperties": {
       "description": "Extender link properties",
       "type": "object",
       "allOf": [
@@ -340,26 +351,23 @@
           "readOnly": true,
           "$ref": "openapi.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the extender link at the time the operation was called"
+        },
+        "secrets": {
+          "additionalProperties": true,
+          "$ref": "#/definitions/ExtenderSecrets"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Extender link"
         }
       },
       "required": [
         "environment"
       ]
-    },
-    "ExtenderProperties": {
-      "description": "Extender link properties",
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ExtenderResponseProperties"
-        }
-      ],
-      "properties": {
-        "secrets": {
-          "additionalProperties": true,
-          "$ref": "#/definitions/ExtenderSecrets"
-        }
-      }
     }
   },
   "parameters": {

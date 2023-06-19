@@ -60,12 +60,10 @@ const (
 
 // Register registers the routes for UCP
 func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) error {
-	baseURL := ctrlOpts.BasePath
-
 	handlerOptions := []ctrl.HandlerOptions{}
 
 	// If we're in Kubernetes we have some required routes to implement.
-	if baseURL != "" {
+	if ctrlOpts.PathBase != "" {
 		// NOTE: the Kubernetes API Server does not include the gvr (base path) in
 		// the URL for swagger routes.
 		handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
@@ -75,7 +73,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 				HandlerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
 			},
 			{
-				ParentRouter:   router.Path(baseURL).Subrouter(),
+				ParentRouter:   router.Path(ctrlOpts.PathBase).Subrouter(),
 				Method:         v1.OperationGet,
 				HandlerFactory: kubernetes_ctrl.NewDiscoveryDoc,
 			},
@@ -85,14 +83,14 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	ctrl.ConfigureDefaultHandlers(router, ctrlOpts.Options)
 
 	logger := ucplog.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))
+	logger.Info(fmt.Sprintf("Registering routes with path base: %s", ctrlOpts.PathBase))
 
-	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
+	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{ctrlOpts.PathBase}, "")
 	if err != nil {
 		return err
 	}
 
-	rootScopeRouter := router.PathPrefix(baseURL).Subrouter()
+	rootScopeRouter := router.PathPrefix(ctrlOpts.PathBase).Subrouter()
 	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
 
 	planeCollectionSubRouter := rootScopeRouter.Path(planeCollectionPath).Subrouter()
@@ -104,7 +102,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	resourceGroupCollectionSubRouter := rootScopeRouter.Path(resourceGroupCollectionPath).Subrouter()
 	resourceGroupSubRouter := rootScopeRouter.Path(resourceGroupItemPath).Subrouter()
 
-	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsPlaneType)).Subrouter()
+	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", ctrlOpts.PathBase, awsPlaneType)).Subrouter()
 	awsResourceCollectionSubRouter := awsResourcesSubRouter.Path(awsResourceCollectionPath).Subrouter()
 	awsSingleResourceSubRouter := awsResourcesSubRouter.Path(awsResourcePath).Subrouter()
 	awsOperationStatusesSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationStatusesPath).Subrouter()
@@ -113,10 +111,10 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	awsGetResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, getPath)).Subrouter()
 	awsDeleteResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, deletePath)).Subrouter()
 
-	azureCredentialCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, azureCredentialCollectionPath)).Subrouter()
-	azureCredentialResourceSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, azureCredentialResourcePath)).Subrouter()
-	awsCredentialCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, awsCredentialCollectionPath)).Subrouter()
-	awsCredentialResourceSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, awsCredentialResourcePath)).Subrouter()
+	azureCredentialCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", ctrlOpts.PathBase, azureCredentialCollectionPath)).Subrouter()
+	azureCredentialResourceSubRouter := router.Path(fmt.Sprintf("%s%s", ctrlOpts.PathBase, azureCredentialResourcePath)).Subrouter()
+	awsCredentialCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", ctrlOpts.PathBase, awsCredentialCollectionPath)).Subrouter()
+	awsCredentialResourceSubRouter := router.Path(fmt.Sprintf("%s%s", ctrlOpts.PathBase, awsCredentialResourcePath)).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -338,7 +336,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		{
 			// Note that the API validation is not applied to the router used for proxying
 			ParentRouter:   router,
-			Path:           fmt.Sprintf("%s%s", baseURL, planeItemPath),
+			Path:           fmt.Sprintf("%s%s", ctrlOpts.PathBase, planeItemPath),
 			HandlerFactory: planes_ctrl.NewProxyPlane,
 		},
 	}...)

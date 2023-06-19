@@ -6,6 +6,10 @@ This page lists the prerequisites for working with the repository. Most contribu
 
 We support developing on macOS, Linux and Windows with [WSL](https://docs.microsoft.com/windows/wsl/install).
 
+## Asking for help
+
+If you get stuck installing any of our dependencies, please ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
+
 ## Basic Prerequisites
 
 <!--

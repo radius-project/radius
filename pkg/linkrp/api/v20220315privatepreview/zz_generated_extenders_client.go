@@ -98,7 +98,7 @@ func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *ExtendersClient) createOrUpdateHandleResponse(resp *http.Response) (ExtendersClientCreateOrUpdateResponse, error) {
 	result := ExtendersClientCreateOrUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResponseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
 		return ExtendersClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
@@ -185,7 +185,7 @@ func (client *ExtendersClient) getCreateRequest(ctx context.Context, extenderNam
 // getHandleResponse handles the Get response.
 func (client *ExtendersClient) getHandleResponse(resp *http.Response) (ExtendersClientGetResponse, error) {
 	result := ExtendersClientGetResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResponseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
 		return ExtendersClientGetResponse{}, err
 	}
 	return result, nil

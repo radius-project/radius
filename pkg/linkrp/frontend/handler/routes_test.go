@@ -250,30 +250,6 @@ var handlerTests = []struct {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
-	}, {
-		url:        "/providers/applications.link/daprinvokehttproutes?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
 	},
 }
 
@@ -294,7 +270,7 @@ func TestHandlers(t *testing.T) {
 
 func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovider.MockDataStorageProvider) {
 	r := mux.NewRouter()
-	err := AddRoutes(context.Background(), r, pathBase, isARM, ctrl.Options{DataProvider: mockSP}, nil)
+	err := AddRoutes(context.Background(), r, isARM, ctrl.Options{PathBase: pathBase, DataProvider: mockSP})
 	require.NoError(t, err)
 
 	for _, tt := range handlerTests {

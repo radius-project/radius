@@ -18,10 +18,10 @@ package list
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -40,7 +40,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Lists resources",
 		Long:  "List all resources of specified type",
 		Example: `
-	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
 	# list all resources of a specified type in the default environment
 
@@ -143,7 +143,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		_, err = client.ShowApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
-			return &cli.FriendlyError{Message: fmt.Sprintf("Application %q could not be found in workspace %q.", r.ApplicationName, r.Workspace.Name)}
+			return clierrors.Message("The application %q could not be found in workspace %q.", r.ApplicationName, r.Workspace.Name)
 		} else if err != nil {
 			return err
 		}

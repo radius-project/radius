@@ -98,7 +98,7 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 func ConfigureDefaultHandlers(
 	ctx context.Context,
 	rootRouter *mux.Router,
-	pathBase string,
+	rootScopePath string,
 	isAzureProvider bool,
 	providerNamespace string,
 	operationCtrlFactory ControllerFunc,
@@ -119,7 +119,7 @@ func ConfigureDefaultHandlers(
 		}
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 		err = RegisterHandler(ctx, HandlerOptions{
-			ParentRouter:   rootRouter.Path(pathBase).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+			ParentRouter:   rootRouter.Path(rootScopePath).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationPut,
 			HandlerFactory: defaultoperation.NewCreateOrUpdateSubscription,
@@ -130,7 +130,7 @@ func ConfigureDefaultHandlers(
 	}
 
 	statusRT := providerNamespace + "/operationstatuses"
-	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
+	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", rootScopePath, providerNamespace)
 	err := RegisterHandler(ctx, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,
@@ -141,7 +141,7 @@ func ConfigureDefaultHandlers(
 		return err
 	}
 
-	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", pathBase, providerNamespace)
+	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", rootScopePath, providerNamespace)
 	err = RegisterHandler(ctx, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,

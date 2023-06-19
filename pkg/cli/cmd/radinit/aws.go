@@ -18,12 +18,10 @@ package radinit
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 )
 
@@ -41,31 +39,25 @@ const (
 
 func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
 	region, err := r.Prompter.GetTextInput(enterAWSRegionPrompt, prompt.TextInputOptions{Placeholder: enterAWSRegionPlaceholder})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
 
 	accessKeyID, err := r.Prompter.GetTextInput(enterAWSIAMAcessKeyIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMAcessKeyIDPlaceholder})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	secretAccessKey, err := r.Prompter.GetTextInput(enterAWSIAMSecretAccessKeyPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMSecretAccessKeyPlaceholder, EchoMode: textinput.EchoPassword})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	result, err := r.awsClient.GetCallerIdentity(ctx, region, accessKeyID, secretAccessKey)
 	if err != nil {
-		return nil, &cli.FriendlyError{Message: fmt.Sprintf("AWS credential verification failed: %s", err.Error())}
+		return nil, clierrors.MessageWithCause(err, "AWS credential verification failed.")
 	}
 
 	return &aws.Provider{

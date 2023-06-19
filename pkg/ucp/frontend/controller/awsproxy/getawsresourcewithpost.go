@@ -45,7 +45,6 @@ var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
 type GetAWSResourceWithPost struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
-	basePath   string
 }
 
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost.
@@ -55,14 +54,13 @@ func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller,
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
-		basePath:   opts.BasePath,
 	}, nil
 }
 
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
 	if errResponse != nil {
 		return errResponse, nil
 	}
@@ -108,7 +106,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	}, cloudcontrolOpts...)
 
 	if awsclient.IsAWSResourceNotFoundError(err) {
-		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.basePath, req.URL.Path), awsResourceIdentifier)), nil
+		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}

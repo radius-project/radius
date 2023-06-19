@@ -18,10 +18,10 @@ package show
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -109,7 +109,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	providers, err := client.Get(ctx, r.Kind)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider %q could not be found.", r.Kind)}
+		return clierrors.Message("The cloud provider %q could not be found.", r.Kind)
 	} else if err != nil {
 		return err
 	}

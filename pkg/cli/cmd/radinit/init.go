@@ -18,8 +18,6 @@ package radinit
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -27,6 +25,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -129,7 +128,7 @@ func NewRunner(factory framework.Factory) *Runner {
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
-		return &cli.FriendlyError{Message: "Output format not specified"}
+		return err
 	}
 	r.Format = format
 
@@ -140,9 +139,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	for {
 		options, workspace, err := r.enterInitOptions(cmd.Context())
-		if errors.Is(err, &prompt.ErrExitConsole{}) {
-			return &cli.FriendlyError{Message: err.Error()}
-		} else if err != nil {
+		if err != nil {
 			return err
 		}
 
@@ -189,7 +186,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		// Install radius control plane
 		err := installRadius(ctx, r)
 		if err != nil {
-			return &cli.FriendlyError{Message: "Failed to install radius"}
+			return clierrors.MessageWithCause(err, "Failed to install Radius.")
 		}
 	}
 	progress.InstallComplete = true
@@ -206,7 +203,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil {
-			return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
+			return clierrors.MessageWithCause(err, "Failed to create Azure resource group.")
 		}
 
 		// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
@@ -249,7 +246,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		err = client.CreateEnvironment(ctx, r.Options.Environment.Name, v1.LocationGlobal, &envProperties)
 		if err != nil {
-			return &cli.FriendlyError{Message: fmt.Sprintf("Failed to create radius environment with error %s", err)}
+			return clierrors.MessageWithCause(err, "Failed to create environment.")
 		}
 
 		credentialClient, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
@@ -260,14 +257,14 @@ func (r *Runner) Run(ctx context.Context) error {
 			credential := r.getAzureCredential()
 			err := credentialClient.PutAzure(ctx, credential)
 			if err != nil {
-				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure azure credential with error %s", err)}
+				return clierrors.MessageWithCause(err, "Failed to configure Azure credentials.")
 			}
 		}
 		if r.Options.CloudProviders.AWS != nil {
 			credential := r.getAWSCredential()
 			err := credentialClient.PutAWS(ctx, credential)
 			if err != nil {
-				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure aws credential with error %s", err)}
+				return clierrors.MessageWithCause(err, "Failed to configure AWS credentials.")
 			}
 		}
 	}

@@ -42,7 +42,6 @@ var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
 type CreateOrUpdateAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsOptions ctrl.AWSOptions
-	basePath   string
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
@@ -52,7 +51,6 @@ func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controll
 			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
 		),
 		awsOptions: opts.AWSOptions,
-		basePath:   opts.BasePath,
 	}, nil
 }
 
@@ -61,7 +59,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
-	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
 	if errResponse != nil {
 		return errResponse, nil
 	}
@@ -203,6 +201,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		"properties": responseProperties,
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.basePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.Options().PathBase)
 	return resp, nil
 }
