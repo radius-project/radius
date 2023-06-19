@@ -27,7 +27,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -45,7 +44,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	_, sqlDataModel, _ := getTestModels20220315privatepreview()
@@ -66,7 +64,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsSqlDatabase(opts)
@@ -84,7 +81,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
 			passwordStringValue:   "testPassword",
-			connectionStringValue: "testConnectionString",
+			connectionStringValue: "Data Source=tcp:testAccount1.sql.cosmos.azure.com,1433;Initial Catalog=testDatabase;User Id=testUser;Password=testPassword;Encrypt=True;TrustServerCertificate=True",
 		}
 
 		mStorageClient.
@@ -96,13 +93,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     sqlDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
 		opts := frontend_ctrl.Options{
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsSqlDatabase(opts)
@@ -125,7 +120,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
-			connectionStringValue: "testConnectionString",
+			connectionStringValue: "Data Source=tcp:testAccount1.sql.cosmos.azure.com,1433;Initial Catalog=testDatabase;User Id=testUser;Password=testPassword;Encrypt=True;TrustServerCertificate=True",
 		}
 
 		mStorageClient.
@@ -137,13 +132,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     sqlDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
 		opts := frontend_ctrl.Options{
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsSqlDatabase(opts)
@@ -176,7 +169,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsSqlDatabase(opts)

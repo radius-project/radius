@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
 
@@ -35,7 +34,6 @@ var _ ctrl.Controller = (*ListSecretsMongoDatabase)(nil)
 // ListSecretsMongoDatabase is the controller implementation to list secrets for the to access the connected mongo database resource resource id passed in the request body.
 type ListSecretsMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
-	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase.
@@ -46,7 +44,6 @@ func NewListSecretsMongoDatabase(opts frontend_ctrl.Options) (ctrl.Controller, e
 				RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -64,20 +61,15 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWr
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
-	if err != nil {
-		return nil, err
-	}
-
 	mongoSecrets := datamodel.MongoDatabaseSecrets{}
-	if username, ok := secrets[renderers.UsernameStringValue].(string); ok {
-		mongoSecrets.Username = username
+	if username, ok := resource.SecretValues[renderers.UsernameStringValue]; ok {
+		mongoSecrets.Username = username.Value
 	}
-	if password, ok := secrets[renderers.PasswordStringHolder].(string); ok {
-		mongoSecrets.Password = password
+	if password, ok := resource.SecretValues[renderers.PasswordStringHolder]; ok {
+		mongoSecrets.Password = password.Value
 	}
-	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
-		mongoSecrets.ConnectionString = connectionString
+	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
+		mongoSecrets.ConnectionString = connectionString.Value
 	}
 
 	versioned, _ := converter.MongoDatabaseSecretsDataModelToVersioned(&mongoSecrets, sCtx.APIVersion)

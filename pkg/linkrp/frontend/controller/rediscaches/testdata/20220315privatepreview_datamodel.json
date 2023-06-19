@@ -41,6 +41,19 @@
     },
     "username": "redisusername"
   },
+  "computedValues": {
+    "host": "myrediscache.redis.cache.windows.net",
+    "port": 10255,
+    "username": "redisusername"
+  },
+  "secretValues": {
+    "password": {
+      "value": "testPassword"
+    },
+    "connectionString": {
+      "value": "test-connection-string"
+    }
+  },
   "tenantId": "00000000-0000-0000-0000-000000000000",
   "subscriptionId": "00000000-0000-0000-0000-000000000000",
   "resourceGroup": "radius-test-rg",

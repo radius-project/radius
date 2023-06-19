@@ -30,7 +30,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 
 	"github.com/golang/mock/gomock"
@@ -42,7 +41,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	_, rabbitMQDataModel, _ := getTestModels20220315privatepreview()
@@ -63,7 +61,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
@@ -93,13 +90,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     rabbitMQDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
 		opts := frontend_ctrl.Options{
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
@@ -115,45 +110,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
-	})
-
-	t.Run("listSecrets existing resource empty secrets", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
-		expectedSecrets := map[string]any{}
-
-		mStorageClient.
-			EXPECT().
-			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
-					Data:     rabbitMQDataModel,
-				}, nil
-			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
-
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
-		}
-
-		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
-		require.NoError(t, err)
-
-		resp, err := ctl.Run(ctx, w, req)
-		require.NoError(t, err)
-
-		_ = resp.Apply(ctx, w, req)
-		require.Equal(t, 200, w.Result().StatusCode)
-
-		actualOutput := &v20220315privatepreview.RabbitMQSecrets{}
-		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-
-		require.Equal(t, "", *actualOutput.ConnectionString)
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
@@ -172,7 +128,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)

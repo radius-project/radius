@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
 
@@ -35,7 +34,6 @@ var _ ctrl.Controller = (*ListSecretsSqlDatabase)(nil)
 // ListSecretsSqlDatabase is the controller implementation to list secrets for the to access the connected sql database resource resource id passed in the request body.
 type ListSecretsSqlDatabase struct {
 	ctrl.Operation[*datamodel.SqlDatabase, datamodel.SqlDatabase]
-	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsSqlDatabase creates a new instance of ListSecretsSqlDatabase.
@@ -46,7 +44,6 @@ func NewListSecretsSqlDatabase(opts frontend_ctrl.Options) (ctrl.Controller, err
 				RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -64,25 +61,12 @@ func (ctrl *ListSecretsSqlDatabase) Run(ctx context.Context, w http.ResponseWrit
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	secrets, err := ctrl.dp.FetchSecrets(ctx,
-		deployment.ResourceData{
-			ID:              sCtx.ResourceID,
-			Resource:        resource,
-			OutputResources: resource.Properties.Status.OutputResources,
-			ComputedValues:  resource.ComputedValues,
-			SecretValues:    resource.SecretValues,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	sqlSecrets := datamodel.SqlDatabaseSecrets{}
-	if password, ok := secrets[renderers.PasswordStringHolder].(string); ok {
-		sqlSecrets.Password = password
+	if password, ok := resource.SecretValues[renderers.PasswordStringHolder]; ok {
+		sqlSecrets.Password = password.Value
 	}
-	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
-		sqlSecrets.ConnectionString = connectionString
+	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
+		sqlSecrets.ConnectionString = connectionString.Value
 	}
 
 	versioned, _ := converter.SqlDatabaseSecretsDataModelToVersioned(&sqlSecrets, sCtx.APIVersion)

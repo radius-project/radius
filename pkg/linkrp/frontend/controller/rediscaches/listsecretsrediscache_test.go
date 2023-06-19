@@ -30,7 +30,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 
 	"github.com/golang/mock/gomock"
@@ -42,7 +41,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	_, redisDataModel, _ := getTestModels20220315privatepreview()
@@ -63,7 +61,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 		ctl, err := NewListSecretsRedisCache(opts)
 		require.NoError(t, err)
@@ -93,13 +90,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     redisDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
 		opts := frontend_ctrl.Options{
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -135,13 +130,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     redisDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
 		opts := frontend_ctrl.Options{
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -175,7 +168,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			Options: ctrl.Options{
 				StorageClient: mStorageClient,
 			},
-			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
