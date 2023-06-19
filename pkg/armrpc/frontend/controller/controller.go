@@ -33,6 +33,25 @@ import (
 
 // Options represents controller options.
 type Options struct {
+	// Address is the listening address where the controller is running, including the hostname and port.
+	//
+	// For example: "localhost:8080".
+	//
+	// The listening address is provided so that it can be used when constructing URLs.
+	Address string
+
+	// PathBase is a URL path prefix that is applied to all requests and should not be considered part of request path
+	// for determining routing or parsing of IDs. It must start with a slash or be empty.
+	//
+	// For example consider the following examples that match the resource ID "/planes/radius/local":
+	//
+	// - base path: "/apis/api.ucp.dev/v1alpha3" and URL path: "/apis/api.ucp.dev/planes/radius/local".
+	// - base path: "" (empty) and request path: "/planes/radius/local".
+	//
+	// Code that needs to process the URL path should ignore the base path prefix when parsing the URL path.
+	// Code that needs to construct a URL path should use the base path prefix when constructing the URL path.
+	PathBase string
+
 	// StorageClient is the data storage client.
 	StorageClient store.StorageClient
 
@@ -42,10 +61,11 @@ type Options struct {
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
 
-	// ResourceType is the string that represents the resource type.
+	// ResourceType is the string that represents the resource type. May be empty of the controller
+	// does not represent a single type of resource.
 	ResourceType string
 
-	// StatusManager
+	// StatusManager is the async operation status manager.
 	StatusManager sm.StatusManager
 }
 

@@ -31,12 +31,6 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	// BasePath is the base path of the controller such as /apis/api.ucp.dev/v1alpha3.
-	BasePath string
-
-	// Address is the address where the controller is running.
-	Address string
-
 	// SecretClient is the client to fetch secrets.
 	SecretClient secret.Client
 

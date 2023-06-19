@@ -51,22 +51,23 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	opts := ctrl.Options{
+		Address:       fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port),
+		PathBase:      s.Options.Config.Server.PathBase,
 		DataProvider:  s.StorageProvider,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
 	}
 
-	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err := s.Start(ctx, server.Options{
+		Address:           opts.Address,
 		ProviderNamespace: s.ProviderName,
-		Address:           address,
 		Location:          s.Options.Config.Env.RoleLocation,
 		PathBase:          s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
+			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {
 				return err
 			}

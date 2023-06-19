@@ -70,7 +70,7 @@ type ServiceOptions struct {
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
-	BasePath                string
+	PathBase                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
 	SecretProviderOptions   provider.SecretProviderOptions
 	QueueProviderOptions    qprovider.QueueProviderOptions
@@ -154,14 +154,14 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	ctrlOpts := ctrl.Options{
-		BasePath:     s.options.BasePath,
-		Address:      s.options.Address,
 		SecretClient: s.secretClient,
 		AWSOptions: ctrl.AWSOptions{
 			AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
 			AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
 		},
 		Options: armrpc_controller.Options{
+			Address:       s.options.Address,
+			PathBase:      s.options.PathBase,
 			DataProvider:  s.storageProvider,
 			StorageClient: db,
 			StatusManager: s.operationStatusManager,
@@ -187,7 +187,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	app := http.Handler(r)
-	app = servicecontext.ARMRequestCtx(s.options.BasePath, "global")(app)
+	app = servicecontext.ARMRequestCtx(s.options.PathBase, "global")(app)
 	app = middleware.AppendLogValues("ucp")(app)
 
 	app = otelhttp.NewHandler(
@@ -259,7 +259,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 
 		// Wrap the request in an ARM RPC context because this call will bypass the middleware
 		// that normally does this for us.
-		rpcContext, err := v1.FromARMRequest(request, s.options.BasePath, s.options.Location)
+		rpcContext, err := v1.FromARMRequest(request, s.options.PathBase, s.options.Location)
 		if err != nil {
 			return err
 		}

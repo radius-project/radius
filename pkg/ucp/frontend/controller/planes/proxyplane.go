@@ -43,18 +43,12 @@ var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
 // ProxyPlane is the controller implementation to proxy requests to appropriate RP or URL.
 type ProxyPlane struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
-	basePath string
-	address  string
 }
 
 // NewProxyPlane creates a new ProxyPlane.
 func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ProxyPlane{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.Plane]{},
-		),
-		basePath: opts.BasePath,
-		address:  opts.Address,
+		Operation: armrpc_controller.NewOperation(opts.Options, armrpc_controller.ResourceOptions[datamodel.Plane]{}),
 	}, nil
 }
 
@@ -74,7 +68,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	// Make a copy of the incoming URL and trim the base path
 	newURL := *req.URL
-	newURL.Path = middleware.GetRelativePath(p.basePath, req.URL.Path)
+	newURL.Path = middleware.GetRelativePath(p.Options().PathBase, req.URL.Path)
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(newURL.Path)
 	if err != nil {
 		return nil, err
@@ -158,7 +152,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	options := proxy.ReverseProxyOptions{
 		RoundTripper:     otelhttp.NewTransport(http.DefaultTransport),
-		ProxyAddress:     p.address,
+		ProxyAddress:     p.Options().Address,
 		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
 
@@ -177,7 +171,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		HTTPScheme: httpScheme,
 		// The Host field in the request that the client makes to UCP contains the UCP Host address
 		// That address will be used to construct the URL for reverse proxying
-		UCPHost: req.Host + p.basePath,
+		UCPHost: req.Host + p.Options().PathBase,
 	}
 
 	uri, err := url.Parse(newURL.Path)

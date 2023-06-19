@@ -19,7 +19,7 @@ package middleware
 import "strings"
 
 // GetRelativePath trims the prefix basePath from path
-func GetRelativePath(basePath string, path string) string {
-	trimmedPath := strings.TrimPrefix(path, basePath)
+func GetRelativePath(pathBase string, path string) string {
+	trimmedPath := strings.TrimPrefix(path, pathBase)
 	return trimmedPath
 }
