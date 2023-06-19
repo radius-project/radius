@@ -30,13 +30,13 @@ import (
 
 func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []struct {
-		file     string
 		desc     string
+		file     string
 		expected *datamodel.Extender
 	}{
 		{
-			file: "extenderresource.json",
 			desc: "extender resource provisioning manual",
+			file: "extender_manual.json",
 			expected: &datamodel.Extender{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -64,8 +64,8 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 			},
 		},
 		{
-			file: "extenderresource2.json",
 			desc: "extender resource provisioning manual (no secrets)",
+			file: "extender_manual_nosecrets.json",
 			expected: &datamodel.Extender{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -92,8 +92,8 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 			},
 		},
 		{
-			file: "extenderresource_recipe.json",
 			desc: "extender resource recipe",
+			file: "extender_recipe.json",
 			expected: &datamodel.Extender{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -142,13 +142,13 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []struct {
-		file     string
 		desc     string
+		file     string
 		expected *ExtenderResource
 	}{
 		{
 			desc: "extender resource provisioning manual datamodel",
-			file: "extenderresourcedatamodel.json",
+			file: "extenderdatamodel_manual.json",
 			expected: &ExtenderResource{
 				Location: to.Ptr(""),
 				Properties: &ExtenderProperties{
@@ -178,7 +178,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 		},
 		{
 			desc: "extender resource provisioning manual datamodel (no secrets)",
-			file: "extenderresourcedatamodel2.json",
+			file: "extenderdatamodel_manual_nosecrets.json",
 			expected: &ExtenderResource{
 				Location: to.Ptr(""),
 				Properties: &ExtenderProperties{
@@ -200,7 +200,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 		},
 		{
 			desc: "extender resource recipe datamodel",
-			file: "extenderresourcedatamodel_recipe.json",
+			file: "extenderdatamodel_recipe.json",
 			expected: &ExtenderResource{
 				Location: to.Ptr(""),
 				Properties: &ExtenderProperties{

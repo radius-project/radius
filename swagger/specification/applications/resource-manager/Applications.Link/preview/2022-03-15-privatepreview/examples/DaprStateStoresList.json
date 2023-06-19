@@ -58,10 +58,10 @@
                 "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                 "resourceProvisioning": "manual",
                 "type": "state.zookeeper",
-                  "version": "v1",
-                  "metadata": {
-                    "foo": "bar"
-                  }
+                "version": "v1",
+                "metadata": {
+                  "foo": "bar"
+                }
               }
             },
             {

@@ -17,17 +17,19 @@ type Processor struct {
 func (p *Processor) Process(ctx context.Context, resource *datamodel.Extender, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 
-	computedValues := createOutputValues(resource.Properties.AdditionalProperties, options.RecipeOutput, false)
+	computedValues := mergeOutputValues(resource.Properties.AdditionalProperties, options.RecipeOutput, false)
 	for k, val := range computedValues {
-		validator.AddOptionalComputedField(k, val)
+		value := val
+		validator.AddOptionalAnyField(k, value)
 	}
 
-	secretValues := createOutputValues(resource.Properties.Secrets, options.RecipeOutput, true)
+	secretValues := mergeOutputValues(resource.Properties.Secrets, options.RecipeOutput, true)
 	for k, val := range secretValues {
 		if secret, ok := val.(string); !ok {
 			return &processors.ValidationError{Message: fmt.Sprintf("secret '%s' must be of type string", k)}
 		} else {
-			validator.AddOptionalSecretField(k, &secret)
+			value := secret
+			validator.AddOptionalSecretField(k, &value)
 		}
 	}
 
@@ -44,7 +46,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.Extender, o
 	return nil
 }
 
-func createOutputValues(properties map[string]any, recipeOutput *recipes.RecipeOutput, secret bool) map[string]any {
+func mergeOutputValues(properties map[string]any, recipeOutput *recipes.RecipeOutput, secret bool) map[string]any {
 	values := make(map[string]any)
 	for k, val := range properties {
 		values[k] = val

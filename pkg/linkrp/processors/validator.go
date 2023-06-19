@@ -106,15 +106,8 @@ func (v *Validator) AddOptionalSecretField(name string, ref *string) {
 	v.fields = append(v.fields, bind(v, name, ref, false, true, "string", convertToString, nil))
 }
 
-// AddOptionalComputedField registers a field containing a computed property value. The empty property will be treated as an "unset" value.
-//
-// The compute function will be called if the value is not already set or provided by the recipe. Inside the compute function
-// it is safe to assume that other non-computed fields have been populated already.
-//
-// The compute function will not be called if a validation error has previously occurred.
-func (v *Validator) AddOptionalComputedField(name string, ref any) {
-	// Note: secrets are always strings
-	// v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "string", convertToString, nil))
+// AddOptionalAnyField registers a field containing any property value. The empty property will be treated as an "unset" value.
+func (v *Validator) AddOptionalAnyField(name string, ref any) {
 	v.recordValue(name, ref, false)
 }
 

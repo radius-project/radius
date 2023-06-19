@@ -27,14 +27,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	extenderResourceID1 = "/planes/aws/aws/accounts/123341234/regions/us-west-2/providers/AWS.S3/Bucket/myBucket"
+	extenderResourceID2 = "/planes/aws/aws/accounts/123341234/regions/us-west-2/providers/AWS.S3/Bucket/myBucket2"
+	password            = "testpassword"
+)
+
 func Test_Process(t *testing.T) {
 	processor := Processor{}
-
-	const extenderResourceID1 = "/planes/aws/aws/accounts/123341234/regions/us-west-2/providers/AWS.S3/Bucket/myBucket"
-	const extenderResourceID2 = "/planes/aws/aws/accounts/123341234/regions/us-west-2/providers/AWS.S3/Bucket/myBucket2"
-
-	const password = "testpassword"
-
 	t.Run("success - recipe", func(t *testing.T) {
 		resource := &datamodel.Extender{}
 		options := processors.Options{
@@ -44,9 +44,11 @@ func Test_Process(t *testing.T) {
 				},
 				Values: map[string]any{
 					"bucketName": "myBucket",
+					"region":     "westus",
 				},
 				Secrets: map[string]any{
 					"databaseSecret": password,
+					"adminSecret":    password,
 				},
 			},
 		}
@@ -55,13 +57,19 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, "myBucket", resource.Properties.AdditionalProperties["bucketName"])
+		require.Equal(t, "westus", resource.Properties.AdditionalProperties["region"])
 		require.Equal(t, password, resource.Properties.Secrets["databaseSecret"])
+		require.Equal(t, password, resource.Properties.Secrets["adminSecret"])
 
 		expectedValues := map[string]any{
 			"bucketName": "myBucket",
+			"region":     "westus",
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"databaseSecret": {
+				Value: password,
+			},
+			"adminSecret": {
 				Value: password,
 			},
 		}
@@ -172,4 +180,49 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, `secret 'databaseSecret' must be of type string`, err.Error())
 
 	})
+}
+
+func Test_MergeOutputValues(t *testing.T) {
+	resource := &datamodel.Extender{
+		Properties: datamodel.ExtenderProperties{
+			AdditionalProperties: map[string]any{"bucketName": "myBucket"},
+			Secrets: map[string]any{
+				"databaseSecret1": password,
+			},
+		},
+	}
+	propertiesMap := mergeOutputValues(resource.Properties.AdditionalProperties, nil, false)
+	require.Equal(t, resource.Properties.AdditionalProperties, propertiesMap)
+	secretsMap := mergeOutputValues(resource.Properties.Secrets, nil, true)
+	require.Equal(t, resource.Properties.Secrets, secretsMap)
+
+	options := processors.Options{
+		RecipeOutput: &recipes.RecipeOutput{
+			Resources: []string{
+				extenderResourceID1,
+			},
+			Values: map[string]any{
+				"region": "westus",
+			},
+			Secrets: map[string]any{
+				"databaseSecret2": password,
+				"adminSecret":     password,
+			},
+		},
+	}
+
+	expectedAdditionalProperties := map[string]any{
+		"bucketName": "myBucket",
+		"region":     "westus",
+	}
+	expectedSecrets := map[string]any{
+		"databaseSecret1": password,
+		"databaseSecret2": password,
+		"adminSecret":     password,
+	}
+
+	propertiesMap = mergeOutputValues(resource.Properties.AdditionalProperties, options.RecipeOutput, false)
+	require.Equal(t, expectedAdditionalProperties, propertiesMap)
+	secretsMap = mergeOutputValues(resource.Properties.Secrets, options.RecipeOutput, true)
+	require.Equal(t, expectedSecrets, secretsMap)
 }

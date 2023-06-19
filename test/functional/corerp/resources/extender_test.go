@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Extender(t *testing.T) {
+func Test_Extender_Manual(t *testing.T) {
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
 	appNamespace := "default-corerp-resources-extender"

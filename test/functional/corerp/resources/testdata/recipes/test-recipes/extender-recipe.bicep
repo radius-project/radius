@@ -4,6 +4,7 @@ import kubernetes as kubernetes {
 }
 
 param context object
+param containerImage string
 
 resource extender 'apps/Deployment@v1' = {
   metadata: {
@@ -27,7 +28,7 @@ resource extender 'apps/Deployment@v1' = {
         containers: [
           {
             name: 'extender'
-            image: 'radiusdev.azurecr.io/magpiego:latest'
+            image: containerImage
             ports: [
               {
                 containerPort: 6379
