@@ -43,24 +43,22 @@ type KubernetesRuntime struct {
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }
 
-// Definition represents the recipe configuration details.
-type Definition struct {
+// EnvironmentDefinition represents the recipe configuration details.
+type EnvironmentDefinition struct {
 	// Name represents the name of the recipe within the environment
 	Name string
 	// Driver represents the kind of infrastructure language used to define recipe.
 	Driver string
 	// ResourceType represents the type of the link this recipe can be consumed by.
 	ResourceType string
-	// OperatorParameters represents key/value parameters to pass to the recipe template at deployment.
-	OperatorParameters map[string]any
+	// Parameters represents key/value pairs to pass into the recipe template for every resource using this recipe. Can be overridden by the resource using this recipe.
+	Parameters map[string]any
 	// TemplatePath represents path to the template provided by the recipe.
 	TemplatePath string
-	// RecipeMetadata represents recipe details provided while creating a Link resource.
-	RecipeMetadata Metadata
 }
 
-// Metadata represents recipe details provided while creating a Link resource.
-type Metadata struct {
+// ResourceMetadata represents recipe details provided while creating a Link resource.
+type ResourceMetadata struct {
 	// Name represents the name of the recipe within the environment
 	Name string
 	// ApplicationID represents fully qualified resource ID for the application that the link is consumed by
@@ -69,8 +67,8 @@ type Metadata struct {
 	EnvironmentID string
 	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
-	// DeveloperParameters represents Key/value parameters to pass into the recipe at deployment
-	DeveloperParameters map[string]any
+	// Parameters represents key/value parameters to pass into the recipe template. Overrides any parameters set by the environment.
+	Parameters map[string]any
 }
 
 // RecipeOutput represents recipe deployment output.

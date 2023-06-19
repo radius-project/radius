@@ -43,7 +43,7 @@ type engine struct {
 }
 
 // Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
-func (e *engine) Execute(ctx context.Context, recipe recipes.Metadata) (*recipes.RecipeOutput, error) {
+func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
@@ -60,5 +60,5 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.Metadata) (*recipes
 		return nil, err
 	}
 
-	return driver.Execute(ctx, *configuration, *definition)
+	return driver.Execute(ctx, *configuration, recipe, *definition)
 }

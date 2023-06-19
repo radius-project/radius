@@ -127,19 +127,19 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	if input == nil {
 		return nil, nil
 	}
-	request := recipes.Metadata{
-		Name:                input.Name,
-		DeveloperParameters: input.Parameters,
-		EnvironmentID:       data.ResourceMetadata().Environment,
-		ApplicationID:       data.ResourceMetadata().Application,
-		ResourceID:          data.GetBaseResource().ID,
+	request := recipes.ResourceMetadata{
+		Name:          input.Name,
+		Parameters:    input.Parameters,
+		EnvironmentID: data.ResourceMetadata().Environment,
+		ApplicationID: data.ResourceMetadata().Application,
+		ResourceID:    data.GetBaseResource().ID,
 	}
 
 	return c.engine.Execute(ctx, request)
 }
 
 func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {
-	metadata := recipes.Metadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
+	metadata := recipes.ResourceMetadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
 	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
 	if err != nil {
 		return nil, err

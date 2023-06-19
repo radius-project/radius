@@ -206,7 +206,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 			},
 		},
 	}
-	recipeMetadata := recipes.Metadata{
+	recipeMetadata := recipes.ResourceMetadata{
 		Name:          recipeName,
 		EnvironmentID: envResourceId,
 		ResourceID:    mongoResourceID,
@@ -234,18 +234,13 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
 	t.Run("success", func(t *testing.T) {
-		expected := recipes.Definition{
+		expected := recipes.EnvironmentDefinition{
 			Name:         recipeName,
 			Driver:       recipes.TemplateKindBicep,
 			ResourceType: "Applications.Link/mongoDatabases",
 			TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
-			OperatorParameters: map[string]any{
+			Parameters: map[string]any{
 				"foo": "bar",
-			},
-			RecipeMetadata: recipes.Metadata{
-				Name:          recipeName,
-				EnvironmentID: envResourceId,
-				ResourceID:    mongoResourceID,
 			},
 		}
 		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)

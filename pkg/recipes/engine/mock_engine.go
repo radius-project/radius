@@ -36,7 +36,7 @@ func (m *MockEngine) EXPECT() *MockEngineMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockEngine) Execute(arg0 context.Context, arg1 recipes.Metadata) (*recipes.RecipeOutput, error) {
+func (m *MockEngine) Execute(arg0 context.Context, arg1 recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)

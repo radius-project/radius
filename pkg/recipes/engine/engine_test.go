@@ -57,12 +57,12 @@ func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.M
 }
 
 func Test_Engine_Success(t *testing.T) {
-	recipeMetadata := recipes.Metadata{
+	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		DeveloperParameters: map[string]any{
+		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}
@@ -88,7 +88,7 @@ func Test_Engine_Success(t *testing.T) {
 			"port": 10255,
 		},
 	}
-	recipeDefinition := &recipes.Definition{
+	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
@@ -98,7 +98,7 @@ func Test_Engine_Success(t *testing.T) {
 
 	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
 	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
+	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
 
 	result, err := engine.Execute(ctx, recipeMetadata)
 	require.NoError(t, err)
@@ -109,18 +109,18 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, _ := setup(t)
 
-	recipeDefinition := &recipes.Definition{
+	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       "invalid",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}
 
-	recipeMetadata := recipes.Metadata{
+	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		DeveloperParameters: map[string]any{
+		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}
@@ -134,12 +134,12 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 func Test_Engine_Lookup_Error(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, _ := setup(t)
-	recipeMetadata := recipes.Metadata{
+	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		DeveloperParameters: map[string]any{
+		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}
@@ -151,16 +151,16 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 func Test_Engine_Load_Error(t *testing.T) {
 	ctx := createContext(t)
 	engine, configLoader, _ := setup(t)
-	recipeMetadata := recipes.Metadata{
+	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-		DeveloperParameters: map[string]any{
+		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
 	}
-	recipeDefinition := &recipes.Definition{
+	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",

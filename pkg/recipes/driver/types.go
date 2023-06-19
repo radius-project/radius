@@ -25,7 +25,7 @@ import (
 // Driver is an interface to implement recipe deployment.
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
-	Execute(ctx context.Context, configuration recipes.Configuration, definition recipes.Definition) (*recipes.RecipeOutput, error)
+	Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error)
 }
 
 // RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to

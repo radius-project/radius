@@ -36,16 +36,16 @@ func (m *MockDriver) EXPECT() *MockDriverMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockDriver) Execute(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.Definition) (*recipes.RecipeOutput, error) {
+func (m *MockDriver) Execute(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.ResourceMetadata, arg3 recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockDriverMockRecorder) Execute(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockDriverMockRecorder) Execute(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockDriver)(nil).Execute), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockDriver)(nil).Execute), arg0, arg1, arg2, arg3)
 }
