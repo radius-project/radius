@@ -365,7 +365,7 @@
         },
         "recipe": {
           "$ref": "openapi.json#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Extender link"
         }
       }
     }
