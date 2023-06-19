@@ -261,7 +261,7 @@ func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource Azur
 	}, nil
 }
 
-// RequireAzureSubscriptionId is used by commands that require specifying an Azure subscriptionId using a flag
+// ReadAzureSubscriptionIdFlag is used by commands that require specifying an Azure subscriptionId using a flag
 func ReadAzureSubscriptionIdFlag(cmd *cobra.Command) (string, error) {
 	subscriptionId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
 	if err != nil {
