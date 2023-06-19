@@ -45,17 +45,18 @@ const (
 	ProviderNamespaceName = "Applications.Core"
 )
 
-func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
+func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
+	rootScopePath := ctrlOpts.PathBase
 	if isARM {
-		pathBase += "/subscriptions/{subscriptionID}"
+		rootScopePath += "/subscriptions/{subscriptionID}"
 	} else {
-		pathBase += "/planes/radius/{planeName}"
+		rootScopePath += "/planes/radius/{planeName}"
 	}
 
 	resourceGroupPath := "/resourcegroups/{resourceGroupName}"
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations, ctrlOpts)
+	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, ProviderNamespaceName, NewGetOperations, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -64,8 +65,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	//
 	// These paths are order sensitive and the longer path MUST be registered first.
 	prefixes := []string{
-		pathBase + resourceGroupPath,
-		pathBase,
+		rootScopePath + resourceGroupPath,
+		rootScopePath,
 	}
 
 	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, prefixes, "rootScope")
@@ -76,13 +77,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	// Used to register routes like:
 	//
 	// /planes/radius/{planeName}/providers/applications.core/environments
-	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter := router.PathPrefix(rootScopePath).Subrouter()
 	planeScopeRouter.Use(validator.APIValidator(specLoader))
 
 	// Used to register routes like:
 	//
 	// /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/providers/applications.core/environments
-	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter := router.PathPrefix(rootScopePath + resourceGroupPath).Subrouter()
 	resourceGroupScopeRouter.Use(validator.APIValidator(specLoader))
 
 	// Adds environment resource type routes

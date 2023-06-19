@@ -46,7 +46,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	deleteRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodDelete, ucp.URL+basePath+testProxyRequestAWSPath, nil)
+	deleteRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodDelete, ucp.URL+pathBase+testProxyRequestAWSPath, nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := testutil.ARMTestContextFromRequest(deleteRequest)
