@@ -77,7 +77,7 @@ type DaprStateStoreClientListByRootScopeResponse struct {
 
 // ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.CreateOrUpdate.
 type ExtendersClientCreateOrUpdateResponse struct {
-	ExtenderResponseResource
+	ExtenderResource
 }
 
 // ExtendersClientDeleteResponse contains the response from method ExtendersClient.Delete.
@@ -87,7 +87,7 @@ type ExtendersClientDeleteResponse struct {
 
 // ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
 type ExtendersClientGetResponse struct {
-	ExtenderResponseResource
+	ExtenderResource
 }
 
 // ExtendersClientListByRootScopeResponse contains the response from method ExtendersClient.ListByRootScope.
