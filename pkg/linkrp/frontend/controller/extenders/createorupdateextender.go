@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
@@ -36,7 +35,6 @@ var _ ctrl.Controller = (*CreateOrUpdateExtender)(nil)
 // CreateOrUpdateExtender is the controller implementation to create or update Extender link resource.
 type CreateOrUpdateExtender struct {
 	ctrl.Operation[*datamodel.Extender, datamodel.Extender]
-	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateExtender creates a new instance of CreateOrUpdateExtender.
@@ -47,7 +45,6 @@ func NewCreateOrUpdateExtender(opts frontend_ctrl.Options) (ctrl.Controller, err
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -75,26 +72,16 @@ func (extender *CreateOrUpdateExtender) Run(ctx context.Context, w http.Response
 		return r, err
 	}
 
-	rendererOutput, err := extender.dp.Render(ctx, serviceCtx.ResourceID, newResource)
-	if err != nil {
-		return nil, err
+	newResource.Properties.Status.OutputResources = []rpv1.OutputResource{}
+	newResource.ComputedValues = map[string]any{}
+	newResource.SecretValues = map[string]rpv1.SecretValueReference{}
+
+	for k, v := range newResource.Properties.AdditionalProperties {
+		newResource.ComputedValues[k] = v
 	}
 
-	deploymentOutput, err := extender.dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
-	if err != nil {
-		return nil, err
-	}
-
-	newResource.Properties.Status.OutputResources = deploymentOutput.DeployedOutputResources
-	newResource.ComputedValues = deploymentOutput.ComputedValues
-	newResource.SecretValues = deploymentOutput.SecretValues
-
-	if old != nil {
-		diff := rpv1.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = extender.dp.Delete(ctx, serviceCtx.ResourceID, diff)
-		if err != nil {
-			return nil, err
-		}
+	for k, v := range newResource.Properties.Secrets {
+		newResource.SecretValues[k] = rpv1.SecretValueReference{Value: v.(string)}
 	}
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
