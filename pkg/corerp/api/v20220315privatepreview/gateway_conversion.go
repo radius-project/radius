@@ -151,7 +151,7 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 
 func toTLSMinVersionDataModel(tlsMinVersion *TLSMinVersion) datamodel.MinimumTLSProtocolVersion {
 	if tlsMinVersion == nil {
-		return datamodel.TLSMinVersion12
+		return datamodel.DefaultTLSMinVersion
 	}
 
 	switch *tlsMinVersion {
