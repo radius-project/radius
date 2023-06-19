@@ -270,7 +270,7 @@ func TestHandlers(t *testing.T) {
 
 func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovider.MockDataStorageProvider) {
 	r := mux.NewRouter()
-	err := AddRoutes(context.Background(), r, pathBase, isARM, ctrl.Options{DataProvider: mockSP}, nil)
+	err := AddRoutes(context.Background(), r, pathBase, isARM, ctrl.Options{DataProvider: mockSP})
 	require.NoError(t, err)
 
 	for _, tt := range handlerTests {

@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 )
 
 var _ ctrl.Controller = (*ListSecretsExtender)(nil)
@@ -36,9 +35,9 @@ type ListSecretsExtender struct {
 }
 
 // NewListSecretsExtender creates a new instance of ListSecretsExtender.
-func NewListSecretsExtender(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewListSecretsExtender(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsExtender{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Extender]{
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,

@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -39,9 +38,9 @@ type ListSecretsRedisCache struct {
 }
 
 // NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache.
-func NewListSecretsRedisCache(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewListSecretsRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRedisCache{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.RedisCache]{
 				RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 				ResponseConverter: converter.RedisCacheDataModelToVersioned,

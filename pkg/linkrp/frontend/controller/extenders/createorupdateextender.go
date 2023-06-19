@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
@@ -38,9 +37,9 @@ type CreateOrUpdateExtender struct {
 }
 
 // NewCreateOrUpdateExtender creates a new instance of CreateOrUpdateExtender.
-func NewCreateOrUpdateExtender(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateExtender(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateExtender{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Extender]{
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,

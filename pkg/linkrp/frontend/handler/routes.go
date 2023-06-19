@@ -37,14 +37,13 @@ import (
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
 	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
 const (
 	ProviderNamespaceName = "Applications.Link"
 )
 
-func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
 	} else {
@@ -202,12 +201,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.MongoDatabasesResourceType,
-			Method:       mongo_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return mongo_ctrl.NewListSecretsMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.MongoDatabasesResourceType,
+			Method:         mongo_ctrl.OperationListSecret,
+			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
 		{
 			ParentRouter: daprPubSubBrokerPlaneRouter,
@@ -550,12 +547,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.RedisCachesResourceType,
-			Method:       redis_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return redis_ctrl.NewListSecretsRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.RedisCachesResourceType,
+			Method:         redis_ctrl.OperationListSecret,
+			HandlerFactory: redis_ctrl.NewListSecretsRedisCache,
 		},
 		{
 			ParentRouter: rabbitmqMessageQueuePlaneRouter,
@@ -643,12 +638,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: rabbitmqMessageQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
-			Method:       rabbitmq_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   rabbitmqMessageQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.RabbitMQMessageQueuesResourceType,
+			Method:         rabbitmq_ctrl.OperationListSecret,
+			HandlerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
 		},
 		{
 			ParentRouter: sqlDatabasePlaneRouter,
@@ -736,12 +729,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: sqlDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.SqlDatabasesResourceType,
-			Method:       sql_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return sql_ctrl.NewListSecretsSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   sqlDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.SqlDatabasesResourceType,
+			Method:         sql_ctrl.OperationListSecret,
+			HandlerFactory: sql_ctrl.NewListSecretsSqlDatabase,
 		},
 		{
 			ParentRouter: extenderPlaneRouter,
@@ -781,36 +772,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter: extenderResourceRouter,
-			ResourceType: linkrp.ExtendersResourceType,
-			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return extender_ctrl.NewCreateOrUpdateExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   linkrp.ExtendersResourceType,
+			Method:         v1.OperationPut,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
 		},
 		{
-			ParentRouter: extenderResourceRouter,
-			ResourceType: linkrp.ExtendersResourceType,
-			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return extender_ctrl.NewCreateOrUpdateExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   linkrp.ExtendersResourceType,
+			Method:         v1.OperationPatch,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
 		},
 		{
-			ParentRouter: extenderResourceRouter,
-			ResourceType: linkrp.ExtendersResourceType,
-			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return extender_ctrl.NewDeleteExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   linkrp.ExtendersResourceType,
+			Method:         v1.OperationDelete,
+			HandlerFactory: extender_ctrl.NewDeleteExtender,
 		},
 		{
-			ParentRouter: extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.ExtendersResourceType,
-			Method:       extender_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return extender_ctrl.NewListSecretsExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.ExtendersResourceType,
+			Method:         extender_ctrl.OperationListSecret,
+			HandlerFactory: extender_ctrl.NewListSecretsExtender,
 		},
 	}
 

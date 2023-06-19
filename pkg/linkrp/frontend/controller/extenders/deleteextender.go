@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -38,9 +37,9 @@ type DeleteExtender struct {
 }
 
 // NewDeleteExtender creates a new instance DeleteExtender.
-func NewDeleteExtender(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteExtender(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteExtender{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Extender]{
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,

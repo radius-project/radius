@@ -29,7 +29,6 @@ import (
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 
 	"github.com/golang/mock/gomock"
@@ -57,10 +56,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
@@ -91,10 +88,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)
@@ -124,10 +119,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsRabbitMQMessageQueue(opts)

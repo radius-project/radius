@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
 
@@ -37,9 +36,9 @@ type ListSecretsMongoDatabase struct {
 }
 
 // NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase.
-func NewListSecretsMongoDatabase(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewListSecretsMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsMongoDatabase{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.MongoDatabase]{
 				RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
