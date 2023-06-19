@@ -150,8 +150,7 @@ var handlerTests = []struct {
 		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
-	},
-	{
+	}, {
 		url:        "/providers/applications.link/extenders?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
