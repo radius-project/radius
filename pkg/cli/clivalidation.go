@@ -262,15 +262,17 @@ func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource Azur
 }
 
 // RequireAzureSubscriptionId is used by commands that require specifying an Azure subscriptionId using a flag
-func RequireAzureSubscriptionId(cmd *cobra.Command, args []string) (string, error) {
+func ReadAzureSubscriptionIdFlag(cmd *cobra.Command) (string, error) {
 	subscriptionId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
 	if err != nil {
 		return "", err
 	}
 
-	// Validate that subscriptionId is a valid GUID
-	if _, err := uuid.Parse(subscriptionId); err != nil {
-		return "", fmt.Errorf("'%s' is not a valid subscription ID", subscriptionId)
+	if subscriptionId != "" {
+		// Validate that subscriptionId is a valid GUID
+		if _, err := uuid.Parse(subscriptionId); err != nil {
+			return "", fmt.Errorf("'%s' is not a valid subscription ID", subscriptionId)
+		}
 	}
 
 	return subscriptionId, err
