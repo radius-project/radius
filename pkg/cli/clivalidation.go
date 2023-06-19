@@ -22,8 +22,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clierrors"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -257,6 +259,21 @@ func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource Azur
 		ResourceGroup:  results[2],
 		SubscriptionID: results[3],
 	}, nil
+}
+
+// RequireAzureSubscriptionId is used by commands that require specifying an Azure subscriptionId using a flag
+func RequireAzureSubscriptionId(cmd *cobra.Command, args []string) (string, error) {
+	subscriptionId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
+	if err != nil {
+		return "", err
+	}
+
+	// Validate that subscriptionId is a valid GUID
+	if _, err := uuid.Parse(subscriptionId); err != nil {
+		return "", fmt.Errorf("'%s' is not a valid subscription ID", subscriptionId)
+	}
+
+	return subscriptionId, err
 }
 
 func RequireOutput(cmd *cobra.Command) (string, error) {
