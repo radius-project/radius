@@ -38,7 +38,7 @@ type ListSecretsRabbitMQQueue struct {
 	dp deployment.DeploymentProcessor
 }
 
-// NewListSecretsRabbitMQQueue creates a new instance of ListSecretsRabbitMQMessageQueue.
+// NewListSecretsRabbitMQQueue creates a new instance of ListSecretsRabbitMQQueue.
 func NewListSecretsRabbitMQQueue(opts frontend_ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRabbitMQQueue{
 		Operation: ctrl.NewOperation(opts.Options,
@@ -50,7 +50,7 @@ func NewListSecretsRabbitMQQueue(opts frontend_ctrl.Options) (ctrl.Controller, e
 	}, nil
 }
 
-// Run returns secrets values for the specified RabbitMQMessageQueue resource
+// Run returns secrets values for the specified RabbitMQQueue resource
 func (ctrl *ListSecretsRabbitMQQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
