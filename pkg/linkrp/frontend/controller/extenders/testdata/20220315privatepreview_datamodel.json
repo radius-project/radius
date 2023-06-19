@@ -19,8 +19,19 @@
         "fromNumber": "222-222-2222"
       },
       "secrets": {
-          "accountSid": "sid",
-          "authToken:": "token"
+        "accountSid": "sid",
+        "authToken:": "token"
+      }
+    },
+    "computedValues": {
+      "fromNumber": "222-222-2222"
+    },
+    "secretValues": {
+      "accountSid": {
+        "value": "sid"
+      },
+      "authToken:": { 
+        "value": "token" 
       }
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",
