@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
 
@@ -37,9 +36,9 @@ type ListSecretsSqlDatabase struct {
 }
 
 // NewListSecretsSqlDatabase creates a new instance of ListSecretsSqlDatabase.
-func NewListSecretsSqlDatabase(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewListSecretsSqlDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsSqlDatabase{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.SqlDatabase]{
 				RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.SqlDatabaseDataModelToVersioned,

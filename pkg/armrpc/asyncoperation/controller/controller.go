@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
-	link_dp "github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
@@ -43,9 +42,6 @@ type Options struct {
 
 	// GetDeploymentProcessor is the factory function to create core rp DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
-
-	// GetLinkDeploymentProcessor is the factory function to create link rp DeploymentProcessor instance.
-	GetLinkDeploymentProcessor func() link_dp.DeploymentProcessor
 }
 
 // Controller is an interface to implement async operation controller.
@@ -90,9 +86,4 @@ func (b *BaseController) ResourceType() string {
 // DeploymentProcessor gets the core rp deployment processor for this controller.
 func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
 	return b.options.GetDeploymentProcessor()
-}
-
-// LinkDeploymentProcessor gets the link rp deployment processor for this controller.
-func (b *BaseController) LinkDeploymentProcessor() link_dp.DeploymentProcessor {
-	return b.options.GetLinkDeploymentProcessor()
 }

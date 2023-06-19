@@ -25,7 +25,6 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -91,10 +90,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := frontend_ctrl.Options{
-				Options: ctrl.Options{
-					StorageClient: mds,
-				},
+			opts := ctrl.Options{
+				StorageClient: mds,
 			}
 
 			ctl, err := NewCreateOrUpdateExtender(opts)
@@ -168,10 +165,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := frontend_ctrl.Options{
-				Options: ctrl.Options{
-					StorageClient: mds,
-				},
+			opts := ctrl.Options{
+				StorageClient: mds,
 			}
 
 			ctl, err := NewCreateOrUpdateExtender(opts)
