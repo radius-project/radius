@@ -18,9 +18,6 @@ package controller
 
 import (
 	"time"
-
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
 var (
@@ -29,11 +26,3 @@ var (
 	// AsyncDeleteRabbitMQTimeout is the timeout for async delete rabbitMQ
 	AsyncDeleteRabbitMQTimeout = time.Duration(30) * time.Minute
 )
-
-// Options is the options to configure LinkRP controller.
-type Options struct {
-	ctrl.Options
-
-	// DeployProcessor is the deployment processor for LinkRP
-	DeployProcessor deployment.DeploymentProcessor
-}

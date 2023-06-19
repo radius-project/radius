@@ -41,11 +41,9 @@ import (
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
 	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	msg_conv "github.com/project-radius/radius/pkg/messagingrp/datamodel/converter"
-	rmq_frnt_ctrl "github.com/project-radius/radius/pkg/messagingrp/frontend/controller"
-	rmq_ctrl "github.com/project-radius/radius/pkg/messagingrp/frontend/controller/rabbitmqqueues"
+	msg_ctrl "github.com/project-radius/radius/pkg/messagingrp/frontend/controller/rabbitmqqueues"
 )
 
 const (
@@ -57,9 +55,9 @@ const (
 )
 
 // AddRoutes configures routes and handlers for resourceproviders Datastoresrp, Messagingrp, Daprrp.
-func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
-
-	pathBase += getPathBase(isARM)
+func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
+	rootScopePath := ctrlOpts.PathBase
+	rootScopePath += getRootScopePath(isARM)
 
 	// URLs may use either the subscription/plane scope or resource group scope.
 	// These paths are order sensitive and the longer path MUST be registered first.
@@ -68,22 +66,22 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		rootScopePath,
 	}
 
-	err := AddLinkRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	err := AddLinkRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
 
-	err = AddMessagingRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	err = AddMessagingRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
 
 	/* The following routes will be configured in upcoming PRs
-	err = AddDatastoresRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	err = AddDatastoresRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
-	err = AddDaprRoutes(ctx, router, pathBase, prefixes, isARM, ctrlOpts, dp)
+	err = AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -93,10 +91,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 }
 
 // AddMessagingRoutes configures routes and handlers for Messagingrp resourceprovider.
-func AddMessagingRoutes(ctx context.Context, router *mux.Router, pathBase string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+func AddMessagingRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, MessagingProviderNamespace, NewGetOperations, ctrlOpts)
+	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, MessagingProviderNamespace, NewGetOperations, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -106,18 +104,18 @@ func AddMessagingRoutes(ctx context.Context, router *mux.Router, pathBase string
 		return err
 	}
 
-	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter := router.PathPrefix(rootScopePath).Subrouter()
 	planeScopeRouter.Use(validator.APIValidator(msg_specLoader))
 
-	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter := router.PathPrefix(rootScopePath + resourceGroupPath).Subrouter()
 	resourceGroupScopeRouter.Use(validator.APIValidator(msg_specLoader))
 
 	rabbitmqQueuePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.messaging/rabbitmqqueues").Subrouter()
 	rabbitmqQueueResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.messaging/rabbitmqqueues").Subrouter()
 	rabbitmqQueueResourceRouter := rabbitmqQueueResourceGroupRouter.PathPrefix("/{rabbitMQQueueName}").Subrouter()
 
-	// Datastores handlers:
-	ds_handlerOptions := []server.HandlerOptions{
+	// Messaging handlers:
+	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter: rabbitmqQueuePlaneRouter,
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
@@ -204,16 +202,14 @@ func AddMessagingRoutes(ctx context.Context, router *mux.Router, pathBase string
 			},
 		},
 		{
-			ParentRouter: rabbitmqQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
-			Method:       rmq_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rmq_ctrl.NewListSecretsRabbitMQQueue(rmq_frnt_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   rabbitmqQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.N_RabbitMQQueuesResourceType,
+			Method:         msg_ctrl.OperationListSecret,
+			HandlerFactory: msg_ctrl.NewListSecretsRabbitMQQueue,
 		},
 	}
 
-	for _, h := range ds_handlerOptions {
+	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
 			return err
 		}
@@ -223,10 +219,10 @@ func AddMessagingRoutes(ctx context.Context, router *mux.Router, pathBase string
 }
 
 // AddDaprRoutes configures routes and handlers for resourceprovider Daprrp.
-func AddDaprRoutes(ctx context.Context, router *mux.Router, pathBase string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+func AddDaprRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Dapr - Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, DaprProviderNamespace, NewGetOperations, ctrlOpts)
+	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, DaprProviderNamespace, NewGetOperations, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -236,10 +232,10 @@ func AddDaprRoutes(ctx context.Context, router *mux.Router, pathBase string, pre
 		return err
 	}
 
-	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter := router.PathPrefix(rootScopePath).Subrouter()
 	planeScopeRouter.Use(validator.APIValidator(dapr_specLoader))
 
-	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter := router.PathPrefix(rootScopePath + resourceGroupPath).Subrouter()
 	resourceGroupScopeRouter.Use(validator.APIValidator(dapr_specLoader))
 
 	daprPubSubBrokerPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.dapr/daprpubsubbrokers").Subrouter()
@@ -255,7 +251,7 @@ func AddDaprRoutes(ctx context.Context, router *mux.Router, pathBase string, pre
 	daprStateStoreResourceRouter := daprStateStoreResourceGroupRouter.PathPrefix("/{daprStateStoreName}").Subrouter()
 
 	// Dapr handlers:
-	ds_handlerOptions := []server.HandlerOptions{
+	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter: daprPubSubBrokerPlaneRouter,
 			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
@@ -513,7 +509,7 @@ func AddDaprRoutes(ctx context.Context, router *mux.Router, pathBase string, pre
 		},
 	}
 
-	for _, h := range ds_handlerOptions {
+	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
 			return err
 		}
@@ -523,10 +519,10 @@ func AddDaprRoutes(ctx context.Context, router *mux.Router, pathBase string, pre
 }
 
 // AddDatastoresRoutes configures the routes and handlers for resourceprovider Datastoresrp.
-func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+func AddDatastoresRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Datastores - Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, router, pathBase, isARM, DatastoresProviderNamespace, NewGetOperations, ctrlOpts)
+	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, DatastoresProviderNamespace, NewGetOperations, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -536,10 +532,10 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase strin
 		return err
 	}
 
-	planeScopeRouter := router.PathPrefix(pathBase).Subrouter()
+	planeScopeRouter := router.PathPrefix(rootScopePath).Subrouter()
 	planeScopeRouter.Use(validator.APIValidator(ds_specLoader))
 
-	resourceGroupScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	resourceGroupScopeRouter := router.PathPrefix(rootScopePath + resourceGroupPath).Subrouter()
 	resourceGroupScopeRouter.Use(validator.APIValidator(ds_specLoader))
 
 	mongoDatabasePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.datastores/mongodatabases").Subrouter()
@@ -555,7 +551,7 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase strin
 	sqlDatabaseResourceRouter := sqlDatabaseResourceGroupRouter.PathPrefix("/{sqlDatabaseName}").Subrouter()
 
 	// Datastores handlers:
-	ds_handlerOptions := []server.HandlerOptions{
+	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter: mongoDatabasePlaneRouter,
 			ResourceType: linkrp.N_MongoDatabasesResourceType,
@@ -612,15 +608,15 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase strin
 		},
 		{
 			ParentRouter: mongoDatabaseResourceRouter,
-			ResourceType: linkrp.N_MongoDatabasesResourceType,
+			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
-					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
-						RequestConverter:  ds_conv.MongoDatabaseDataModelFromVersioned,
-						ResponseConverter: ds_conv.MongoDatabaseDataModelToVersioned,
-						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.MongoDatabase]{
-							rp_frontend.PrepareRadiusResource[*ds_dm.MongoDatabase],
+					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
+						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
+							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
 						},
 						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
 					},
@@ -642,14 +638,11 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase strin
 			},
 		},
 		{
-			ParentRouter: mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.N_MongoDatabasesResourceType,
-			Method:       mongo_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return mongo_ctrl.NewListSecretsMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.MongoDatabasesResourceType,
+			Method:         mongo_ctrl.OperationListSecret,
+			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
-
 		{
 			ParentRouter: redisCachePlaneRouter,
 			ResourceType: linkrp.N_RedisCachesResourceType,
@@ -736,12 +729,10 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase strin
 			},
 		},
 		{
-			ParentRouter: redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType: linkrp.N_RedisCachesResourceType,
-			Method:       redis_ctrl.OperationListSecret,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return redis_ctrl.NewListSecretsRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
-			},
+			ParentRouter:   redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   linkrp.RedisCachesResourceType,
+			Method:         redis_ctrl.OperationListSecret,
+			HandlerFactory: redis_ctrl.NewListSecretsRedisCache,
 		},
 		{
 			ParentRouter: sqlDatabasePlaneRouter,
@@ -830,7 +821,7 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase strin
 		},
 	}
 
-	for _, h := range ds_handlerOptions {
+	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
 			return err
 		}
@@ -840,7 +831,7 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, pathBase strin
 }
 
 // AddLinkRoutes configures routes and handlers for the resourprovider linkrp.
-func AddLinkRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
+func AddLinkRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Configure the default ARM handlers.
 	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, LinkProviderNamespace, NewGetOperations, ctrlOpts)
@@ -1619,7 +1610,7 @@ func AddLinkRoutes(ctx context.Context, router *mux.Router, rootScopePath string
 	return nil
 }
 
-func getPathBase(isARM bool) string {
+func getRootScopePath(isARM bool) string {
 	if isARM {
 		return "/subscriptions/{subscriptionID}"
 	}

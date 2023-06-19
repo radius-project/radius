@@ -23,11 +23,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	msg_conv "github.com/project-radius/radius/pkg/messagingrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/messagingrp/frontend/controller"
 )
 
 var _ ctrl.Controller = (*ListSecretsRabbitMQQueue)(nil)
@@ -35,18 +33,16 @@ var _ ctrl.Controller = (*ListSecretsRabbitMQQueue)(nil)
 // ListSecretsRabbitMQQueue is the controller implementation to list secrets for the to access the connected rabbitMQ resource resource id passed in the request body.
 type ListSecretsRabbitMQQueue struct {
 	ctrl.Operation[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue]
-	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsRabbitMQQueue creates a new instance of ListSecretsRabbitMQQueue.
-func NewListSecretsRabbitMQQueue(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewListSecretsRabbitMQQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRabbitMQQueue{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
 				RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
 				ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -66,14 +62,9 @@ func (ctrl *ListSecretsRabbitMQQueue) Run(ctx context.Context, w http.ResponseWr
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
-	if err != nil {
-		return nil, err
-	}
-
 	msgSecrets := msg_dm.RabbitMQSecrets{}
-	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
-		msgSecrets.ConnectionString = connectionString
+	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
+		msgSecrets.ConnectionString = connectionString.Value
 	}
 
 	versioned, _ := msg_conv.RabbitMQSecretsDataModelToVersioned(&msgSecrets, sCtx.APIVersion)
