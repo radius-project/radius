@@ -119,10 +119,6 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
-	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
@@ -268,10 +264,6 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq?api-version=2022-03-15-privatepreview",
