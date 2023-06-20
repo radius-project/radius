@@ -67,6 +67,12 @@ model ExtenderProperties extends BasicResourceProperties {
 
   @doc("The secrets value for the resource")
   secrets?: ExtenderSecrets;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Extender")
+  recipe?: Recipe;
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
 }
 
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"

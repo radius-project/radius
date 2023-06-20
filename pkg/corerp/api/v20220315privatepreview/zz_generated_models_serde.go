@@ -1543,7 +1543,6 @@ func (g *GatewayPropertiesHostname) UnmarshalJSON(data []byte) error {
 func (g GatewayPropertiesTLS) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "certificateFrom", g.CertificateFrom)
-	populate(objectMap, "hostname", g.Hostname)
 	populate(objectMap, "minimumProtocolVersion", g.MinimumProtocolVersion)
 	populate(objectMap, "sslPassthrough", g.SSLPassthrough)
 	return json.Marshal(objectMap)
@@ -1560,9 +1559,6 @@ func (g *GatewayPropertiesTLS) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "certificateFrom":
 				err = unpopulate(val, "CertificateFrom", &g.CertificateFrom)
-				delete(rawMsg, key)
-		case "hostname":
-				err = unpopulate(val, "Hostname", &g.Hostname)
 				delete(rawMsg, key)
 		case "minimumProtocolVersion":
 				err = unpopulate(val, "MinimumProtocolVersion", &g.MinimumProtocolVersion)

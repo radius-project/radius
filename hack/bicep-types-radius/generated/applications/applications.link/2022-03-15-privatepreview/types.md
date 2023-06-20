@@ -204,7 +204,9 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **secrets**: [ExtenderSecrets](#extendersecrets): The secret values for the given Extender resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any

@@ -55,4 +55,9 @@ var (
 	AsyncCreateOrUpdateDaprPubSubBrokerTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprPubSubBrokerTimeout is the timeout for async delete dapr pub sub broker
 	AsyncDeleteDaprPubSubBrokerTimeout = time.Duration(30) * time.Minute
+
+	// AsyncCreateOrUpdateExtenderTimeout is the timeout for async create or update extender
+	AsyncCreateOrUpdateExtenderTimeout = time.Duration(60) * time.Minute
+	// AsyncDeleteExtenderTimeout is the timeout for async delete extender
+	AsyncDeleteExtenderTimeout = time.Duration(30) * time.Minute
 )

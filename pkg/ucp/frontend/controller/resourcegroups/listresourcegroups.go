@@ -25,7 +25,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -39,9 +38,9 @@ type ListResourceGroups struct {
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
-func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewListResourceGroups(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.ResourceGroup]{
 				RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,

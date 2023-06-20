@@ -28,10 +28,10 @@ import (
 	"github.com/gorilla/mux"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
+
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,13 +53,13 @@ const (
 	testAWSResourceName               = "stream-1"
 	testProxyRequestAWSAsyncPath      = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/locations/global"
 	testAWSRequestToken               = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
-	pathBase                          = "/apis/api.ucp.dev/v1alpha3"
+	basePath                          = "/apis/api.ucp.dev/v1alpha3"
 )
 
-func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudControlClient, *aws.MockAWSCloudFormationClient) {
+func initializeTest(t *testing.T) (*httptest.Server, Client, *ucp_aws.MockAWSCloudControlClient, *ucp_aws.MockAWSCloudFormationClient) {
 	ctrl := gomock.NewController(t)
-	cloudControlClient := aws.NewMockAWSCloudControlClient(ctrl)
-	cloudFormationClient := aws.NewMockAWSCloudFormationClient(ctrl)
+	cloudControlClient := ucp_aws.NewMockAWSCloudControlClient(ctrl)
+	cloudFormationClient := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
 
 	provider := dataprovider.NewMockDataStorageProvider(ctrl)
 	provider.EXPECT().
@@ -68,22 +68,20 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 		AnyTimes()
 
 	router := mux.NewRouter()
-	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
+	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err := api.Register(ctx, router, controller.Options{
-		AWSOptions: controller.AWSOptions{
-			AWSCloudControlClient:   cloudControlClient,
-			AWSCloudFormationClient: cloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			PathBase:     pathBase,
-			DataProvider: provider,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   cloudControlClient,
+		CloudFormation: cloudFormationClient,
+	}
+	err := api.Register(ctx, router, armrpc_controller.Options{
+		PathBase:     basePath,
+		DataProvider: provider,
+	}, nil, awsClients)
 	require.NoError(t, err)
 
-	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
+	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
 
 	return ucp, ucpClient, cloudControlClient, cloudFormationClient
 }
