@@ -24,7 +24,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       'Applications.Link/extenders': {
         s3: {
           templateKind: 'bicep'
-          templatePath: 'willsmithradius.azurecr.io/test/functional/corerp/recipes/aws-s3-recipe:edge'
+          templatePath: '${registry}/test/functional/corerp/recipes/extenders-aws-s3-recipe:${version}' 
           parameters: {
             bucketName: bucketName
           }
