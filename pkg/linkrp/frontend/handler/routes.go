@@ -90,7 +90,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 	return nil
 }
 
-// AddMessagingRoutes configures routes and handlers for Messagingrp resourceprovider.
+// AddMessagingRoutes configures routes and handlers for Messaging Resource Provider.
 func AddMessagingRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Configure the default ARM handlers.
@@ -218,7 +218,7 @@ func AddMessagingRoutes(ctx context.Context, router *mux.Router, rootScopePath s
 	return nil
 }
 
-// AddDaprRoutes configures routes and handlers for resourceprovider Daprrp.
+// AddDaprRoutes configures routes and handlers for Dapr Resource Provider.
 func AddDaprRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Dapr - Configure the default ARM handlers.
@@ -518,7 +518,7 @@ func AddDaprRoutes(ctx context.Context, router *mux.Router, rootScopePath string
 	return nil
 }
 
-// AddDatastoresRoutes configures the routes and handlers for resourceprovider Datastoresrp.
+// AddDatastoresRoutes configures the routes and handlers for Datastores Resource Provider.
 func AddDatastoresRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Datastores - Configure the default ARM handlers.
@@ -830,7 +830,7 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, rootScopePath 
 	return nil
 }
 
-// AddLinkRoutes configures routes and handlers for the resourprovider linkrp.
+// AddLinkRoutes configures routes and handlers for the Link Resource Provider.
 func AddLinkRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Configure the default ARM handlers.
