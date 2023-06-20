@@ -41,10 +41,11 @@ const (
 )
 
 type AWSResource struct {
-	Type       string
-	Name       string
-	Identifier string
-	Properties map[string]any
+	Type         string
+	Name         string
+	Identifier   string
+	Properties   map[string]any
+	SkipDeletion bool
 }
 
 type AWSResourceSet struct {

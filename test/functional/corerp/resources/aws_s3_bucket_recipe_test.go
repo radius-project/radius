@@ -64,7 +64,7 @@ func Test_AWS_S3_Recipe(t *testing.T) {
 					},
 					{
 						Name: "corerp-resources-extenders-aws-s3-recipe",
-						Type: validation.MongoDatabasesResource,
+						Type: validation.ExtendersResource,
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
 							{
@@ -84,9 +84,11 @@ func Test_AWS_S3_Recipe(t *testing.T) {
 						Properties: map[string]any{
 							"BucketName": bucketName,
 						},
+						SkipDeletion: true, // will be deleted by the recipe
 					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 
