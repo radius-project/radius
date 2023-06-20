@@ -27,8 +27,7 @@
             }
         ],
         "tls": {
-            "certificateFrom": "secretname",
-            "minimumProtocolVersion": "1.3"
+            "certificateFrom": "secretname"
         },
         "url": "http://myprefix.myapp.mydomain.com"
     }

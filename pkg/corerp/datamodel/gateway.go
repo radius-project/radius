@@ -113,6 +113,8 @@ const (
 	TLSMinVersion12 MinimumTLSProtocolVersion = "1.2"
 	// TLS 1.3
 	TLSMinVersion13 MinimumTLSProtocolVersion = "1.3"
+	// Default is TLS 1.2
+	DefaultTLSMinVersion MinimumTLSProtocolVersion = TLSMinVersion12
 )
 
 // ValidMinimumTLSProtocolVersions returns a list of valid MinimumTLSProtocolVersions.
