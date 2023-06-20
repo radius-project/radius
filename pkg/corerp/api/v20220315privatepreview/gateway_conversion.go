@@ -25,7 +25,6 @@ import (
 
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
-
 	tls := &datamodel.GatewayPropertiesTLS{}
 	if src.Properties.TLS == nil {
 		tls = nil
@@ -38,7 +37,6 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 
 		if src.Properties.TLS.CertificateFrom != nil {
 			tls.CertificateFrom = to.String(src.Properties.TLS.CertificateFrom)
-			tls.Hostname = to.String(src.Properties.TLS.Hostname)
 			tls.MinimumProtocolVersion = toTLSMinVersionDataModel(src.Properties.TLS.MinimumProtocolVersion)
 		}
 	}
@@ -103,7 +101,6 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	if g.Properties.TLS != nil {
 		tls = &GatewayPropertiesTLS{
 			CertificateFrom:        to.Ptr(g.Properties.TLS.CertificateFrom),
-			Hostname:               to.Ptr(g.Properties.TLS.Hostname),
 			MinimumProtocolVersion: fromTLSMinVersionDataModel(g.Properties.TLS.MinimumProtocolVersion),
 			SSLPassthrough:         to.Ptr(g.Properties.TLS.SSLPassthrough),
 		}
@@ -151,13 +148,17 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 }
 
 func toTLSMinVersionDataModel(tlsMinVersion *TLSMinVersion) datamodel.MinimumTLSProtocolVersion {
+	if tlsMinVersion == nil {
+		return datamodel.DefaultTLSMinVersion
+	}
+
 	switch *tlsMinVersion {
 	case TLSMinVersionOne2:
 		return datamodel.TLSMinVersion12
 	case TLSMinVersionOne3:
 		return datamodel.TLSMinVersion13
 	default:
-		return datamodel.TLSMinVersion12
+		return datamodel.DefaultTLSMinVersion
 	}
 }
 

@@ -18,40 +18,18 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const daprConflictFmt = "the Dapr component name '%q' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again"
-
-func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructured, error) {
-	if resource.ResourceType.Provider != resourcemodel.ProviderKubernetes {
-		return unstructured.Unstructured{}, errors.New("wrong resource type")
-	}
-
-	obj, ok := resource.Resource.(runtime.Object)
-	if !ok {
-		return unstructured.Unstructured{}, errors.New("inner type was not a runtime.Object")
-	}
-
-	c, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource.Resource)
-	if err != nil {
-		return unstructured.Unstructured{}, fmt.Errorf("could not convert object %v to unstructured: %w", obj.GetObjectKind(), err)
-	}
-
-	return unstructured.Unstructured{Object: c}, nil
-}
 
 // CheckDaprResourceNameUniqueness checks if the resource name is unique in the namespace. If the resource name is not unique, it returns an error.
 //

@@ -82,6 +82,11 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 			errors.New("json: cannot unmarshal number into Go struct field RedisCacheProperties.properties.host of type string"),
 		},
 		{
+			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid2.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual"},
+		},
+		{
 			"",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,

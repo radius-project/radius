@@ -78,8 +78,7 @@
           "appId": "app-id",
           "appPort": 80,
           "config": "config",
-          "protocol": "http",
-          "provides": "provides"
+          "protocol": "http"
         }
       },
       {

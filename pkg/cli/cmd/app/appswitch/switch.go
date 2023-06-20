@@ -18,11 +18,11 @@ package appswitch
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -99,7 +99,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate that the application exists
 	_, err = client.ShowApplication(cmd.Context(), r.ApplicationName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch applications as the requested application %s does not exist.\n", r.ApplicationName)}
+		return clierrors.Message("Unable to switch applications as the requested application %s does not exist.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}

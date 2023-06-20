@@ -29,8 +29,6 @@ import (
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
-	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 
 	"github.com/golang/mock/gomock"
@@ -42,7 +40,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	_, redisDataModel, _ := getTestModels20220315privatepreview()
@@ -59,11 +56,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 		ctl, err := NewListSecretsRedisCache(opts)
 
@@ -92,13 +86,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     redisDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -133,13 +123,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     redisDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -168,11 +154,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)

@@ -25,7 +25,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -38,9 +37,9 @@ type ListPlanes struct {
 }
 
 // NewListPlanes creates a new ListPlanes.
-func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewListPlanes(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,

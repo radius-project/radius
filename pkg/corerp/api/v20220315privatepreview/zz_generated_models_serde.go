@@ -706,7 +706,6 @@ func (d DaprSidecarExtension) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "config", d.Config)
 	objectMap["kind"] = "daprSidecar"
 	populate(objectMap, "protocol", d.Protocol)
-	populate(objectMap, "provides", d.Provides)
 	return json.Marshal(objectMap)
 }
 
@@ -733,9 +732,6 @@ func (d *DaprSidecarExtension) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "protocol":
 				err = unpopulate(val, "Protocol", &d.Protocol)
-				delete(rawMsg, key)
-		case "provides":
-				err = unpopulate(val, "Provides", &d.Provides)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1547,7 +1543,6 @@ func (g *GatewayPropertiesHostname) UnmarshalJSON(data []byte) error {
 func (g GatewayPropertiesTLS) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "certificateFrom", g.CertificateFrom)
-	populate(objectMap, "hostname", g.Hostname)
 	populate(objectMap, "minimumProtocolVersion", g.MinimumProtocolVersion)
 	populate(objectMap, "sslPassthrough", g.SSLPassthrough)
 	return json.Marshal(objectMap)
@@ -1564,9 +1559,6 @@ func (g *GatewayPropertiesTLS) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "certificateFrom":
 				err = unpopulate(val, "CertificateFrom", &g.CertificateFrom)
-				delete(rawMsg, key)
-		case "hostname":
-				err = unpopulate(val, "Hostname", &g.Hostname)
 				delete(rawMsg, key)
 		case "minimumProtocolVersion":
 				err = unpopulate(val, "MinimumProtocolVersion", &g.MinimumProtocolVersion)

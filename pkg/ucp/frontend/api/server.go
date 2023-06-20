@@ -26,18 +26,16 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/sdk"
-	ucpaws "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
@@ -70,7 +68,7 @@ type ServiceOptions struct {
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
-	BasePath                string
+	PathBase                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
 	SecretProviderOptions   provider.SecretProviderOptions
 	QueueProviderOptions    qprovider.QueueProviderOptions
@@ -111,7 +109,7 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 		if err != nil {
 			return aws.Config{}, err
 		}
-		p := ucpaws.NewUCPCredentialProvider(provider, ucpaws.DefaultExpireDuration)
+		p := ucp_aws.NewUCPCredentialProvider(provider, ucp_aws.DefaultExpireDuration)
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
 		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
 
@@ -153,27 +151,23 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
-	ctrlOpts := ctrl.Options{
-		BasePath:     s.options.BasePath,
-		Address:      s.options.Address,
-		SecretClient: s.secretClient,
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   cloudcontrol.NewFromConfig(awscfg),
-			AWSCloudFormationClient: cloudformation.NewFromConfig(awscfg),
-		},
-		Options: armrpc_controller.Options{
-			DataProvider:  s.storageProvider,
-			StorageClient: db,
-			StatusManager: s.operationStatusManager,
+	awsClients := ucp_aws.Clients{
+		CloudControl:   cloudcontrol.NewFromConfig(awscfg),
+		CloudFormation: cloudformation.NewFromConfig(awscfg),
+	}
+	ctrlOpts := armrpc_controller.Options{
+		Address:       s.options.Address,
+		PathBase:      s.options.PathBase,
+		DataProvider:  s.storageProvider,
+		StorageClient: db,
+		StatusManager: s.operationStatusManager,
 
-			// TODO: These fields are not used in UCP. We'd like to unify these
-			// options types eventually, but that will take some time.
-			SecretClient: nil,
-			KubeClient:   nil,
-		},
+		// TODO: This field is not used in UCP. We'd like to unify these
+		// options types eventually, but that will take some time.
+		KubeClient: nil,
 	}
 
-	err = Register(ctx, r, ctrlOpts)
+	err = Register(ctx, r, ctrlOpts, s.secretClient, awsClients)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +182,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	app := http.Handler(r)
-	app = servicecontext.ARMRequestCtx(s.options.BasePath, "global")(app)
+	app = servicecontext.ARMRequestCtx(s.options.PathBase, "global")(app)
 	app = middleware.AppendLogValues("ucp")(app)
 
 	app = otelhttp.NewHandler(
@@ -237,11 +231,11 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 			return err
 		}
 
-		opts := frontend_ctrl.Options{
+		opts := armrpc_controller.Options{
 			StorageClient: dbClient,
 		}
 		planesCtrl, err := defaultoperation.NewDefaultSyncPut(opts,
-			frontend_ctrl.ResourceOptions[datamodel.Plane]{
+			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,
 			},
@@ -260,7 +254,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 
 		// Wrap the request in an ARM RPC context because this call will bypass the middleware
 		// that normally does this for us.
-		rpcContext, err := v1.FromARMRequest(request, s.options.BasePath, s.options.Location)
+		rpcContext, err := v1.FromARMRequest(request, s.options.PathBase, s.options.Location)
 		if err != nil {
 			return err
 		}

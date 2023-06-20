@@ -107,3 +107,7 @@ func AddAWSRegionFlag(cmd *cobra.Command) {
 func AddAWSAccountFlag(cmd *cobra.Command) {
 	cmd.Flags().String(AWSAccountIdFlag, "", "The account ID where AWS resources will be deployed")
 }
+
+func AddKubeContextFlagVar(cmd *cobra.Command, ref *string) {
+	cmd.Flags().StringVar(ref, "kubecontext", "", "The Kubernetes context to use, will use the default if unset")
+}

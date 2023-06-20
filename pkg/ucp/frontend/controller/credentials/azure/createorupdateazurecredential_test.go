@@ -26,7 +26,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -42,12 +41,9 @@ func Test_Azure_Credential(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewCreateOrUpdateAzureCredential(ctrl.Options{
-		Options: armrpc_controller.Options{
-			StorageClient: mockStorageClient,
-		},
-		SecretClient: mockSecretClient,
-	})
+	credentialCtrl, err := NewCreateOrUpdateAzureCredential(armrpc_controller.Options{
+		StorageClient: mockStorageClient,
+	}, mockSecretClient)
 	require.NoError(t, err)
 
 	tests := []struct {

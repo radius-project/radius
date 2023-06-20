@@ -45,9 +45,6 @@
 * [2022-03-15-privatepreview](applications/applications.datastores/2022-03-15-privatepreview/types.md#resource-applicationsdatastoressqldatabases2022-03-15-privatepreview)
 
 ## applications.link
-### applications.link/daprinvokehttproutes
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkdaprinvokehttproutes2022-03-15-privatepreview)
-
 ### applications.link/daprpubsubbrokers
 * [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkdaprpubsubbrokers2022-03-15-privatepreview)
 

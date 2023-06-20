@@ -26,6 +26,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -197,7 +198,7 @@ func Test_Update(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.Error(t, expectedError)
-		require.Equal(t, envNotFoundErrMessage, err.Error())
+		require.Equal(t, clierrors.Message(envNotFoundErrMessageFmt, "test-env"), err)
 	})
 
 	t.Run("Failure: Update Environment Error", func(t *testing.T) {
@@ -229,7 +230,7 @@ func Test_Update(t *testing.T) {
 		}
 
 		expectedError := errors.New("failed to update the environment")
-		expectedErrorMessage := fmt.Sprintf("failed to configure cloud provider scope to the environment %s: %s", "test-env", expectedError.Error())
+		expectedErrorMessage := fmt.Sprintf("Failed to apply cloud provider scope to the environment %q. Cause: %s.", "test-env", expectedError.Error())
 
 		appManagementClient.EXPECT().
 			CreateEnvironment(gomock.Any(), "test-env", v1.LocationGlobal, testEnvProperties).

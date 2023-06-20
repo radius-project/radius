@@ -414,8 +414,8 @@ jobs:
 
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
-            --chart ${{ env.RADIUS_CHART_LOCATION }} --tag ${{ env.REL_VERSION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},ucp.provider.aws.region=${{ env.AWS_REGION }}
+            --chart ${{ env.RADIUS_CHART_LOCATION }} \
+            --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes

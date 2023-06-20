@@ -63,11 +63,11 @@ type validator struct {
 	TypeName   string
 	APIVersion string
 
-	rootScopePrefix string
-	rootScopeParam  string
-	specDoc         *loads.Document
-	paramCache      map[string]map[string]spec.Parameter
-	paramCacheMu    *sync.RWMutex
+	rootScopePrefixes []string
+	rootScopeParam    string
+	specDoc           *loads.Document
+	paramCache        map[string]map[string]spec.Parameter
+	paramCacheMu      *sync.RWMutex
 }
 
 // findParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
@@ -101,13 +101,21 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 		return p, nil
 	}
 
-	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
+	// The Gorilla mux route path for our RPs should start with {rootScope:.*} to handle UCP and Azure root scope.
+	//
+	// The UCP functionality like resource groups does not have a "/{rootScope}/" in the path.
+	// Need to handle this difference in the CoreRP vs UCP schema.
 	var scopePath string
-	// The UCP schema does not have a "/{rootScope}/" in the path. Need to handle this difference in the CoreRP vs UCP schema.
+	replaceToken := "/{" + v.rootScopeParam + "}"
 	if v.rootScopeParam == "" {
-		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, v.rootScopeParam, 1)
-	} else {
-		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+v.rootScopeParam+"}", 1)
+		replaceToken = v.rootScopeParam
+	}
+
+	for _, prefix := range v.rootScopePrefixes {
+		if strings.HasPrefix(pathTemplate, prefix) {
+			scopePath = strings.Replace(pathTemplate, prefix, replaceToken, 1)
+			break
+		}
 	}
 
 	// Iterate loaded paths to find the matched route.

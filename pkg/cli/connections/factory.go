@@ -23,13 +23,12 @@ import (
 	"strings"
 
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/sdk"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
@@ -61,7 +60,7 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}
@@ -106,7 +105,7 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}
@@ -170,12 +169,12 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}
 
-	return &ucp.ARMApplicationsManagementClient{
+	return &clients.UCPApplicationsManagementClient{
 		// The client expects root scope without a leading /
 		RootScope:     strings.TrimPrefix(workspace.Scope, resources.SegmentSeparator),
 		ClientOptions: sdk.NewClientOptions(connection),
@@ -191,7 +190,7 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}

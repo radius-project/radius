@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Extender(t *testing.T) {
+func Test_Extender_Manual(t *testing.T) {
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
 	appNamespace := "default-corerp-resources-extender"
@@ -57,6 +57,37 @@ func Test_Extender(t *testing.T) {
 					},
 				},
 			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_Extender_Recipe(t *testing.T) {
+	template := "testdata/corerp-resources-extender-recipe.bicep"
+	name := "corerp-resources-extender-recipe"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-extender-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "extender-recipe",
+						Type: validation.ExtendersResource,
+						App:  name,
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

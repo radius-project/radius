@@ -434,9 +434,6 @@ type DaprSidecarExtension struct {
 
 	// Specifies the Dapr app-protocol to use for the resource.
 	Protocol *Protocol `json:"protocol,omitempty"`
-
-	// Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
-	Provides *string `json:"provides,omitempty"`
 }
 
 // GetContainerExtension implements the ContainerExtensionClassification interface for type DaprSidecarExtension.
@@ -892,9 +889,6 @@ type GatewayPropertiesHostname struct {
 type GatewayPropertiesTLS struct {
 	// Declares which Kubernetes TLS secret will be used.
 	CertificateFrom *string `json:"certificateFrom,omitempty"`
-
-	// Hostname
-	Hostname *string `json:"hostname,omitempty"`
 
 	// TLS minimum protocol version (defaults to 1.2).
 	MinimumProtocolVersion *TLSMinVersion `json:"minimumProtocolVersion,omitempty"`

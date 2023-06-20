@@ -18,13 +18,12 @@ package list
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -123,8 +122,7 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
-			require.IsType(t, err, &cli.FriendlyError{})
-			require.Equal(t, fmt.Sprintf("Application %q could not be found in workspace %q.", "test-app", radcli.TestWorkspaceName), err.Error())
+			require.IsType(t, err, clierrors.Message("The application %q could not be found in workspace %q.", "test-app", radcli.TestWorkspaceName))
 		})
 
 		t.Run("Success", func(t *testing.T) {

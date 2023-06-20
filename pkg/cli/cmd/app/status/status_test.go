@@ -21,9 +21,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -225,7 +225,7 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.Error(t, err)
-		require.ErrorIs(t, err, &cli.FriendlyError{Message: "The application \"test-app\" was not found or has been deleted."})
+		require.Equal(t, clierrors.Message("The application \"test-app\" was not found or has been deleted."), err)
 
 		require.Empty(t, outputSink.Writes)
 	})

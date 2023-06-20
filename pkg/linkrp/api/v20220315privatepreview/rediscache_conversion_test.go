@@ -39,7 +39,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		{
 			// Default recipe
 			filename: "rediscacheresource_defaultrecipe.json",
-			recipe:   linkrp.LinkRecipe{},
+			recipe:   linkrp.LinkRecipe{Name: defaultRecipeName},
 		},
 		{
 			// Named recipe

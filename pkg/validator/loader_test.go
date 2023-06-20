@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetValidatorKey(t *testing.T) {
+func Test_GetValidatorKey(t *testing.T) {
 	keyTests := []struct {
 		resourceType string
 		version      string
@@ -40,7 +40,7 @@ func TestGetValidatorKey(t *testing.T) {
 	}
 }
 
-func TestParseSpecFilePath(t *testing.T) {
+func Test_ParseSpecFilePath(t *testing.T) {
 	pathTests := []struct {
 		path   string
 		parsed map[string]string
@@ -72,8 +72,8 @@ func TestParseSpecFilePath(t *testing.T) {
 	}
 }
 
-func TestLoader(t *testing.T) {
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "{rootScope:.*}", "rootScope")
+func Test_Loader(t *testing.T) {
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"{rootScope:.*}"}, "rootScope")
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
 	require.True(t, ok)

@@ -50,18 +50,12 @@ func NewDefaultClusterOptions() ClusterOptions {
 		chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
 	}
 
-	tag := version.Channel()
-	if version.IsEdgeChannel() {
-		tag = "latest"
-	}
-
 	return ClusterOptions{
 		Contour: ContourOptions{
 			ChartVersion: ContourChartDefaultVersion,
 		},
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
-			ImageVersion: tag,
 		},
 	}
 }
@@ -78,8 +72,8 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.ChartPath = cliOptions.Radius.ChartPath
 	}
 
-	if len(cliOptions.Radius.Values) > 0 {
-		options.Radius.Values = cliOptions.Radius.Values
+	if len(cliOptions.Radius.SetArgs) > 0 {
+		options.Radius.SetArgs = cliOptions.Radius.SetArgs
 	}
 	return options
 }
@@ -188,6 +182,9 @@ type Interface interface {
 
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
+
+	// UninstallRadius uninstalls Radius from the cluster based on the specified Kubernetes context. Will succeed regardless of whether Radius is installed.
+	UninstallRadius(ctx context.Context, kubeContext string) error
 }
 
 type Impl struct {
@@ -201,4 +198,8 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 // Installs radius on a cluster based on kubeContext.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
 	return Install(ctx, clusterOptions, kubeContext)
+}
+
+func (i *Impl) UninstallRadius(ctx context.Context, kubeContext string) error {
+	return UninstallOnCluster(kubeContext)
 }

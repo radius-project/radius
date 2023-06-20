@@ -295,7 +295,6 @@
 * **config**: string: Specifies the Dapr configuration to use for the resource.
 * **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
-* **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
 
 ### ContainerKubernetesMetadataExtension
 #### Properties
@@ -433,7 +432,6 @@
 ## GatewayPropertiesTls
 ### Properties
 * **certificateFrom**: string: Declares which Kubernetes TLS secret will be used.
-* **hostname**: string: Hostname
 * **minimumProtocolVersion**: '1.2' | '1.3': TLS minimum protocol version (defaults to 1.2).
 * **sslPassthrough**: bool: If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 
