@@ -4,16 +4,17 @@
 >
 > This guide refers to resources and processes that can only be accessed by the Radius team. This will be updated as we migrate to public resources like GitHub releases.
 
-Our release process for Radius is based on git tags. Pushing a new tag with the format: `v.<major>.<minor>.<patch>` will trigger a release build.
-
-## Pre-requisites
-
-- Find the storage account on Azure under 'Radius Dev' subscription. It is called `radiuspublic`
-- Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
-- Determine the release channel This is in the form `<major>.<minor>`
+Our release process for Radius is based on git tags. Pushing a new tag with the format: `v<major>.<minor>.<patch>` will trigger a release build.
 
 
-### Creating an RC release
+## Prerequisites
+
+- Find the storage account on Azure under 'Radius Dev' subscription. It is called `radiuspublic`.
+- Determine the release version. This is in the form `v<major>.<minor>.<patch>`.
+- Determine the release channel. This is in the form `<major>.<minor>`.
+
+
+## Creating an RC release
 
 When starting the release process, we first kick it off by creating an RC release. This is a release candidate that we can test internally before releasing to the public which we can validate samples on.
 
@@ -21,112 +22,76 @@ If we find issues in validation, we can create additional RC releases until we f
 
 Follow the steps below to create an RC release.
 
-1. In the project-radius/bicep repo, [bicep-extensibility branch](https://github.com/project-radius/bicep/tree/bicep-extensibility)
+1. In GitHub, navigate to the ['Release' GitHub Workflow](https://github.com/project-radius/radius/actions/workflows/release.yaml).
+1. Provide the release version and tag and select 'Run Workflow'. This will kick off the creation of release branches and tags in each of the necessary repos.
 
-   ```bash
-   git checkout bicep-extensibility
-   git pull origin bicep-extensibility
-   git checkout -b release/0.21 # ensure branch is created
-   git pull origin release/0.21 # ensure branch is up to date
-   git tag v0.21.0-rc1 # Update to the next RC version if doing a new release
-   git push origin --tags # push the tag
-   git push origin release/0.21 # push the branch up to origin
-   ```
-   
-   Side note, in the bicep-extensibility branch, we have seen the build fail to trigger after pushing the tag once, but works after recreation. To delete and recreate:
-   
-   ```
-   git tag delete v0.21.0-rc1
-   git push origin --tags
-   git tag v0.21.0-rc1 # Update to the next RC version if doing a new release
-   git push origin --tags
-   ```
+> This will kick off some background tasks that may take around 30 minutes to complete. You can check the GitHub Actions tab for each of the repos to monitor the progress. Once the workflow runs are complete and successful, you can move on to release verification.
 
-   Verify that GitHub actions triggers a build in response to the tag, and that the build completes.
 
-   Next, check the timestamps in the `tools` container of the storage account. There should be new builds of `rad-bicep` and the VS Code extension that correspond to the channel. Look at the paths `tools/bicep/<channel>/<architecture>/` and `tools/vscode/<channel>`. These should reflect the new build.
+## Release verification
 
-   ```bash
-   az storage blob directory list -c tools -d bicep-extensibility --account-name radiuspublic --output table
-   az storage blob directory list -c tools -d vscode-extensibility --account-name radiuspublic --output table
+After creating a release (either an RC release or the final release), it's good to check that the release works in some small mainline scenarios and has the right versions for each container.
+
+1. Download the desired verison of the rad CLI. For example, using version `v0.21`:
+
+   ```sh
+   Windows:
+   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.21
+
+   MacOS:
+   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.21
    ```
 
-2. In the project-radius/deployment-engine repo:
+1. Confirm that the version of `rad` aligns with what is expected by running:
 
-   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.21`. This branch will be used for patching/servicing.
-   
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b release/0.21
-   git pull origin release/0.21
-   git tag v0.21.0-rc1
-   git push origin --tags
-   git push origin release/0.21
+   ```sh
+   rad version
+   RELEASE     VERSION      BICEP     COMMIT
+   0.21.0      v0.21.0      0.7.14    4f8a3ef96ea537a2e9252e0c6a6bcc7a1f3ce782
    ```
 
-   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
+1. Install Radius on a Kubernetes cluster by executing `rad install kubernetes` and verify that this command completes successfully:
 
-3. In the project-radius/radius repo:
-
-   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.21`. This branch will be used for patching/servicing.
-   
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b release/0.21
-   git pull origin release/0.21
-   git tag v0.21.0-rc1
-   git push --tags # wait for ci/cd pipeline to complete and publish binaries before next step
-   git push origin release/0.21
+   ```
+   rad install kubernetes
    ```
 
-   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
+1. Verify that each pod running in the radius-system namespace uses the right image and tag for each of the containers:
+
+   ```
+   kubectl describe pods -n radius-system -l control-plane=appcore-rp
+   kubectl describe pods -n radius-system -l control-plane=de
+   kubectl describe pods -n radius-system -l control-plane=ucp
+   ```
+
+   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.21 for the 0.21 release for the appcore-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
+
+   ![Example of version and tag mismatch](images/image-label.png)
+
+1. Execute `rad deploy` to confirm a simple deployment works
+
+   ```
+   rad init
+   rad deploy <simple bicep>
+   ```
+
+   Confirm the bicep file deploys successfully.
 
 
-### Test tutorials and samples
+## Sample validation
 
 > This step is manual, however it could be automated in the future.
 
-Before a release can be finished, all [tutorials](https://edge.radapp.dev/user-guides/tutorials/) and [samples](https://edge.radapp.dev/user-guides/samples/) must be tested and validated. This is done by running through each tutorial and sample, step by step, confirming each step works as expected on a local environment. We strive to validate multiple OSs and Kubernetes cluster types. 
+Before a release can be finished, a set of tutorials and samples must be validated. Currently, the list is as follows:
 
-1. Install the latest release candidate of the CLI
-For MacOS
-```
-curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.21.0-rc1
-```
+* [Tutorial](https://edge.radapp.dev/getting-started/first-app/)
+* [eShop](https://edge.docs.radapp.dev/getting-started/reference-apps/eshop/)
 
-For Windows
-```
-$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.21.0-rc1
-```
-
-Because we have not forked for samples and docs yet, please use the `edge` channel for validation. Specifically using `edge.radapp.dev` for the docs and following along.
-
-1. Run through each tutorial, step by step, confirming each step works as expected
-1. Run through each quickstart, step by step, confirming each step works as expected
-1. Run through each reference app, step by step, confirming each step works as expected
-
-These include eshop, container-apps, dapr quickstart, etc.
-
-Different environments/OSs to test on:
-- Unix/MacOS
-- Windows
-
-Different cluster types to test on:
-- AKS
-- KinD
-- k3d (codespace environment gives this for free)
-
-
-*If we encounter an issue with an RC release, please refer to "Patching" below.*
-
-
-### Creating the final release
+## Creating the final release
 
 If sample validation passes, we can start the process of creating the final release.
 
-1. Go through steps 1-3 of "Creating an RC release" above, substituting the final release version instead of the RC version.
+1. Go through "Creating an RC release" above, substituting the final release version instead of the RC version.
 
    For example, if the RC version is `v0.21.0-rc1`, the final release version would be `v0.21.0`.
 1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)
@@ -162,99 +127,42 @@ If sample validation passes, we can start the process of creating the final rele
    git push origin v0.21
    ```
 
-### Post release check
-
-After creating a release (either an RC release or the final release), it's good to check that the release works in some small mainline scenarios and has the right versions for each container.
-
-1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.21), you can use the following URL format:
-
-
-   ```sh
-   Windows:
-   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.21
-
-   MacOS:
-   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.21
-
-   Direct binary downloads
-   https://get.radapp.dev/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
-   ```
-
-   Note: if you download the direct binary, execute `rad bicep download` to also download the corresponding bicep compiler binary. The scripts above will download the bicep compiler by default.
-
-2. Confirm that the version of `rad` aligns with what is expected by running:
-
-   ```sh
-   rad version
-   RELEASE     VERSION      BICEP     COMMIT
-   0.21.0-rc3  v0.21.0-rc3  0.7.14    4f8a3ef96ea537a2e9252e0c6a6bcc7a1f3ce782
-   ```
-
-3. Install radius on a kubernetes cluster by executing `rad install kubernetes`
-
-   ```
-   rad install kubernetes
-   ```
-
-   Verify this command completes successfully 
-
-4. Verify that each pod running in the radius-system namespace uses the right image and tag for each of the containers.
-
-   ```
-   kubectl describe pods -n radius-system -l control-plane=appcore-rp
-   kubectl describe pods -n radius-system -l control-plane=de
-   kubectl describe pods -n radius-system -l control-plane=ucp
-   ```
-
-   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.21 for the 0.21 release for the appcore-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
-
-   ![Example of version and tag mismatch](images/image-label.png)
-
-5. Execute `rad deploy` to confirm a simple deployment works
-
-   ```
-   rad init
-   rad deploy <simple bicep>
-   ```
-
-   Confirm the bicep file deploys successfully.
-
 
 ## How releases work
 
 Each release belongs to a *channel* named like `<major>.<minor>`. Releases will only interact with assets from their channel. For example, the `0.1` `rad` CLI will:
 
 - Download `rad-bicep` from the `0.1` channel
-- Create an environment using the `0.1` version of the RP and environment setup script
+- Create an environment using the `0.11` version of the RP and environment setup script
 
 > ⚠️ Compatibility ⚠️ <br>
 At this time we do not guarantee compatibility across releases or provide a migration path. For example, the behavior of a `0.1` `rad` CLI talking to a `0.2` control plane is unspecifed. We expect the project to change too frequently to provide compatibility guarantees at this time.
 
 Conceptually we scope channels to a major+minor pair because this allows us to freely patch assets as needed without needing to change the intermediate pieces. For example pushing a `v0.1.1` tag will update the assets in the `v0.1` channel. This works as long as it is a *true* patch release and maintains compatibility.
 
+
 ## Patching
 
 Let's say we have a bug in a release which needs to be patched for an already created release.
 
 1. Make sure the commit that we want to add to a patch is merged and validate in `main` first if it affects `main`.
-2. Create a new branch based off the release branch we want to patch. Ex:
+1. Create a new branch based off the release branch we want to patch. Ex:
    ```bash
    git checkout release/0.<VERSION>
    git checkout -b <USERNAME>/<BRANCHNAME>
    ```
-3. Cherry-pick the commit that is on `main` onto the branch. PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
+1. Cherry-pick the commit that is on `main` onto the branch. PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
    ```bash
    git cherry-pick -x <COMMIT HASH>
    ```
-5. Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.21) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to <major>.<minor> (eg. 0.21) for downloading the `rad-bicep-corerp`.
-4. Push the commit to the remote and create a pull request targeting the release branch.
+1. Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.21) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to <major>.<minor> (eg. 0.21) for downloading the `rad-bicep-corerp`.
+1. Push the commit to the remote and create a pull request targeting the release branch.
    ```bash
    git push origin <USERNAME>/<BRANCHNAME>
    ```
-5. After pull request is approved, merge into the release branch and tag!
+1. After pull request is approved, merge into the release branch and tag!
    ```bash
-   # replace v0.21.X with the version we want to patch (if we release 0.21.1 already, we would then release 0.21.2, etc.)
+   # replace v0.21.X with the version we want to patch (if we release v0.21.1 already, we would then release v0.21.2, etc.)
    git tag v0.21.1 
    git push --tags
    ```
-
