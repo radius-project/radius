@@ -151,33 +151,33 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				logging.LogFieldOperationType, op.OperationType,
 				logging.LogFieldDequeueCount, msgreq.DequeueCount)
 
-			logger = ucplog.FromContextOrDiscard(reqCtx)
+			opLogger := ucplog.FromContextOrDiscard(reqCtx)
 
 			armReqCtx, err := op.ARMRequestContext()
 			if err != nil {
-				logger.Error(err, "failed to get ARM request context.")
+				opLogger.Error(err, "failed to get ARM request context.")
 				return
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
 
 			opType, ok := v1.ParseOperationType(armReqCtx.OperationType)
 			if !ok {
-				logger.V(ucplog.Error).Info("failed to parse operation type.")
+				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
 				return
 			}
 
 			asyncCtrl := w.registry.Get(opType)
 			if asyncCtrl == nil {
-				logger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
+				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
-					logger.Error(err, "failed to finish the message")
+					opLogger.Error(err, "failed to finish the message")
 				}
 				return
 			}
 
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
-				logger.V(ucplog.Error).Info(errMsg)
+				opLogger.V(ucplog.Error).Info(errMsg)
 				failed := ctrl.NewFailedResult(v1.ErrorDetails{
 					Code:    v1.CodeInternal,
 					Message: errMsg,
@@ -192,11 +192,11 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			dup, err := w.isDuplicated(reqCtx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
-				logger.Error(err, "failed to check potential deduplication.")
+				opLogger.Error(err, "failed to check potential deduplication.")
 				return
 			}
 			if dup {
-				logger.V(ucplog.Warn).Info("duplicated message detected")
+				opLogger.V(ucplog.Warn).Info("duplicated message detected")
 				return
 			}
 
