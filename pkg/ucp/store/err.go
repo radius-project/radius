@@ -16,6 +16,8 @@ limitations under the License.
 
 package store
 
+import "fmt"
+
 var _ error = (*ErrInvalid)(nil)
 
 type ErrInvalid struct {
@@ -36,15 +38,19 @@ func (e *ErrInvalid) Is(target error) bool {
 }
 
 type ErrNotFound struct {
+	ID string
 }
 
 func (e *ErrNotFound) Error() string {
-	return "the resource was not found"
+	return fmt.Sprintf("the resource %s was not found", e.ID)
 }
 
 func (e *ErrNotFound) Is(target error) bool {
-	_, ok := target.(*ErrNotFound)
-	return ok
+	t, ok := target.(*ErrNotFound)
+	if !ok {
+		return false
+	}
+	return (e.ID == t.ID || t.ID == "")
 }
 
 var _ error = (*ErrInvalid)(nil)

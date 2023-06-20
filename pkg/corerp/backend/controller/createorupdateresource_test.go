@@ -81,7 +81,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString())},
 			false,
 			nil,
 			nil,
@@ -117,7 +117,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 			httproute.ResourceType,
 			"APPLICATIONS.CORE/HTTPROUTES|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString())},
 			false,
 			nil,
 			nil,
@@ -141,7 +141,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString())},
 			false,
 			nil,
 			nil,
@@ -191,7 +191,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if (tt.getErr == nil || errors.Is(&store.ErrNotFound{}, tt.getErr)) && !tt.convErr {
+			if (tt.getErr == nil || errors.Is(&store.ErrNotFound{ID: tt.rId}, tt.getErr)) && !tt.convErr {
 				renderCall := mdp.EXPECT().
 					Render(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(renderers.RendererOutput{}, tt.renderErr).

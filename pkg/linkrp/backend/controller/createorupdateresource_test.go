@@ -152,14 +152,14 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
 				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
 			},
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: TestResourceID},
 			false,
 			nil,
 			nil,
 			nil,
 			nil,
 			nil,
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: TestResourceID},
 		},
 		{
 			"get-error",

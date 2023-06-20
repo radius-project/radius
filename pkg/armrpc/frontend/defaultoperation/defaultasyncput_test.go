@@ -36,6 +36,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testResourceID = "test"
+
 func TestDefaultAsyncPut_Create(t *testing.T) {
 	createCases := []struct {
 		desc    string
@@ -48,7 +50,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 	}{
 		{
 			"async-create-new-resource-success",
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: testResourceID},
 			nil,
 			nil,
 			nil,
@@ -66,7 +68,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 		},
 		{
 			"async-create-new-resource-enqueue-error",
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: testResourceID},
 			nil,
 			errors.New("enqueuer client is unset"),
 			nil,
