@@ -55,10 +55,6 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
-	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
@@ -85,10 +81,6 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
@@ -143,10 +135,6 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
-	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
@@ -195,10 +183,6 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
-	}, {
 		url:        "/providers/applications.link/daprsecretstores?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -219,10 +203,6 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
-	}, {
 		url:        "/providers/applications.link/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
@@ -237,10 +217,6 @@ var handlerTests = []struct {
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
-		isAzureAPI: false,
-	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",

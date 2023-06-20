@@ -37,7 +37,7 @@ func TestRabbitMQQueueDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata//rabbitmq_manual_datamodel.json",
+			"../../api/v20220315privatepreview/testdata/rabbitmq_manual_datamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.RabbitMQQueueResource{},
 			nil,
