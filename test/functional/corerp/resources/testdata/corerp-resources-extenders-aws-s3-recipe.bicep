@@ -7,13 +7,13 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-recipes-extenders-aws-s3-env'
+  name: 'corerp-resources-extenders-aws-s3-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-recipes-extenders-aws-s3-env'
+      namespace: 'corerp-resources-extenders-aws-s3-recipe-env'
     }
     providers: {
       aws: {
@@ -32,21 +32,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-recipes-extenders-aws-s3-app'
+  name: 'corerp-resources-extenders-aws-s3-recipe-app'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-recipes-extenders-aws-s3-app'
+          namespace: 'corerp-resources-extenders-aws-s3-recipe-app'
       }
     ]
   }
 }
 
 resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-recipes-extenders-aws-s3-recipe'
+  name: 'corerp-resources-extenders-aws-s3-recipe'
   properties: {
     environment: env.id
     application: app.id
