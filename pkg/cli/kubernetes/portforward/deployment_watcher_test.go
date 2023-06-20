@@ -47,6 +47,7 @@ func Test_DeploymentWatcher_Run_CanShutDown(t *testing.T) {
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 
@@ -68,6 +69,7 @@ func Test_DeploymentWatcher_Updated_HandleNewDeployment(t *testing.T) {
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -90,6 +92,7 @@ func Test_DeploymentWatcher_Updated_HandleMultipleReplicas(t *testing.T) {
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -124,6 +127,7 @@ func Test_DeploymentWatcher_Updated_HandleStalePod(t *testing.T) {
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -163,6 +167,7 @@ func Test_DeploymentWatcher_Updated_HandleMultipleStalePod(t *testing.T) {
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -203,6 +208,7 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_NoOtherRepli
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -234,6 +240,7 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_HasOtherRepl
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -275,6 +282,7 @@ func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -307,6 +315,7 @@ func Test_DeploymentWatcher_Deleted_HasOtherReplicas(t *testing.T) {
 			Out:    out,
 		},
 		map[string]string{},
+		"1",
 		cancel,
 	)
 	defer stopPodWatchers(dw)
@@ -341,6 +350,7 @@ func Test_DeploymentWatcher_SelectBestPod(t *testing.T) {
 			Out: out,
 		},
 		map[string]string{},
+		"1",
 		func() {},
 	)
 

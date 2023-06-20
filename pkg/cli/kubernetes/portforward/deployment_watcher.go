@@ -31,10 +31,10 @@ import (
 )
 
 type deploymentWatcher struct {
-	Cancel           func()
-	MatchLabels      map[string]string
-	Options          Options
-	StaleReplicaSets map[string]bool
+	Cancel      func()
+	MatchLabels map[string]string
+	Revision    string
+	Options     Options
 
 	done chan struct{}
 	pods map[string]*corev1.Pod
@@ -44,11 +44,12 @@ type deploymentWatcher struct {
 	podWatcher *podWatcher
 }
 
-func NewDeploymentWatcher(options Options, matchLabels map[string]string, cancel func()) *deploymentWatcher {
+func NewDeploymentWatcher(options Options, matchLabels map[string]string, revision string, cancel func()) *deploymentWatcher {
 	return &deploymentWatcher{
 		Cancel:      cancel,
 		MatchLabels: matchLabels,
 		Options:     options,
+		Revision:    revision,
 
 		done: make(chan struct{}),
 		pods: map[string]*corev1.Pod{},
@@ -106,9 +107,12 @@ func (dw *deploymentWatcher) Run(ctx context.Context) error {
 
 			switch event.Type {
 			case watch.Added, watch.Modified:
-				staleReplicaSets, err := findStaleReplicaSets(ctx, dw.Options.Client, dw.Options.Namespace, dw.Options.ApplicationName)
+				staleReplicaSets, err := findStaleReplicaSets(ctx, dw.Options.Client, dw.Options.Namespace, dw.Options.ApplicationName, dw.Revision)
 				if err != nil {
-					dw.Options.Out.Write([]byte(fmt.Sprintf("Cannot list ReplicaSets with error: %v \n", err)))
+					_, err := dw.Options.Out.Write([]byte(fmt.Sprintf("Cannot list ReplicaSets with error: %v \n", err)))
+					if err != nil {
+						return err
+					}
 				} else {
 					dw.updated(ctx, pod, staleReplicaSets)
 				}
@@ -202,7 +206,10 @@ func (dw *deploymentWatcher) ensureWatcher(ctx context.Context) {
 			go func() { _ = dw.podWatcher.Run(ctx) }()
 		} else {
 			// No pods available, wait and try again
-			dw.Options.Out.Write([]byte("No active pods available for port-forwarding.\n"))
+			_, err := dw.Options.Out.Write([]byte("No active pods available for port-forwarding.\n"))
+			if err != nil {
+				return
+			}
 		}
 	}
 }

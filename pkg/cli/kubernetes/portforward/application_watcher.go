@@ -111,6 +111,8 @@ func (aw *applicationWatcher) updated(ctx context.Context, deployment *appsv1.De
 		return
 	}
 
+	revision := deployment.Annotations[revisionAnnotation]
+
 	// There are 3 cases to handle here:
 	//
 	// - deployment is new: need to create a watcher
@@ -129,7 +131,7 @@ func (aw *applicationWatcher) updated(ctx context.Context, deployment *appsv1.De
 
 	// if we get here, it's time to create a new watcher
 	ctx, cancel := context.WithCancel(ctx)
-	entry = NewDeploymentWatcher(aw.Options, deployment.Spec.Selector.MatchLabels, cancel)
+	entry = NewDeploymentWatcher(aw.Options, deployment.Spec.Selector.MatchLabels, revision, cancel)
 
 	aw.deploymentWatchers[deployment.Name] = entry
 

@@ -52,6 +52,8 @@ func Test_findStaleReplicaSets(t *testing.T) {
 				},
 			},
 		},
+
+		// Also owned by d1, but newer revision
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "rs1b",
@@ -71,6 +73,8 @@ func Test_findStaleReplicaSets(t *testing.T) {
 				},
 			},
 		},
+
+		// Also owned by d1, but newer revision (not newest, though)
 		&appsv1.ReplicaSet{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "rs1c",
@@ -107,7 +111,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 					kubernetes.LabelRadiusApplication: "test-app",
 				},
 				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "5",
+					"deployment.kubernetes.io/revision": "3",
 				},
 			},
 		},
@@ -121,7 +125,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 					kubernetes.LabelRadiusApplication: "test-app",
 				},
 				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "5",
+					"deployment.kubernetes.io/revision": "3",
 				},
 			},
 		},
@@ -139,7 +143,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "5",
+					"deployment.kubernetes.io/revision": "3",
 				},
 			},
 		},
@@ -157,10 +161,10 @@ func Test_findStaleReplicaSets(t *testing.T) {
 					},
 				},
 				Labels: map[string]string{
-					kubernetes.LabelRadiusApplication: "test-app",
+					kubernetes.LabelRadiusApplication: "another-test-app",
 				},
 				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "5",
+					"deployment.kubernetes.io/revision": "3",
 				},
 			},
 		},
@@ -172,7 +176,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 	}
 
 	client := fake.NewSimpleClientset(objs...)
-	actual, err := findStaleReplicaSets(context.Background(), client, "default", "test-app")
+	actual, err := findStaleReplicaSets(context.Background(), client, "default", "test-app", "3")
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
