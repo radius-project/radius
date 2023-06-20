@@ -36,7 +36,6 @@ import (
 	linkrp_renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -51,13 +50,12 @@ import (
 )
 
 type SharedMocks struct {
-	model              model.ApplicationModel
-	db                 *store.MockStorageClient
-	dbProvider         *dataprovider.MockDataStorageProvider
-	resourceHandler    *handlers.MockResourceHandler
-	renderer           *renderers.MockRenderer
-	secretsValueClient *sv.MockSecretValueClient
-	mctrl              *gomock.Controller
+	model           model.ApplicationModel
+	db              *store.MockStorageClient
+	dbProvider      *dataprovider.MockDataStorageProvider
+	resourceHandler *handlers.MockResourceHandler
+	renderer        *renderers.MockRenderer
+	mctrl           *gomock.Controller
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -108,13 +106,12 @@ func setup(t *testing.T) SharedMocks {
 		})
 
 	return SharedMocks{
-		model:              model,
-		db:                 store.NewMockStorageClient(ctrl),
-		dbProvider:         dataprovider.NewMockDataStorageProvider(ctrl),
-		resourceHandler:    resourceHandler,
-		renderer:           renderer,
-		secretsValueClient: sv.NewMockSecretValueClient(ctrl),
-		mctrl:              ctrl,
+		model:           model,
+		db:              store.NewMockStorageClient(ctrl),
+		dbProvider:      dataprovider.NewMockDataStorageProvider(ctrl),
+		resourceHandler: resourceHandler,
+		renderer:        renderer,
+		mctrl:           ctrl,
 	}
 }
 
@@ -208,9 +205,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 
 	secretValues := map[string]rpv1.SecretValueReference{}
 	secretValues[linkrp_renderers.ConnectionStringValue] = rpv1.SecretValueReference{
-		LocalID:       rpv1.LocalIDAzureCosmosAccount,
-		Action:        "listConnectionStrings",
-		ValueSelector: "/connectionStrings/0/connectionString",
+		Value: "test-connection-string",
 	}
 
 	computedValues := map[string]any{
@@ -303,7 +298,7 @@ func Test_Render(t *testing.T) {
 	}
 
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := getTestResource()
@@ -858,7 +853,7 @@ func Test_Render(t *testing.T) {
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
 		testResource := getTestResource()
@@ -960,7 +955,7 @@ func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
 	t.Run("Verify delete success", func(t *testing.T) {
 		testResource := getTestResource()
@@ -997,7 +992,7 @@ func Test_Delete(t *testing.T) {
 func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, nil, nil, nil, nil}
+	dp := deploymentProcessor{mocks.model, nil, nil, nil}
 
 	env := &datamodel.Environment{
 		Properties: datamodel.EnvironmentProperties{
@@ -1056,7 +1051,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 func Test_getResourceDataByID(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
 	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
@@ -1082,12 +1077,13 @@ func Test_fetchSecrets(t *testing.T) {
 	ctx := createContext(t)
 
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
+	dp := deploymentProcessor{mocks.model, nil, nil, nil}
 
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
+
 		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
-		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
+		mongoResource.SecretValues[linkrp_renderers.ConnectionStringValue] = rpv1.SecretValueReference{Value: secret}
 		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(secretValues))

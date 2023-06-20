@@ -55,8 +55,9 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	}
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
 	converted.Properties.Database = to.String(properties.Database)
 	converted.Properties.Server = to.String(properties.Server)

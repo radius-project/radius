@@ -13,6 +13,7 @@
           "accountSid": "sid",
           "authToken:": "token"
         },
+        "resourceProvisioning": "manual",
         "provisioningState": "Succeeded"
     },
     "systemData": {

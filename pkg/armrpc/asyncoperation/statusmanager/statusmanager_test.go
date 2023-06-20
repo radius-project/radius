@@ -60,7 +60,7 @@ var reqCtx = &v1.ARMRequestContext{
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
-	OperationType:  "APPLICATIONS.CORE/ENVRIONMENTS|PUT",
+	OperationType:  "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
 	Traceparent:    "trace",
 	AcceptLanguage: "lang",
 }

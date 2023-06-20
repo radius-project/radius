@@ -62,7 +62,7 @@ type Options struct {
 	ProfilerProviderOptions profilerprovider.ProfilerProviderOptions
 	TracerProviderOptions   trace.Options
 	TLSCertDir              string
-	BasePath                string
+	PathBase                string
 	InitialPlanes           []rest.Plane
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
@@ -130,7 +130,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	return Options{
 		Port:                    port,
 		TLSCertDir:              tlsCertDir,
-		BasePath:                basePath,
+		PathBase:                basePath,
 		StorageProviderOptions:  storeOpts,
 		SecretProviderOptions:   secretOpts,
 		QueueProviderOptions:    qproviderOpts,
@@ -154,7 +154,7 @@ func NewServer(options *Options) (*hosting.Host, error) {
 			ProviderName:           UCPProviderName,
 			Address:                ":" + options.Port,
 			TLSCertDir:             options.TLSCertDir,
-			BasePath:               options.BasePath,
+			PathBase:               options.PathBase,
 			StorageProviderOptions: options.StorageProviderOptions,
 			SecretProviderOptions:  options.SecretProviderOptions,
 			QueueProviderOptions:   options.QueueProviderOptions,

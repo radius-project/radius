@@ -23,8 +23,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -167,7 +167,7 @@ func Test_Show(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.Error(t, err)
-		require.ErrorIs(t, err, &cli.FriendlyError{Message: "The environment \"test-env\" was not found or has been deleted."})
+		require.Equal(t, clierrors.Message("The environment \"test-env\" was not found or has been deleted."), err)
 
 		require.Empty(t, outputSink.Writes)
 	})

@@ -72,7 +72,7 @@ func TestExtenderDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/extenderresource.json",
+			"../../api/v20220315privatepreview/testdata/extender_manual.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},

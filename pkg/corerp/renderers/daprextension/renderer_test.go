@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	link "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -101,95 +100,6 @@ func Test_Render_Success(t *testing.T) {
 		"dapr.io/config":   "test-config",
 	}
 	require.Equal(t, expected, deployment.Spec.Template.Annotations)
-}
-
-func Test_Render_Success_AppID_FromRoute(t *testing.T) {
-	renderer := &Renderer{Inner: &noop{}}
-
-	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
-		},
-		Container: datamodel.Container{
-			Image: "someimage:latest",
-		},
-		Extensions: []datamodel.Extension{{
-			Kind: datamodel.DaprSidecar,
-			DaprSidecar: &datamodel.DaprSidecarExtension{
-				AppPort:  5000,
-				Config:   "test-config",
-				Protocol: "grpc",
-				Provides: "test-route-id",
-			},
-		}},
-	}
-	resource := makeresource(t, ctnrProperties)
-
-	dependencies := map[string]renderers.RendererDependency{
-		"test-route-id": {
-			Resource: &link.DaprInvokeHttpRoute{
-				Properties: link.DaprInvokeHttpRouteProperties{
-					AppId: "routeappId",
-				},
-			},
-		},
-	}
-
-	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
-	require.NoError(t, err)
-	require.Len(t, output.Resources, 1)
-	require.Empty(t, output.SecretValues)
-
-	deployment, _ := kubernetes.FindDeployment(output.Resources)
-	require.NotNil(t, deployment)
-
-	expected := map[string]string{
-		"dapr.io/enabled":  "true",
-		"dapr.io/app-id":   "routeappId",
-		"dapr.io/app-port": "5000",
-		"dapr.io/protocol": "grpc",
-		"dapr.io/config":   "test-config",
-	}
-	require.Equal(t, expected, deployment.Spec.Template.Annotations)
-}
-
-func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
-	renderer := &Renderer{Inner: &noop{}}
-
-	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
-		},
-		Container: datamodel.Container{
-			Image: "someimage:latest",
-		},
-		Extensions: []datamodel.Extension{{
-			Kind: datamodel.DaprSidecar,
-			DaprSidecar: &datamodel.DaprSidecarExtension{
-				AppID:    "testappId",
-				AppPort:  5000,
-				Config:   "test-config",
-				Protocol: "grpc",
-				Provides: "test-route-id",
-			},
-		}},
-	}
-	resource := makeresource(t, ctnrProperties)
-
-	dependencies := map[string]renderers.RendererDependency{
-		"test-route-id": {
-			Resource: &link.DaprInvokeHttpRoute{
-				Properties: link.DaprInvokeHttpRouteProperties{
-					AppId: "routeappId",
-				},
-			},
-		},
-	}
-
-	_, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
-	require.Error(t, err)
-	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, "the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: \"routeappId\", Extension: \"testappId\"", err.(*v1.ErrClientRP).Message)
 }
 
 func makeresource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {

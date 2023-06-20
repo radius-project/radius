@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	deploycmd "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -99,7 +99,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// In addition to the deployment validations, this command requires an application name
 	if r.ApplicationName == "" {
-		return &cli.FriendlyError{Message: "No application was specified. Use --application to specify the application name."}
+		return clierrors.Message("No application was specified. Use --application to specify the application name.")
 	}
 
 	return nil
@@ -142,7 +142,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if namespace == "" {
-		return &cli.FriendlyError{Message: "Only kubernetes runtimes are supported."}
+		return clierrors.Message("Only kubernetes runtimes are supported.")
 	}
 
 	// We start three background jobs and wait for them to complete.

@@ -46,7 +46,14 @@ func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			AdditionalProperties: src.Properties.AdditionalProperties,
 			Secrets:              src.Properties.Secrets,
+			Recipe:               toRecipeDataModel(src.Properties.Recipe),
 		},
+	}
+
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
 	return converted, nil
 }
@@ -72,7 +79,8 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 		Environment:          to.Ptr(extender.Properties.Environment),
 		Application:          to.Ptr(extender.Properties.Application),
 		AdditionalProperties: extender.Properties.AdditionalProperties,
-
+		Recipe:               fromRecipeDataModel(extender.Properties.Recipe),
+		ResourceProvisioning: fromResourceProvisioningDataModel(extender.Properties.ResourceProvisioning),
 		// Secrets are omitted.
 	}
 	return nil

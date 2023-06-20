@@ -25,8 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
 
@@ -35,18 +33,16 @@ var _ ctrl.Controller = (*ListSecretsRabbitMQMessageQueue)(nil)
 // ListSecretsRabbitMQMessageQueue is the controller implementation to list secrets for the to access the connected rabbitMQ resource resource id passed in the request body.
 type ListSecretsRabbitMQMessageQueue struct {
 	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
-	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsRabbitMQMessageQueue creates a new instance of ListSecretsRabbitMQMessageQueue.
-func NewListSecretsRabbitMQMessageQueue(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRabbitMQMessageQueue{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 				RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 				ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -66,14 +62,9 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.Res
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
-	if err != nil {
-		return nil, err
-	}
-
 	redisSecrets := datamodel.RabbitMQSecrets{}
-	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
-		redisSecrets.ConnectionString = connectionString
+	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
+		redisSecrets.ConnectionString = connectionString.Value
 	}
 
 	versioned, _ := converter.RabbitMQSecretsDataModelToVersioned(&redisSecrets, sCtx.APIVersion)

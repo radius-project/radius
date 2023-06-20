@@ -481,7 +481,6 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 				AppPort:  to.Int32(c.AppPort),
 				Config:   to.String(c.Config),
 				Protocol: toProtocolDataModel(c.Protocol),
-				Provides: to.String(c.Provides),
 			},
 		}
 	case *ContainerKubernetesMetadataExtension:
@@ -512,7 +511,6 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 			AppPort:  to.Ptr(e.DaprSidecar.AppPort),
 			Config:   to.Ptr(e.DaprSidecar.Config),
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
-			Provides: to.Ptr(e.DaprSidecar.Provides),
 		}
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)

@@ -33,8 +33,6 @@ import (
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 
-const defaultRecipeName = "default"
-
 func NewEnvironmentLoader(armOptions *arm.ClientOptions) ConfigurationLoader {
 	return &environmentLoader{ArmClientOptions: armOptions}
 }
@@ -115,12 +113,7 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
 	}
-
-	// TODO Remove this logic to populate recipe name, after https://github.com/project-radius/radius/issues/5649 is implemented
 	recipeName := recipe.Name
-	if recipeName == "" {
-		recipeName = defaultRecipeName
-	}
 	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
