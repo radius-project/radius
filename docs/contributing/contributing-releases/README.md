@@ -1,17 +1,8 @@
 # How to create and publish a Radius release
 
-> 🚧🚧🚧 Under Construction 🚧🚧🚧
->
-> This guide refers to resources and processes that can only be accessed by the Radius team. This will be updated as we migrate to public resources like GitHub releases.
-
-Our release process for Radius is based on git tags. Pushing a new tag with the format: `v<major>.<minor>.<patch>` will trigger a release build.
-
-
 ## Prerequisites
 
-- Find the storage account on Azure under 'Radius Dev' subscription. It is called `radiuspublic`.
-- Determine the release version. This is in the form `v<major>.<minor>.<patch>`.
-- Determine the release channel. This is in the form `<major>.<minor>`.
+- Determine the release version. This is in the form `<major>.<minor>.<patch>`.
 
 
 ## Creating an RC release
@@ -22,8 +13,19 @@ If we find issues in validation, we can create additional RC releases until we f
 
 Follow the steps below to create an RC release.
 
-1. In GitHub, navigate to the ['Release' GitHub Workflow](https://github.com/project-radius/radius/actions/workflows/release.yaml).
-1. Provide the release version and tag and select 'Run Workflow'. This will kick off the creation of release branches and tags in each of the necessary repos.
+```bash
+# Create a directory
+mkdir release
+cd release
+
+# Clone the repositories
+git clone git@github.com:project-radius/radius.git
+git clone git@github.com:project-radius/bicep.git
+git clone git@github.com:project-radius/deployment-engine.git
+
+# Run the release script with the desired version number
+sh radius/.github/scripts/release.sh 0.21.0
+```
 
 > This will kick off some background tasks that may take around 30 minutes to complete. You can check the GitHub Actions tab for each of the repos to monitor the progress. Once the workflow runs are complete and successful, you can move on to release verification.
 

@@ -61,9 +61,8 @@ TAG_NAME="v${VERSION}"
 # This is a final release if the version doesn't contain 'rc'
 FINAL_RELEASE=$(echo $VERSION | grep -v "rc")
 
-# for each of the repositories, checkout the release branch, pull the latest, tag the release, push the tag, push the release branch
+# For each of the repositories, create the release branch and tag
 repositories=("radius" "bicep" "deployment-engine")
-
 for repository in "${repositories[@]}"; do
     if [[ -z "$DRY_RUN" ]]; then
         cd "${repository}"
@@ -75,11 +74,11 @@ for repository in "${repositories[@]}"; do
         cd ..
     else 
         echo "Dry run: cd ${repository}"
-        echo "Dry run: git checkout -B ${RELEASE_BRANCH_NAME}"
-        echo "Dry run: git pull origin ${RELEASE_BRANCH_NAME}"
-        echo "Dry run: git tag ${TAG_NAME}"
-        echo "Dry run: git push origin --tags"
-        echo "Dry run: git push origin ${RELEASE_BRANCH_NAME}"
+        echo "Dry run [project-radius/${repository}]: git checkout -B ${RELEASE_BRANCH_NAME}"
+        echo "Dry run [project-radius/${repository}]: git pull origin ${RELEASE_BRANCH_NAME}"
+        echo "Dry run [project-radius/${repository}]: git tag ${TAG_NAME}"
+        echo "Dry run [project-radius/${repository}]: git push origin --tags"
+        echo "Dry run [project-radius/${repository}]: git push origin ${RELEASE_BRANCH_NAME}"
         echo "Dry run: cd .."
     fi
 done
