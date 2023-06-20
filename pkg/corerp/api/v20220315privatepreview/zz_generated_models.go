@@ -890,9 +890,6 @@ type GatewayPropertiesTLS struct {
 	// Declares which Kubernetes TLS secret will be used.
 	CertificateFrom *string `json:"certificateFrom,omitempty"`
 
-	// Hostname
-	Hostname *string `json:"hostname,omitempty"`
-
 	// TLS minimum protocol version (defaults to 1.2).
 	MinimumProtocolVersion *TLSMinVersion `json:"minimumProtocolVersion,omitempty"`
 

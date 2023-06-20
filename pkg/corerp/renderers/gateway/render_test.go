@@ -1243,7 +1243,6 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		TLS: &datamodel.GatewayPropertiesTLS{
-			Hostname:               "myapp.radapp.dev",
 			MinimumProtocolVersion: "1.2",
 			CertificateFrom:        secretStoreResourceId,
 		},
