@@ -28,7 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -42,9 +41,9 @@ type ListPlanesByType struct {
 }
 
 // NewListPlanesByType creates a new ListPlanesByType.
-func NewListPlanesByType(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewListPlanesByType(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanesByType{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,

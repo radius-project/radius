@@ -22,6 +22,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
+const (
+	ResourceGroupType = "System.Resources/resourceGroups"
+)
+
 // ConvertTo converts from the versioned ResourceGroup resource to version-agnostic datamodel.
 func (src *ResourceGroupResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.

@@ -26,9 +26,9 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
@@ -36,16 +36,14 @@ var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
 // GetAWSResource is the controller implementation to get AWS resource.
 type GetAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
+	awsClients ucp_aws.Clients
 }
 
 // NewGetAWSResource creates a new GetAWSResource.
-func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewGetAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSResource{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
@@ -57,7 +55,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	response, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	response, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)

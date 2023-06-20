@@ -32,10 +32,9 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	"github.com/project-radius/radius/pkg/to"
-	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -44,17 +43,14 @@ var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
 // CreateOrUpdateAWSResourceWithPost is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResourceWithPost struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
+	awsClients ucp_aws.Clients
 }
 
 // NewCreateOrUpdateAWSResourceWithPost creates a new CreateOrUpdateAWSResourceWithPost.
-func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
-
+func NewCreateOrUpdateAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSResourceWithPost{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
@@ -80,18 +76,18 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
 
-	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
-		return awserror.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(err)
 	}
 
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
 	if err != nil {
-		return awserror.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(err)
 	}
 
 	existing := true
@@ -100,28 +96,28 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	responseProperties := map[string]any{}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
-	if errors.Is(&awserror.AWSMissingPropertyError{}, err) {
+	if errors.Is(&ucp_aws.AWSMissingPropertyError{}, err) {
 		// assume that if we can't get the AWS resource identifier, we need to create the resource
 		existing = false
 	} else if err != nil {
-		return awserror.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(err)
 	} else {
 		computedResourceID = computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 
 		// Create and update work differently for AWS - we need to know if the resource
 		// we're working on exists already.
-		getResponse, err = p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		getResponse, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			Identifier: aws.String(awsResourceIdentifier),
 		}, cloudControlOpts...)
-		if awserror.IsAWSResourceNotFoundError(err) {
+		if ucp_aws.IsAWSResourceNotFoundError(err) {
 			existing = false
 		} else if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		} else {
 			err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
 			if err != nil {
-				return awserror.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(err)
 			}
 		}
 	}
@@ -139,28 +135,28 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
 		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		}
 
 		// Call update only if the patch is not empty
 		if len(patch) > 0 {
 			marshaled, err := json.Marshal(&patch)
 			if err != nil {
-				return awserror.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(err)
 			}
 
-			response, err := p.awsOptions.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := p.awsClients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(awsResourceIdentifier),
 				PatchDocument: aws.String(string(marshaled)),
 			}, cloudControlOpts...)
 			if err != nil {
-				return awserror.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(err)
 			}
 
 			operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 			if err != nil {
-				return awserror.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(err)
 			}
 		} else {
 			// mark provisioning state as succeeded here
@@ -178,17 +174,17 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		}
 	} else {
 		logger.Info(fmt.Sprintf("Creating resource : resourceType %q resourceID %q", serviceCtx.ResourceTypeInAWSFormat(), awsResourceIdentifier))
-		response, err := p.awsOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		response, err := p.awsClients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
 		}, cloudControlOpts...)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		}
 
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		}
 
 		// Get the resource identifier from the progress event response

@@ -26,9 +26,9 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
@@ -36,16 +36,14 @@ var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
 // ListAWSResources is the controller implementation to get/list AWS resources.
 type ListAWSResources struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
+	awsClients ucp_aws.Clients
 }
 
 // NewListAWSResources creates a new ListAWSResources.
-func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewListAWSResources(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &ListAWSResources{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
@@ -58,7 +56,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	// TODO pagination
-	response, err := p.awsOptions.AWSCloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
+	response, err := p.awsClients.CloudControl.ListResources(ctx, &cloudcontrol.ListResourcesInput{
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudControlOpts...)
 	if err != nil {

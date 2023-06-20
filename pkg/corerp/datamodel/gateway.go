@@ -85,7 +85,6 @@ type GatewayPropertiesHostname struct {
 // GatewayPropertiesTLS - Declare TLS information for the Gateway.
 type GatewayPropertiesTLS struct {
 	SSLPassthrough         bool                      `json:"sslPassthrough,omitempty"`
-	Hostname               string                    `json:"hostname,omitempty"`
 	MinimumProtocolVersion MinimumTLSProtocolVersion `json:"minimumProtocolVersion,omitempty"`
 	CertificateFrom        string                    `json:"certificateFrom,omitempty"`
 }
@@ -114,6 +113,8 @@ const (
 	TLSMinVersion12 MinimumTLSProtocolVersion = "1.2"
 	// TLS 1.3
 	TLSMinVersion13 MinimumTLSProtocolVersion = "1.3"
+	// Default is TLS 1.2
+	DefaultTLSMinVersion MinimumTLSProtocolVersion = TLSMinVersion12
 )
 
 // ValidMinimumTLSProtocolVersions returns a list of valid MinimumTLSProtocolVersions.
