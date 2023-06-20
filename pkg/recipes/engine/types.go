@@ -26,5 +26,5 @@ import (
 
 type Engine interface {
 	// Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
-	Execute(ctx context.Context, recipe recipes.Metadata) (*recipes.RecipeOutput, error)
+	Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error)
 }

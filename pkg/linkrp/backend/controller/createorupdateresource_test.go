@@ -345,7 +345,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				data["type"] = 3 // This won't convert to our data model.
 			}
 
-			recipeMetadata := recipes.Metadata{
+			recipeMetadata := recipes.ResourceMetadata{
 				Name:          "test-recipe",
 				EnvironmentID: TestEnvironmentID,
 				ApplicationID: TestApplicationID,
@@ -371,7 +371,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			if stillPassing && tt.runtimeConfigurationErr != nil {
 				stillPassing = false
 				cfg.EXPECT().
-					LoadConfiguration(gomock.Any(), recipes.Metadata{
+					LoadConfiguration(gomock.Any(), recipes.ResourceMetadata{
 						EnvironmentID: TestEnvironmentID,
 						ApplicationID: TestApplicationID,
 						ResourceID:    TestResourceID,
@@ -388,7 +388,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 					},
 				}
 				cfg.EXPECT().
-					LoadConfiguration(gomock.Any(), recipes.Metadata{
+					LoadConfiguration(gomock.Any(), recipes.ResourceMetadata{
 						EnvironmentID: TestEnvironmentID,
 						ApplicationID: TestApplicationID,
 						ResourceID:    TestResourceID,
