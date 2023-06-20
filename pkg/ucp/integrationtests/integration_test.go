@@ -28,16 +28,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -84,7 +83,7 @@ var applicationList = []map[string]any{
 
 var testUCPNativePlane = datamodel.Plane{
 	BaseResource: v1.BaseResource{
-		TrackedResource: armrpc_v1.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:   "/planes/radius/local",
 			Type: "radius",
 			Name: "local",
@@ -160,13 +159,11 @@ func Test_ProxyToRP(t *testing.T) {
 		AnyTimes()
 
 	ctx := context.Background()
-	err = api.Register(ctx, router, controller.Options{
-		Options: armrpc_controller.Options{
-			DataProvider:  provider,
-			StorageClient: db,
-			PathBase:      pathBase,
-		},
-	})
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		DataProvider:  provider,
+		StorageClient: db,
+		PathBase:      pathBase,
+	}, nil, ucp_aws.Clients{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
@@ -211,13 +208,11 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, controller.Options{
-		Options: armrpc_controller.Options{
-			PathBase:      pathBase,
-			DataProvider:  provider,
-			StorageClient: db,
-		},
-	})
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		PathBase:      pathBase,
+		DataProvider:  provider,
+		StorageClient: db,
+	}, nil, ucp_aws.Clients{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
@@ -305,13 +300,11 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, controller.Options{
-		Options: armrpc_controller.Options{
-			PathBase:      pathBase,
-			DataProvider:  provider,
-			StorageClient: db,
-		},
-	})
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		PathBase:      pathBase,
+		DataProvider:  provider,
+		StorageClient: db,
+	}, nil, ucp_aws.Clients{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
@@ -497,13 +490,11 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 
 	router := mux.NewRouter()
 	ctx := context.Background()
-	err := api.Register(ctx, router, controller.Options{
-		Options: armrpc_controller.Options{
-			PathBase:      pathBase,
-			DataProvider:  provider,
-			StorageClient: db,
-		},
-	})
+	err := api.Register(ctx, router, armrpc_controller.Options{
+		PathBase:      pathBase,
+		DataProvider:  provider,
+		StorageClient: db,
+	}, nil, ucp_aws.Clients{})
 	require.NoError(t, err)
 
 	mockCtrl := gomock.NewController(t)
@@ -529,8 +520,8 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	response, err := ucpClient.httpClient.Do(request)
 	require.NoError(t, err)
 
-	expectedResponse := armrpc_v1.ErrorResponse{
-		Error: armrpc_v1.ErrorDetails{
+	expectedResponse := v1.ErrorResponse{
+		Error: v1.ErrorDetails{
 			Code:    "InvalidApiVersionParameter",
 			Message: "API version 'unsupported-version' for type 'ucp/openapi' is not supported. The supported api-versions are '2022-09-01-privatepreview'.",
 		},
@@ -539,7 +530,7 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	responseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
-	var errorResponse armrpc_v1.ErrorResponse
+	var errorResponse v1.ErrorResponse
 	err = json.Unmarshal(responseBody, &errorResponse)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, errorResponse)

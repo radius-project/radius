@@ -23,7 +23,6 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*OpenAPIv2Doc)(nil)
@@ -34,8 +33,8 @@ type OpenAPIv2Doc struct {
 }
 
 // NewOpenAPIv2Doc creates a new OpenAPIv2Doc.
-func NewOpenAPIv2Doc(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &OpenAPIv2Doc{armrpc_controller.NewBaseController(opts.Options)}, nil
+func NewOpenAPIv2Doc(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
+	return &OpenAPIv2Doc{armrpc_controller.NewBaseController(opts)}, nil
 }
 
 func (e *OpenAPIv2Doc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

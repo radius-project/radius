@@ -120,7 +120,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: mongoDatabasePlaneRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
 						RequestConverter:   converter.MongoDatabaseDataModelFromVersioned,
@@ -133,7 +133,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: mongoDatabaseResourceGroupRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
 						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
@@ -145,7 +145,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
 						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
@@ -157,7 +157,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
 						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
@@ -174,7 +174,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
 						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
@@ -191,7 +191,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: mongoDatabaseResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
 						RequestConverter:      converter.MongoDatabaseDataModelFromVersioned,
@@ -202,16 +202,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:   mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   linkrp.MongoDatabasesResourceType,
-			Method:         mongo_ctrl.OperationListSecret,
-			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
+			ParentRouter:      mongoDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:      linkrp.MongoDatabasesResourceType,
+			Method:            mongo_ctrl.OperationListSecret,
+			ControllerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
 		{
 			ParentRouter: daprPubSubBrokerPlaneRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 						RequestConverter:   converter.DaprPubSubBrokerDataModelFromVersioned,
@@ -224,7 +224,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprPubSubBrokerResourceGroupRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
@@ -236,7 +236,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
@@ -248,7 +248,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
@@ -265,7 +265,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
@@ -282,7 +282,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprPubSubBrokerResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
 						RequestConverter:      converter.DaprPubSubBrokerDataModelFromVersioned,
@@ -296,7 +296,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprSecretStorePlaneRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 						RequestConverter:   converter.DaprSecretStoreDataModelFromVersioned,
@@ -309,7 +309,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprSecretStoreResourceGroupRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
@@ -321,7 +321,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprSecretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
@@ -333,7 +333,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprSecretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
@@ -350,7 +350,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprSecretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
@@ -367,7 +367,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprSecretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
 						RequestConverter:      converter.DaprSecretStoreDataModelFromVersioned,
@@ -381,7 +381,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprStateStorePlaneRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
 						RequestConverter:   converter.DaprStateStoreDataModelFromVersioned,
@@ -394,7 +394,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprStateStoreResourceGroupRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
@@ -406,7 +406,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprStateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
@@ -418,7 +418,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprStateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
@@ -435,7 +435,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprStateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
@@ -452,7 +452,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: daprStateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
 						RequestConverter:      converter.DaprStateStoreDataModelFromVersioned,
@@ -466,7 +466,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: redisCachePlaneRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:   converter.RedisCacheDataModelFromVersioned,
@@ -479,7 +479,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: redisCacheResourceGroupRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
@@ -491,7 +491,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
@@ -503,7 +503,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
@@ -520,7 +520,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
@@ -537,7 +537,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: redisCacheResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
 						RequestConverter:      converter.RedisCacheDataModelFromVersioned,
@@ -548,16 +548,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:   redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   linkrp.RedisCachesResourceType,
-			Method:         redis_ctrl.OperationListSecret,
-			HandlerFactory: redis_ctrl.NewListSecretsRedisCache,
+			ParentRouter:      redisCacheResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:      linkrp.RedisCachesResourceType,
+			Method:            redis_ctrl.OperationListSecret,
+			ControllerFactory: redis_ctrl.NewListSecretsRedisCache,
 		},
 		{
 			ParentRouter: rabbitmqMessageQueuePlaneRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 						RequestConverter:   converter.RabbitMQMessageQueueDataModelFromVersioned,
@@ -570,7 +570,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: rabbitmqMessageQueueResourceGroupRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
@@ -582,7 +582,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
@@ -594,7 +594,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
@@ -611,7 +611,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
@@ -628,7 +628,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: rabbitmqMessageQueueResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
 						RequestConverter:      converter.RabbitMQMessageQueueDataModelFromVersioned,
@@ -639,16 +639,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:   rabbitmqMessageQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   linkrp.RabbitMQMessageQueuesResourceType,
-			Method:         rabbitmq_ctrl.OperationListSecret,
-			HandlerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
+			ParentRouter:      rabbitmqMessageQueueResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:      linkrp.RabbitMQMessageQueuesResourceType,
+			Method:            rabbitmq_ctrl.OperationListSecret,
+			ControllerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
 		},
 		{
 			ParentRouter: sqlDatabasePlaneRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
 						RequestConverter:   converter.SqlDatabaseDataModelFromVersioned,
@@ -661,7 +661,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: sqlDatabaseResourceGroupRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
 						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
@@ -673,7 +673,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
 						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
@@ -685,7 +685,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
 						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
@@ -702,7 +702,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
 						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
@@ -719,7 +719,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: sqlDatabaseResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
 						RequestConverter:      converter.SqlDatabaseDataModelFromVersioned,
@@ -730,16 +730,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:   sqlDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   linkrp.SqlDatabasesResourceType,
-			Method:         sql_ctrl.OperationListSecret,
-			HandlerFactory: sql_ctrl.NewListSecretsSqlDatabase,
+			ParentRouter:      sqlDatabaseResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:      linkrp.SqlDatabasesResourceType,
+			Method:            sql_ctrl.OperationListSecret,
+			ControllerFactory: sql_ctrl.NewListSecretsSqlDatabase,
 		},
 		{
 			ParentRouter: extenderPlaneRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Extender]{
 						RequestConverter:   converter.ExtenderDataModelFromVersioned,
@@ -752,7 +752,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: extenderResourceGroupRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationList,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Extender]{
 						RequestConverter:  converter.ExtenderDataModelFromVersioned,
@@ -764,7 +764,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: extenderResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationGet,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Extender]{
 						RequestConverter:  converter.ExtenderDataModelFromVersioned,
@@ -776,7 +776,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: extenderResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationPut,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Extender]{
 						RequestConverter:  converter.ExtenderDataModelFromVersioned,
@@ -793,7 +793,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: extenderResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationPatch,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Extender]{
 						RequestConverter:  converter.ExtenderDataModelFromVersioned,
@@ -810,7 +810,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			ParentRouter: extenderResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationDelete,
-			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Extender]{
 						RequestConverter:      converter.ExtenderDataModelFromVersioned,
@@ -821,10 +821,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   linkrp.ExtendersResourceType,
-			Method:         extender_ctrl.OperationListSecret,
-			HandlerFactory: extender_ctrl.NewListSecretsExtender,
+			ParentRouter:      extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:      linkrp.ExtendersResourceType,
+			Method:            extender_ctrl.OperationListSecret,
+			ControllerFactory: extender_ctrl.NewListSecretsExtender,
 		},
 	}
 

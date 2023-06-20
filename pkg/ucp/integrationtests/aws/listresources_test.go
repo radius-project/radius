@@ -58,7 +58,7 @@ func Test_ListAWSResources(t *testing.T) {
 		return &output, nil
 	})
 
-	listRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+pathBase+testProxyRequestAWSListPath, nil)
+	listRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+basePath+testProxyRequestAWSListPath, nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := testutil.ARMTestContextFromRequest(listRequest)

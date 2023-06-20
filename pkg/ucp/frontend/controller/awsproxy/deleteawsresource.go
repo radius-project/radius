@@ -26,10 +26,9 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/to"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*DeleteAWSResource)(nil)
@@ -37,16 +36,14 @@ var _ armrpc_controller.Controller = (*DeleteAWSResource)(nil)
 // DeleteAWSResource is the controller implementation to delete AWS resource.
 type DeleteAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
+	awsClients ucp_aws.Clients
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
-func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewDeleteAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &DeleteAWSResource{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
@@ -58,15 +55,15 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	response, err := p.awsOptions.AWSCloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+	response, err := p.awsClients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
 	if err != nil {
-		if awsclient.IsAWSResourceNotFoundError(err) {
+		if ucp_aws.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil
 		}
-		return awsclient.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(err)
 	}
 
 	operation, err := uuid.Parse(*response.ProgressEvent.RequestToken)

@@ -32,10 +32,9 @@ import (
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/to"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -44,16 +43,14 @@ var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
 // GetAWSResourceWithPost is the controller implementation to get an AWS resource.
 type GetAWSResourceWithPost struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
+	awsClients ucp_aws.Clients
 }
 
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost.
-func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSResourceWithPost{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
@@ -78,12 +75,12 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	}
 
 	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
-	describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
-		return awserror.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(err)
 	}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
@@ -100,7 +97,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 
 	cloudcontrolOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	logger.Info("Fetching resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", awsResourceIdentifier)
-	response, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	response, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(awsResourceIdentifier),
 	}, cloudcontrolOpts...)
