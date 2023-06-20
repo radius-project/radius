@@ -51,7 +51,7 @@ type EnvironmentDefinition struct {
 	Driver string
 	// ResourceType represents the type of the link this recipe can be consumed by.
 	ResourceType string
-	// Parameters represents key/value pairs to pass into the recipe template for every resource using this recipe. Can be overridden by the resource using this recipe.
+	// Parameters represents key/value pairs to pass into the recipe template for every resource using this recipe. Specified during recipe registration to environment. Can be overridden by the radius resource consuming this recipe.
 	Parameters map[string]any
 	// TemplatePath represents path to the template provided by the recipe.
 	TemplatePath string
