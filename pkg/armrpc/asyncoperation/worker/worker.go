@@ -143,44 +143,46 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 
 			reqCtx := trace.WithTraceparent(ctx, op.TraceparentID)
+
 			// Populate the default attributes in the current context so all logs will have these fields.
-			opLogger := ucplog.FromContextOrDiscard(reqCtx).WithValues(
+			reqCtx = ucplog.WrapLogContext(reqCtx,
 				logging.LogFieldResourceID, op.ResourceID,
 				logging.LogFieldOperationID, op.OperationID,
 				logging.LogFieldOperationType, op.OperationType,
-				logging.LogFieldDequeueCount, msgreq.DequeueCount,
-			)
+				logging.LogFieldDequeueCount, msgreq.DequeueCount)
+
+			logger = ucplog.FromContextOrDiscard(reqCtx)
 
 			armReqCtx, err := op.ARMRequestContext()
 			if err != nil {
-				opLogger.Error(err, "failed to get ARM request context.")
+				logger.Error(err, "failed to get ARM request context.")
 				return
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
 
 			opType, ok := v1.ParseOperationType(armReqCtx.OperationType)
 			if !ok {
-				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
+				logger.V(ucplog.Error).Info("failed to parse operation type.")
 				return
 			}
 
 			asyncCtrl := w.registry.Get(opType)
 			if asyncCtrl == nil {
-				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
+				logger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
-					opLogger.Error(err, "failed to finish the message")
+					logger.Error(err, "failed to finish the message")
 				}
 				return
 			}
 
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
-				opLogger.V(ucplog.Error).Info(errMsg)
+				logger.V(ucplog.Error).Info(errMsg)
 				failed := ctrl.NewFailedResult(v1.ErrorDetails{
 					Code:    v1.CodeInternal,
 					Message: errMsg,
 				})
-				w.completeOperation(ctx, msgreq, failed, asyncCtrl.StorageClient())
+				w.completeOperation(reqCtx, msgreq, failed, asyncCtrl.StorageClient())
 				return
 			}
 
@@ -188,13 +190,13 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			// 1. The same message is delivered twice in multiple instances.
 			// 2. provisioningState is not matched between resource and operationStatuses
 
-			dup, err := w.isDuplicated(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
+			dup, err := w.isDuplicated(reqCtx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
-				opLogger.Error(err, "failed to check potential deduplication.")
+				logger.Error(err, "failed to check potential deduplication.")
 				return
 			}
 			if dup {
-				opLogger.V(ucplog.Warn).Info("duplicated message detected")
+				logger.V(ucplog.Warn).Info("duplicated message detected")
 				return
 			}
 
