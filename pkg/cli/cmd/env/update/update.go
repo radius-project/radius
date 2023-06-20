@@ -137,7 +137,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: Validate Azure scope components (https://github.com/project-radius/radius/issues/5155)
-	azureSubId, err := cli.ReadAzureSubscriptionIdFlag(cmd)
+	azureSubId, err := cli.RequireAzureSubscriptionId(cmd)
 	if err != nil {
 		return err
 	}
