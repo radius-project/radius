@@ -67,7 +67,7 @@ type ResourceMetadata struct {
 	EnvironmentID string
 	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
-	// Parameters represents key/value parameters to pass into the recipe template. Overrides any parameters set by the environment.
+	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }
 
