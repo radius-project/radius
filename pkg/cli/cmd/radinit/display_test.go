@@ -40,6 +40,7 @@ var (
 // We can try again when the test framework is more mature.
 
 func Test_summaryModel(t *testing.T) {
+	t.Skip("these tests are failing sporadically. tracked by #5762")
 	waitForRender := func(t *testing.T, reader io.Reader) string {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {

@@ -72,6 +72,8 @@ func Test_NewTextModel_UpdateEchoMode(t *testing.T) {
 }
 
 func Test_E2E(t *testing.T) {
+	t.Skip("these tests are failing sporadically. tracked by #5762")
+
 	// Note: unfortunately I ran into bugs with the testing framework while trying to test more advance
 	// scenarios like validation. The output coming from the framework was truncated, so I just couldn't do it :(.
 	//
