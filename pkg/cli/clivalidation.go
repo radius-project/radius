@@ -268,11 +268,9 @@ func RequireAzureSubscriptionId(cmd *cobra.Command) (string, error) {
 		return "", err
 	}
 
-	if subscriptionId != "" {
-		// Validate that subscriptionId is a valid GUID
-		if _, err := uuid.Parse(subscriptionId); err != nil {
-			return "", fmt.Errorf("'%s' is not a valid subscription ID", subscriptionId)
-		}
+	// Validate that subscriptionId is a valid GUID
+	if _, err := uuid.Parse(subscriptionId); err != nil {
+		return "", fmt.Errorf("'%s' is not a valid subscription ID", subscriptionId)
 	}
 
 	return subscriptionId, err
