@@ -65,21 +65,21 @@ FINAL_RELEASE=$(echo $VERSION | grep -v "rc")
 repositories=("radius" "bicep" "deployment-engine")
 for repository in "${repositories[@]}"; do
     if [[ -z "$DRY_RUN" ]]; then
-        cd "${repository}"
+        pushd "${repository}"
         git checkout -B "${RELEASE_BRANCH_NAME}"
         git pull origin "${RELEASE_BRANCH_NAME}"
         git tag "${TAG_NAME}"
         git push origin --tags
         git push origin "${RELEASE_BRANCH_NAME}"
-        cd ..
+        popd
     else 
-        echo "Dry run: cd ${repository}"
+        echo "Dry run: pushd ${repository}"
         echo "Dry run [project-radius/${repository}]: git checkout -B ${RELEASE_BRANCH_NAME}"
         echo "Dry run [project-radius/${repository}]: git pull origin ${RELEASE_BRANCH_NAME}"
         echo "Dry run [project-radius/${repository}]: git tag ${TAG_NAME}"
         echo "Dry run [project-radius/${repository}]: git push origin --tags"
         echo "Dry run [project-radius/${repository}]: git push origin ${RELEASE_BRANCH_NAME}"
-        echo "Dry run: cd .."
+        echo "Dry run: popd"
     fi
 done
 
