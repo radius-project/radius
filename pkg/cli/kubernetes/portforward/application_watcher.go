@@ -121,7 +121,8 @@ func (aw *applicationWatcher) updated(ctx context.Context, deployment *appsv1.De
 	//
 	entry, ok := aw.deploymentWatchers[deployment.Name]
 	if ok && reflect.DeepEqual(deployment.Spec.Selector.MatchLabels, entry.MatchLabels) {
-		// deployment is updated but still targets the same pods: do nothing
+		// deployment is updated but still targets the same pods: update revision
+		entry.Revision = revision
 		return
 	} else if ok {
 		// deployment has changed its match labels: shut down and restart watcher
