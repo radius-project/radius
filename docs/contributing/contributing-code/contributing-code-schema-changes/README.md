@@ -1,0 +1,35 @@
+# Contributing to app model changes
+
+## Adding changes to CADL and generate bicep types and client code.
+
+To update or create a new app model specification in radius/swagger directory, you need to add/update the corresponding resource CADL file in radius/cadl.
+
+Run the below command to generate the openapi spec with the newly added changes:
+```bash  
+cadl compile .
+```
+And generate the client code by running the autorest command:
+
+E.g: For linkrp resources
+```bash 
+autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
+```
+Add necessary changes to radius.
+
+## Updating the docs and samples repositories
+
+You need to check if resource with the updated schema used in bicep files of docs and samples repo. And update the bicep files with the newly added changes.
+
+## Merging pull requests
+
+- **Bicep Repository**: Creating a pull request in radius that contains app model changes triggers an automated pull request in bicep repo with the bicep type changes. You need to merge this pr first to see the app model changes in bicep.<br>
+This may causes "Validate Bicep" failures on the the Radius PR pipeline runs as validate bicep tasks runs validation of bicep files from radius, docs, samples repos.
+- **Docs Repository**: Merge the PR from docs repo with updated bicep files changes.
+- **Samples Repository**: Merging the PR in samples repo may not be straight forward. Because currently we have a cyclic dependency between samples and radius repositories i.e "Test Quickstarts" task in samples pipeline run would fail as it runs on the main branch of radius which doesn't have the latest changes as radius PR is blocked on the samples PR for bicep files update. So, you need to force merge the samples PR.
+- **Radius Repository**: After PR from the bicep, docs and samples repositories are merged, re-run the checks to make sure there are no failures to merge to radius PR.
+ 
+
+
+
+
+
