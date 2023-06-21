@@ -38,6 +38,7 @@ func (e *ErrInvalid) Is(target error) bool {
 }
 
 type ErrNotFound struct {
+	// ID of the resource that was not found
 	ID string
 }
 

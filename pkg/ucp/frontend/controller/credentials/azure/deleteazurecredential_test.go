@@ -154,7 +154,7 @@ func setupCredentialDeleteSuccessMocks(mockStorageClient store.MockStorageClient
 }
 
 func setupNonExistentCredentialDeleteMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &store.ErrNotFound{ID: gomock.Any().String()}).Times(1)
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &store.ErrNotFound{}).Times(1)
 }
 
 func setupCredentialExistenceCheckFailureMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
@@ -177,7 +177,7 @@ func setupNonExistingCredentialDeleteFromStorageMocks(mockStorageClient store.Mo
 	setupCredentialMocks(mockStorageClient, mockSecretClient)
 
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.ErrNotFound{ID: gomock.Any().String()}).Times(1)
+	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.ErrNotFound{}).Times(1)
 }
 
 func setupFailedCredentialDeleteFromStorageMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
