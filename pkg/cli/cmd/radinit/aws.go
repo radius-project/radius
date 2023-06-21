@@ -31,7 +31,7 @@ const (
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
 	enterAWSIAMAcessKeyIDPlaceholder      = "Enter IAM access key id..."
 	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Keys:"
-	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM access key..."
+	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM secret access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
 
 	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
