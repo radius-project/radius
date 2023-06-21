@@ -30,7 +30,7 @@ const (
 	enterAWSRegionPlaceholder             = "Enter a region..."
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
 	enterAWSIAMAcessKeyIDPlaceholder      = "Enter IAM access key id..."
-	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Keys:"
+	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Key:"
 	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM secret access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
 
