@@ -1,12 +1,8 @@
 ## Troubleshooting
 
-Once we install Radius control plane, we can deploy our application using Radius. 
-Refer [Tutorials](https://docs.radapp.dev/getting-started/first-app/) for more info.
-
-If we run into issues, we can use below steps to Troubleshoot our setup. 
+This page explains some troubleshooting steps that can help you diagnose installation failures or crashes using a custom build of Radius.
 
 1. Verify all Radius pods are up and running
-
 ```
 kubectl get pods -n radius-system 
 
@@ -17,10 +13,11 @@ contour-contour-7c88c58fc8-wgpcv   1/1     Running   0          2d1h
 contour-envoy-xnqxh                2/2     Running   0          2d1h
 ucp-fc695d88-drctw                 1/1     Running   0          2d1h
 ```
+All of the pods in the radius-system namespace should be in the Running state if your installation is working correct. If you see pods that are not in the running state, then this indicates a failure.
 
 2. Look at logs 
 
-We can look at logs on each pod to understand what went wrong by using
+You could look at logs on each pod to understand what went wrong by using
 ```
 kubectl logs <pod-name> -n <namespace>
 ```
@@ -32,8 +29,11 @@ kubectl logs appcore-rp-765d7c697f-sd7qk -n radius-system #replace appcore-rp-76
 kubectl logs bicep-de-5c4b5565bc-hm6dm -n radius-system #replace bicep-de-5c4b5565bc-hm6dm with name of your pod
 ```
 
-Every rad cli command  outputs a traceId in the event of error. Every log message has a traceId field. For a command, We can correlate logs across pods using this field value.
-ref: https://docs.radapp.dev/operations/control-plane/observability/logging/logs/
+Logs with  `severity` set to `error` or `warn` could point to why the pods are not in Running state.
+
+Every rad CLI command  outputs a `traceId` in the event of error. These identifiers correspond to the `traceId` field that appears in the log messages produced by Radius.
+By searching the logs for the `traceId` value, you can find the logs associated with a request that failed
+You can learn more about observability and logging in Radius in our [observability docs](https://docs.radapp.dev/operations/control-plane/observability/logging/logs/).
 ```
 {
   "severity": "info",

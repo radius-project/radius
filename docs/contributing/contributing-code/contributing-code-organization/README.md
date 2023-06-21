@@ -23,16 +23,17 @@ In general you should ask for guidance before creating a new top-level folder in
 | Folder            | Description                                                                             |
 | ----------------- | --------------------------------------------------------------------------------------- |
 | `algorithm/`      | General purpose algorithms and data structures                                          |
+| `armrpc/`         | Implementation containing shared functionality and utility for all Radius RP            |
 | `aws/`            | Utility code and library integrations for working with AWS                              |
 | `azure/`          | Utility code and library integrations for working with Azure                            |
-| `cli/`            | Utility code for the `rad` CLI                                                          |
-| `corerp/`         | Resource Provider implementation for Applications.Core resources                                     |
-| `daprrp/`         | Resource Provider implementation for dapr resources                                     |
-| `datastoresrp/`   | Resource Provider implementation for datastore resources                                |
+| `cli/`            | Implementation code for the `rad` CLI                                                   |
+| `corerp/`         | Resource Provider implementation for `Applications.Core` resources                      |
+| `daprrp/`         | Resource Provider implementation for `Applications.Dapr` resources                      |
+| `datastoresrp/`   | Resource Provider implementation for `Applications.Datastores` resources                |
 | `health/`         | The health monitor service                                                              |
 | `kubernetes/`     | Utility code and library integrations for working with Kubernetes                       |
-| `linkrp/`         | Resource Provider implementation for Applications.Link resources                        |
-| `logging/`        | Utility code for Radius logging                                                                |
+| `linkrp/`         | Resource Provider implementation for `Applications.Link` resources                      |
+| `logging/`        | Utility code for Radius logging                                                         |
 | `messagingrp/`    | Resource Provider implementation for messaging Resource Provider                        |
 | `metrics/`        | Utility code for generating Radius metrics                                              |
 | `recipes/`        | Implementation for Radius Recipes                                                       |
@@ -40,3 +41,4 @@ In general you should ask for guidance before creating a new top-level folder in
 | `trace/`          | Utility code for generating Radius traces                                               |
 | `ucp/`            | Implementation of Universal Control Plane                                               |
 | `version/`        | Infrastructure for how to version the Radius implementations                            |
+

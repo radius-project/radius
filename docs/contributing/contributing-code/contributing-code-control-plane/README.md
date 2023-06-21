@@ -16,6 +16,6 @@ You might hear these components referred to as:
 - [Configuration](./configSettings.md)
 - [Logging](logging.md)
 - [Running the control-plane locally](./running-controlplane-locally.md)
-- [Generating and installing custom build](./generating-and-installing-custom-build.md)
+- [Generating and installing a custom build](./generating-and-installing-custom-build.md)
 - [Troubleshooting the installation](./troubleshooting-installation.md)
 
