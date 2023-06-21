@@ -12,4 +12,5 @@ A maintainer may step down by submitting an [issue](https://github.com/project-r
 Changes to this governance document require a pull request with approval from a [super-majority](https://en.wikipedia.org/wiki/Supermajority#Two-thirds_vote) of the current maintainers. -->
 
 ## Code of Conduct
+
 This project has adopted the [Contributor Covenant Code of Conduct](https://github.com/project-radius/community/blob/main/CODE-OF-CONDUCT.md).
