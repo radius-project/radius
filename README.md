@@ -29,7 +29,7 @@ See the [Radius quickstarts](https://docs.radapp.dev/getting-started/quickstarts
 
 ## Community
 
-We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the bi-weekly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://github.com/project-radius/community).
+We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the monthly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://github.com/project-radius/community).
 
 ### Contact us
 
@@ -43,20 +43,22 @@ Every month we host a community call to showcase new features, review upcoming m
 
 ## Contributing to Radius
 
-Point to Contributing.md with some info for receipes and docs repository
+Visit [Contributing](https://docs.radapp.dev/contributing/) for more information on how to contribute to Radius.
+To author Radius Recipes visit [Author Custom Radius Recipes](https://docs.radapp.dev/operations/custom-recipes/).
+To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.dev/contributing/docs/)
 
 ## Repositories
 
-Call out this repo as the main repository for Radius, And follow up with per repo description to aid creation of issues in right repo. 
+[Radius](https://github.com/project-radius/radius) is the main Radius repository. It contains all of Radius code and documentation.
+In addition, we have the below repositories.
 
 | Repo | Description |
 |:-----|:------------|
-| [Radius](https://github.com/project-radius/radius) | The main repository that you are currently in. Contains the Radius code and overview documentation.
 | [Docs](https://github.com/project-radius/docs) | This repository contains the Radius documentation source for Radius.
 | [Samples](https://github.com/project-radius/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
-| [Receipes](https://github.com/project-radius/recipes) | This repo contains commonly used Recipe templates for Radius environments.
+| [Recipes](https://github.com/project-radius/recipes) | This repo contains commonly used Recipe templates for Radius environments.
 | [Website](https://github.com/project-radius/website) | This repository contains the source code for the Radius website.
-| [Bicep](https://github.com/project-radius/bicep) | This repository containes source code for Bicep, which is a DSL for deploying cloud resources types. 
+| [Bicep](https://github.com/project-radius/bicep) | This repository contains source code for Bicep, which is a DSL for deploying cloud resources types. 
 | [AWS Bicep Types](https://github.com/project-radius/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.
 
 
