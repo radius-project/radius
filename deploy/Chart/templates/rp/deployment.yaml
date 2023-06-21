@@ -43,9 +43,9 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
-        {{- if .Values.publicEndpointOverride}}
+        {{- if .Values.rp.publicEndpointOverride}}
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
-          value: {{ .Values.publicEndpointOverride }}
+          value: {{ .Values.rp.publicEndpointOverride }}
         {{- end }}
         ports:
         - containerPort: 5443
