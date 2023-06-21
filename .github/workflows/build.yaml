@@ -30,7 +30,7 @@ on:
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
-  group: build-${{ github.event.pull_request.number || github.sha }}
+  group: build-${github.ref}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
