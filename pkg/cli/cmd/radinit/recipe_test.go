@@ -80,6 +80,26 @@ func Test_getLinkType(t *testing.T) {
 		want         string
 	}{
 		{
+			"Dapr PubSub Link Type",
+			"daprpubsubbrokers",
+			"Applications.Link/daprPubSubBrokers",
+		},
+		{
+			"Dapr Secret Store Link Type",
+			"daprsecretstores",
+			"Applications.Link/daprSecretStores",
+		},
+		{
+			"Dapr State Store Link Type",
+			"daprstatestores",
+			"Applications.Link/daprStateStores",
+		},
+		{
+			"Rabbit MQ Link Type",
+			"rabbitmqmessagequeues",
+			"Applications.Link/rabbitMQMessageQueues",
+		},
+		{
 			"Redis Cache Link Type",
 			"rediscaches",
 			"Applications.Link/redisCaches",
@@ -90,8 +110,13 @@ func Test_getLinkType(t *testing.T) {
 			"Applications.Link/mongoDatabases",
 		},
 		{
+			"SQL Database Link Type",
+			"sqldatabases",
+			"Applications.Link/sqlDatabases",
+		},
+		{
 			"Invalid Link Type",
-			"daprstatestores",
+			"unsupported",
 			"",
 		},
 	}

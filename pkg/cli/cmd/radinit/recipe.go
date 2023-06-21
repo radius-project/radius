@@ -152,10 +152,20 @@ func getResourceTypeFromPath(repo string) (resourceType string) {
 // getLinkType returns the link type for the given resource type.
 func getLinkType(resourceType string) string {
 	switch resourceType {
+	case "daprpubsubbrokers":
+		return linkrp.DaprPubSubBrokersResourceType
+	case "daprsecretstores":
+		return linkrp.DaprSecretStoresResourceType
+	case "daprstatestores":
+		return linkrp.DaprStateStoresResourceType
 	case "mongodatabases":
 		return linkrp.MongoDatabasesResourceType
+	case "rabbitmqmessagequeues":
+		return linkrp.RabbitMQMessageQueuesResourceType
 	case "rediscaches":
 		return linkrp.RedisCachesResourceType
+	case "sqldatabases":
+		return linkrp.SqlDatabasesResourceType
 	default:
 		return ""
 	}
