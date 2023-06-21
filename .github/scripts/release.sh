@@ -87,4 +87,3 @@ for i in "${!repositories[@]}"; do
         echo "Dry run: popd"
     fi
 done
-
