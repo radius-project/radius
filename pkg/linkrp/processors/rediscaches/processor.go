@@ -31,6 +31,8 @@ const (
 
 	// RedisSSLPort is the default port for Redis SSL connections.
 	RedisSSLPort = 6380
+
+	RedisDefaultHost = "localhost"
 )
 
 // Processor is a processor for RedisCache resources.
@@ -73,4 +75,25 @@ func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) stri
 	}
 
 	return connectionString
+}
+
+func (p *Processor) computeConnectionURI(resource *datamodel.RedisCache) string {
+
+	// redis://user:secret@localhost:6379/0?foo=bar&qux=baz
+	connectionURI := "redis://"
+	var ssl string
+	if resource.Properties.SSL {
+		ssl = ",ssl=True"
+		connectionURI = "rediss://"
+	}
+
+	if resource.Properties.Username != "" {
+		connectionURI += resource.Properties.Username + ":"
+	}
+	if resource.Properties.Secrets.Password != "" {
+		connectionURI += resource.Properties.Secrets.Password + "@"
+	}
+
+	connectionURI = fmt.Sprintf("%s%s:%v/0?%s", connectionURI, resource.Properties.Host, resource.Properties.Port, ssl)
+	return connectionURI
 }

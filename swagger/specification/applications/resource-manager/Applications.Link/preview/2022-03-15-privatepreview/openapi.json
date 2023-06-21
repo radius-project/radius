@@ -2152,7 +2152,7 @@
           "type": "string",
           "description": "The username for Redis cache"
         },
-        "tls": {
+        "ssl": {
           "type": "boolean",
           "description": "Specifies whether to enable non-TLS or TLS connections to the Redis cache"
         },
