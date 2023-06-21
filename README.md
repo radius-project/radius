@@ -8,6 +8,14 @@ Application teams today struggle to build, deploy, and scale cloud-native applic
 
 As the pace of innovation increases for cloud-native technologies, so does the need for rapid progress within application teams. Application teams need a platform that can let developers and operators work together, while still maintaining the agility their users and applications require. These are the challenges that Radius is designed to solve.
 
+Key features of the Radius platform include: 
+
+- *Radius application graph*: Developers can model their entire application, including the connections and dependencies between services. 
+- *Swappable infrastructure*: Radius resources are platform-agnostic, allowing applications to be written once and deployed to any platform, such as Kubernetes, Microsoft Azure, Amazon Web Services (AWS), or on-premises hardware. 
+- Recipes for infrastructure Provisioning: Radius Recipes automate infrastructure provisioning using infrastructure-as-code templates, ensuring all deployments meet organizational requirements and policies. 
+- *Radius environments*: IT operators can define policies, security configurations, Recipes, and diagnostics required by their organization, ensuring secure and repeatable infrastructure across local development, testing, and production environments. 
+- *Consistent tooling and experiences*: Radius offers a consistent set of APIs, tools, and experiences that span any cloud or on-premises environment, simplifying and standardizing cloud-native application teams' toolchains and processes.
+
 ## Release status
 
 Radius is currently in an invitation-only private release and we are working hard to get Radius ready for public release in the near future.
@@ -39,7 +47,7 @@ Please visit our [Discord server](https://discord.gg/SRG3ePMKNy) to contact us a
 
 Every month we host a community call to showcase new features, review upcoming milestones, and engage in a Q&A. All are welcome!
 
-📞 Visit our [community meetings](https://docs.radapp.dev/community/#community-meetings) page for upcoming dates and the meeting link.
+📞 Visit our [community meetings](https://github.com/project-radius/community/#community-meetings) page for upcoming dates and the meeting link.
 
 ## Contributing to Radius
 
@@ -68,4 +76,4 @@ Please refer to our guide on [Reporting security vulnerabilities](https://github
 
 ## Code of conduct
 
-Please refer to our [Radius community code of conduct](https://github.com/project-radius/radius/CODE_OF_CONDUCT.md)
+Please refer to our [Radius community code of conduct](https://github.com/project-radius/community/CODE_OF_CONDUCT.md)
