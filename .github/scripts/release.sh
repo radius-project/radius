@@ -63,9 +63,14 @@ FINAL_RELEASE=$(echo $VERSION | grep -v "rc")
 
 # For each of the repositories, create the release branch and tag
 repositories=("radius" "bicep" "deployment-engine")
-for repository in "${repositories[@]}"; do
+main_branches=("main" "bicep-extensibility" "main")
+for i in "${!repositories[@]}"; do
+    repository="${repositories[$i]}"
+    main_branch="${main_branches[$i]}"
     if [[ -z "$DRY_RUN" ]]; then
         pushd "${repository}"
+        git checkout "${main_branch}"
+        git pull origin "${main_branch}"
         git checkout -B "${RELEASE_BRANCH_NAME}"
         git pull origin "${RELEASE_BRANCH_NAME}"
         git tag "${TAG_NAME}"
