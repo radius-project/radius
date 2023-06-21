@@ -101,7 +101,7 @@ var testCoreUCPNativePlane = datamodel.Plane{
 
 var testMsgUCPNativePlane = datamodel.Plane{
 	BaseResource: v1.BaseResource{
-		TrackedResource: armrpc_v1.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:   "/planes/radius/local",
 			Type: "radius",
 			Name: "local",
@@ -240,13 +240,11 @@ func Test_ProxyToMessagingRP(t *testing.T) {
 		AnyTimes()
 
 	ctx := context.Background()
-	err = api.Register(ctx, router, controller.Options{
-		Options: armrpc_controller.Options{
-			DataProvider:  provider,
-			StorageClient: db,
-			PathBase:      pathBase,
-		},
-	})
+	err = api.Register(ctx, router, armrpc_controller.Options{
+		DataProvider:  provider,
+		StorageClient: db,
+		PathBase:      pathBase,
+	}, nil, ucp_aws.Clients{})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+pathBase)
