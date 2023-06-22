@@ -50,6 +50,16 @@ resource mongo 'apps/Deployment@v1' = {
                 value: password
               }
             ]
+            resources: {
+              requests: {
+                cpu: '600m'
+                memory: '1024Mi'
+              }
+              limits: {
+                cpu: '900m'
+                memory: '1024Mi'
+              }
+            }
           }
         ]
       }

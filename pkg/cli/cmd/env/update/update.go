@@ -137,16 +137,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: Validate Azure scope components (https://github.com/project-radius/radius/issues/5155)
-	azureSubId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
-	if err != nil {
-		return err
-	}
+	if cmd.Flags().Changed(commonflags.AzureSubscriptionIdFlag) || cmd.Flags().Changed(commonflags.AzureResourceGroupFlag) {
+		azureSubId, err := cli.RequireAzureSubscriptionId(cmd)
+		if err != nil {
+			return err
+		}
 
-	azureRgId, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
-	if err != nil {
-		return err
-	}
-	if azureSubId != "" && azureRgId != "" {
+		azureRgId, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
+		if err != nil {
+			return err
+		}
+
 		r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
 	}
 
@@ -157,16 +158,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// TODO: Validate AWS scope components (https://github.com/project-radius/radius/issues/5155)
 	// stsclient can be used to validate
-	awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
-	if err != nil {
-		return err
-	}
+	if cmd.Flags().Changed(commonflags.AWSRegionFlag) || cmd.Flags().Changed(commonflags.AWSAccountIdFlag) {
+		awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
+		if err != nil {
+			return err
+		}
 
-	awsAccountId, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
-	if err != nil {
-		return err
-	}
-	if awsRegion != "" && awsAccountId != "" {
+		awsAccountId, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
+		if err != nil {
+			return err
+		}
+
 		r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
 	}
 
