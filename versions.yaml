@@ -1,4 +1,6 @@
+# stable is the release that we want to be the default version for users
 stable:
   version: v0.21.0
+# latest is the most recent release, which may be a pre-release
 latest:
   version: v0.22.0-rc1
