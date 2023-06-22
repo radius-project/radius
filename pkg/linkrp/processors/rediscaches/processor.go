@@ -31,8 +31,6 @@ const (
 
 	// RedisSSLPort is the default port for Redis SSL connections.
 	RedisSSLPort = 6380
-
-	RedisDefaultHost = "localhost"
 )
 
 // Processor is a processor for RedisCache resources.
@@ -50,6 +48,9 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
 	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
 		return p.computeConnectionString(resource), nil
+	})
+	validator.AddComputedSecretField(renderers.ConnectionURIValue, &resource.Properties.Secrets.URL, func() (string, *processors.ValidationError) {
+		return p.computeConnectionURI(resource), nil
 	})
 
 	err := validator.SetAndValidate(options.RecipeOutput)
@@ -78,12 +79,10 @@ func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) stri
 }
 
 func (p *Processor) computeConnectionURI(resource *datamodel.RedisCache) string {
-
-	// redis://user:secret@localhost:6379/0?foo=bar&qux=baz
 	connectionURI := "redis://"
 	var ssl string
 	if resource.Properties.SSL {
-		ssl = ",ssl=True"
+		ssl = "ssl=True"
 		connectionURI = "rediss://"
 	}
 

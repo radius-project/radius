@@ -18,6 +18,7 @@ package renderers
 
 const (
 	ConnectionStringValue = "connectionString"
+	ConnectionURIValue    = "connectionUri"
 	DatabaseNameValue     = "database"
 	ServerNameValue       = "server"
 	UsernameStringValue   = "username"
