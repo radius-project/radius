@@ -80,9 +80,7 @@ func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) stri
 
 func (p *Processor) computeConnectionURI(resource *datamodel.RedisCache) string {
 	connectionURI := "redis://"
-	var ssl string
 	if resource.Properties.SSL {
-		ssl = "ssl=True"
 		connectionURI = "rediss://"
 	}
 
@@ -93,6 +91,6 @@ func (p *Processor) computeConnectionURI(resource *datamodel.RedisCache) string 
 		connectionURI += resource.Properties.Secrets.Password + "@"
 	}
 
-	connectionURI = fmt.Sprintf("%s%s:%v/0?%s", connectionURI, resource.Properties.Host, resource.Properties.Port, ssl)
+	connectionURI = fmt.Sprintf("%s%s:%v/0?", connectionURI, resource.Properties.Host, resource.Properties.Port)
 	return connectionURI
 }
