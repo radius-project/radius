@@ -13,7 +13,7 @@ In general you should ask for guidance before creating a new top-level folder in
 | `cadl/`    | Definitions for generating Radius swagger files.                                      |
 | `deploy/`  | Assets used to package, deploy, and install Radius                                    |
 | `docs/`    | All project documentation                                                             |
-| `hack/`           | Utility code to generate Radius bicep types                                    | 
+| `hack/`    | Utility code to generate Radius bicep types                                           | 
 | `pkg/`     | The majority of the Go code powering Radius                                           |
 | `swagger/` | OpenAPI Specification v2 files to describe the REST APIs of Radius resource providers |
 | `test/`    | Integration and end-to-end tests                                                      |
@@ -33,17 +33,21 @@ In general you should ask for guidance before creating a new top-level folder in
 | `datastoresrp/`   | Resource Provider implementation for `Applications.Datastores` resources                |
 | `health/`         | The health monitor service                                                              |
 | `kubernetes/`     | Utility code and library integrations for working with Kubernetes                       |
+| `kubeutil/`       | Utility code and working with Kubernetes on client side                                 |
 | `linkrp/`         | Resource Provider implementation for `Applications.Link` resources                      |
 | `logging/`        | Utility code for Radius logging                                                         |
 | `messagingrp/`    | Resource Provider implementation for messaging Resource Provider                        |
 | `middleware/`     | Implementation for all Radius middleware                                                |
-| `metrics/`        | Utility code for generating Radius metrics                                              |
-| `profiler/`       | Code and configs for Radius profiler                                              |
+| `metrics/`        | Code generating Radius metrics                                                          |
+| `profiler/`       | Code and configs for Radius profiler                                                    |
 | `recipes/`        | Implementation for Radius Recipes                                                       |
 | `resourcekinds/`  | Definition of Radius resources                                                          |
 | `resourcemodels/` | Code for identifying Radius resources in underlying system                              |
+| `rp/`             | Code shared by Application.Core and Application.Link rps                                |
 | `sdk/`            | Code for interfacing with Radius as a client                                            |
+| `to/`             | Code for pointer to value conversions                                                   |
 | `trace/`          | Utility code for generating Radius traces                                               |
 | `ucp/`            | Implementation of Universal Control Plane                                               |
+| `validator/`      | OpenAPI spec loader and validator                                                       |
 | `version/`        | Infrastructure for how to version the Radius implementations                            |
 
