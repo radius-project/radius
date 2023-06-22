@@ -50,4 +50,3 @@ In general you should ask for guidance before creating a new top-level folder in
 | `ucp/`            | Implementation of Universal Control Plane                                               |
 | `validator/`      | OpenAPI spec loader and validator                                                       |
 | `version/`        | Infrastructure for how to version the Radius implementations                            |
-
