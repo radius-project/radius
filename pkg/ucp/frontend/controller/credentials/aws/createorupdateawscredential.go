@@ -24,7 +24,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 )
@@ -38,15 +37,15 @@ type CreateOrUpdateAWSCredential struct {
 }
 
 // NewCreateOrUpdateAWSCredential creates a new CreateOrUpdateAWSCredential.
-func NewCreateOrUpdateAWSCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewCreateOrUpdateAWSCredential(opts armrpc_controller.Options, secretClient secret.Client) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSCredential{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.AWSCredential]{
 				RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
 				ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 			},
 		),
-		secretClient: opts.SecretClient,
+		secretClient: secretClient,
 	}, nil
 }
 

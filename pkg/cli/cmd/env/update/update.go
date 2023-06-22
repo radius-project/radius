@@ -23,6 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -35,9 +36,9 @@ import (
 )
 
 const (
-	envNotFoundErrMessage = "Environment does not exist. Please select a new environment and try again."
-	azureScopeTemplate    = "/subscriptions/%s/resourceGroups/%s"
-	awsScopeTemplate      = "/planes/aws/aws/accounts/%s/regions/%s"
+	envNotFoundErrMessageFmt = "The environment %q does not exist. Please select a new environment and try again."
+	azureScopeTemplate       = "/subscriptions/%s/resourceGroups/%s"
+	awsScopeTemplate         = "/planes/aws/aws/accounts/%s/regions/%s"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env update` command.
@@ -136,16 +137,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: Validate Azure scope components (https://github.com/project-radius/radius/issues/5155)
-	azureSubId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
-	if err != nil {
-		return err
-	}
+	if cmd.Flags().Changed(commonflags.AzureSubscriptionIdFlag) || cmd.Flags().Changed(commonflags.AzureResourceGroupFlag) {
+		azureSubId, err := cli.RequireAzureSubscriptionId(cmd)
+		if err != nil {
+			return err
+		}
 
-	azureRgId, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
-	if err != nil {
-		return err
-	}
-	if azureSubId != "" && azureRgId != "" {
+		azureRgId, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
+		if err != nil {
+			return err
+		}
+
 		r.providers.Azure.Scope = to.Ptr(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
 	}
 
@@ -156,16 +158,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// TODO: Validate AWS scope components (https://github.com/project-radius/radius/issues/5155)
 	// stsclient can be used to validate
-	awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
-	if err != nil {
-		return err
-	}
+	if cmd.Flags().Changed(commonflags.AWSRegionFlag) || cmd.Flags().Changed(commonflags.AWSAccountIdFlag) {
+		awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
+		if err != nil {
+			return err
+		}
 
-	awsAccountId, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
-	if err != nil {
-		return err
-	}
-	if awsRegion != "" && awsAccountId != "" {
+		awsAccountId, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
+		if err != nil {
+			return err
+		}
+
 		r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
 	}
 
@@ -189,10 +192,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	env, err := client.GetEnvDetails(ctx, r.EnvName)
-	if err != nil {
-		if clients.Is404Error(err) {
-			return &cli.FriendlyError{Message: envNotFoundErrMessage}
-		}
+	if clients.Is404Error(err) {
+		return clierrors.Message(envNotFoundErrMessageFmt, r.EnvName)
+	} else if err != nil {
 		return err
 	}
 	// only update azure provider info if user requires it.
@@ -218,7 +220,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	err = client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, env.Properties)
 	if err != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("failed to configure cloud provider scope to the environment %s: %s", r.EnvName, err.Error())}
+		return clierrors.MessageWithCause(err, "Failed to apply cloud provider scope to the environment %q.", r.EnvName)
 	}
 
 	recipeCount := 0

@@ -18,10 +18,10 @@ package aws
 
 import (
 	"context"
-	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -116,15 +116,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.SecretAccessKey = secretAccessKey
 
 	if r.AccessKeyID == "" {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Access Key id %q cannot be empty", r.AccessKeyID)}
+		return clierrors.Message("Access Key id %q cannot be empty.", r.AccessKeyID)
 	}
 	if r.SecretAccessKey == "" {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Secret Access Key %q cannot be empty", r.SecretAccessKey)}
+		return clierrors.Message("Secret Access Key %q cannot be empty.", r.SecretAccessKey)
 	}
 
 	kubeContext, ok := r.Workspace.KubernetesContext()
 	if !ok {
-		return &cli.FriendlyError{Message: "A Kubernetes connection is required."}
+		return clierrors.Message("A Kubernetes connection is required.")
 	}
 	r.KubeContext = kubeContext
 	return nil

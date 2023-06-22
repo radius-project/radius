@@ -114,8 +114,8 @@ func computeResourceID(id resources.ID, resourceID string) string {
 }
 
 // Extract Region from  a URI like /apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-west-2/providers/...
-func readRegionFromRequest(path string, basePath string) (string, armrpc_rest.Response) {
-	path = strings.TrimPrefix(path, basePath)
+func readRegionFromRequest(path string, pathBase string) (string, armrpc_rest.Response) {
+	path = strings.TrimPrefix(path, pathBase)
 	resourceID, err := resources.Parse(path)
 	if err != nil {
 		errResponse := v1.ErrorResponse{

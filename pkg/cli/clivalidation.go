@@ -22,8 +22,11 @@ import (
 	"path"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/config"
-	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
@@ -234,7 +237,7 @@ func RequireResourceType(args []string) (string, error) {
 	}
 	resourceTypeName := args[0]
 	supportedTypes := []string{}
-	for _, resourceType := range ucp.ResourceTypesList {
+	for _, resourceType := range clients.ResourceTypesList {
 		supportedType := strings.Split(resourceType, "/")[1]
 		supportedTypes = append(supportedTypes, supportedType)
 		if strings.EqualFold(supportedType, resourceTypeName) {
@@ -256,6 +259,21 @@ func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource Azur
 		ResourceGroup:  results[2],
 		SubscriptionID: results[3],
 	}, nil
+}
+
+// RequireAzureSubscriptionId is used by commands that require specifying an Azure subscriptionId using a flag
+func RequireAzureSubscriptionId(cmd *cobra.Command) (string, error) {
+	subscriptionId, err := cmd.Flags().GetString(commonflags.AzureSubscriptionIdFlag)
+	if err != nil {
+		return "", err
+	}
+
+	// Validate that subscriptionId is a valid GUID
+	if _, err := uuid.Parse(subscriptionId); err != nil {
+		return "", fmt.Errorf("'%s' is not a valid subscription ID", subscriptionId)
+	}
+
+	return subscriptionId, err
 }
 
 func RequireOutput(cmd *cobra.Command) (string, error) {
@@ -436,7 +454,7 @@ func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, e
 	} else if workspace.Scope != "" {
 		return workspace.Scope, nil
 	} else {
-		return "", &FriendlyError{Message: "no resource group set, use `--group` to pass in a resource group name"}
+		return "", clierrors.Message("No resource group set, use `--group` to pass in a resource group name.")
 	}
 }
 

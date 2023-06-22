@@ -14,6 +14,10 @@ For learning Go, we recommend the following resources:
 
 We're happy to accept pull-requests and give code review feedback aimed at newbies. If you have programmed in other languages before, we are confident you can pick up Go and start contributing easily.
 
+## Asking for help
+
+Get stuck while working on a change? Want to get advice on coding style or existing code? Creating a [forum post](https://discordapp.com/channels/1113519723347456110/1115302284356767814) on our Discord server is a great way to get help.
+
 ## Getting productive
 
 You'll want to run the following command often:
@@ -48,6 +52,44 @@ One thing we do require is [godoc comments](https://tip.golang.org/doc/comment) 
 - Requires you to document clearly the purpose code you expect other parts of the codebase to call.
 
 Right now we don't have automated enforcement of this rule, so expect it to come up in code review if you forget.
+
+## Error handling
+
+*Most of this is standard practice for error handling in Go. We find that beginners struggle to understand and apply the right patterns so we're providing some advice.*
+
+The Google Go Style Guide has some [excellent guidance](https://google.github.io/styleguide/go/decisions#errors) for errors.
+
+### Suppressing errors
+
+Radius code **SHOULD NOT** suppress errors without a good reason. 
+
+```go
+// Bad: Don't do this
+result, _ := someErrorReturningFunc()
+useResult(result)
+```
+
+If you have a good reason to ignore an error then you should:
+
+- Document the rationale with a comment.
+- Handle a **specific** error type rather than all errors.
+- Propagate the error for all other cases.
+
+```go
+// Good: do this
+result, err := findWidget(id)
+if errors.Is(err, &WidgetDoesNotExistError{}) {
+    // If the widget does not exist we want to create it before continuing.
+    err := createWidget(id)
+    if err != nil {
+        return err
+    }
+    
+    // Widget exists, so let's continue
+} else if err != nil {
+    return err
+}
+```
 
 ### Linting
 

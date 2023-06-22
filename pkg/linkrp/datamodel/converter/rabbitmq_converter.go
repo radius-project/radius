@@ -45,6 +45,9 @@ func RabbitMQMessageQueueDataModelFromVersioned(content []byte, version string) 
 			return nil, err
 		}
 		dm, err := versioned.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.RabbitMQMessageQueue), err
 
 	default:

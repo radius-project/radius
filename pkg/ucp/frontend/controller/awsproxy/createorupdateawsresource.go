@@ -30,10 +30,9 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	"github.com/project-radius/radius/pkg/to"
-	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
@@ -41,18 +40,14 @@ var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
 // CreateOrUpdateAWSResource is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
-	basePath   string
+	awsClients ucp_aws.Clients
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
-func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
+func NewCreateOrUpdateAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSResource{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
-		basePath:   opts.BasePath,
+		armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients,
 	}, nil
 }
 
@@ -61,7 +56,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
-	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
 	if errResponse != nil {
 		return errResponse, nil
 	}
@@ -95,20 +90,20 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
 	existing := true
-	getResponse, err := p.awsOptions.AWSCloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	getResponse, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
-	if awserror.IsAWSResourceNotFoundError(err) {
+	if ucp_aws.IsAWSResourceNotFoundError(err) {
 		existing = false
 	} else if err != nil {
-		return awserror.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(err)
 	}
 
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
 	if err != nil {
-		return awserror.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(err)
 	}
 
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
@@ -117,7 +112,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if getResponse != nil {
 		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		}
 	}
 
@@ -129,7 +124,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if existing {
 		// Get resource type schema
 
-		describeTypeOutput, err := p.awsOptions.AWSCloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 			Type:     types.RegistryTypeResource,
 			TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		}, cloudFormationOpts...)
@@ -142,28 +137,28 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
 		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		}
 
 		// Call update only if the patch is not empty
 		if len(patch) > 0 {
 			marshaled, err := json.Marshal(&patch)
 			if err != nil {
-				return awserror.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(err)
 			}
 
-			response, err := p.awsOptions.AWSCloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := p.awsClients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(serviceCtx.ResourceID.Name()),
 				PatchDocument: aws.String(string(marshaled)),
 			}, cloudControlOpts...)
 			if err != nil {
-				return awserror.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(err)
 			}
 
 			operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 			if err != nil {
-				return awserror.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(err)
 			}
 		} else {
 			// mark provisioning state as succeeded here
@@ -180,17 +175,17 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			return resp, nil
 		}
 	} else {
-		response, err := p.awsOptions.AWSCloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		response, err := p.awsClients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
 		}, cloudControlOpts...)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		}
 
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(err)
 		}
 	}
 
@@ -203,6 +198,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		"properties": responseProperties,
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.basePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.Options().PathBase)
 	return resp, nil
 }

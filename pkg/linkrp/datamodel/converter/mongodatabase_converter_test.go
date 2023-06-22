@@ -64,7 +64,6 @@ func TestMongoDatabaseDataModelToVersioned(t *testing.T) {
 		})
 	}
 }
-
 func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 	testset := []struct {
 		versionedModelFile string
@@ -80,6 +79,11 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-invalid.json",
 			"2022-03-15-privatepreview",
 			errors.New("json: cannot unmarshal number into Go struct field MongoDatabaseProperties.properties.resource of type string"),
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-missinginputs.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual"},
 		},
 		{
 			"",

@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -218,7 +217,7 @@ func Test_Show(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 
-	// YES, this is a success case. Delete means "make it be gone", so if the envrionment is already
+	// YES, this is a success case. Delete means "make it be gone", so if the environment is already
 	// gone that counts as a success.
 	//
 	// We print a different message which is why it has a separate test
@@ -282,7 +281,7 @@ func Test_Show(t *testing.T) {
 		}
 
 		err := runner.Run(context.Background())
-		require.Equal(t, err, &cli.FriendlyError{Message: prompt.ErrExitConsoleMessage})
+		require.Equal(t, &prompt.ErrExitConsole{}, err)
 		require.Empty(t, outputSink.Writes)
 	})
 }

@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -37,11 +36,7 @@ func Test_ListPlanes(t *testing.T) {
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	planesCtrl, err := NewListPlanes(ctrl.Options{
-		Options: armrpc_controller.Options{
-			StorageClient: mockStorageClient,
-		},
-	})
+	planesCtrl, err := NewListPlanes(armrpc_controller.Options{StorageClient: mockStorageClient})
 	require.NoError(t, err)
 
 	url := "/planes?api-version=2022-09-01-privatepreview"

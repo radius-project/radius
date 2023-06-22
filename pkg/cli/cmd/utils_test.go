@@ -17,11 +17,12 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
@@ -47,7 +48,7 @@ func TestCreateEnvProviders(t *testing.T) {
 			name:      "invalid provider types",
 			providers: []any{azure.Provider{}},
 			out:       corerp.Providers{},
-			err:       &cli.FriendlyError{Message: "Internal error: cannot create environment with invalid type 'azure.Provider'"},
+			err:       errors.New("internal error: cannot create environment with invalid type 'azure.Provider'"),
 		},
 		{
 			name: "skip nil provider",
@@ -80,12 +81,8 @@ func TestCreateEnvProviders(t *testing.T) {
 				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
 				&azure.Provider{SubscriptionID: "testSub2", ResourceGroup: "testRG2"},
 			},
-			out: corerp.Providers{
-				Azure: &corerp.ProvidersAzure{
-					Scope: to.Ptr("/subscriptions/testSubs/resourceGroups/testRG"),
-				},
-			},
-			err: &cli.FriendlyError{Message: "Only one azure provider can be configured to a scope"},
+			out: corerp.Providers{},
+			err: clierrors.Message("Only one azure provider can be configured to a scope."),
 		},
 		{
 			name: "only aws provider",
@@ -105,12 +102,8 @@ func TestCreateEnvProviders(t *testing.T) {
 				&aws.Provider{AccountID: "0", Region: "westus"},
 				&aws.Provider{AccountID: "1", Region: "eastus"},
 			},
-			out: corerp.Providers{
-				Aws: &corerp.ProvidersAws{
-					Scope: to.Ptr("/planes/aws/aws/accounts/0/regions/westus"),
-				},
-			},
-			err: &cli.FriendlyError{Message: "Only one aws provider can be configured to a scope"},
+			out: corerp.Providers{},
+			err: clierrors.Message("Only one aws provider can be configured to a scope."),
 		},
 		{
 			name: "azure and aws providers",
@@ -143,7 +136,7 @@ func TestCreateEnvProviders(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			provider, err := CreateEnvProviders(tc.providers)
 			require.Equal(t, tc.out, provider)
-			require.ErrorIs(t, err, tc.err)
+			require.Equal(t, tc.err, err)
 		})
 	}
 }

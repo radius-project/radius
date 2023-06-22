@@ -26,8 +26,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   name: 'tls-gtwy-gtwy'
   properties: {
     application: app.id
-    tls: { 
-      minimumProtocolVersion: '1.2'
+    tls: {
       certificateFrom: certificate.id
     } 
     routes: [

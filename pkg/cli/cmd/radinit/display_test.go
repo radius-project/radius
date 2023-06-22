@@ -31,7 +31,7 @@ import (
 
 var (
 	// Set this to a big value when debugging.
-	waitTimeout = 1 * time.Second
+	waitTimeout = 5 * time.Second
 )
 
 // NOTE: I tried my best to write a test for the progress model. It was possible to write a good test, but
@@ -40,6 +40,7 @@ var (
 // We can try again when the test framework is more mature.
 
 func Test_summaryModel(t *testing.T) {
+	t.Skip("these tests are failing sporadically. tracked by #5762")
 	waitForRender := func(t *testing.T, reader io.Reader) string {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {

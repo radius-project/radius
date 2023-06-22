@@ -143,13 +143,15 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 
 			reqCtx := trace.WithTraceparent(ctx, op.TraceparentID)
+
 			// Populate the default attributes in the current context so all logs will have these fields.
-			opLogger := ucplog.FromContextOrDiscard(reqCtx).WithValues(
+			reqCtx = ucplog.WrapLogContext(reqCtx,
 				logging.LogFieldResourceID, op.ResourceID,
 				logging.LogFieldOperationID, op.OperationID,
 				logging.LogFieldOperationType, op.OperationType,
-				logging.LogFieldDequeueCount, msgreq.DequeueCount,
-			)
+				logging.LogFieldDequeueCount, msgreq.DequeueCount)
+
+			opLogger := ucplog.FromContextOrDiscard(reqCtx)
 
 			armReqCtx, err := op.ARMRequestContext()
 			if err != nil {
@@ -180,7 +182,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 					Code:    v1.CodeInternal,
 					Message: errMsg,
 				})
-				w.completeOperation(ctx, msgreq, failed, asyncCtrl.StorageClient())
+				w.completeOperation(reqCtx, msgreq, failed, asyncCtrl.StorageClient())
 				return
 			}
 
@@ -188,7 +190,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			// 1. The same message is delivered twice in multiple instances.
 			// 2. provisioningState is not matched between resource and operationStatuses
 
-			dup, err := w.isDuplicated(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
+			dup, err := w.isDuplicated(reqCtx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
 				opLogger.Error(err, "failed to check potential deduplication.")
 				return

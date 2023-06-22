@@ -26,8 +26,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -36,15 +34,14 @@ import (
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager, *deployment.MockDeploymentProcessor) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
 		msm := statusmanager.NewMockStatusManager(mctrl)
-		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, mds, msm, mDeploymentProcessor
+		}, mds, msm
 	}
 	ctx := context.Background()
 
@@ -53,8 +50,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		"accountSid": "sid",
 		"authToken:": "token",
 	}
+
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
-		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
+		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
@@ -67,12 +65,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mds,
+			StatusManager: msm,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)
@@ -85,7 +80,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
-		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
+		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
@@ -101,14 +96,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
-
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mds,
+			StatusManager: msm,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)
@@ -119,15 +109,15 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &map[string]any{}
-		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+		actualOutput := map[string]any{}
+		_ = json.Unmarshal(w.Body.Bytes(), &actualOutput)
 
-		require.Equal(t, expectedSecrets["accountSid"], (*actualOutput)["accountSid"])
-		require.Equal(t, expectedSecrets["authToken"], (*actualOutput)["authToken"])
+		require.Equal(t, expectedSecrets["accountSid"], actualOutput["accountSid"])
+		require.Equal(t, expectedSecrets["authToken"], actualOutput["authToken"])
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
+		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
 		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := testutil.ARMTestContextFromRequest(req)
@@ -140,12 +130,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mds,
+			StatusManager: msm,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)

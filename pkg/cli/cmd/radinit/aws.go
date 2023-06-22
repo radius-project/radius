@@ -18,12 +18,10 @@ package radinit
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 )
 
@@ -32,8 +30,8 @@ const (
 	enterAWSRegionPlaceholder             = "Enter a region..."
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
 	enterAWSIAMAcessKeyIDPlaceholder      = "Enter IAM access key id..."
-	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Keys:"
-	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM access key..."
+	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Key:"
+	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM secret access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
 
 	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
@@ -41,31 +39,25 @@ const (
 
 func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
 	region, err := r.Prompter.GetTextInput(enterAWSRegionPrompt, prompt.TextInputOptions{Placeholder: enterAWSRegionPlaceholder})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
 
 	accessKeyID, err := r.Prompter.GetTextInput(enterAWSIAMAcessKeyIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMAcessKeyIDPlaceholder})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	secretAccessKey, err := r.Prompter.GetTextInput(enterAWSIAMSecretAccessKeyPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMSecretAccessKeyPlaceholder, EchoMode: textinput.EchoPassword})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	result, err := r.awsClient.GetCallerIdentity(ctx, region, accessKeyID, secretAccessKey)
 	if err != nil {
-		return nil, &cli.FriendlyError{Message: fmt.Sprintf("AWS credential verification failed: %s", err.Error())}
+		return nil, clierrors.MessageWithCause(err, "AWS credential verification failed.")
 	}
 
 	return &aws.Provider{
