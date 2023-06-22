@@ -72,7 +72,7 @@ In addition, we have the below repositories.
 
 ## Security
 
-Please refer to our guide on [Reporting security vulnerabilities](https://github.com/project-radius/radius/SECURITY.md)
+Please refer to our guide on [Reporting security vulnerabilities](SECURITY.md)
 
 ## Code of conduct
 
