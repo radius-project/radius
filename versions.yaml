@@ -1,0 +1,4 @@
+stable:
+  version: v0.21.0
+latest:
+  version: v0.22.0-rc1
