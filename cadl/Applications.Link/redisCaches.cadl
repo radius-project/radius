@@ -87,7 +87,7 @@ model RedisCacheProperties extends BasicResourceProperties {
   @doc("The username for Redis cache")
   username?: string;
 
-  @doc("Specifies whether to enable non-TLS or TLS connections to the Redis cache")  
+  @doc("Specifies whether to enable non-SSL or SSL connections to the Redis cache")  
   ssl?: boolean;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the Redis caches link")

@@ -748,7 +748,7 @@ type RedisCacheProperties struct {
 	// List of the resource IDs that support the Redis resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// Specifies whether to enable non-TLS or TLS connections to the Redis cache
+	// Specifies whether to enable non-SSL or SSL connections to the Redis cache
 	SSL *bool `json:"ssl,omitempty"`
 
 	// Secrets provided by resource

@@ -136,7 +136,7 @@ type RedisCacheProperties struct {
 	Username string `json:"username,omitempty"`
 
 	// Specifies whether to enable non-SSL or SSL connections
-	SSL bool `json:"tls,omitempty"`
+	SSL bool `json:"ssl,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
 	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`

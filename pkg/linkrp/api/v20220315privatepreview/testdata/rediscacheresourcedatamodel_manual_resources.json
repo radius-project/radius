@@ -24,6 +24,7 @@
             }],
         "host": "myrediscache.redis.cache.windows.net",
         "port": 10255,
+        "ssl": true,
         "resourceProvisioning": "manual"
     }
 }

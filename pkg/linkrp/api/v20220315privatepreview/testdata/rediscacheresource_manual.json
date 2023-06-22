@@ -23,8 +23,10 @@
         "port": 10255,
         "secrets": {
           "password": "testPassword",
-          "connectionString": "test-connection-string"
+          "connectionString": "test-connection-string",
+          "url": "test-url"
         },
+        "ssl": true,
         "resourceProvisioning": "manual"
     }
 }

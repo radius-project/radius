@@ -35,6 +35,7 @@ func Test_Process(t *testing.T) {
 	const azureRedisResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis2"
 	const host = "myredis.redis.cache.windows.net"
 	const connectionString = "myredis.redis.cache.windows.net:6380,abortConnect=False,ssl=True,user=testuser,password=testpassword"
+	const connectionURI = "redis://testuser:testpassword@myredis.redis.cache.windows.net:6380/0?"
 	const username = "testuser"
 	const password = "testpassword"
 
@@ -66,6 +67,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
+		require.Equal(t, connectionURI, resource.Properties.Secrets.URL)
 
 		expectedValues := map[string]any{
 			"host":     host,
@@ -78,6 +80,9 @@ func Test_Process(t *testing.T) {
 			},
 			"password": {
 				Value: password,
+			},
+			"connectionUri": {
+				Value: connectionURI,
 			},
 		}
 
@@ -99,6 +104,7 @@ func Test_Process(t *testing.T) {
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
+					URL:              connectionURI,
 				},
 			},
 		}
@@ -110,6 +116,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
+		require.Equal(t, connectionURI, resource.Properties.Secrets.URL)
 
 		expectedValues := map[string]any{
 			"host":     host,
@@ -122,6 +129,9 @@ func Test_Process(t *testing.T) {
 			},
 			"connectionString": {
 				Value: connectionString,
+			},
+			"connectionUri": {
+				Value: connectionURI,
 			},
 		}
 
@@ -148,6 +158,7 @@ func Test_Process(t *testing.T) {
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
+					URL:              connectionURI,
 				},
 			},
 		}
@@ -165,6 +176,7 @@ func Test_Process(t *testing.T) {
 				Secrets: map[string]any{
 					"password":         "asdf",
 					"connectionString": "asdf",
+					"connectionUri":    "asdf",
 				},
 			},
 		}
@@ -177,6 +189,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
+		require.Equal(t, connectionURI, resource.Properties.Secrets.URL)
 
 		expectedValues := map[string]any{
 			"host":     host,
@@ -189,6 +202,9 @@ func Test_Process(t *testing.T) {
 			},
 			"connectionString": {
 				Value: connectionString,
+			},
+			"connectionUri": {
+				Value: connectionURI,
 			},
 		}
 
