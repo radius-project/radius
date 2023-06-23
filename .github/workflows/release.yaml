@@ -64,20 +64,22 @@ jobs:
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Determine release version from versions.json
         run: |
-          './radius/.github/scripts/release-get-version.sh'
+          echo $(pwd)
+          echo $(ls -la)
+          ./radius/.github/scripts/release-get-version.sh
       - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
         run: |
-          './radius/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }}'
+          ./radius/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }}
         if: success()
       - name: Release project-radius/bicep version ${{ env.RELEASE_VERSION }}
         run: |
-          './radius/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }}'
+          ./radius/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }}
         if: success()
       - name: Release project-radius/deployment-engine version ${{ env.RELEASE_VERSION }}
         run: |
-          './radius/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }}'
+          ./radius/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }}
         if: success()
       - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
         run: |
-          './radius/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }}'
+          ./radius/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }}
         if: success()
