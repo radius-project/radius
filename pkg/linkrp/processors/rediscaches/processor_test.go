@@ -76,6 +76,7 @@ func Test_Process(t *testing.T) {
 			"host":     host,
 			"port":     int32(RedisNonSSLPort),
 			"username": username,
+			"ssl":      false,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"connectionString": {
@@ -159,7 +160,6 @@ func Test_Process(t *testing.T) {
 				Host:      host,
 				Port:      RedisSSLPort,
 				Username:  username,
-				SSL:       true,
 
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,

@@ -160,7 +160,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 					Host:                 "myrediscache.redis.cache.windows.net",
 					Port:                 10255,
 					SSL:                  true,
-					Username:             "",
+					Username:             "admin",
 					Resources:            []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
 					Secrets: datamodel.RedisCacheSecrets{
 						Password:         "testPassword",
@@ -397,7 +397,7 @@ func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 			require.Equal(t, &expectedErr, err)
 		}
 		if payload == "rediscacheresource-invalid2.json" {
-			expectedErr := v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual"}
+			expectedErr := v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tusername must be provided with password"}
 			_, err = versionedResource.ConvertTo()
 			require.Equal(t, &expectedErr, err)
 		}

@@ -45,7 +45,9 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
-	validator.AddOptionalBoolField(renderers.SSL, &resource.Properties.SSL)
+	validator.AddComputedBoolField(renderers.SSL, &resource.Properties.SSL, func() (bool, *processors.ValidationError) {
+		return p.computeSSL(resource), nil
+	})
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
 	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
 		return p.computeConnectionString(resource), nil
@@ -60,6 +62,10 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	}
 
 	return nil
+}
+
+func (p *Processor) computeSSL(resource *datamodel.RedisCache) bool {
+	return resource.Properties.Port == RedisSSLPort
 }
 
 func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) string {

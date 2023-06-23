@@ -107,6 +107,9 @@ func (redisCache *RedisCache) VerifyInputs() error {
 		if redisCache.Properties.Port == 0 {
 			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
 		}
+		if redisCache.Properties.Username == "" && redisCache.Properties.Secrets.Password != "" {
+			msgs = append(msgs, "username must be provided with password")
+		}
 	}
 
 	if len(msgs) == 1 {

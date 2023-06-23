@@ -21,6 +21,7 @@
         ],
         "host": "myrediscache.redis.cache.windows.net",
         "port": 10255,
+        "username": "admin",
         "secrets": {
           "password": "testPassword",
           "connectionString": "test-connection-string",
