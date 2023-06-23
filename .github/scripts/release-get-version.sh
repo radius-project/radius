@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+set -x
+
 # does_tag_exist checks if a tag exists in the remote repository
 function does_tag_exist() {
   if git ls-remote --tags origin $1 | grep -q $1; then
@@ -38,6 +40,16 @@ echo "Getting versions from ${VERSION_FILE_PATH}..."
 
 STABLE_VERSION=$(cat ${VERSION_FILE_PATH} | jq -r '.stable.version')
 LATEST_VERSION=$(cat ${VERSION_FILE_PATH} | jq -r '.latest.version')
+
+if [[ -z "$STABLE_VERSION" ]]; then
+  echo "Error: stable version not found. Please check versions.json."
+  exit 1
+fi
+
+if [[ -z "$LATEST_VERSION" ]]; then
+  echo "Error: latest version not found. Please check versions.json."
+  exit 1
+fi
 
 echo "Stable version: ${STABLE_VERSION}"
 echo "Latest version: ${LATEST_VERSION}"

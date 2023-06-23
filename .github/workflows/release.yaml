@@ -63,16 +63,21 @@ jobs:
           git config --global user.name "Radius CI Bot"
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Determine release version from versions.json
-        run: './.github/scripts/determine-release-version.sh'
+        run: |
+          './.github/scripts/determine-release-version.sh'
       - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
-        run: './.github/scripts/tag-repository.sh radius main ${{ env.RELEASE_VERSION }}'
+        run: |
+          './.github/scripts/tag-repository.sh radius main ${{ env.RELEASE_VERSION }}'
         if: success()
       - name: Release project-radius/bicep version ${{ env.RELEASE_VERSION }}
-        run: './.github/scripts/tag-repository.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }}'
+        run: |
+          './.github/scripts/tag-repository.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }}'
         if: success()
       - name: Release project-radius/deployment-engine version ${{ env.RELEASE_VERSION }}
-        run: './.github/scripts/tag-repository.sh deployment-engine main ${{ env.RELEASE_VERSION }}'
+        run: |
+          './.github/scripts/tag-repository.sh deployment-engine main ${{ env.RELEASE_VERSION }}'
         if: success()
       - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
-        run: './.github/scripts/tag-repository.sh recipes main ${{ env.RELEASE_VERSION }}'
+        run: |
+          './.github/scripts/tag-repository.sh recipes main ${{ env.RELEASE_VERSION }}'
         if: success()

@@ -14,9 +14,26 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+set -x
+
 REPOSITORY=$1
 MAIN_BRANCH=$2
 VERSION=$3
+
+if [[ -z "$REPOSITORY" ]]; then
+  echo "Error: REPOSITORY is not set."
+  exit 1
+fi
+
+if [[ -z "$MAIN_BRANCH" ]]; then
+  echo "Error: MAIN_BRANCH is not set."
+  exit 1
+fi
+
+if [[ -z "$VERSION" ]]; then
+  echo "Error: VERSION is not set."
+  exit 1
+fi
 
 # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
 VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
@@ -25,7 +42,7 @@ VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
 RELEASE_BRANCH_NAME="release/$(echo $VERSION_NUMBER | cut -d '.' -f 1,2)"
 
 # TAG_NAME should be the version (e.g. v0.1.0)
-TAG_NAME="${VERSION}"
+TAG_NAME=$VERSION
 
 echo "Version: ${VERSION}"
 echo "Version number: ${VERSION_NUMBER}"
@@ -35,23 +52,12 @@ echo "Final release: ${FINAL_RELEASE}"
 
 echo "Creating release branches and tags for ${REPOSITORY}..."
 
-COMMANDS=""
-COMMANDS+="pushd ${REPOSITORY}\n"
-pushd "${REPOSITORY}"
-COMMANDS+="git checkout ${MAIN_BRANCH}\n"
-git checkout "${MAIN_BRANCH}"
-COMMANDS+="git pull origin ${MAIN_BRANCH}\n"
-git pull origin "${MAIN_BRANCH}"
-COMMANDS+="git checkout -B ${RELEASE_BRANCH_NAME}\n"
-git checkout -B "${RELEASE_BRANCH_NAME}"
-COMMANDS+="git pull origin ${RELEASE_BRANCH_NAME}\n"
-git pull origin "${RELEASE_BRANCH_NAME}"
-COMMANDS+="git tag ${TAG_NAME}\n"
-git tag "${TAG_NAME}"
-COMMANDS+="git push origin --tags\n"
+pushd $REPOSITORY
+git checkout $MAIN_BRANCH
+git pull origin $MAIN_BRANCH
+git checkout -B $RELEASE_BRANCH_NAME
+git pull origin $RELEASE_BRANCH_NAME
+git tag $TAG_NAME
 git push origin --tags
-COMMANDS+="git push origin ${RELEASE_BRANCH_NAME}\n"
-git push origin "${RELEASE_BRANCH_NAME}"
-COMMANDS+="popd"
+git push origin $RELEASE_BRANCH_NAME
 popd
-echo "\nCommands Run:\n----------\n${COMMANDS}\n----------\n"
