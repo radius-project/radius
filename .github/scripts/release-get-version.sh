@@ -16,6 +16,8 @@
 
 set -x
 
+REPOSITORY=$1
+
 # does_tag_exist checks if a tag exists in the remote repository
 function does_tag_exist() {
   if git ls-remote --tags origin $1 | grep -q $1; then
@@ -26,14 +28,14 @@ function does_tag_exist() {
 }
 
 # Ensure the project-radius/radius repo is cloned
-if [[ -d "radius" ]]; then
-  echo "radius directory exists"
+if [[ -d $REPOSITORY ]]; then
+  echo "${REPOSITORY} directory exists"
 else
-  echo "Error: radius directory does not exist. Please clone project-radius/radius repository."
+  echo "Error: ${REPOSITORY} directory does not exist. Please clone project-radius/radius repository."
   exit 1
 fi
 
-VERSION_FILE_PATH="./radius/versions.json"
+VERSION_FILE_PATH="./${REPOSITORY}/versions.json"
 
 # Get the versions from the versions.json file
 echo "Getting versions from ${VERSION_FILE_PATH}..."
@@ -64,7 +66,7 @@ VERSION=""
 # Check the existing tags from GitHub to determine if stable or latest version changed
 # Note that we shouldn't be changing both at the same time. If we do, we'll use the stable version
 echo "Checking if ${LATEST_VERSION} tag exists..."
-pushd "radius"
+pushd $REPOSITORY
 if does_tag_exist "${LATEST_VERSION}"; then
   echo "Latest version tag ${LATEST_VERSION} already exists."
 else

@@ -75,15 +75,15 @@ jobs:
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Determine release version from versions.json
         run: |
-          ./radius-pr/.github/scripts/release-get-version.sh
+          ./radius-pr/.github/scripts/release-get-version.sh "radius-pr"
       - name: Generate release summary
         run: |
-          echo "## Release" >> ${{ env.GITHUB_STEP_SUMMARY }}
-          echo "* Release driver: ${{ env.GITHUB_ACTOR }} "> ${{ env.GITHUB_STEP_SUMMARY }}
-          echo "* Release version: ${{ env.RELEASE_VERSION }}" >> ${{ env.GITHUB_STEP_SUMMARY }}
-          echo "* Final release: ${{ env.FINAL_RELEASE }}" >> ${{ env.GITHUB_STEP_SUMMARY }}
-          echo "* Release date: $(date)" >> ${{ env.GITHUB_STEP_SUMMARY }}
-      - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
+          echo "## Release" >> $GITHUB_STEP_SUMMARY
+          echo "* Release driver: $GITHUB_ACTOR "> $GITHUB_STEP_SUMMARY
+          echo "* Release version: $RELEASE_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "* Final release: $FINAL_RELEASE" >> $GITHUB_STEP_SUMMARY
+          echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
+      - name: Release project-radius/radius version $RELEASE_VERSION
         run: |
           ./radius-pr/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
