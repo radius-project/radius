@@ -132,25 +132,22 @@ type RabbitMQListSecretsResult struct {
 	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
-// RabbitMQQueuePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetRabbitMQQueueProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *RabbitMQQueueProperties, *RecipeRabbitMQQueueProperties, *ValuesRabbitMQQueueProperties
-type RabbitMQQueuePropertiesClassification interface {
-	// GetRabbitMQQueueProperties returns the RabbitMQQueueProperties content of the underlying type.
-	GetRabbitMQQueueProperties() *RabbitMQQueueProperties
-}
-
 // RabbitMQQueueProperties - RabbitMQQueue portable resource properties
 type RabbitMQQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Discriminator property for RabbitMQQueueProperties.
-	Mode *string `json:"mode,omitempty"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
@@ -162,16 +159,13 @@ type RabbitMQQueueProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetRabbitMQQueueProperties implements the RabbitMQQueuePropertiesClassification interface for type RabbitMQQueueProperties.
-func (r *RabbitMQQueueProperties) GetRabbitMQQueueProperties() *RabbitMQQueueProperties { return r }
-
 // RabbitMQQueueResource - RabbitMQQueue portable resource
 type RabbitMQQueueResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties RabbitMQQueuePropertiesClassification `json:"properties,omitempty"`
+	Properties *RabbitMQQueueProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -240,45 +234,6 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
-// RecipeRabbitMQQueueProperties - RabbitMQQueue Properties for Mode Recipe
-type RecipeRabbitMQQueueProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for RabbitMQQueueProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
-	// Secrets provided by resources,
-	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the rabbitMQ message queue portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetRabbitMQQueueProperties implements the RabbitMQQueuePropertiesClassification interface for type RecipeRabbitMQQueueProperties.
-func (r *RecipeRabbitMQQueueProperties) GetRabbitMQQueueProperties() *RabbitMQQueueProperties {
-	return &RabbitMQQueueProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -341,41 +296,5 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// ValuesRabbitMQQueueProperties - RabbitMQQueue Properties for Mode Values
-type ValuesRabbitMQQueueProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for RabbitMQQueueProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Secrets provided by resources,
-	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the rabbitMQ message queue portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetRabbitMQQueueProperties implements the RabbitMQQueuePropertiesClassification interface for type ValuesRabbitMQQueueProperties.
-func (v *ValuesRabbitMQQueueProperties) GetRabbitMQQueueProperties() *RabbitMQQueueProperties {
-	return &RabbitMQQueueProperties{
-		Mode: v.Mode,
-		ProvisioningState: v.ProvisioningState,
-		Secrets: v.Secrets,
-		Status: v.Status,
-		Environment: v.Environment,
-		Application: v.Application,
-	}
 }
 
