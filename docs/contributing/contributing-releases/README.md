@@ -201,12 +201,12 @@ After creating a release (either an RC release or the final release), it's good 
 4. Verify that each pod running in the radius-system namespace uses the right image and tag for each of the containers.
 
    ```
-   kubectl describe pods -n radius-system -l control-plane=appcore-rp
+   kubectl describe pods -n radius-system -l control-plane=applications-rp
    kubectl describe pods -n radius-system -l control-plane=de
    kubectl describe pods -n radius-system -l control-plane=ucp
    ```
 
-   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.21 for the 0.21 release for the appcore-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
+   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/applications-rp:0.21 for the 0.21 release for the applications-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
 
    ![Example of version and tag mismatch](images/image-label.png)
 

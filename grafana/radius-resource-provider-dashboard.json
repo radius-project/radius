@@ -1272,7 +1272,7 @@
               "uid": "${DATA_SOURCE}"
             },
             "editorMode": "code",
-            "expr": "histogram_quantile(0.75, sum by (le)(rate(asyncoperation_duration_bucket{control_plane=\"appcore-rp\", resource_type!=\"\"}[5m])))",
+            "expr": "histogram_quantile(0.75, sum by (le)(rate(asyncoperation_duration_bucket{control_plane=\"applications-rp\", resource_type!=\"\"}[5m])))",
             "hide": false,
             "legendFormat": "p75",
             "range": true,
@@ -1284,7 +1284,7 @@
               "uid": "${DATA_SOURCE}"
             },
             "editorMode": "code",
-            "expr": "histogram_quantile(0.5, sum by (le)(rate(asyncoperation_duration_bucket{control_plane=\"appcore-rp\", resource_type!=\"\"}[5m])))",
+            "expr": "histogram_quantile(0.5, sum by (le)(rate(asyncoperation_duration_bucket{control_plane=\"applications-rp\", resource_type!=\"\"}[5m])))",
             "hide": false,
             "legendFormat": "p50",
             "range": true,
@@ -1419,7 +1419,7 @@
         {
           "hide": 2,
           "name": "servicename",
-          "query": "appcore-rp",
+          "query": "applications-rp",
           "skipUrlSync": false,
           "type": "constant"
         }
