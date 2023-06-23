@@ -31,6 +31,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	ApplicationID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"
+	EnvironmentID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
+	RedisID       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"
+)
+
 func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []struct {
 		desc     string
@@ -41,31 +47,15 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "redis cache with default recipe",
 			file: "rediscacheresource_defaultrecipe.json",
 			expected: &datamodel.RedisCache{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0",
-						Name: "redis0",
-						Type: linkrp.RedisCachesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
-					BasicResourceProperties: rpv1.BasicResourceProperties{
-						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					Host:                 "",
-					Port:                 0,
-					SSL:                  false,
-					Username:             "",
-					Recipe:               linkrp.LinkRecipe{Name: "default"},
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					Host:                    "",
+					Port:                    0,
+					SSL:                     false,
+					Username:                "",
+					Recipe:                  linkrp.LinkRecipe{Name: "default"},
 				},
 			},
 		},
@@ -73,31 +63,15 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "redis cache with named recipe",
 			file: "rediscacheresource_recipe_named.json",
 			expected: &datamodel.RedisCache{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0",
-						Name: "redis0",
-						Type: linkrp.RedisCachesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
-					BasicResourceProperties: rpv1.BasicResourceProperties{
-						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					Host:                 "",
-					Port:                 0,
-					SSL:                  false,
-					Username:             "",
-					Recipe:               linkrp.LinkRecipe{Name: "redis-test"},
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					Host:                    "",
+					Port:                    0,
+					SSL:                     false,
+					Username:                "",
+					Recipe:                  linkrp.LinkRecipe{Name: "redis-test"},
 				},
 			},
 		},
@@ -105,31 +79,15 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "redis cache with recipe overridden values",
 			file: "rediscacheresource_recipe_overridevalues.json",
 			expected: &datamodel.RedisCache{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0",
-						Name: "redis0",
-						Type: linkrp.RedisCachesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
-					BasicResourceProperties: rpv1.BasicResourceProperties{
-						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					Host:                 "myrediscache.redis.cache.windows.net",
-					Port:                 10255,
-					SSL:                  false,
-					Username:             "",
-					Recipe:               linkrp.LinkRecipe{Name: "redis-test", Parameters: map[string]any{"port": float64(6081)}},
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					Host:                    "myrediscache.redis.cache.windows.net",
+					Port:                    10255,
+					SSL:                     false,
+					Username:                "",
+					Recipe:                  linkrp.LinkRecipe{Name: "redis-test", Parameters: map[string]any{"port": float64(6081)}},
 				},
 			},
 		},
@@ -137,31 +95,15 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "redis cache manual with resources",
 			file: "rediscacheresource_manual.json",
 			expected: &datamodel.RedisCache{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0",
-						Name: "redis0",
-						Type: linkrp.RedisCachesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
-					BasicResourceProperties: rpv1.BasicResourceProperties{
-						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
-					Host:                 "myrediscache.redis.cache.windows.net",
-					Port:                 10255,
-					SSL:                  true,
-					Username:             "admin",
-					Resources:            []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
+					Host:                    "myrediscache.redis.cache.windows.net",
+					Port:                    10255,
+					SSL:                     true,
+					Username:                "admin",
+					Resources:               []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
 					Secrets: datamodel.RedisCacheSecrets{
 						Password:         "testPassword",
 						ConnectionString: "test-connection-string",
@@ -174,30 +116,14 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "redis cache manual without resources",
 			file: "rediscacheresource_manual_noresources.json",
 			expected: &datamodel.RedisCache{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0",
-						Name: "redis0",
-						Type: linkrp.RedisCachesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
-					BasicResourceProperties: rpv1.BasicResourceProperties{
-						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
-					Host:                 "myrediscache.redis.cache.windows.net",
-					Port:                 10255,
-					SSL:                  false,
-					Username:             "",
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
+					Host:                    "myrediscache.redis.cache.windows.net",
+					Port:                    10255,
+					SSL:                     false,
+					Username:                "",
 				},
 			},
 		},
@@ -236,8 +162,8 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &RedisCacheResource{
 				Location: to.Ptr(""),
 				Properties: &RedisCacheProperties{
-					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					Host:                 to.Ptr("myrediscache.redis.cache.windows.net"),
 					Port:                 to.Ptr(int32(10255)),
@@ -258,7 +184,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
+				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
 				Type: to.Ptr(linkrp.RedisCachesResourceType),
 			},
@@ -269,8 +195,8 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &RedisCacheResource{
 				Location: to.Ptr(""),
 				Properties: &RedisCacheProperties{
-					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					Host:                 to.Ptr(""),
 					Port:                 to.Ptr(int32(0)),
@@ -291,7 +217,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
+				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
 				Type: to.Ptr(linkrp.RedisCachesResourceType),
 			},
@@ -302,8 +228,8 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &RedisCacheResource{
 				Location: to.Ptr(""),
 				Properties: &RedisCacheProperties{
-					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					Host:                 to.Ptr(""),
 					Port:                 to.Ptr(int32(0)),
@@ -324,7 +250,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
+				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
 				Type: to.Ptr(linkrp.RedisCachesResourceType),
 			},
@@ -335,8 +261,8 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &RedisCacheResource{
 				Location: to.Ptr(""),
 				Properties: &RedisCacheProperties{
-					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					Host:                 to.Ptr("myrediscache.redis.cache.windows.net"),
 					Port:                 to.Ptr(int32(10255)),
@@ -355,7 +281,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
+				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
 				Type: to.Ptr(linkrp.RedisCachesResourceType),
 			},
@@ -469,5 +395,29 @@ func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
 		versioned := &RedisCacheSecrets{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
+	}
+}
+
+func createBaseResource() v1.BaseResource {
+	return v1.BaseResource{
+		TrackedResource: v1.TrackedResource{
+			ID:   RedisID,
+			Name: "redis0",
+			Type: linkrp.RedisCachesResourceType,
+			Tags: map[string]string{},
+		},
+		InternalMetadata: v1.InternalMetadata{
+			CreatedAPIVersion:      "",
+			UpdatedAPIVersion:      "2022-03-15-privatepreview",
+			AsyncProvisioningState: v1.ProvisioningStateAccepted,
+		},
+		SystemData: v1.SystemData{},
+	}
+}
+
+func createBasicResourceProperties() rpv1.BasicResourceProperties {
+	return rpv1.BasicResourceProperties{
+		Application: ApplicationID,
+		Environment: EnvironmentID,
 	}
 }
