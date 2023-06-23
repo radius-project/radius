@@ -75,7 +75,7 @@ jobs:
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Determine release version from versions.json
         run: |
-          ./radius/.github/scripts/release-get-version.sh
+          ./radius-pr/.github/scripts/release-get-version.sh
       - name: Generate release summary
         run: |
           echo "## Release" >> ${{ env.GITHUB_STEP_SUMMARY }}
