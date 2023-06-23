@@ -81,7 +81,7 @@ Follow the steps below to create an RC release.
    git push origin release/0.21
    ```
 
-   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
+   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push Applications RP and UCP containers to our container registry.
 
 
 ### Test tutorials and samples

@@ -47,9 +47,9 @@ The above steps will not configure the ability for radius to talk with azure res
     ```
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
-## To redeploy the appcore rp
+## To redeploy the applications resource provider
   
-After validating the behavior with logs, commands, etc., you can quickly iterate on the appcore rp with the following command
+After validating the behavior with logs, commands, etc., you can quickly iterate on the applications resource provider with the following command
 ```
 make docker-build-applications-rp && make docker-push-applications-rp && kubectl delete pod -l control-plane=applications-rp
 ```
