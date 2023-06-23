@@ -2154,7 +2154,7 @@
         },
         "ssl": {
           "type": "boolean",
-          "description": "Specifies whether to enable non-SSL or SSL connections to the Redis cache"
+          "description": "Specifies whether to enable SSL connections to the Redis cache"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
