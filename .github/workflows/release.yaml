@@ -19,7 +19,7 @@ name: Create a new Project Radius release
 on:
   push:
     paths:
-      - 'versions.yaml'
+      - 'versions.json'
 
 env:
   RELEASE_VERSION: ''
