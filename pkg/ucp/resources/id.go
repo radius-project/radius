@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -41,6 +43,14 @@ const (
 	PlaneTypePrefix   = "System.Planes"
 	ResourceGroupType = "System.Resources/resourceGroups"
 )
+
+var supportedNamespaces = []string{
+	CoreRPNamespace,
+	LinkRPNamespace,
+	DatastoresRPNamespace,
+	DaprRPNamespace,
+	MessagingRPNamespace,
+}
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
 // to create IDs and use String() to convert back to strings.
@@ -222,11 +232,7 @@ func (ri ID) ProviderNamespace() string {
 }
 
 func (ri ID) IsRadiusRPResource() bool {
-	return strings.EqualFold(ri.ProviderNamespace(), CoreRPNamespace) ||
-		strings.EqualFold(ri.ProviderNamespace(), LinkRPNamespace) ||
-		strings.EqualFold(ri.ProviderNamespace(), DatastoresRPNamespace) ||
-		strings.EqualFold(ri.ProviderNamespace(), DaprRPNamespace) ||
-		strings.EqualFold(ri.ProviderNamespace(), MessagingRPNamespace)
+	return slices.Contains(supportedNamespaces, ri.ProviderNamespace())
 }
 
 // PlaneNamespace returns the plane part of the UCP ID
