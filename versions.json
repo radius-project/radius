@@ -1,7 +1,7 @@
 {
   "stable": {
     "version": "v0.21.0",
-    "description": "stable is the release that we want to be the default version for users. test8"
+    "description": "stable is the release that we want to be the default version for users"
   },
   "latest": {
     "version": "v0.22.0-rc1",

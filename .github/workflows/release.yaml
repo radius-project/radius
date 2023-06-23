@@ -17,11 +17,14 @@
 name: Create a new Project Radius release
 
 on:
-  push:
-    # branches:
-    #   - main
-    paths:
-      - 'versions.json'
+  pull_request:
+    branches:
+      - main
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'versions.json'
 
 env:
   RELEASE_VERSION: ''
@@ -32,11 +35,16 @@ jobs:
     name: Release
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
+      - name: Checkout project-radius/radius@${{ github.event.pull_request.head.sha }}
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: radius
       - name: Checkout project-radius/radius@main
         uses: actions/checkout@v3
         with:
           repository: project-radius/radius
-          ref: willdavsmith/release-automation #TODO: Change to main
+          ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
       - name: Checkout project-radius/bicep@bicep-extensibility
@@ -66,8 +74,6 @@ jobs:
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Determine release version from versions.json
         run: |
-          echo $(pwd)
-          echo $(ls -la)
           ./radius/.github/scripts/release-get-version.sh
       - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
         run: |
