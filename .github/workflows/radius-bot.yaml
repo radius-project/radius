@@ -4,9 +4,6 @@ on:
   issue_comment:
     types: [created]
 
-  pull_request:
-    branches:
-      - main
 jobs:
   radius-bot:
     name: Run Radius Bot script
@@ -18,11 +15,7 @@ jobs:
           sparse-checkout: |
             .github/scripts/radius-bot.js
           sparse-checkout-cone-mode: false
-      - name: test
-        run: |
-          ls -la
       - name: Comment analyzer
-        if: false
         uses: actions/github-script@v6
         env:
           TEAM_SLUG: 'Radius-Eng'
