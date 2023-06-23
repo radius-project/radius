@@ -28,6 +28,7 @@ on:
 
 env:
   RELEASE_VERSION: ''
+  FINAL_RELEASE: 'false'
   GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
 
 jobs:
@@ -70,17 +71,17 @@ jobs:
           ./radius/.github/scripts/release-get-version.sh
       - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }}
+          ./radius/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/bicep version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }}
+          ./radius/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/deployment-engine version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }}
+          ./radius/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }}
+          ./radius/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()

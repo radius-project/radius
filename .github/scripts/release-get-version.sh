@@ -91,6 +91,8 @@ fi
 
 # Print the release information
 echo "Release Version: ${VERSION}"
+echo "Final Release: ${FINAL_RELEASE}"
 
 # Write the release information to GITHUB_ENV
 echo "RELEASE_VERSION=${VERSION}" >> $GITHUB_ENV
+echo "FINAL_RELEASE=${FINAL_RELEASE}" >> $GITHUB_ENV

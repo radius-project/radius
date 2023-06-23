@@ -19,6 +19,7 @@ set -x
 REPOSITORY=$1
 MAIN_BRANCH=$2
 VERSION=$3
+FINAL_RELEASE=$4
 
 if [[ -z "$REPOSITORY" ]]; then
   echo "Error: REPOSITORY is not set."
@@ -32,6 +33,11 @@ fi
 
 if [[ -z "$VERSION" ]]; then
   echo "Error: VERSION is not set."
+  exit 1
+fi
+
+if [[ -z "$FINAL_RELEASE" ]]; then
+  echo "Error: FINAL_RELEASE is not set."
   exit 1
 fi
 
@@ -53,8 +59,9 @@ echo "Final release: ${FINAL_RELEASE}"
 echo "Creating release branches and tags for ${REPOSITORY}..."
 
 pushd $REPOSITORY
-git checkout $MAIN_BRANCH
+git checkout --track origin/${MAIN_BRANCH}
 git pull origin $MAIN_BRANCH
+git checkout --track origin/$RELEASE_BRANCH_NAME
 git checkout -B $RELEASE_BRANCH_NAME
 git pull origin $RELEASE_BRANCH_NAME
 git tag $TAG_NAME
