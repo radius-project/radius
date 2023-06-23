@@ -33,7 +33,7 @@ ucp:
       memory: "300Mi"
 
 rp:
-  image: radius.azurecr.io/appcore-rp
+  image: radius.azurecr.io/applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   publicEndpointOverride: ""
@@ -43,3 +43,5 @@ rp:
       memory: "160Mi"
     limits:
       memory: "300Mi"
+  terraform:
+    path: "/terraform"

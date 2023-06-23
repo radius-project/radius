@@ -14,10 +14,10 @@ RUN groupadd --gid 2000 radius
 
 RUN useradd --home "/nonexistent" --shell "/sbin/nologin" --gid radius --uid 1000 radius
 
-RUN chmod 770 /app/appcore-rp
+RUN chmod 770 /app/applications-rp
 RUN chown radius.radius -R /app
 
 USER radius
 
 EXPOSE 8080
-ENTRYPOINT ["/app/appcore-rp"]
+ENTRYPOINT ["/app/applications-rp"]

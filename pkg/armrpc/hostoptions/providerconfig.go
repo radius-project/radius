@@ -41,6 +41,7 @@ type ProviderConfig struct {
 	ProfilerProvider profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
 	UCP              config.UCPOptions                        `yaml:"ucp"`
 	Logging          ucplog.LoggingOptions                    `yaml:"logging"`
+	Terraform        TerraformOptions                         `yaml:"terraform,omitempty"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
@@ -67,4 +68,10 @@ type WorkerServerOptions struct {
 	MaxOperationConcurrency *int `yaml:"maxOperationConcurrency,omitempty"`
 	// MaxOperationRetryCount is the maximum retry count to process async request operation.
 	MaxOperationRetryCount *int `yaml:"maxOperationRetryCount,omitempty"`
+}
+
+// TerraformOptions includes options required for terraform execution.
+type TerraformOptions struct {
+	// Path is the path to the directory mounted to the container where terraform can be installed and executed.
+	Path string `yaml:"path,omitempty"`
 }
