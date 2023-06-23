@@ -74,7 +74,7 @@ configure-buildx:
 	fi
 
 # defines a target for each image
-DOCKER_IMAGES := ucpd appcore-rp
+DOCKER_IMAGES := ucpd applications-rp
 
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
 

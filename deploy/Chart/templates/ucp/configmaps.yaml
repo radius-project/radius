@@ -30,8 +30,8 @@ data:
       - id: "/planes/radius/local"
         properties:
           resourceProviders:
-            Applications.Core: "http://appcore-rp.radius-system:5443"
-            Applications.Link: "http://appcore-rp.radius-system:5444"
+            Applications.Core: "http://applications-rp.radius-system:5443"
+            Applications.Link: "http://applications-rp.radius-system:5444"
           kind: "UCPNative"
       - id: "/planes/deployments/local"
         properties:
