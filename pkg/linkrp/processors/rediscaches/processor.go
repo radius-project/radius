@@ -45,6 +45,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
+	validator.AddOptionalBoolField(renderers.SSL, &resource.Properties.SSL)
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
 	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
 		return p.computeConnectionString(resource), nil
@@ -62,9 +63,8 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 }
 
 func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) string {
-	ssl := resource.Properties.Port == RedisSSLPort
 	connectionString := fmt.Sprintf("%s:%v,abortConnect=False", resource.Properties.Host, resource.Properties.Port)
-	if ssl {
+	if resource.Properties.SSL {
 		connectionString = connectionString + ",ssl=True"
 	}
 
@@ -79,6 +79,7 @@ func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) stri
 }
 
 func (p *Processor) computeConnectionURI(resource *datamodel.RedisCache) string {
+	// Redis connection URIs are of the form: redis://[username:password@]host[:port][/db-number][?option=value]
 	connectionURI := "redis://"
 	if resource.Properties.SSL {
 		connectionURI = "rediss://"

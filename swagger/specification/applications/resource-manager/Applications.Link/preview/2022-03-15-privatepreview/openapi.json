@@ -2122,7 +2122,7 @@
         },
         "url": {
           "type": "string",
-          "description": "The url used to connect to the Redis cache"
+          "description": "The URL used to connect to the Redis cache"
         }
       },
       "description": "The secret values for the given RedisCache resource"
@@ -2236,7 +2236,7 @@
         },
         "url": {
           "type": "string",
-          "description": "The url used to connect to the Redis cache"
+          "description": "The URL used to connect to the Redis cache"
         }
       },
       "description": "The secret values for the given RedisCache resource"

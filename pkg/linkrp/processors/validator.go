@@ -94,6 +94,11 @@ func (v *Validator) AddOptionalStringField(name string, ref *string) {
 	v.fields = append(v.fields, bind(v, name, ref, false, false, "string", convertToString, nil))
 }
 
+// AddOptionalBoolField registers a field containing an optional boolean connection value. The false value will be treated as an "unset" value.
+func (v *Validator) AddOptionalBoolField(name string, ref *bool) {
+	v.fields = append(v.fields, bind(v, name, ref, false, false, "bool", convertToBool, nil))
+}
+
 // AddRequiredSecretField registers a field containing a required string connection secret. The empty string will be treated as an "unset" value.
 func (v *Validator) AddRequiredSecretField(name string, ref *string) {
 	// Note: secrets are always strings
@@ -263,6 +268,11 @@ func computeValue[T any](v *Validator, name string, ref *T, secret bool, compute
 
 func convertToString(value any) (string, bool) {
 	converted, ok := value.(string)
+	return converted, ok
+}
+
+func convertToBool(value any) (bool, bool) {
+	converted, ok := value.(bool)
 	return converted, ok
 }
 

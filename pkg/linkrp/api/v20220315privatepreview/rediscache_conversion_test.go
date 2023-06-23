@@ -230,105 +230,105 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		file     string
 		expected *RedisCacheResource
 	}{
-		// {
-		// 	desc: "redis cache manual with resources",
-		// 	file: "rediscacheresourcedatamodel_manual.json",
-		// 	expected: &RedisCacheResource{
-		// 		Location: to.Ptr(""),
-		// 		Properties: &RedisCacheProperties{
-		// 			Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-		// 			Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
-		// 			ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
-		// 			Host:                 to.Ptr("myrediscache.redis.cache.windows.net"),
-		// 			Port:                 to.Ptr(int32(10255)),
-		// 			ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-		// 			Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
-		// 			Username:             to.Ptr(""),
-		// 			SSL:                  to.Ptr(false),
-		// 			Status: &ResourceStatus{
-		// 				OutputResources: []map[string]any{
-		// 					{
-		// 						"Identity": nil,
-		// 						"LocalID":  "Deployment",
-		// 						"Provider": "azure",
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 		Tags: map[string]*string{
-		// 			"env": to.Ptr("dev"),
-		// 		},
-		// 		ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
-		// 		Name: to.Ptr("redis0"),
-		// 		Type: to.Ptr(linkrp.RedisCachesResourceType),
-		// 	},
-		// },
-		// {
-		// 	desc: "redis cache default recipe",
-		// 	file: "rediscacheresourcedatamodel_recipe_default.json",
-		// 	expected: &RedisCacheResource{
-		// 		Location: to.Ptr(""),
-		// 		Properties: &RedisCacheProperties{
-		// 			Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-		// 			Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
-		// 			ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
-		// 			Host:                 to.Ptr(""),
-		// 			Port:                 to.Ptr(int32(0)),
-		// 			ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-		// 			Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
-		// 			Username:             to.Ptr(""),
-		// 			SSL:                  to.Ptr(false),
-		// 			Status: &ResourceStatus{
-		// 				OutputResources: []map[string]any{
-		// 					{
-		// 						"Identity": nil,
-		// 						"LocalID":  "Deployment",
-		// 						"Provider": "azure",
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 		Tags: map[string]*string{
-		// 			"env": to.Ptr("dev"),
-		// 		},
-		// 		ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
-		// 		Name: to.Ptr("redis0"),
-		// 		Type: to.Ptr(linkrp.RedisCachesResourceType),
-		// 	},
-		// },
-		// {
-		// 	desc: "redis cache named recipe",
-		// 	file: "rediscacheresourcedatamodel_recipe_params.json",
-		// 	expected: &RedisCacheResource{
-		// 		Location: to.Ptr(""),
-		// 		Properties: &RedisCacheProperties{
-		// 			Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-		// 			Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
-		// 			ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
-		// 			Host:                 to.Ptr(""),
-		// 			Port:                 to.Ptr(int32(0)),
-		// 			ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-		// 			Recipe:               &Recipe{Name: to.Ptr("redis-test"), Parameters: map[string]any{"port": float64(6081)}},
-		// 			Username:             to.Ptr(""),
-		// 			SSL:                  to.Ptr(false),
-		// 			Status: &ResourceStatus{
-		// 				OutputResources: []map[string]any{
-		// 					{
-		// 						"Identity": nil,
-		// 						"LocalID":  "Deployment",
-		// 						"Provider": "azure",
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 		Tags: map[string]*string{
-		// 			"env": to.Ptr("dev"),
-		// 		},
-		// 		ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
-		// 		Name: to.Ptr("redis0"),
-		// 		Type: to.Ptr(linkrp.RedisCachesResourceType),
-		// 	},
-		// },
+		{
+			desc: "redis cache manual with resources",
+			file: "rediscacheresourcedatamodel_manual.json",
+			expected: &RedisCacheResource{
+				Location: to.Ptr(""),
+				Properties: &RedisCacheProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					Host:                 to.Ptr("myrediscache.redis.cache.windows.net"),
+					Port:                 to.Ptr(int32(10255)),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Username:             to.Ptr(""),
+					SSL:                  to.Ptr(false),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "azure",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
+				Name: to.Ptr("redis0"),
+				Type: to.Ptr(linkrp.RedisCachesResourceType),
+			},
+		},
+		{
+			desc: "redis cache default recipe",
+			file: "rediscacheresourcedatamodel_recipe_default.json",
+			expected: &RedisCacheResource{
+				Location: to.Ptr(""),
+				Properties: &RedisCacheProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					Host:                 to.Ptr(""),
+					Port:                 to.Ptr(int32(0)),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Username:             to.Ptr(""),
+					SSL:                  to.Ptr(false),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "azure",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
+				Name: to.Ptr("redis0"),
+				Type: to.Ptr(linkrp.RedisCachesResourceType),
+			},
+		},
+		{
+			desc: "redis cache named recipe",
+			file: "rediscacheresourcedatamodel_recipe_params.json",
+			expected: &RedisCacheResource{
+				Location: to.Ptr(""),
+				Properties: &RedisCacheProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					Host:                 to.Ptr(""),
+					Port:                 to.Ptr(int32(0)),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr("redis-test"), Parameters: map[string]any{"port": float64(6081)}},
+					Username:             to.Ptr(""),
+					SSL:                  to.Ptr(false),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "Deployment",
+								"Provider": "azure",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0"),
+				Name: to.Ptr("redis0"),
+				Type: to.Ptr(linkrp.RedisCachesResourceType),
+			},
+		},
 		{
 			desc: "redis cache manual with resources",
 			file: "rediscacheresourcedatamodel_manual_resources.json",
@@ -380,67 +380,6 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, tc.expected, versionedResource)
 		})
 	}
-
-	// testset := []struct {
-	// 	filename       string
-	// 	recipe         Recipe
-	// 	overrideRecipe bool
-	// 	resources      []*ResourceReference
-	// }{
-	// 	{
-	// 		// Opt-out without resources
-	// 		filename: "rediscacheresourcedatamodel.json",
-	// 	},
-	// 	{
-	// 		// Default recipe
-	// 		filename: "rediscacheresourcedatamodel_recipe.json",
-	// 		recipe:   Recipe{Name: to.Ptr(""), Parameters: nil},
-	// 	},
-	// 	{
-	// 		// Named recipe
-	// 		filename: "rediscacheresourcedatamodel_recipe2.json",
-	// 		recipe:   Recipe{Name: to.Ptr("redis-test"), Parameters: map[string]any{"port": float64(6081)}},
-	// 	},
-	// 	{
-	// 		// Opt-out with resources
-	// 		filename:  "rediscacheresourcedatamodel2.json",
-	// 		resources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
-	// 	},
-	// }
-
-	// for _, payload := range testset {
-	// 	// arrange
-	// 	rawPayload, err := loadTestData("./testdata/" + payload.filename)
-	// 	require.NoError(t, err)
-	// 	resource := &datamodel.RedisCache{}
-	// 	err = json.Unmarshal(rawPayload, resource)
-	// 	require.NoError(t, err)
-
-	// 	// act
-	// 	versionedResource := &RedisCacheResource{}
-	// 	err = versionedResource.ConvertFrom(resource)
-
-	// 	// assert
-	// 	require.NoError(t, err)
-	// 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0", *versionedResource.ID)
-	// 	require.Equal(t, "redis0", *versionedResource.Name)
-	// 	require.Equal(t, linkrp.RedisCachesResourceType, *versionedResource.Type)
-	// 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
-	// 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-	// 	if resource.Properties.ResourceProvisioning == "" {
-	// 		require.Equal(t, payload.recipe, *versionedResource.Properties.Recipe)
-	// 	} else {
-	// 		require.Equal(t, ResourceProvisioningManual, *versionedResource.Properties.ResourceProvisioning)
-	// 		require.Equal(t, Recipe{Name: to.Ptr(""), Parameters: nil}, *versionedResource.Properties.Recipe)
-	// 		require.Equal(t, resource.Properties.Host, *versionedResource.Properties.Host)
-	// 		require.Equal(t, resource.Properties.Port, *versionedResource.Properties.Port)
-	// 		require.ElementsMatch(t, payload.resources, versionedResource.Properties.Resources)
-	// 		if resource.Properties.Status.OutputResources != nil {
-	// 			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-	// 			require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
-	// 		}
-	// 	}
-	// }
 }
 
 func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {

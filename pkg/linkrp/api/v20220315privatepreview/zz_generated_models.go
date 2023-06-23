@@ -721,7 +721,7 @@ type RedisCacheListSecretsResult struct {
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
 
-	// The url used to connect to the Redis cache
+	// The URL used to connect to the Redis cache
 	URL *string `json:"url,omitempty"`
 }
 
@@ -805,7 +805,7 @@ type RedisCacheSecrets struct {
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
 
-	// The url used to connect to the Redis cache
+	// The URL used to connect to the Redis cache
 	URL *string `json:"url,omitempty"`
 }
 

@@ -285,7 +285,7 @@
 ### Properties
 * **connectionString**: string: The connection string used to connect to the Redis cache
 * **password**: string: The password for this Redis cache instance
-* **url**: string: The url used to connect to the Redis cache
+* **url**: string: The URL used to connect to the Redis cache
 
 ## TrackedResourceTags
 ### Properties
@@ -330,7 +330,7 @@
 ### Properties
 * **connectionString**: string (ReadOnly): The connection string used to connect to the Redis cache
 * **password**: string (ReadOnly): The password for this Redis cache instance
-* **url**: string (ReadOnly): The url used to connect to the Redis cache
+* **url**: string (ReadOnly): The URL used to connect to the Redis cache
 
 ## SqlDatabaseListSecretsResult
 ### Properties

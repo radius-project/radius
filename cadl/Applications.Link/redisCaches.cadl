@@ -65,7 +65,7 @@ model RedisCacheSecrets {
   @doc("The password for this Redis cache instance")
   password?: string;
   
-  @doc("The url used to connect to the Redis cache")
+  @doc("The URL used to connect to the Redis cache")
   url?: string
 }
 
