@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: appcore-rp-config
+  name: applications-rp-config
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: appcore-rp
+    app.kubernetes.io/name: applications-rp
     app.kubernetes.io/part-of: radius
 data:
   radius-self-host.yaml: |-
@@ -94,3 +94,5 @@ data:
       zipkin: 
         url: {{ .Values.global.zipkin.url }}
     {{- end }}
+    terraform:
+      path: "/terraform"
