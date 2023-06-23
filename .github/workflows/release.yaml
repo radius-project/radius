@@ -95,7 +95,7 @@ jobs:
         run: |
           ./radius-pr/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
-      # - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
-      #   run: |
-      #     ./radius-pr/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
-      #   if: success()
+      - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
+        run: |
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+        if: success()
