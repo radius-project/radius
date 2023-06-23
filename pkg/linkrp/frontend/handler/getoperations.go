@@ -155,6 +155,16 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
+				Name: "Applications.Link/sqlDatabases/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    LinkProviderNamespace,
+					Resource:    "sqlDatabases",
+					Operation:   "List secrets",
+					Description: "Lists sqlDatabase secrets.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
 				Name: "Applications.Link/redisCaches/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    LinkProviderNamespace,
@@ -271,26 +281,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "extenders",
 					Operation:   "List secrets",
 					Description: "Lists extender secrets.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Link/daprInvokeHttpRoutes/write",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    LinkProviderNamespace,
-					Resource:    "daprInvokeHttpRoutes",
-					Operation:   "Create/Update daprInvokeHttpRoutes",
-					Description: "Creates or updates a mdaprInvokeHttpRoute link.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Link/daprInvokeHttpRoutes/delete",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    LinkProviderNamespace,
-					Resource:    "daprInvokeHttpRoutes",
-					Operation:   "Delete daprInvokeHttpRoute",
-					Description: "Deletes a daprInvokeHttpRoute link.",
 				},
 				IsDataAction: false,
 			},
