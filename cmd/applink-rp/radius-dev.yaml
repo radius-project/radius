@@ -29,3 +29,5 @@ server:
 logging:
   level: "info"
   json: true
+terraform:
+  path: "/terraform"

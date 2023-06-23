@@ -51,3 +51,5 @@ tracerProvider:
   serviceName: "applications.core"
   zipkin:
     url: "http://localhost:9411/api/v2/spans"
+terraform:
+  path: "/tmp"

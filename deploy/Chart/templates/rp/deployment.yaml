@@ -64,6 +64,8 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
+        - name: terraform
+          mountPath: {{ .Values.rp.terraform.path }}
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.rp.resources }}
@@ -73,3 +75,5 @@ spec:
         - name: config-volume
           configMap:
             name: appcore-rp-config
+        - name: terraform
+          emptyDir: {}

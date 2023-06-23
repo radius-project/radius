@@ -94,3 +94,5 @@ data:
       zipkin: 
         url: {{ .Values.global.zipkin.url }}
     {{- end }}
+    terraform:
+      path: "/terraform"

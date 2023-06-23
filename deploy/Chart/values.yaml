@@ -43,3 +43,5 @@ rp:
       memory: "160Mi"
     limits:
       memory: "300Mi"
+  terraform:
+    path: "/terraform"

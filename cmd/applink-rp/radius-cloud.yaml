@@ -43,3 +43,5 @@ featureFlags:
 logging:
   log: "info"
   json: true
+terraform:
+  path: "/terraform"

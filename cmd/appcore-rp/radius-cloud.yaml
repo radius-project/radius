@@ -48,3 +48,5 @@ ucp:
 logging:
   level: "info"
   json: false
+terraform:
+  path: "/terraform"
