@@ -66,8 +66,6 @@ git checkout --track origin/${RELEASE_BRANCH_NAME}
 git checkout -B $RELEASE_BRANCH_NAME
 git pull origin $RELEASE_BRANCH_NAME
 git tag $TAG_NAME
-
-# Commented out for testing.
-# git push origin --tags
-# git push origin $RELEASE_BRANCH_NAME
+git push origin --tags
+git push origin $RELEASE_BRANCH_NAME
 popd
