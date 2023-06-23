@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: Create a new Project Radius release
+name: Release Radius
 
 on:
   pull_request:
@@ -33,7 +33,7 @@ env:
 
 jobs:
   release:
-    name: Release
+    name: Create a new Radius release
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
       - name: Checkout project-radius/radius@${{ github.event.pull_request.head.sha }}
