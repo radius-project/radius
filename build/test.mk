@@ -58,7 +58,7 @@ test-functional-kubernetes: ## Runs Kubernetes functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-corerp: ## Runs Applications.Core functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
 test-functional-samples: ## Runs Samples functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)

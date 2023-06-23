@@ -167,7 +167,7 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/corerp/recipes/<name>:${{ env.REL_VERSION }}`
+            * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
             * appcore-rp test image location: `${{ env.CACHE_REGISTRY }}/appcore-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
 
