@@ -51,10 +51,10 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: deployment-engine
-      - name: Checkout project-radius/samples@main
+      - name: Checkout project-radius/recipes@main
         uses: actions/checkout@v3
         with:
-          repository: project-radius/samples
+          repository: project-radius/recipes
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
