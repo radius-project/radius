@@ -21,6 +21,10 @@ on:
     paths:
       - 'versions.yaml'
 
+env:
+  RELEASE_VERSION: ''
+  GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+
 jobs:
   release:
     name: Release
@@ -31,20 +35,31 @@ jobs:
         with:
           repository: project-radius/radius
           ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       - name: Checkout project-radius/bicep@bicep-extensibility
         uses: actions/checkout@v2
         with:
           repository: project-radius/bicep
           ref: bicep-extensibility
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       - name: Checkout project-radius/deployment-engine@main
         uses: actions/checkout@v2
         with:
           repository: project-radius/deployment-engine
           ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-      - name: Run release script
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-        run: ./.github/scripts/release.sh
+      - name: Set up GitHub credentials
+        run: |
+          git config --global user.name "Radius CI Bot"
+          git config --global user.email "radiuscoreteam@service.microsoft.com"
+      - name: Determine release version from versions.json
+        run: './.github/scripts/determine-release-version.sh'
+      - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
+        run: './.github/scripts/tag-repository.sh radius main ${{ env.RELEASE_VERSION }}'
+        if: success()
+      - name: Release project-radius/bicep version ${{ env.RELEASE_VERSION }}
+        run: './.github/scripts/tag-repository.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }}'
+        if: success()
+      - name: Release project-radius/deployment-engine version ${{ env.RELEASE_VERSION }}
+        run: './.github/scripts/tag-repository.sh deployment-engine main ${{ env.RELEASE_VERSION }}'
+        if: success()
+      - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
+        run: './.github/scripts/tag-repository.sh recipes main ${{ env.RELEASE_VERSION }}'
+        if: success()
