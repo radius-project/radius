@@ -40,13 +40,6 @@ jobs:
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
-      - name: Checkout project-radius/radius@main
-        uses: actions/checkout@v3
-        with:
-          repository: project-radius/radius
-          ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          path: radius
       - name: Checkout project-radius/bicep@bicep-extensibility
         uses: actions/checkout@v3
         with:
