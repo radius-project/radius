@@ -68,7 +68,7 @@ jobs:
           repository: project-radius/recipes
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          path: samples
+          path: recipes
       - name: Set up GitHub credentials
         run: |
           git config --global user.name "Radius CI Bot"

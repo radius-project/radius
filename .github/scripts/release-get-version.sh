@@ -16,8 +16,6 @@
 
 set -x
 
-REPOSITORY=$1
-
 # does_tag_exist checks if a tag exists in the remote repository
 function does_tag_exist() {
   if git ls-remote --tags origin $1 | grep -q $1; then
@@ -27,11 +25,10 @@ function does_tag_exist() {
   fi
 }
 
-# Ensure the project-radius/radius repo is cloned
-if [[ -d $REPOSITORY ]]; then
-  echo "${REPOSITORY} directory exists"
-else
-  echo "Error: ${REPOSITORY} directory does not exist. Please clone project-radius/radius repository."
+REPOSITORY=$1
+
+if [[ -z "$REPOSITORY" ]]; then
+  echo "Error: REPOSITORY is not set."
   exit 1
 fi
 
