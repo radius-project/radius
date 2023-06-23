@@ -21,7 +21,12 @@ Note, this only applies when we want to update the app core image, if we need to
     ```
 1. Deploy an environment with command on kubernetes
     ```
-    go run .\cmd\rad\main.go env init kubernetes --chart deploy/Chart --appcore-image <registry>.azurecr.io/applications-rp --appcore-tag latest --ucp-image <registry>.azurecr.io/ucpd --ucp-tag latest
+    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=<registry>.azurecr.io/applications-rp,rp.tag=latest,ucp.image=<registry>.azurecr.io/ucpd,ucp.tag=latest
+    go run ./cmd/rad/main.go workspace create kubernetes
+    go run ./cmd/rad/main.go group create radius-rg
+    go run ./cmd/rad/main.go switch radius-rg
+    go run ./cmd/rad/main.go env create radius-rg --namespace default
+    go run ./cmd/rad/main.go env switch radius-rg
     ```
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
@@ -43,7 +48,14 @@ The above steps will not configure the ability for radius to talk with azure res
     ```
 1. Use these values in the following command:
     ```
-    go run ./cmd/rad/main.go env init kubernetes --chart ./deploy/Chart/ --force --provider-azure --provider-azure-resource-group <resourcegroupName> --provider-azure-subscription <subscriptionId> --provider-azure-client-id <appId> --provider-azure-client-secret <pwd> --provider-azure-tenant-id <tenantId> --appcore-image <registry>.azurecr.io/applications-rp --appcore-tag latest
+    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=<registry>.azurecr.io/applications-rp,rp.tag=latest,ucp.image=<registry>.azurecr.io/ucpd,ucp.tag=latest
+    go run ./cmd/rad/main.go workspace create kubernetes
+    go run ./cmd/rad/main.go group create radius-rg
+    go run ./cmd/rad/main.go switch radius-rg
+    go run ./cmd/rad/main.go env create radius-rg --namespace default
+    go run ./cmd/rad/main.go env switch radius-rg
+    go run ./cmd/rad/main.go env update radius-rg --azure-subscription-id <subscriptionId> --azure-resource-group <resourcegroupName>
+    go run ./cmd/rad/main.go credential register azure --client-id <appId> --client-secret <pwd> --tenant-id <tenantId>
     ```
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
@@ -61,11 +73,14 @@ This will:
 
 ## To redeploy the environment
 
-Reploying an environment is a bit clunky right now. This is the only consistent way I have done it:
-  
+Reploying an environment is a bit clunky right now. Use the following commands and deploy Radius again.
+
 ```
-go run .\cmd\rad\main.go env delete <envname>; go run .\cmd\rad\main.go env uninstall kubernetes; go run .\cmd\rad\main.go workspace delete <this is a command I added in my branch to delete the entry in config.yaml>; go run .\cmd\rad\main.go env init kubernetes --chart deploy/Chart --appcore-image <registry>.azurecr.io/applications-rp --appcore-tag latest --ucp-image <registry>.azurecr.io/ucpd --ucp-tag latest
+go run ./cmd/rad/main.go env delete <envname>
+go run ./cmd/rad/main.go uninstall kubernetes
+go run ./cmd/rad/main.go workspace delete
 ```
+
 Another approach would be to delete and recreate the kubernetes cluster
 
 Pro tip: `kubectl config set-context --current --namespace=radius-system` to the radius-system namespace
