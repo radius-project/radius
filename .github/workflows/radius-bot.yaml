@@ -18,6 +18,9 @@ jobs:
           sparse-checkout: |
             .github/scripts/radius-bot.js
           sparse-checkout-cone-mode: false
+      - name: test
+        run: |
+          ls -la
       - name: Comment analyzer
         if: false
         uses: actions/github-script@v6
