@@ -2,7 +2,7 @@
 
 This page explains some troubleshooting steps that can help you diagnose installation failures or crashes using a custom build of Radius.
 
-1. Verify all Radius pods are up and running
+### Verify all Radius pods are up and running
 ```
 kubectl get pods -n radius-system 
 
@@ -15,7 +15,7 @@ ucp-fc695d88-drctw                 1/1     Running   0          2d1h
 ```
 All of the pods in the radius-system namespace should be in the Running state if your installation is working correct. If you see pods that are not in the running state, then this indicates a failure.
 
-2. Look at logs 
+### Examine logs 
 
 You could look at logs on each pod to understand what went wrong by using
 ```
