@@ -21,12 +21,6 @@ import (
 )
 
 // CloudControlRegionOption sets the region for the CloudControl client.
-//
-// # Function Explanation
-// 
-//	CloudControlRegionOption is a function that takes in a region string and returns a function that sets the region option 
-//	for a cloudcontrol.Options object. It provides a way for callers to set the region option when creating a 
-//	cloudcontrol.Options object, and handles any errors that may occur.
 func CloudControlRegionOption(region string) func(*cloudcontrol.Options) {
 	return func(o *cloudcontrol.Options) {
 		o.Region = region
@@ -34,12 +28,6 @@ func CloudControlRegionOption(region string) func(*cloudcontrol.Options) {
 }
 
 // CloudFormationRegionOption sets the region for the CloudFormation client.
-//
-// # Function Explanation
-// 
-//	CloudFormationWithRegionOption is a function that takes in a region string and returns a function that sets the region 
-//	option for a cloudformation.Options object. It provides a way for callers to set the region option for 
-//	cloudformation.Options without having to manually set it.
 func CloudFormationWithRegionOption(region string) func(*cloudformation.Options) {
 	return func(o *cloudformation.Options) {
 		o.Region = region

@@ -51,11 +51,6 @@ type UCPCredentialOptions struct {
 }
 
 // NewUCPCredentialProvider creates UCPCredentialProvider provider to fetch Secret Access key using UCP credential APIs.
-//
-// # Function Explanation
-// 
-//	UCPCredentialProvider creates a new credential provider with the given AWS credentials and an expiration duration. If no
-//	 duration is provided, a default duration is used. If an error occurs, the function will return nil.
 func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSCredential], expireDuration time.Duration) *UCPCredentialProvider {
 	if expireDuration == 0 {
 		expireDuration = DefaultExpireDuration
@@ -70,12 +65,6 @@ func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSC
 }
 
 // Retrieve fetches the secret access key using UCP credential API.
-//
-// # Function Explanation
-// 
-//	UCPCredentialProvider's Retrieve function retrieves AWS credentials from the UCP Provider and returns them as an 
-//	aws.Credentials object. It also sets an expiration time for the credentials based on the Duration option. If an error 
-//	occurs while fetching the credentials, it is returned to the caller.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AWSPublic, "default")

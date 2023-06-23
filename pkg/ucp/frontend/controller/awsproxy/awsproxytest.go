@@ -73,10 +73,6 @@ type AWSTestResource struct {
 	Schema                string
 }
 
-// # Function Explanation
-// 
-//	CreateKinesisStreamTestResource creates a new AWSTestResource with the given resourceName, resourceType, 
-//	awsResourceType, provider, arn and typeSchema. If any of the parameters are invalid, an error is returned.
 func CreateKinesisStreamTestResource(resourceName string) *AWSTestResource {
 	resourceType := AWSKinesisStreamResourceType
 	awsResourceType := AWSKinesisStreamAWSResourceType
@@ -87,11 +83,6 @@ func CreateKinesisStreamTestResource(resourceName string) *AWSTestResource {
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
-// # Function Explanation
-// 
-//	CreateKinesisStreamTestResourceWithInvalidRegion creates a test resource with an invalid region for use in AWS Kinesis 
-//	Streams. It returns an AWSTestResource with the given resource name, resource type, AWS resource type, provider, ARN, 
-//	and type schema. If an error occurs, it will be returned to the caller.
 func CreateKinesisStreamTestResourceWithInvalidRegion(resourceName string) *AWSTestResource {
 	resourceType := AWSKinesisStreamResourceType
 	awsResourceType := AWSKinesisStreamAWSResourceType
@@ -102,10 +93,6 @@ func CreateKinesisStreamTestResourceWithInvalidRegion(resourceName string) *AWST
 	return CreateAWSTestResourceWithInvalidRegion(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
-// # Function Explanation
-// 
-//	CreateMemoryDBClusterTestResource creates a new AWSTestResource with the given resourceName, resourceType, 
-//	awsResourceType, provider, arn and typeSchema. If any of the parameters are invalid, an error is returned.
 func CreateMemoryDBClusterTestResource(resourceName string) *AWSTestResource {
 	resourceType := AWSMemoryDBClusterResourceType
 	awsResourceType := AWSMemoryDBClusterAWSResourceType
@@ -116,12 +103,6 @@ func CreateMemoryDBClusterTestResource(resourceName string) *AWSTestResource {
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
-// # Function Explanation
-// 
-//	CreateRedshiftEndpointAuthorizationTestResource creates a test resource of type 
-//	AWSRedShiftEndpointAuthorizationResourceType with the given resource name, and returns an AWSTestResource object with 
-//	the resource type, AWS resource type, resource name, provider, ARN, and type schema populated. If an error occurs, it is
-//	 returned to the caller.
 func CreateRedshiftEndpointAuthorizationTestResource(resourceName string) *AWSTestResource {
 	resourceType := AWSRedShiftEndpointAuthorizationResourceType
 	awsResourceType := AWSRedShiftEndpointAuthorizationAWSResourceType
@@ -132,11 +113,6 @@ func CreateRedshiftEndpointAuthorizationTestResource(resourceName string) *AWSTe
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
-// # Function Explanation
-// 
-//	CreateAWSTestResource takes in resource type, AWS resource type, resource name, provider, ARN and type schema as 
-//	parameters and returns an AWSTestResource object. It serializes the type schema into a string and sets it as the schema 
-//	of the AWSTestResource object. If an error occurs during serialization, it returns nil.
 func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn string, typeSchema map[string]any) *AWSTestResource {
 	serialized, err := json.Marshal(typeSchema)
 	if err != nil {
@@ -159,11 +135,6 @@ func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider
 	}
 }
 
-// # Function Explanation
-// 
-//	CreateAWSTestResourceWithInvalidRegion takes in resource type, AWS resource type, resource name, provider, ARN, and type
-//	 schema as parameters and creates an AWSTestResource object. It serializes the type schema into a string and sets it as 
-//	the Schema field of the AWSTestResource object. If an error occurs during serialization, it returns nil.
 func CreateAWSTestResourceWithInvalidRegion(resourceType, awsResourceType, resourceName, provider, arn string, typeSchema map[string]any) *AWSTestResource {
 	serialized, err := json.Marshal(typeSchema)
 	if err != nil {

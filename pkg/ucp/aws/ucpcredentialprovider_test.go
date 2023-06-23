@@ -32,12 +32,6 @@ type mockProvider struct {
 }
 
 // Fetch gets the AWS credentials from secret storage.
-//
-// # Function Explanation
-// 
-//	This mockProvider.Fetch function is used to fetch an AWSCredential from a given planeName and name. It returns the 
-//	fakeCredential if it is not nil, otherwise it returns an error. This allows callers of this function to handle errors 
-//	gracefully.
 func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_cred.AWSCredential, error) {
 	if p.fakeCredential == nil {
 		return nil, errors.New("failed to fetch credential")

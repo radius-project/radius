@@ -25,12 +25,6 @@ import (
 )
 
 // AzureCredentialDataModelToVersioned converts version agnostic Azure credential datamodel to versioned model.
-//
-// # Function Explanation
-// 
-//	AzureCredentialDataModelToVersioned takes in a data model and a version string and returns a versioned model interface 
-//	or an error. It checks the version string and converts the data model to the corresponding versioned model interface. If
-//	 the version is not supported, it returns an error.
 func AzureCredentialDataModelToVersioned(model *datamodel.AzureCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
@@ -46,12 +40,6 @@ func AzureCredentialDataModelToVersioned(model *datamodel.AzureCredential, versi
 }
 
 // AzureCredentialDataModelFromVersioned converts versioned Azure credential model to datamodel.
-//
-// # Function Explanation
-// 
-//	AzureCredentialDataModelFromVersioned takes in a byte slice and a version string and returns an AzureCredential object. 
-//	It checks the version string and depending on the version, it will convert the byte slice into the corresponding 
-//	AzureCredential object. If the version is not supported, it will return an error.
 func AzureCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AzureCredential, error) {
 	switch version {
 	case v20220901privatepreview.Version:

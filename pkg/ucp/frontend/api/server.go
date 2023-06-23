@@ -91,20 +91,12 @@ type Service struct {
 var _ hosting.Service = (*Service)(nil)
 
 // NewService will create a server that can listen on the provided address and serve requests.
-//
-// # Function Explanation
-// 
-//	"NewService" creates a new Service struct with the given ServiceOptions and returns a pointer to it. If the 
-//	ServiceOptions are invalid, an error is returned.
 func NewService(options ServiceOptions) *Service {
 	return &Service{
 		options: options,
 	}
 }
 
-// # Function Explanation
-// 
-//	"Name" is a function that returns a string "api". It handles any errors that may occur by returning an empty string.
 func (s *Service) Name() string {
 	return "api"
 }
@@ -135,11 +127,6 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 	return awscfg, nil
 }
 
-// # Function Explanation
-// 
-//	"Service.Initialize" sets up the necessary components for the service to run, such as the storage provider, secret 
-//	provider, status manager, AWS config, and registers the router. It also configures the default planes and resource 
-//	groups. If any of these steps fail, an error is returned.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
@@ -287,10 +274,6 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 	return nil
 }
 
-// # Function Explanation
-// 
-//	Service.Run initializes the service, sets up a shutdown handler, and starts listening on the specified address. If an 
-//	error occurs, it is returned to the caller, otherwise nil is returned.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	service, err := s.Initialize(ctx)

@@ -26,11 +26,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 )
 
-// # Function Explanation
-// 
-//	HandleAWSError is a function that handles errors returned from AWS services. It checks the error type and returns an 
-//	appropriate response with an error code and message. It also sets the fault type to either Client or Server depending on
-//	 the error code. This helps the callers of this function to handle the errors appropriately.
 func HandleAWSError(err error) (armrpc_rest.Response, error) {
 	operationErr := &smithy.OperationError{}
 	if !errors.As(err, &operationErr) {
@@ -72,11 +67,6 @@ func HandleAWSError(err error) (armrpc_rest.Response, error) {
 	return armrpc_rest.NewInternalServerErrorARMResponse(e), nil
 }
 
-// # Function Explanation
-// 
-//	IsAWSResourceNotFoundError checks if the given error is an AWS ResourceNotFoundException and returns a boolean value 
-//	accordingly. It can be used by callers of this function to determine if the error is a ResourceNotFoundException and 
-//	take appropriate action.
 func IsAWSResourceNotFoundError(err error) bool {
 	target := &types.ResourceNotFoundException{}
 	return errors.As(err, &target)
@@ -88,19 +78,11 @@ type AWSMissingPropertyError struct {
 	PropertyName string
 }
 
-// # Function Explanation
-// 
-//	AWSMissingPropertyError's Is() method checks if the given error is an instance of AWSMissingPropertyError and returns a 
-//	boolean value accordingly, allowing callers to handle the error appropriately.
 func (e *AWSMissingPropertyError) Is(target error) bool {
 	_, ok := target.(*AWSMissingPropertyError)
 	return ok
 }
 
-// # Function Explanation
-// 
-//	AWSMissingPropertyError is an error type that is returned when a mandatory property is missing from a request. It 
-//	provides a helpful error message to the caller, informing them of the missing property.
 func (e *AWSMissingPropertyError) Error() string {
 	return fmt.Sprintf("mandatory property %s is missing", e.PropertyName)
 }

@@ -39,11 +39,6 @@ type ListResourceGroups struct {
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
-//
-// # Function Explanation
-// 
-//	ListResourceGroups is a function that creates a new controller for listing resource groups. It returns an error if the 
-//	controller cannot be created.
 func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -55,11 +50,6 @@ func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, err
 	}, nil
 }
 
-// # Function Explanation
-// 
-//	The ListResourceGroups function extracts the plane type and name from the resource ID, then queries the storage client 
-//	for resource groups in that scope. It then creates a response with the result of the query and returns an OKResponse 
-//	with the list of resource groups. If any errors occur, they are returned to the caller.
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)

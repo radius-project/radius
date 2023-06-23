@@ -43,12 +43,6 @@ type ListPlanesByType struct {
 }
 
 // NewListPlanesByType creates a new ListPlanesByType.
-//
-// # Function Explanation
-// 
-//	ListPlanesByType creates a new controller with the given options and returns it, or an error if something goes wrong. It
-//	 uses the armrpc_controller package to create a new operation with the given options, and sets the basePath field of the
-//	 controller. If an error occurs, it is returned to the caller.
 func NewListPlanesByType(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanesByType{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -61,10 +55,6 @@ func NewListPlanesByType(opts ctrl.Options) (armrpc_controller.Controller, error
 	}, nil
 }
 
-// # Function Explanation
-// 
-//	The ListPlanesByType function queries the storage client for planes of a given type and returns a list of planes in an 
-//	OKResponse. If an error occurs, it is returned to the caller.
 func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.basePath, req.URL.Path)
 	// The path is /planes/{planeType}

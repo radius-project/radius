@@ -41,11 +41,6 @@ type GetAWSResource struct {
 }
 
 // NewGetAWSResource creates a new GetAWSResource.
-//
-// # Function Explanation
-// 
-//	GetAWSResource is a function that creates a new controller for AWS resources. It takes in options and returns a 
-//	controller and an error if one occurs. If an error occurs, the caller should handle it accordingly.
 func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSResource{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -56,11 +51,6 @@ func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) 
 	}, nil
 }
 
-// # Function Explanation
-// 
-//	GetAWSResource runs a request to the AWS CloudControl API to retrieve a resource based on the context and region 
-//	provided. It handles errors by returning an appropriate response if the resource is not found or if there is an error 
-//	with the request.
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)

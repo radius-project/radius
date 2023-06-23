@@ -59,11 +59,6 @@ const (
 )
 
 // Register registers the routes for UCP
-//
-// # Function Explanation
-// 
-//	This function registers handlers for various operations (GET, PUT, POST, DELETE) for different resources (ResourceGroup,
-//	 AzureCredential, AWSCredential) and for proxying requests. If any of the registrations fail, an error is returned.
 func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) error {
 	baseURL := ctrlOpts.BasePath
 

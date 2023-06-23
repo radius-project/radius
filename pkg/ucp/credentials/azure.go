@@ -38,11 +38,6 @@ type AzureCredentialProvider struct {
 }
 
 // NewAzureCredentialProvider creates new AzureCredentialProvider.
-//
-// # Function Explanation
-// 
-//	NewAzureCredentialProvider creates a new AzureCredentialProvider object by using the provided SecretProvider, UCP 
-//	connection and TokenCredential to create an AzureCredentialClient. If an error occurs, it is returned to the caller.
 func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AzureCredentialProvider, error) {
 	cli, err := ucpapi.NewAzureCredentialClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
@@ -56,12 +51,6 @@ func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.C
 }
 
 // Fetch gets the Azure credentials from secret storage.
-//
-// # Function Explanation
-// 
-//	The AzureCredentialProvider.Fetch function fetches an AzureCredential from an internal storage (e.g. Kubernetes secret 
-//	store) based on the planeName and name parameters. It returns an error if the credential cannot be found or if there is 
-//	an issue with the storage.
 func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AzureCredential, error) {
 	// 1. Fetch the secret name of Azure service principal credentials from UCP.
 	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AzureCredentialClientGetOptions{})

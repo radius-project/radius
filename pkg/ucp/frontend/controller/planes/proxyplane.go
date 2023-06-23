@@ -48,12 +48,6 @@ type ProxyPlane struct {
 }
 
 // NewProxyPlane creates a new ProxyPlane.
-//
-// # Function Explanation
-// 
-//	ProxyPlane's NewProxyPlane function creates a new ProxyPlane controller with the given options, and returns it or an 
-//	error if one occurs. The controller is initialized with the given options, and the base path and address are stored for 
-//	later use.
 func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ProxyPlane{
 		Operation: armrpc_controller.NewOperation(opts.Options,
@@ -64,11 +58,6 @@ func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	}, nil
 }
 
-// # Function Explanation
-// 
-//	ProxyPlane.Run handles an incoming HTTP request by looking up the plane associated with the request, checking if the 
-//	resource group exists, and then proxying the request to the appropriate resource provider. If any errors occur during 
-//	the process, they are returned to the caller.
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

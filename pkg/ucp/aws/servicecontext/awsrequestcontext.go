@@ -30,21 +30,11 @@ type AWSRequestContext struct {
 }
 
 // ARMRequestContextFromContext extracts AWS Request Context from http context.
-//
-// # Function Explanation
-// 
-//	AWSRequestContextFromContext() creates an AWSRequestContext object from the given context, which contains the 
-//	ARMRequestContext from the context. If the context is nil, an empty AWSRequestContext is returned.
 func AWSRequestContextFromContext(ctx context.Context) *AWSRequestContext {
 	return &AWSRequestContext{v1.ARMRequestContextFromContext(ctx)}
 }
 
 // ResourceTypeInAWSFormat returns the AWS resource type.
-//
-// # Function Explanation
-// 
-//	AWSRequestContext's ResourceTypeInAWSFormat() function takes in a ResourceID and returns a string in AWS format, 
-//	handling any errors that may occur.
 func (c *AWSRequestContext) ResourceTypeInAWSFormat() string {
 	return resources.ToAWSResourceType(c.ResourceID)
 }

@@ -31,12 +31,6 @@ const (
 )
 
 // ConvertTo converts from the versioned Credential resource to version-agnostic datamodel.
-//
-// # Function Explanation
-// 
-//	The AWSCredentialResource.ConvertTo() function converts an AWSCredentialResource object into a datamodel.AWSCredential 
-//	object. It first retrieves the data model credential properties, and if an error occurs, it is returned. Otherwise, the 
-//	converted object is returned. If an error occurs during the conversion, it is returned to the caller.
 func (cr *AWSCredentialResource) ConvertTo() (v1.DataModelInterface, error) {
 	prop, err := cr.getDataModelCredentialProperties()
 	if err != nil {
@@ -102,14 +96,6 @@ func (cr *AWSCredentialResource) getDataModelCredentialProperties() (*datamodel.
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Credential resource.
-//
-// # Function Explanation
-// 
-//	The ConvertFrom function in AWSCredentialResource takes in a DataModelInterface and converts it to an 
-//	AWSCredentialResource. It sets the ID, Name, Type, Location and Tags fields of the AWSCredentialResource to the 
-//	corresponding values from the DataModelInterface. It then checks the Kind of the Storage property of the 
-//	DataModelInterface and sets the Storage field of the AWSCredentialResource accordingly. If the Kind is not supported, it
-//	 returns an error.
 func (dst *AWSCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*datamodel.AWSCredential)
 	if !ok {
