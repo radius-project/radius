@@ -40,6 +40,13 @@ jobs:
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: radius-pr
+      - name: Checkout project-radius/radius@main
+        uses: actions/checkout@v3
+        with:
+          repository: project-radius/radius
+          ref: main
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
       - name: Checkout project-radius/bicep@bicep-extensibility
         uses: actions/checkout@v3
@@ -69,19 +76,26 @@ jobs:
       - name: Determine release version from versions.json
         run: |
           ./radius/.github/scripts/release-get-version.sh
+      - name: Generate release summary
+        run: |
+          echo "## Release" >> ${{ env.GITHUB_STEP_SUMMARY }}
+          echo "* Release driver: ${{ env.GITHUB_ACTOR }} "> ${{ env.GITHUB_STEP_SUMMARY }}
+          echo "* Release version: ${{ env.RELEASE_VERSION }}" >> ${{ env.GITHUB_STEP_SUMMARY }}
+          echo "* Final release: ${{ env.FINAL_RELEASE }}" >> ${{ env.GITHUB_STEP_SUMMARY }}
+          echo "* Release date: $(date)" >> ${{ env.GITHUB_STEP_SUMMARY }}
       - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/bicep version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/deployment-engine version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
