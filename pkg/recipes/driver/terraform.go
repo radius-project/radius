@@ -21,23 +21,23 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/terraform"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/util"
-)
-
-const (
-	terraformDirRoot = "/terraform"
 )
 
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection) Driver {
-	return &terraformDriver{UcpConn: ucpConn}
+func NewTerraformDriver(ucpConn sdk.Connection, directoryPath string) Driver {
+	tfExecutor := terraform.NewExecutor(&ucpConn)
+	return &terraformDriver{terraformExecutor: tfExecutor, ucpConn: ucpConn, directoryPath: directoryPath}
 }
 
 type terraformDriver struct {
-	UcpConn sdk.Connection
+	terraformExecutor terraform.TerraformExecutor
+	ucpConn           sdk.Connection
+	directoryPath     string // DirectoryPath is the path to the directory mounted to the container where Terraform will be installed and executed (module deployment), in sub directories.
 }
 
 // Execute deploys a Terraform recipe by using the Terraform CLI through terraform-exec
@@ -45,14 +45,23 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	logger := logr.FromContextOrDiscard(ctx)
 
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
-	terraformDir := terraformDirRoot + "/" + util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.NewString()
+	resourceDirPath := d.directoryPath + "/" + util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.NewString()
 
-	// TODO Initialize Terraform and deploy recipe
+	recipeOutputs, err := d.terraformExecutor.Deploy(ctx, terraform.TerraformOptions{
+		RootDir:        resourceDirPath,
+		EnvConfig:      &configuration,
+		ResourceRecipe: &recipe,
+		EnvRecipe:      &definition,
+	})
+	if err != nil {
+		cleanup(ctx, resourceDirPath)
+		return nil, err
+	}
 
 	// Cleanup Terraform directories
-	cleanup(ctx, terraformDir)
+	cleanup(ctx, resourceDirPath)
 
-	return nil, nil
+	return recipeOutputs, nil
 }
 
 func cleanup(ctx context.Context, tfDir string) {

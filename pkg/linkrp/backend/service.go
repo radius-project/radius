@@ -100,7 +100,8 @@ func (s *Service) Run(ctx context.Context) error {
 	engine := engine.NewEngine(engine.Options{
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
-			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient),
+			recipes.TemplateKindBicep:     driver.NewBicepDriver(clientOptions, deploymentEngineClient),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, s.Options.Config.Terraform.Path),
 		},
 	})
 
