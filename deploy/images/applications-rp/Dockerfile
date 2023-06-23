@@ -14,9 +14,9 @@ RUN addgroup -g 65532 rpuser && \
 
 WORKDIR /
 
-COPY ./linux_${TARGETARCH:-amd64}/release/appcore-rp /
+COPY ./linux_${TARGETARCH:-amd64}/release/applications-rp /
 
 USER rpuser
 
 EXPOSE 8080
-ENTRYPOINT ["/appcore-rp"]
+ENTRYPOINT ["/applications-rp"]
