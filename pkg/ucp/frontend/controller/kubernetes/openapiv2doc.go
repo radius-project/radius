@@ -33,10 +33,19 @@ type OpenAPIv2Doc struct {
 }
 
 // NewOpenAPIv2Doc creates a new OpenAPIv2Doc.
+//
+// # Function Explanation
+// 
+//	NewOpenAPIv2Doc creates a new OpenAPIv2Doc controller with the given options and returns it, or returns an error if the 
+//	controller cannot be created.
 func NewOpenAPIv2Doc(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &OpenAPIv2Doc{armrpc_controller.NewBaseController(opts)}, nil
 }
 
+// # Function Explanation
+// 
+//	OpenAPIv2Doc.Run responds to a request to /apis/api.ucp.dev/v1alpha3/openapi/v2 with a 200 OK response and a swagger 
+//	(openapi v2) doc, without logging every request.
 func (e *OpenAPIv2Doc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	// Required for the K8s scenario, we are required to respond to a request
 	// to /apis/api.ucp.dev/v1alpha3/openapi/v2 with a 200 OK response and a swagger (openapi v2)

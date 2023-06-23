@@ -73,6 +73,10 @@ type AWSTestResource struct {
 	Schema                string
 }
 
+// # Function Explanation
+//
+//	CreateKinesisStreamTestResource creates a test resource of type AWSKinesisStreamResourceType with the given
+//	resourceName, provider, arn and typeSchema.
 func CreateKinesisStreamTestResource(resourceName string) *AWSTestResource {
 	resourceType := AWSKinesisStreamResourceType
 	awsResourceType := AWSKinesisStreamAWSResourceType
@@ -83,6 +87,9 @@ func CreateKinesisStreamTestResource(resourceName string) *AWSTestResource {
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
+// # Function Explanation
+//
+//	CreateKinesisStreamTestResourceWithInvalidRegion creates a test resource with an invalid region for testing purposes.
 func CreateKinesisStreamTestResourceWithInvalidRegion(resourceName string) *AWSTestResource {
 	resourceType := AWSKinesisStreamResourceType
 	awsResourceType := AWSKinesisStreamAWSResourceType
@@ -93,6 +100,10 @@ func CreateKinesisStreamTestResourceWithInvalidRegion(resourceName string) *AWST
 	return CreateAWSTestResourceWithInvalidRegion(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
+// # Function Explanation
+//
+//	CreateMemoryDBClusterTestResource creates a test resource of type AWSMemoryDBClusterResourceType with the given
+//	resourceName, provider, arn, and typeSchema.
 func CreateMemoryDBClusterTestResource(resourceName string) *AWSTestResource {
 	resourceType := AWSMemoryDBClusterResourceType
 	awsResourceType := AWSMemoryDBClusterAWSResourceType
@@ -103,6 +114,10 @@ func CreateMemoryDBClusterTestResource(resourceName string) *AWSTestResource {
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
+// # Function Explanation
+//
+//	CreateRedshiftEndpointAuthorizationTestResource creates a test resource for a Redshift Endpoint Authorization with
+//	the given resource name and returns a pointer to the AWSTestResource.
 func CreateRedshiftEndpointAuthorizationTestResource(resourceName string) *AWSTestResource {
 	resourceType := AWSRedShiftEndpointAuthorizationResourceType
 	awsResourceType := AWSRedShiftEndpointAuthorizationAWSResourceType
@@ -113,6 +128,10 @@ func CreateRedshiftEndpointAuthorizationTestResource(resourceName string) *AWSTe
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
+// # Function Explanation
+//
+//	CreateAWSTestResource creates an AWSTestResource object with the given parameters and returns it. If an error occurs
+//	while marshalling the typeSchema, it returns nil.
 func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn string, typeSchema map[string]any) *AWSTestResource {
 	serialized, err := json.Marshal(typeSchema)
 	if err != nil {
@@ -135,6 +154,10 @@ func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider
 	}
 }
 
+// # Function Explanation
+//
+//	CreateAWSTestResourceWithInvalidRegion creates an AWSTestResource object with invalid region information and returns it.
+//	 It returns nil if an error occurs while marshalling the typeSchema.
 func CreateAWSTestResourceWithInvalidRegion(resourceType, awsResourceType, resourceName, provider, arn string, typeSchema map[string]any) *AWSTestResource {
 	serialized, err := json.Marshal(typeSchema)
 	if err != nil {

@@ -33,10 +33,18 @@ type DiscoveryDoc struct {
 }
 
 // NewDiscoveryDoc creates a new DiscoveryDoc.
+//
+// # Function Explanation
+// 
+//	NewDiscoveryDoc creates a new DiscoveryDoc controller with the given options and returns it, or returns an error if the 
+//	controller cannot be created.
 func NewDiscoveryDoc(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &DiscoveryDoc{armrpc_controller.NewBaseController(opts)}, nil
 }
 
+// # Function Explanation
+// 
+//	DiscoveryDoc.Run responds to a request to /apis/api.ucp.dev/v1alpha3 with a 200 OK response and an empty list of CRDs.
 func (e *DiscoveryDoc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	// Required for the K8s scenario, we are required to respond to a request
 	// to /apis/api.ucp.dev/v1alpha3 with a 200 OK response and the following

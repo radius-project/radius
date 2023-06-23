@@ -47,6 +47,11 @@ type CreateOrUpdateAWSResourceWithPost struct {
 }
 
 // NewCreateOrUpdateAWSResourceWithPost creates a new CreateOrUpdateAWSResourceWithPost.
+//
+// # Function Explanation
+// 
+//	NewCreateOrUpdateAWSResourceWithPost creates a new CreateOrUpdateAWSResourceWithPost controller with the given options 
+//	and AWS clients, and returns it without an error.
 func NewCreateOrUpdateAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSResourceWithPost{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
@@ -54,6 +59,10 @@ func NewCreateOrUpdateAWSResourceWithPost(opts armrpc_controller.Options, awsCli
 	}, nil
 }
 
+// # Function Explanation
+// 
+//	This function, CreateOrUpdateAWSResourceWithPost, reads the request body to get properties, checks if the resource 
+//	exists, and creates or updates the resource accordingly, returning an async operation response with a 201 status code.
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
