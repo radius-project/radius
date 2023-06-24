@@ -37,6 +37,9 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/processors/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/processors/sqldatabases"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
+	"github.com/project-radius/radius/pkg/messagingrp/processors/rabbitmqqueues"
+
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
@@ -57,13 +60,13 @@ func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		worker.Service{
 			Options:      options,
-			ProviderName: handler.ProviderNamespaceName,
+			ProviderName: handler.LinkProviderNamespace,
 		},
 	}
 }
 
 func (s *Service) Name() string {
-	return fmt.Sprintf("%s async worker", handler.ProviderNamespaceName)
+	return fmt.Sprintf("%s async worker", handler.LinkProviderNamespace)
 }
 
 func (s *Service) Run(ctx context.Context) error {
@@ -139,6 +142,37 @@ func (s *Service) Run(ctx context.Context) error {
 			processor := &extenders.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
 		}},
+
+		// Updates for Spliting Linkrp Namespace
+		{linkrp.N_RabbitMQQueuesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &rabbitmqqueues.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](processor, engine, client, configLoader, options)
+		}},
+		/*  The following will be worked on and uncommented in upcoming PRs
+		{linkrp.N_MongoDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &mongodatabases.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.MongoDatabase, ds_dm.MongoDatabase](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.N_RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &rediscaches.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.RedisCache, ds_dm.RedisCache](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.N_SqlDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &sqldatabases.Processor{}
+			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.SqlDatabase, ds_dm.SqlDatabase](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.N_DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &daprstatestores.Processor{Client: runtimeClient}
+			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.N_DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &daprsecretstores.Processor{Client: runtimeClient}
+			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](processor, engine, client, configLoader, options)
+		}},
+		{linkrp.N_DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
+			processor := &daprpubsubbrokers.Processor{Client: runtimeClient}
+			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](processor, engine, client, configLoader, options)
+		}},*/
 	}
 
 	opts := ctrl.Options{

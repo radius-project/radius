@@ -36,13 +36,13 @@ func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		server.Service{
 			Options:      options,
-			ProviderName: handler.ProviderNamespaceName,
+			ProviderName: handler.LinkProviderNamespace,
 		},
 	}
 }
 
 func (s *Service) Name() string {
-	return handler.ProviderNamespaceName
+	return handler.LinkProviderNamespace
 }
 
 func (s *Service) Run(ctx context.Context) error {
