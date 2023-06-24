@@ -14,26 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rabbitmqmessagequeues
+package rabbitmqqueues
 
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 )
 
 const (
 	Queue = "queue"
 )
 
-// Processor is a processor for RabbitMQQueue resources.
+// Processor is a processor for RabbitMQQueue resource.
 type Processor struct {
 }
 
 // Process implements the processors.Processor interface for RabbitMQQueue resources.
-func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMessageQueue, options processors.Options) error {
+func (p *Processor) Process(ctx context.Context, resource *msg_dm.RabbitMQQueue, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
 
@@ -49,6 +49,6 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 	return nil
 }
 
-func (p *Processor) computeConnectionString(resource *datamodel.RabbitMQMessageQueue) string {
+func (p Processor) computeConnectionString(resource *msg_dm.RabbitMQQueue) string {
 	return resource.Properties.Secrets.ConnectionString
 }

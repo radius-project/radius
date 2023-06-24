@@ -102,10 +102,16 @@ swagger-to-sdk:
     after_scripts:
       - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#core
       - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#link  
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#dapr
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#datastores 
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#messaging
   - repo: azure-sdk-for-python
     after_scripts:
       - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#core
       - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#link
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#dapr
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#datastores
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#messaging
   - repo: azure-sdk-for-java
   - repo: azure-sdk-for-go
   - repo: azure-sdk-for-js
