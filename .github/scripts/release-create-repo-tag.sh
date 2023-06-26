@@ -66,7 +66,7 @@ if [ "$?" == "1" ]; then
   # git push origin $RELEASE_BRANCH_NAME
 else
   echo "Release branch ${RELEASE_BRANCH_NAME} already exists. Checking out..."
-  git fetch origin/$RELEASE_BRANCH_NAME
+  git fetch origin $RELEASE_BRANCH_NAME
   git checkout --track origin/$RELEASE_BRANCH_NAME
 fi
 git tag $TAG_NAME
