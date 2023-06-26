@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resourceGroups
+package resourcegroups
 
 import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
 )
 
@@ -43,7 +44,7 @@ func createRadiusPlane(server *testserver.TestServer) {
 }
 
 func Test_ResourceGroup_PUT_Create(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -53,7 +54,7 @@ func Test_ResourceGroup_PUT_Create(t *testing.T) {
 }
 
 func Test_ResourceGroup_PUT_Update(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -66,7 +67,7 @@ func Test_ResourceGroup_PUT_Update(t *testing.T) {
 }
 
 func Test_ResourceGroup_GET_Empty(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -76,7 +77,7 @@ func Test_ResourceGroup_GET_Empty(t *testing.T) {
 }
 
 func Test_ResourceGroup_GET_Found(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -89,7 +90,7 @@ func Test_ResourceGroup_GET_Found(t *testing.T) {
 }
 
 func Test_ResourceGroup_LIST(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)

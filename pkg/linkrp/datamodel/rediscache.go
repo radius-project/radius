@@ -107,6 +107,9 @@ func (redisCache *RedisCache) VerifyInputs() error {
 		if redisCache.Properties.Port == 0 {
 			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
 		}
+		if redisCache.Properties.Username == "" && redisCache.Properties.Secrets.Password != "" {
+			msgs = append(msgs, "username must be provided with password")
+		}
 	}
 
 	if len(msgs) == 1 {
@@ -135,6 +138,9 @@ type RedisCacheProperties struct {
 	// The username for Redis cache
 	Username string `json:"username,omitempty"`
 
+	// Specifies whether to enable non-SSL or SSL connections
+	TLS bool `json:"tls,omitempty"`
+
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
 	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
 
@@ -152,6 +158,7 @@ type RedisCacheProperties struct {
 type RedisCacheSecrets struct {
 	ConnectionString string `json:"connectionString"`
 	Password         string `json:"password"`
+	URL              string `json:"url"`
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {

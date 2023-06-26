@@ -26,62 +26,144 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
+	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/project-radius/radius/pkg/ucp/hostoptions"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/pkg/validator"
+	"github.com/project-radius/radius/swagger"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 // TestServer can run a UCP server using the Go httptest package. It provides access to an isolated ETCD instances for storage
-// of resources and secrets.
+// of resources and secrets. Alteratively, it can also be used with gomock.
 //
-// Do not create a TestServer directly, use Start instead.
+// Do not create a TestServer directly, use StartWithETCD or StartWithMocks instead.
 type TestServer struct {
-	BaseURL     string
+	// BaseURL is the base URL of the server, including the path base.
+	BaseURL string
+
+	// Server provides access to the test HTTP server.
+	Server *httptest.Server
+
 	cancel      context.CancelFunc
 	etcdService *data.EmbeddedETCDService
-	server      *httptest.Server
-	client      *etcdclient.Client
+	etcdClient  *etcdclient.Client
 	t           *testing.T
 	stoppedChan <-chan struct{}
+	shutdown    sync.Once
 }
 
 // Client provides access to an http.Client that can be used to send requests. Most tests should use the functionality
 // like MakeRequest instead of testing the client directly.
 func (ts *TestServer) Client() *http.Client {
-	return ts.server.Client()
+	return ts.Server.Client()
 }
 
 // Close shuts down the server and will block until shutdown completes.
 func (ts *TestServer) Close() {
 	// We're being picking about resource cleanup here, because unless we are picky we hit scalability
 	// problems in tests pretty quickly.
+	ts.shutdown.Do(func() {
+		ts.cancel()       // Start ETCD shutdown
+		ts.Server.Close() // Stop HTTP server
 
-	ts.cancel() // Start ETCD shutdown
+		if ts.etcdClient != nil {
+			ts.etcdClient.Close() // Stop ETCD Client
+		}
 
-	ts.server.Close() // Stop HTTP server
-	ts.client.Close() // Stop ETCD Client
-
-	<-ts.stoppedChan // ETCD stopped
+		if ts.stoppedChan != nil {
+			<-ts.stoppedChan // ETCD stopped
+		}
+	})
 }
 
-// Start creates and starts a new TestServer.
-func Start(t *testing.T) *TestServer {
+// StartWithMocks creates and starts a new TestServer that used an mocks for storage.
+func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) (*TestServer, *store.MockStorageClient, *secret.MockClient) {
+	ctx, cancel := testcontext.New(t)
+
+	// Generate a random base path to ensure we're handling it correctly.
+	pathBase := "/" + uuid.New().String()
+
+	ctrl := gomock.NewController(t)
+	dataClient := store.NewMockStorageClient(ctrl)
+	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
+	dataProvider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(dataClient, nil).
+		AnyTimes()
+
+	secretClient := secret.NewMockClient(ctrl)
+	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
+	secretProvider.SetClient(secretClient)
+
+	router := mux.NewRouter()
+	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
+
+	app := http.Handler(router)
+	app = middleware.NormalizePath(app)
+	server := httptest.NewUnstartedServer(app)
+	server.Config.BaseContext = func(l net.Listener) context.Context {
+		return ctx
+	}
+
+	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{pathBase}, "")
+	require.NoError(t, err, "failed to load OpenAPI spec")
+
+	options := modules.Options{
+		Address:        server.URL,
+		PathBase:       pathBase,
+		Config:         &hostoptions.UCPConfig{},
+		DataProvider:   dataProvider,
+		SecretProvider: secretProvider,
+		SpecLoader:     specLoader,
+	}
+
+	if configureModules == nil {
+		configureModules = api.DefaultModules
+	}
+
+	modules := configureModules(options)
+
+	err = api.Register(ctx, router, modules, options)
+	require.NoError(t, err)
+
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info("Starting HTTP server...")
+	server.Start()
+	logger.Info(fmt.Sprintf("Started HTTP server on %s...", server.URL))
+
+	ucp := &TestServer{
+		BaseURL: server.URL + pathBase,
+		Server:  server,
+		cancel:  cancel,
+		t:       t,
+	}
+
+	t.Cleanup(ucp.Close)
+	return ucp, dataClient, secretClient
+}
+
+// StartWithETCD creates and starts a new TestServer that used an embedded ETCD instance for storage.
+func StartWithETCD(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) *TestServer {
 	config := hosting.NewAsyncValue[etcdclient.Client]()
 	etcd := data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{
 		ClientConfigSink:  config,
@@ -121,19 +203,13 @@ func Start(t *testing.T) *TestServer {
 		Provider: secretprovider.TypeETCDSecret,
 		ETCD:     storageOptions.ETCD,
 	}
-	secretProvider := secretprovider.NewSecretProvider(secretOptions)
-	secretClient, err := secretProvider.GetClient(ctx)
-	require.NoError(t, err)
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
-
-	// TODO: remove this to align on design with the RPs
-	storageClient, err := dataprovider.NewStorageProvider(storageOptions).GetStorageClient(ctx, "ucp")
-	require.NoError(t, err)
+	dataProvider := dataprovider.NewStorageProvider(storageOptions)
+	secretProvider := secretprovider.NewSecretProvider(secretOptions)
 
 	router := mux.NewRouter()
-
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 
 	app := http.Handler(router)
@@ -142,12 +218,26 @@ func Start(t *testing.T) *TestServer {
 	server.Config.BaseContext = func(l net.Listener) context.Context {
 		return ctx
 	}
-	err = api.Register(ctx, router, armrpc_controller.Options{
-		Address:       server.URL,
-		PathBase:      pathBase,
-		DataProvider:  dataprovider.NewStorageProvider(storageOptions),
-		StorageClient: storageClient,
-	}, secretClient, ucp_aws.Clients{})
+
+	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{pathBase}, "")
+	require.NoError(t, err, "failed to load OpenAPI spec")
+
+	options := modules.Options{
+		Address:        server.URL,
+		PathBase:       pathBase,
+		Config:         &hostoptions.UCPConfig{},
+		DataProvider:   dataProvider,
+		SecretProvider: secretProvider,
+		SpecLoader:     specLoader,
+	}
+
+	if configureModules == nil {
+		configureModules = api.DefaultModules
+	}
+
+	modules := configureModules(options)
+
+	err = api.Register(ctx, router, modules, options)
 	require.NoError(t, err)
 
 	logger := logr.FromContextOrDiscard(ctx)
@@ -162,15 +252,17 @@ func Start(t *testing.T) *TestServer {
 	require.NoError(t, err, "failed to query etcd")
 	logger.Info("Connected to data store")
 
-	return &TestServer{
+	ucp := &TestServer{
 		BaseURL:     server.URL + pathBase,
+		Server:      server,
 		cancel:      cancel,
-		server:      server,
 		etcdService: etcd,
-		client:      client,
+		etcdClient:  client,
 		t:           t,
 		stoppedChan: stoppedChan,
 	}
+	t.Cleanup(ucp.Close)
+	return ucp
 }
 
 // TestResponse is return from requests made against a TestServer. Tests should use the functions defined
@@ -192,7 +284,7 @@ func (ts *TestServer) MakeFixtureRequest(method string, pathAndQuery string, fix
 
 // MakeRequest sends a request to the server.
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
-	client := ts.server.Client()
+	client := ts.Server.Client()
 	request, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), method, ts.BaseURL+pathAndQuery, body)
 	require.NoError(ts.t, err, "creating request failed")
 
