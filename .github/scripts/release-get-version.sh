@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-set -x
+set -xe
 
 # does_tag_exist checks if a tag exists in the remote repository
 function does_tag_exist() {

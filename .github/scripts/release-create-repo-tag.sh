@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-set -x
+set -xe
 
 REPOSITORY=$1
 MAIN_BRANCH=$2
@@ -58,14 +58,17 @@ echo "Final release: ${FINAL_RELEASE}"
 
 echo "Creating release branches and tags for ${REPOSITORY}..."
 
+
 pushd $REPOSITORY
-git fetch
-git checkout --track origin/${MAIN_BRANCH}
-git pull origin $MAIN_BRANCH
-git checkout --track origin/${RELEASE_BRANCH_NAME}
-git checkout -B $RELEASE_BRANCH_NAME
-git pull origin $RELEASE_BRANCH_NAME
+RELEASE_BRANCH_EXISTS=$(git branch -v -a | grep -i $RELEASE_BRANCH_NAME || true)
+if [[ -z "$RELEASE_BRANCH_EXISTS" ]]; then
+  echo "Creating release branch ${RELEASE_BRANCH_NAME}..."
+  git checkout -b $RELEASE_BRANCH_NAME
+else
+  echo "Release branch ${RELEASE_BRANCH_NAME} already exists. Checking out..."
+  git checkout --track origin/$RELEASE_BRANCH_NAME
+fi
+git push origin $RELEASE_BRANCH_NAME
 git tag $TAG_NAME
 git push origin --tags
-git push origin $RELEASE_BRANCH_NAME
 popd
