@@ -29,7 +29,7 @@ import (
 type Client interface {
 	// GetCallerIdentity gets information about the provided credentials.
 	GetCallerIdentity(ctx context.Context, region string, accessKeyID string, secretAccessKey string) (*sts.GetCallerIdentityOutput, error)
-	// ListRegions lists the regions available on the account that the specified access key pair belongs to.
+	// ListRegions lists the AWS regions available (fetched from EC2.DescribeRegions API).
 	ListRegions(ctx context.Context, region string, accessKeyID string, secretAccessKey string) (*ec2.DescribeRegionsOutput, error)
 }
 
@@ -57,7 +57,7 @@ func (c *client) GetCallerIdentity(ctx context.Context, region string, accessKey
 	return result, nil
 }
 
-// ListRegions lists the regions available on the account that the specified access key pair belongs to.
+// ListRegions lists the AWS regions available (fetched from EC2.DescribeRegions API).
 func (c *client) ListRegions(ctx context.Context, region string, accessKeyID string, secretAccessKey string) (*ec2.DescribeRegionsOutput, error) {
 	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, "")
 	ec2Client := ec2.New(ec2.Options{
