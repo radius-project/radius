@@ -17,11 +17,14 @@
 name: Release Radius
 
 on:
-  push:
+  pull_request:
     branches:
       - main
-    paths:
-      - 'versions.json'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'versions.json'
 
 env:
   RELEASE_VERSION: ''

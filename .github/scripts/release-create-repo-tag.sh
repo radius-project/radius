@@ -60,15 +60,15 @@ echo "Creating release branches and tags for ${REPOSITORY}..."
 
 
 pushd $REPOSITORY
-RELEASE_BRANCH_EXISTS=$(git branch -v -a | grep -i $RELEASE_BRANCH_NAME || true)
-if [[ -z "$RELEASE_BRANCH_EXISTS" ]]; then
+RELEASE_BRANCH_EXISTS=$(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH_NAME | grep refs/heads/$RELEASE_BRANCH_NAME > /dev/null)
+if [ "$?" == "1" ]; then
   echo "Creating release branch ${RELEASE_BRANCH_NAME}..."
   git checkout -b $RELEASE_BRANCH_NAME
+  # git push origin $RELEASE_BRANCH_NAME
 else
   echo "Release branch ${RELEASE_BRANCH_NAME} already exists. Checking out..."
   git checkout --track origin/$RELEASE_BRANCH_NAME
 fi
-git push origin $RELEASE_BRANCH_NAME
 git tag $TAG_NAME
-git push origin --tags
+# git push origin --tags
 popd
