@@ -44,6 +44,11 @@ func NewSecretProvider(opts SecretProviderOptions) *SecretProvider {
 	}
 }
 
+// SetClient sets the secret client. This should be used by tests that need to mock the secret client.
+func (p *SecretProvider) SetClient(client secret.Client) {
+	p.client = client
+}
+
 // GetClient returns the secret client if it has been initialized already, if not, creates it and then returns it.
 func (p *SecretProvider) GetClient(ctx context.Context) (secret.Client, error) {
 	if p.client != nil {

@@ -37,7 +37,7 @@ import (
 )
 
 func Test_GetAWSResourceWithPost(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient, cloudformationClient := initializeTest(t)
+	ucp, _, _, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
 
 	primaryIdentifiers := map[string]any{
 		"primaryIdentifier": []any{
@@ -80,13 +80,13 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	getRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:get", body)
+	getRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPost, ucp.BaseURL+testProxyRequestAWSCollectionPath+"/:get", body)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := testutil.ARMTestContextFromRequest(getRequest)
 	getRequest = getRequest.WithContext(ctx)
 
-	getResponse, err := ucpClient.httpClient.Do(getRequest)
+	getResponse, err := ucp.Client().Do(getRequest)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, getResponse.StatusCode)

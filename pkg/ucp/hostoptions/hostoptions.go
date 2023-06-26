@@ -32,13 +32,6 @@ import (
 type HostOptions struct {
 	// Config is the bootstrap configuration loaded from config file.
 	Config *UCPConfig
-
-	// DBClientFactory func(ctx context.Context) (*mongo.Database, error)
-
-	// HealthChannels supports loosely-coupled communication between the Resource Provider
-	// backend and the Health Monitor. This is part of the options for now because it's
-	// based on in-memory communication.
-	// HealthChannels healthcontract.HealthChannels
 }
 
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
