@@ -35,6 +35,9 @@ func Test_Process(t *testing.T) {
 	const azureRedisResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis2"
 	const host = "myredis.redis.cache.windows.net"
 	const connectionString = "myredis.redis.cache.windows.net:6380,abortConnect=False,ssl=True,user=testuser,password=testpassword"
+	const connectionString_NonSSL = "myredis.redis.cache.windows.net:6379,abortConnect=False,user=testuser,password=testpassword"
+	const connectionURI = "rediss://testuser:testpassword@myredis.redis.cache.windows.net:6380/0?"
+	const connectionURI_NonSSL = "redis://testuser:testpassword@myredis.redis.cache.windows.net:6379/0?"
 	const username = "testuser"
 	const password = "testpassword"
 
@@ -47,7 +50,7 @@ func Test_Process(t *testing.T) {
 				},
 				Values: map[string]any{
 					"host":     host,
-					"port":     RedisSSLPort,
+					"port":     RedisNonSSLPort,
 					"username": username,
 				},
 				Secrets: map[string]any{
@@ -62,22 +65,28 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, host, resource.Properties.Host)
-		require.Equal(t, int32(RedisSSLPort), resource.Properties.Port)
+		require.Equal(t, int32(RedisNonSSLPort), resource.Properties.Port)
 		require.Equal(t, username, resource.Properties.Username)
+		require.Equal(t, false, resource.Properties.TLS)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
-		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
+		require.Equal(t, connectionString_NonSSL, resource.Properties.Secrets.ConnectionString)
+		require.Equal(t, connectionURI_NonSSL, resource.Properties.Secrets.URL)
 
 		expectedValues := map[string]any{
 			"host":     host,
-			"port":     int32(RedisSSLPort),
+			"port":     int32(RedisNonSSLPort),
 			"username": username,
+			"ssl":      false,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"connectionString": {
-				Value: connectionString,
+				Value: connectionString_NonSSL,
 			},
 			"password": {
 				Value: password,
+			},
+			"connectionURI": {
+				Value: connectionURI_NonSSL,
 			},
 		}
 
@@ -96,9 +105,11 @@ func Test_Process(t *testing.T) {
 				Host:      host,
 				Port:      RedisSSLPort,
 				Username:  username,
+				TLS:       true,
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
+					URL:              connectionURI,
 				},
 			},
 		}
@@ -110,11 +121,13 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
+		require.Equal(t, connectionURI, resource.Properties.Secrets.URL)
 
 		expectedValues := map[string]any{
 			"host":     host,
 			"port":     int32(RedisSSLPort),
 			"username": username,
+			"ssl":      true,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"password": {
@@ -122,6 +135,9 @@ func Test_Process(t *testing.T) {
 			},
 			"connectionString": {
 				Value: connectionString,
+			},
+			"connectionURI": {
+				Value: connectionURI,
 			},
 		}
 
@@ -148,6 +164,7 @@ func Test_Process(t *testing.T) {
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
+					URL:              connectionURI,
 				},
 			},
 		}
@@ -161,10 +178,12 @@ func Test_Process(t *testing.T) {
 					"host":     "asdf",
 					"port":     3333,
 					"username": "asdf",
+					"ssl":      true,
 				},
 				Secrets: map[string]any{
 					"password":         "asdf",
 					"connectionString": "asdf",
+					"connectionURI":    "asdf",
 				},
 			},
 		}
@@ -177,11 +196,13 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, username, resource.Properties.Username)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString, resource.Properties.Secrets.ConnectionString)
+		require.Equal(t, connectionURI, resource.Properties.Secrets.URL)
 
 		expectedValues := map[string]any{
 			"host":     host,
 			"port":     int32(RedisSSLPort),
 			"username": username,
+			"ssl":      true,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"password": {
@@ -189,6 +210,9 @@ func Test_Process(t *testing.T) {
 			},
 			"connectionString": {
 				Value: connectionString,
+			},
+			"connectionURI": {
+				Value: connectionURI,
 			},
 		}
 
