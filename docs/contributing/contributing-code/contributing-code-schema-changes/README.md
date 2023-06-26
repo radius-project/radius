@@ -1,14 +1,14 @@
-# Contributing application model changes
+# Contributing schema changes
 
-The Radius application model and API are defined via a OpenAPI specification. Instead of manually defining each OpenAPI spec, [CADL](https://microsoft.github.io/typespec/) is used to generate the OpenAPI JSON files.
+This page will explain the process to make a change to Radius' REST API (eg: adding a new property, or adding a new resource type).The Radius application model and API are defined via a OpenAPI specification. Instead of manually defining each OpenAPI spec, [CADL](https://microsoft.github.io/typespec/) is used to generate the OpenAPI JSON files. You should read and follow these steps to make REST API changes.
 
 ## Step 1: Update CADL and generate Bicep types and API client
 
-In order to update or create a new application model specification follow these steps:
-1. Create or update the applicable CADL files within the `cadl` directory in the root of the radius repo
+In order to update or create a new schema follow these steps:
+1. Create or update the applicable CADL files (named after resource type) within the `cadl` directory in the root of the radius repo
 2. Run the following command to generate the OpenAPI spec with the newly added changes:
     ```bash  
-    cadl compile .
+    npx cadl compile .
     ```
 3. Generate the client code by running autorest. For example, to generate the LinkRP resources run:
     ```bash 

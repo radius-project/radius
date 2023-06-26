@@ -26,6 +26,12 @@ This is the list of core dependencies to install for the most common tasks. In g
 - [Python](https://www.python.org/downloads/)
 - [Golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
 - [jq](https://jqlang.github.io/jq/download/)
+- [CADL](https://microsoft.github.io/typespec/)
+
+  Install CADL compiler:
+  ```bash
+  cd cadl && npm ci
+  ```
   
 - Make  
   
