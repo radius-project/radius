@@ -1,6 +1,6 @@
 module github.com/project-radius/radius
 
-go 1.18
+go 1.20
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.2.0
@@ -72,7 +72,6 @@ require (
 	go.uber.org/zap v1.20.0
 	golang.org/x/sync v0.2.0
 	golang.org/x/text v0.7.0
-	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.10.0
 	k8s.io/api v0.25.2
@@ -231,6 +230,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiserver v0.25.0 // indirect
 	k8s.io/component-base v0.25.0 // indirect
 	oras.land/oras-go v1.2.0 // indirect
