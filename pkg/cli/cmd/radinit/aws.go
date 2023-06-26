@@ -28,9 +28,7 @@ import (
 
 const (
 	DefaultRegion = "us-east-1"
-)
 
-const (
 	selectAWSRegionPrompt                 = "Select the region you would like to deploy AWS resources to:"
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
 	enterAWSIAMAcessKeyIDPlaceholder      = "Enter IAM access key id..."
