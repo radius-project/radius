@@ -87,7 +87,7 @@ jobs:
         run: |
           ./radius-pr/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
-      - name: Release project-radius/bicep version
+      - name: Release project-radius/bicep version ${{ env.RELEASE_VERSION }}
         run: |
           ./radius-pr/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()

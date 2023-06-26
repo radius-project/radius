@@ -59,7 +59,7 @@ echo "Final release: ${FINAL_RELEASE}"
 echo "Creating release branches and tags for ${REPOSITORY}..."
 
 pushd $REPOSITORY
-RELEASE_BRANCH_EXISTS=$(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH_NAME | grep refs/heads/$RELEASE_BRANCH_NAME || true)
+RELEASE_BRANCH_EXISTS=$(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH_NAME)
 if [ -z "$RELEASE_BRANCH_EXISTS" ]; then
   echo "Creating release branch ${RELEASE_BRANCH_NAME}..."
   git checkout -b $RELEASE_BRANCH_NAME
