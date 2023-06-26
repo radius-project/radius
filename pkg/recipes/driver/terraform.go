@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,58 +20,62 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
-	"github.com/go-logr/logr"
-	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/ucp/util"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, directoryPath string) Driver {
+func NewTerraformDriver(ucpConn sdk.Connection, options hostoptions.TerraformOptions) Driver {
 	tfExecutor := terraform.NewExecutor(&ucpConn)
-	return &terraformDriver{terraformExecutor: tfExecutor, ucpConn: ucpConn, directoryPath: directoryPath}
+	return &terraformDriver{terraformExecutor: tfExecutor, ucpConn: ucpConn, options: options}
 }
 
+// terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
 type terraformDriver struct {
+	// terraformExecutor is used to execute Terraform commands - deploy, destroy, etc.
 	terraformExecutor terraform.TerraformExecutor
-	ucpConn           sdk.Connection
-	directoryPath     string // DirectoryPath is the path to the directory mounted to the container where Terraform will be installed and executed (module deployment), in sub directories.
+
+	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
+	ucpConn sdk.Connection
+
+	// options contains resource provider options for executing Terraform recipe, such as the path to the directory mounted to the container where Terraform can be executed in sub directories.
+	options hostoptions.TerraformOptions
 }
 
 // Execute deploys a Terraform recipe by using the Terraform CLI through terraform-exec
 func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
-	resourceDirPath := d.directoryPath + "/" + util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.NewString()
+
+	// We need a unique directory per execution of terraform. We generate this using the unique operation id of the async request so that names are always unique, but we can also trace them to the resource we were working on through operationID.
+	requestDirPath := filepath.Join(d.options.Path, v1.ARMRequestContextFromContext(ctx).OperationID.String())
+	if err := os.MkdirAll(requestDirPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory %q to execute terraform: %w", requestDirPath, err)
+	}
+	defer func() {
+		if err := os.RemoveAll(requestDirPath); err != nil {
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
+		}
+	}()
 
 	recipeOutputs, err := d.terraformExecutor.Deploy(ctx, terraform.TerraformOptions{
-		RootDir:        resourceDirPath,
+		RootDir:        requestDirPath,
 		EnvConfig:      &configuration,
 		ResourceRecipe: &recipe,
 		EnvRecipe:      &definition,
 	})
 	if err != nil {
-		cleanup(ctx, resourceDirPath)
 		return nil, err
 	}
 
-	// Cleanup Terraform directories
-	cleanup(ctx, resourceDirPath)
-
 	return recipeOutputs, nil
-}
-
-func cleanup(ctx context.Context, tfDir string) {
-	logger := logr.FromContextOrDiscard(ctx)
-
-	err := os.RemoveAll(tfDir)
-	if err != nil {
-		logger.Error(err, "Failed to remove Terraform installation directory")
-	}
 }

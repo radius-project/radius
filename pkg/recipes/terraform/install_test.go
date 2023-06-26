@@ -23,20 +23,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-logr/logr"
 	install "github.com/hashicorp/hc-install"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
 )
-
-func createContext(t *testing.T) context.Context {
-	logger, err := ucplog.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return context.Background()
-	}
-	return logr.NewContext(context.Background(), logger)
-}
 
 func TestInstall(t *testing.T) {
 	// Create a temporary test directory
@@ -44,7 +33,7 @@ func TestInstall(t *testing.T) {
 	require.NoError(t, err, "Failed to create temporary directory")
 	defer os.RemoveAll(testDir)
 
-	ctx := createContext(t)
+	ctx := context.Background()
 	i := install.NewInstaller()
 	defer func() {
 		err := i.Remove(ctx)

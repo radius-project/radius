@@ -20,13 +20,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	install "github.com/hashicorp/hc-install"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// NewEngine creates a new Engine to deploy recipe.
+// NewExecutor creates a new Executor to execute a Terraform recipe.
 func NewExecutor(ucpConn *sdk.Connection) *executor {
 	return &executor{ucpConn: ucpConn}
 }
@@ -38,17 +38,14 @@ type executor struct {
 }
 
 func (e *executor) Deploy(ctx context.Context, options TerraformOptions) (*recipes.RecipeOutput, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Install Terraform
 	i := install.NewInstaller()
 	_, err := Install(ctx, i, options.RootDir)
-	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through installer.Remove -
+	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
-		if r := recover(); r != nil {
-			logger.Info(fmt.Sprintf("Recovering from panic: %v", r))
-		}
 		if err := i.Remove(ctx); err != nil {
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
 		}

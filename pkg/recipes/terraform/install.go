@@ -22,11 +22,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-logr/logr"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/hc-install/src"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -36,7 +36,7 @@ const (
 // Install installs Terraform under /install in the provided Terraform root directory for the resource.
 // Returns the path to the installed Terraform binary and the installer.
 func Install(ctx context.Context, installer *install.Installer, tfDir string) (string, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Create Terraform installation directory
 	installDir := filepath.Join(tfDir, installSubDir)
@@ -45,7 +45,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 	}
 
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
-	// Re-visit this: consider checking if an exsiting installation of same version of Terraform is available.
+	// Re-visit this: consider checking if an existing installation of same version of Terraform is available.
 	// For initial iteration we will always install Terraform for every execution of the recipe driver.
 	execPath, err := installer.Ensure(ctx, []src.Source{
 		&releases.LatestVersion{

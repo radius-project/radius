@@ -27,14 +27,19 @@ import (
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
 	Deploy(ctx context.Context, options TerraformOptions) (*recipes.RecipeOutput, error)
-
-	// Destroy runs terraform destroy on the Terraform state file created by Deploy.
-	// Destroy(ctx context.Context, ucpConn *sdk.Connection, options TerraformOptions) error
 }
 
+// TerraformOptions represents the options required to build inputs to interact with Terraform.
 type TerraformOptions struct {
-	RootDir        string
-	EnvConfig      *recipes.Configuration
+	// RootDir is the root directory of where Terraform is installed and executed for a specific recipe deployment/deletion request.
+	RootDir string
+
+	// EnvConfig is the kubernetes runtime and cloud provider configuration for the Radius environment in which the application consuming the terraform recipe will be deployed.
+	EnvConfig *recipes.Configuration
+
+	// EnvRecipe is the recipe metadata associated with the Radius environment in which the application consuming the terraform recipe will be deployed.
+	EnvRecipe *recipes.EnvironmentDefinition
+
+	// ResourceRecipe is recipe metadata associated with the Radius resource deploying the Terraform recipe.
 	ResourceRecipe *recipes.ResourceMetadata
-	EnvRecipe      *recipes.EnvironmentDefinition
 }
