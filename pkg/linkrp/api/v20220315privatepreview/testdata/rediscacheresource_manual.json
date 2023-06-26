@@ -27,7 +27,7 @@
           "connectionString": "test-connection-string",
           "url": "test-url"
         },
-        "ssl": true,
+        "tls": true,
         "resourceProvisioning": "manual"
     }
 }

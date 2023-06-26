@@ -53,7 +53,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
 					Host:                    "",
 					Port:                    0,
-					SSL:                     false,
+					TLS:                     false,
 					Username:                "",
 					Recipe:                  linkrp.LinkRecipe{Name: "default"},
 				},
@@ -69,7 +69,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
 					Host:                    "",
 					Port:                    0,
-					SSL:                     false,
+					TLS:                     false,
 					Username:                "",
 					Recipe:                  linkrp.LinkRecipe{Name: "redis-test"},
 				},
@@ -85,7 +85,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
 					Host:                    "myrediscache.redis.cache.windows.net",
 					Port:                    10255,
-					SSL:                     false,
+					TLS:                     false,
 					Username:                "",
 					Recipe:                  linkrp.LinkRecipe{Name: "redis-test", Parameters: map[string]any{"port": float64(6081)}},
 				},
@@ -101,7 +101,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
 					Host:                    "myrediscache.redis.cache.windows.net",
 					Port:                    10255,
-					SSL:                     true,
+					TLS:                     true,
 					Username:                "admin",
 					Resources:               []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
 					Secrets: datamodel.RedisCacheSecrets{
@@ -122,7 +122,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
 					Host:                    "myrediscache.redis.cache.windows.net",
 					Port:                    10255,
-					SSL:                     false,
+					TLS:                     false,
 					Username:                "",
 				},
 			},
@@ -170,7 +170,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					Username:             to.Ptr(""),
-					SSL:                  to.Ptr(false),
+					TLS:                  to.Ptr(false),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
 							{
@@ -203,7 +203,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					Username:             to.Ptr(""),
-					SSL:                  to.Ptr(false),
+					TLS:                  to.Ptr(false),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
 							{
@@ -236,7 +236,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr("redis-test"), Parameters: map[string]any{"port": float64(6081)}},
 					Username:             to.Ptr(""),
-					SSL:                  to.Ptr(false),
+					TLS:                  to.Ptr(false),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
 							{
@@ -269,7 +269,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					Username:             to.Ptr(""),
-					SSL:                  to.Ptr(true),
+					TLS:                  to.Ptr(true),
 					Status: &ResourceStatus{
 						OutputResources: nil,
 					},
@@ -362,6 +362,7 @@ func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	converted := dm.(*datamodel.RedisCacheSecrets)
 	require.Equal(t, "test-connection-string", converted.ConnectionString)
 	require.Equal(t, "testPassword", converted.Password)
+	require.Equal(t, "test-url", converted.URL)
 }
 
 func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
@@ -380,6 +381,7 @@ func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test-connection-string", secrets.ConnectionString)
 	require.Equal(t, "testPassword", secrets.Password)
+	require.Equal(t, "test-url", secrets.URL)
 }
 
 func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {

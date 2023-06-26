@@ -748,11 +748,11 @@ type RedisCacheProperties struct {
 	// List of the resource IDs that support the Redis resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// Specifies whether to enable SSL connections to the Redis cache
-	SSL *bool `json:"ssl,omitempty"`
-
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to enable SSL connections to the Redis cache
+	TLS *bool `json:"tls,omitempty"`
 
 	// The username for Redis cache
 	Username *string `json:"username,omitempty"`

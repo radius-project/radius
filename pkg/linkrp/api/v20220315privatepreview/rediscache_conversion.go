@@ -60,7 +60,7 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted.Properties.Resources = toResourcesDataModel(v.Resources)
 	converted.Properties.Host = to.String(v.Host)
 	converted.Properties.Port = to.Int32(v.Port)
-	converted.Properties.SSL = to.Bool(v.SSL)
+	converted.Properties.TLS = to.Bool(v.TLS)
 	converted.Properties.Username = to.String(v.Username)
 	if v.Secrets != nil {
 		converted.Properties.Secrets = datamodel.RedisCacheSecrets{
@@ -96,7 +96,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		Resources:            fromResourcesDataModel(redis.Properties.Resources),
 		Host:                 to.Ptr(redis.Properties.Host),
 		Port:                 to.Ptr(redis.Properties.Port),
-		SSL:                  to.Ptr(redis.Properties.SSL),
+		TLS:                  to.Ptr(redis.Properties.TLS),
 		Username:             to.Ptr(redis.Properties.Username),
 		Status: &ResourceStatus{
 			OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),

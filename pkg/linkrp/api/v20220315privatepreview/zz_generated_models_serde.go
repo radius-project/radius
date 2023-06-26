@@ -1377,9 +1377,9 @@ func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "resourceProvisioning", r.ResourceProvisioning)
 	populate(objectMap, "resources", r.Resources)
-	populate(objectMap, "ssl", r.SSL)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
+	populate(objectMap, "tls", r.TLS)
 	populate(objectMap, "username", r.Username)
 	return json.Marshal(objectMap)
 }
@@ -1417,14 +1417,14 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 		case "resources":
 				err = unpopulate(val, "Resources", &r.Resources)
 				delete(rawMsg, key)
-		case "ssl":
-				err = unpopulate(val, "SSL", &r.SSL)
-				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, "Secrets", &r.Secrets)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		case "tls":
+				err = unpopulate(val, "TLS", &r.TLS)
 				delete(rawMsg, key)
 		case "username":
 				err = unpopulate(val, "Username", &r.Username)

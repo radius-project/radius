@@ -67,7 +67,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, host, resource.Properties.Host)
 		require.Equal(t, int32(RedisNonSSLPort), resource.Properties.Port)
 		require.Equal(t, username, resource.Properties.Username)
-		require.Equal(t, false, resource.Properties.SSL)
+		require.Equal(t, false, resource.Properties.TLS)
 		require.Equal(t, password, resource.Properties.Secrets.Password)
 		require.Equal(t, connectionString_NonSSL, resource.Properties.Secrets.ConnectionString)
 		require.Equal(t, connectionURI_NonSSL, resource.Properties.Secrets.URL)
@@ -105,7 +105,7 @@ func Test_Process(t *testing.T) {
 				Host:      host,
 				Port:      RedisSSLPort,
 				Username:  username,
-				SSL:       true,
+				TLS:       true,
 				Secrets: datamodel.RedisCacheSecrets{
 					Password:         password,
 					ConnectionString: connectionString,
