@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/aws"
@@ -35,11 +37,17 @@ func Test_enterAWSCloudProvider(t *testing.T) {
 	client := aws.NewMockClient(ctrl)
 	outputSink := output.MockOutput{}
 	runner := Runner{Prompter: prompter, awsClient: client, Output: &outputSink}
+	ec2Regions := []ec2_types.Region{
+		{RegionName: to.Ptr("region")},
+		{RegionName: to.Ptr("region2")},
+	}
+	regions := []string{"region", "region2"}
 
-	setAWSRegionPrompt(prompter, "region")
 	setAWSAccessKeyIDPrompt(prompter, "access-key-id")
 	setAWSSecretAccessKeyPrompt(prompter, "secret-access-key")
-	setAWSCallerIdentity(client, "region", "access-key-id", "secret-access-key", &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSCallerIdentity(client, DefaultRegion, "access-key-id", "secret-access-key", &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSListRegions(client, DefaultRegion, "access-key-id", "secret-access-key", &ec2.DescribeRegionsOutput{Regions: ec2Regions})
+	setAWSRegionPrompt(prompter, regions, "region")
 
 	options := initOptions{}
 	provider, err := runner.enterAWSCloudProvider(context.Background(), &options)
