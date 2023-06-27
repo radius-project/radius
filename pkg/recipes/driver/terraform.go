@@ -34,17 +34,13 @@ var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
 func NewTerraformDriver(ucpConn sdk.Connection, options hostoptions.TerraformOptions) Driver {
-	tfExecutor := terraform.NewExecutor(&ucpConn)
-	return &terraformDriver{terraformExecutor: tfExecutor, ucpConn: ucpConn, options: options}
+	return &terraformDriver{terraformExecutor: terraform.NewExecutor(&ucpConn), options: options}
 }
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
 type terraformDriver struct {
 	// terraformExecutor is used to execute Terraform commands - deploy, destroy, etc.
 	terraformExecutor terraform.TerraformExecutor
-
-	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
-	ucpConn sdk.Connection
 
 	// options contains resource provider options for executing Terraform recipe, such as the path to the directory mounted to the container where Terraform can be executed in sub directories.
 	options hostoptions.TerraformOptions

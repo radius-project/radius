@@ -34,6 +34,7 @@ func NewExecutor(ucpConn *sdk.Connection) *executor {
 var _ TerraformExecutor = (*executor)(nil)
 
 type executor struct {
+	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
 	ucpConn *sdk.Connection
 }
 
