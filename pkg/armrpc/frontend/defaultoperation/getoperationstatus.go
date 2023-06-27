@@ -36,12 +36,22 @@ type GetOperationStatus struct {
 }
 
 // NewGetOperationStatus creates a new GetOperationStatus.
+//
+// # Function Explanation
+// 
+//	GetOperationStatus is a controller that creates a new base controller with the given options and returns it, or an error
+//	 if the controller could not be created.
 func NewGetOperationStatus(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetOperationStatus{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run returns the async operation status.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
+//
+// # Function Explanation
+// 
+//	GetOperationStatus retrieves the status of an asynchronous operation and returns it to the caller. It handles errors by 
+//	returning a NotFoundResponse if the resource is not found.
 func (e *GetOperationStatus) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

@@ -59,6 +59,11 @@ type Request struct {
 }
 
 // Timeout gets the async operation timeout duration.
+//
+// # Function Explanation
+// 
+//	Request.Timeout() returns the timeout duration for the request, either the default timeout or the one specified in the 
+//	request object. If no timeout is specified, the default timeout is used.
 func (r *Request) Timeout() time.Duration {
 	if r.OperationTimeout == nil {
 		return DefaultAsyncOperationTimeout
@@ -67,6 +72,12 @@ func (r *Request) Timeout() time.Duration {
 }
 
 // ARMRequestContext creates the ARM request context from async operation request.
+//
+// # Function Explanation
+// 
+//	Request.ARMRequestContext() parses the ResourceID from the Request object and creates an ARMRequestContext object with 
+//	the other fields from the Request object. It returns the ARMRequestContext object or an error if the ResourceID could 
+//	not be parsed.
 func (r *Request) ARMRequestContext() (*v1.ARMRequestContext, error) {
 	rID, err := resources.Parse(r.ResourceID)
 	if err != nil {

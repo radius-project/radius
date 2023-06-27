@@ -48,6 +48,11 @@ type Service struct {
 }
 
 // Init initializes web service.
+//
+// # Function Explanation
+// 
+//	Service.Init initializes the Service by setting up the StorageProvider, QueueProvider, OperationStatusManager, 
+//	KubeClient, and ARMCertManager. It returns an error if any of the setup steps fail.
 func (s *Service) Init(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -80,6 +85,12 @@ func (s *Service) Init(ctx context.Context) error {
 }
 
 // Start starts HTTP server.
+//
+// # Function Explanation
+// 
+//	Service.Start creates a new server and listens on the given address. It handles shutdowns based on the context and logs 
+//	any errors that occur. If the server is closed, it logs a message and returns nil. Otherwise, it returns any errors that
+//	 occur.
 func (s *Service) Start(ctx context.Context, opt Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)

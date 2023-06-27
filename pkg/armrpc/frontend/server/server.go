@@ -52,6 +52,12 @@ type Options struct {
 }
 
 // New creates a frontend server that can listen on the provided address and serve requests.
+//
+// # Function Explanation
+// 
+//	New creates a new HTTP server with the given context and options. It configures the router with the given options, adds 
+//	middleware for error handling and ARM authentication, and sets up the version and healthz endpoints. If an error occurs 
+//	during configuration, it is returned.
 func New(ctx context.Context, options Options) (*http.Server, error) {
 	r := mux.NewRouter()
 	if options.Configure != nil {

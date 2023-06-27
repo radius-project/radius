@@ -111,6 +111,11 @@ type BaseController struct {
 }
 
 // NewBaseController creates BaseController instance.
+//
+// # Function Explanation
+//
+//	NewBaseController creates a new BaseController object with the given options and returns it. If any errors occur, they
+//	will be returned to the caller.
 func NewBaseController(options Options) BaseController {
 	return BaseController{
 		options,
@@ -118,31 +123,61 @@ func NewBaseController(options Options) BaseController {
 }
 
 // StorageClient gets storage client for this controller.
+//
+// # Function Explanation
+//
+//	BaseController's StorageClient function returns the StorageClient option from the BaseController's options struct,
+//	allowing callers to access the StorageClient. If the StorageClient option is not set, an error is returned.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
 
 // DataProvider gets data storage provider for this controller.
+//
+// # Function Explanation
+//
+//	BaseController's DataProvider() function returns the DataStorageProvider from the options struct, allowing callers to
+//	access the data provider. If the data provider is not set, an error is returned.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
 }
 
 // KubeClient gets Kubernetes client for this controller.
+//
+// # Function Explanation
+//
+//	The BaseController.KubeClient() function returns a runtimeclient.Client object which is used to interact with the
+//	Kubernetes API. It handles any errors that occur during the process and returns an error if one is encountered.
 func (b *BaseController) KubeClient() runtimeclient.Client {
 	return b.options.KubeClient
 }
 
 // ResourceType gets the resource type for this controller.
+//
+// # Function Explanation
+//
+//	BaseController's ResourceType function returns the resource type of the controller, or an error if the resource type is
+//	not set.
 func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
 
 // DeploymentProcessor gets the deployment processor for this controller.
+//
+// # Function Explanation
+//
+//	The StatusManager() function returns the StatusManager object from the options struct, allowing callers to access the
+//	status manager and handle errors accordingly.
 func (b *BaseController) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
 }
 
 // GetResource is the helper to get the resource via storage client.
+//
+// # Function Explanation
+//
+//	GetResource retrieves an object from the storage client and attempts to convert it into the given output type. It
+//	returns the ETag of the object and any errors encountered. If an error is encountered, the output will be nil.
 func (c *BaseController) GetResource(ctx context.Context, id string, out any) (etag string, err error) {
 	etag = ""
 	var res *store.Object
@@ -156,6 +191,11 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out any) (e
 }
 
 // SaveResource is the helper to save the resource via storage client.
+//
+// # Function Explanation
+//
+//	SaveResource saves a resource to the storage client, using the given ID and input data, and an optional ETag. It returns
+//	 the saved object or an error if the save fails.
 func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*store.Object, error) {
 	nr := &store.Object{
 		Metadata: store.Metadata{
@@ -171,6 +211,12 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in any, et
 }
 
 // UpdateSystemData creates or updates new systemdata from old and new resources.
+//
+// # Function Explanation
+//
+//	UpdateSystemData updates the old SystemData with the new SystemData, backfilling the CreatedAt, CreatedBy, and
+//	CreatedByType fields if they are not set in the old SystemData. If LastModifiedAt is set in the new SystemData, it will
+//	update the LastModifiedAt, LastModifiedBy, and LastModifiedByType fields in the old SystemData.
 func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 	newSystemData := old
 
@@ -197,6 +243,11 @@ func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 }
 
 // BuildTrackedResource create TrackedResource instance from request context
+//
+// # Function Explanation
+//
+//	BuildTrackedResource extracts information from the context and request object to create a TrackedResource object. It
+//	handles errors by returning an empty TrackedResource if the context or request object is invalid.
 func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
 	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	serviceOpt := hostoptions.FromContext(ctx)

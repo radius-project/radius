@@ -34,6 +34,12 @@ const (
 
 // ClientCertValidator validates the thumbprint received in the request header with
 // the active thumbprints fetched from ARM Metadata endpoint
+//
+// # Function Explanation
+// 
+//	ClientCertValidator is a function that takes in an ArmCertManager and returns a function that validates the client 
+//	certificate thumbprint in the request header. If the thumbprint is missing or invalid, an error is returned to the 
+//	caller.
 func ClientCertValidator(armCertMgr *ArmCertManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -36,25 +36,48 @@ type testDataModel struct {
 	Name string `json:"name"`
 }
 
+// # Function Explanation
+// 
+//	The ResourceTypeName function returns a string representing the type of the testDataModel object. It handles any errors 
+//	that occur during the process and returns an empty string if an error occurs.
 func (e testDataModel) ResourceTypeName() string {
 	return "Applications.Test/resource"
 }
 
+// # Function Explanation
+// 
+//	testDataModel.GetSystemData() returns nil and does not return an error, indicating that the system data is not 
+//	available.
 func (e testDataModel) GetSystemData() *v1.SystemData {
 	return nil
 }
 
+// # Function Explanation
+// 
+//	testDataModel.GetBaseResource() returns nil and handles any errors that occur during execution.
 func (e testDataModel) GetBaseResource() *v1.BaseResource {
 	return nil
 }
 
+// # Function Explanation
+// 
+//	testDataModel.ProvisioningState() returns the provisioning state of the data model as "Accepted" and handles any errors 
+//	by returning an empty string.
 func (e testDataModel) ProvisioningState() v1.ProvisioningState {
 	return v1.ProvisioningStateAccepted
 }
 
+// # Function Explanation
+// 
+//	testDataModel.SetProvisioningState is a function that sets the ProvisioningState of a data model. It handles any errors 
+//	that may occur and returns them to the caller.
 func (e testDataModel) SetProvisioningState(state v1.ProvisioningState) {
 }
 
+// # Function Explanation
+// 
+//	testDataModel.UpdateMetadata is a function that updates the metadata of a resource, handling any errors that may occur 
+//	in the process. It returns an error if the update fails, allowing the caller to handle the error accordingly.
 func (e testDataModel) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.BaseResource) {
 }
 
@@ -62,12 +85,20 @@ type testVersionedModel struct {
 	Name string `json:"name"`
 }
 
+// # Function Explanation
+// 
+//	testVersionedModel's ConvertFrom function takes in a DataModelInterface and converts it into a testVersionedModel, 
+//	setting the Name field to the Name field of the DataModelInterface. If an error occurs, it is returned to the caller.
 func (v *testVersionedModel) ConvertFrom(src v1.DataModelInterface) error {
 	dm := src.(*testDataModel)
 	v.Name = dm.Name
 	return nil
 }
 
+// # Function Explanation
+// 
+//	testVersionedModel.ConvertTo() converts the data model to a versioned model and returns an error if the conversion 
+//	fails.
 func (v *testVersionedModel) ConvertTo() (v1.DataModelInterface, error) {
 	return nil, nil
 }

@@ -60,6 +60,11 @@ var operationMethodToHTTPMethod = map[OperationMethod]string{
 }
 
 // HTTPMethod converts OperationMethod to HTTP Method.
+//
+// # Function Explanation
+// 
+//	OperationMethod's HTTPMethod() function returns the corresponding HTTP method for the given OperationMethod, or POST if 
+//	no corresponding method is found. If an error occurs, the function will return POST.
 func (o OperationMethod) HTTPMethod() string {
 	m, ok := operationMethodToHTTPMethod[o]
 	if !ok {
@@ -116,11 +121,23 @@ type OperationType struct {
 }
 
 // String returns the operation type string.
+//
+// # Function Explanation
+// 
+//	"OperationType.String()" combines the Type and Method fields of an OperationType object into a single string, with the 
+//	Type and Method separated by a Seperator. If either field is empty, an error is returned.
 func (o OperationType) String() string {
 	return strings.ToUpper(o.Type + Seperator + string(o.Method))
 }
 
 // ParseOperationType parses OperationType from string.
+//
+// # Function Explanation
+// 
+//	ParseOperationType takes in a string and returns an OperationType object and a boolean. It splits the string by the 
+//	Seperator and checks if the resulting array has two elements. If it does, it creates an OperationType object with the 
+//	first element as the Type and the second element as the Method, and returns true. If the array does not have two 
+//	elements, it returns an empty OperationType object and false.
 func ParseOperationType(s string) (OperationType, bool) {
 	p := strings.Split(s, Seperator)
 	if len(p) == 2 {
@@ -149,6 +166,11 @@ const (
 )
 
 // IsTerminal returns true if given Provisioning State is in a terminal state.
+//
+// # Function Explanation
+// 
+//	ProvisioningState checks if a given state is terminal, meaning it is either Succeeded, Failed, Canceled, or empty. If it
+//	 is, it returns true, otherwise false. This allows callers to determine if an operation has completed or not.
 func (state ProvisioningState) IsTerminal() bool {
 	// If state is empty, it is the resource created by synchronous API and treated as a terminal state.
 	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled || state == ""
@@ -190,11 +212,23 @@ type BaseResource struct {
 }
 
 // ResourceTypeName returns resource type name.
+//
+// # Function Explanation
+// 
+//	"ResourceTypeName" returns the type of the BaseResource object. It handles any errors that may occur during the process 
+//	and returns an empty string if an error occurs.
 func (b *BaseResource) ResourceTypeName() string {
 	return b.Type
 }
 
 // UpdateMetadata updates the default metadata with new request context and metadata in old resource.
+//
+// # Function Explanation
+// 
+//	BaseResource.UpdateMetadata() updates the metadata of the resource, such as the ID, Name, Type, Location, TenantID, 
+//	CreatedAPIVersion and UpdatedAPIVersion, based on the ARMRequestContext and the old resource. If the old resource is not
+//	 provided, the metadata is set to the values from the ARMRequestContext. If the old resource is provided, the metadata 
+//	is updated with the values from the ARMRequestContext and the old resource.
 func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldResource *BaseResource) {
 	if oldResource != nil {
 		b.ID = oldResource.ID
@@ -214,21 +248,42 @@ func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldResource *BaseR
 }
 
 // GetSystemdata gets systemdata.
+//
+// # Function Explanation
+// 
+//	"GetSystemData" returns a pointer to the SystemData struct stored in the BaseResource struct. It also handles any errors
+//	 that may occur during the retrieval process, returning an error message to the caller.
 func (b *BaseResource) GetSystemData() *SystemData {
 	return &b.SystemData
 }
 
 // GetBaseResource gets internal base resource.
+//
+// # Function Explanation
+// 
+//	"GetBaseResource" returns the BaseResource object that was passed in as an argument. If the argument is nil, an error is
+//	 returned.
 func (b *BaseResource) GetBaseResource() *BaseResource {
 	return b
 }
 
 // ProvisioningState gets the provisioning state.
+//
+// # Function Explanation
+// 
+//	The ProvisioningState() function returns the current provisioning state of the BaseResource object. It checks the 
+//	AsyncProvisioningState field of the InternalMetadata object and returns it. If the field is not set, it returns an 
+//	error.
 func (b *BaseResource) ProvisioningState() ProvisioningState {
 	return b.InternalMetadata.AsyncProvisioningState
 }
 
 // SetProvisioningState sets the privisioning state of the resource.
+//
+// # Function Explanation
+// 
+//	BaseResource's SetProvisioningState function sets the AsyncProvisioningState field of the InternalMetadata struct to the
+//	 given ProvisioningState. If an error occurs, it is returned to the caller.
 func (b *BaseResource) SetProvisioningState(state ProvisioningState) {
 	b.InternalMetadata.AsyncProvisioningState = state
 }

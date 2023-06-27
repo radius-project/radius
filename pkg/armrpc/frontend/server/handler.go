@@ -146,6 +146,10 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 	}
 }
 
+// # Function Explanation
+//
+//	ConfigureDefaultHandlers sets up the default handlers for the given root router, path base, provider namespace,
+//	operation controller factory and controller options. It returns an error if any of the handlers fail to register.
 func ConfigureDefaultHandlers(
 	ctx context.Context,
 	rootRouter *mux.Router,
@@ -207,6 +211,13 @@ func ConfigureDefaultHandlers(
 }
 
 // HandleError creates the internal error respones with 500 code.
+//
+// # Function Explanation
+//
+//	HandleError is a function that handles errors and logs them. It takes in a context, a response writer, a request object
+//	and an error. It then logs the error and tries to use the ARM format to send back the error info. If the error is due to
+//	 api conversion failure, it returns a bad request response. Otherwise, it returns an internal server error response. The
+//	 function also handles any errors that occur while writing the response.
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
