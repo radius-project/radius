@@ -23,12 +23,12 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/k8sutil"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -41,7 +41,7 @@ const (
 )
 
 func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
-	tCtx := testutil.NewControllerTestContext(t)
+	tCtx := rpctest.NewControllerContext(t)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
@@ -127,7 +127,7 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 		tCtx.MockSC.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			Return(testutil.FakeStoreObject(envdm), nil)
+			Return(rpctest.FakeStoreObject(envdm), nil)
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
@@ -151,7 +151,7 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 }
 
 func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
-	tCtx := testutil.NewControllerTestContext(t)
+	tCtx := rpctest.NewControllerContext(t)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
@@ -209,7 +209,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 			Query(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 				return &store.ObjectQueryResult{
-					Items: []store.Object{*testutil.FakeStoreObject(envdm)},
+					Items: []store.Object{*rpctest.FakeStoreObject(envdm)},
 				}, nil
 			}).Times(1)
 
@@ -263,7 +263,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 			Return(&store.ObjectQueryResult{}, nil).Times(1)
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			Return(&store.ObjectQueryResult{Items: []store.Object{*testutil.FakeStoreObject(newResource)}}, nil).Times(1)
+			Return(&store.ObjectQueryResult{Items: []store.Object{*rpctest.FakeStoreObject(newResource)}}, nil).Times(1)
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)

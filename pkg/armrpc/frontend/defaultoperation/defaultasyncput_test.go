@@ -28,6 +28,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -82,10 +83,10 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			reqModel, reqDataModel, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := testutil.ARMTestContextFromRequest(req)
+			ctx := rpctest.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			// These values don't affect the test since we're using mocks. Just choosing non-default values
@@ -258,10 +259,10 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			reqDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := testutil.ARMTestContextFromRequest(req)
+			ctx := rpctest.ARMTestContextFromRequest(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{

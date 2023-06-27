@@ -26,8 +26,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -55,8 +55,8 @@ func TestListResourcesRun(t *testing.T) {
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -107,13 +107,13 @@ func TestListResourcesRun(t *testing.T) {
 	for _, tt := range listEnvsCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+			req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 
 			q := req.URL.Query()
 			q.Add("top", tt.top)
 			req.URL.RawQuery = q.Encode()
 
-			ctx := testutil.ARMTestContextFromRequest(req)
+			ctx := rpctest.ARMTestContextFromRequest(req)
 			serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 			paginationToken := ""

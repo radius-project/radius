@@ -26,10 +26,11 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,8 +51,8 @@ func TestGetOperationStatusRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -73,8 +74,8 @@ func TestGetOperationStatusRun(t *testing.T) {
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().

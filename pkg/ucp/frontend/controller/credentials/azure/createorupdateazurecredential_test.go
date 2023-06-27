@@ -24,6 +24,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/secret"
@@ -128,10 +129,10 @@ func Test_Azure_Credential(t *testing.T) {
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
 			require.NoError(t, err)
 
-			request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, tt.headerfile, credentialVersionedInput)
+			request, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPut, tt.headerfile, credentialVersionedInput)
 			require.NoError(t, err)
 
-			ctx := testutil.ARMTestContextFromRequest(request)
+			ctx := rpctest.ARMTestContextFromRequest(request)
 			response, err := credentialCtrl.Run(ctx, nil, request)
 			if tt.err != nil {
 				require.Equal(t, err, tt.err)

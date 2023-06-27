@@ -26,8 +26,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,7 +49,7 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		expected := &v1.Subscription{}
 		_ = json.Unmarshal(rawReq, expected)
 
-		req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
+		req, _ := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
 
 		// arrange
 		op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})

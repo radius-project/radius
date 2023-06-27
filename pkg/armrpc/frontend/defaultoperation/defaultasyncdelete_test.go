@@ -28,8 +28,8 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -59,10 +59,10 @@ func TestDefaultAsyncDelete(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
+			req, _ := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
 			req.Header.Set("If-Match", tt.etag)
 
-			ctx := testutil.ARMTestContextFromRequest(req)
+			ctx := rpctest.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := loadTestResurce()
 
 			// These values don't affect the test since we're using mocks. Just choosing non-default values
