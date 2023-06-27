@@ -55,7 +55,7 @@ func getTestHTTPRequest(headerFile string) (*http.Request, error) {
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	for k, v := range parsed {
 		req.Header.Add(k, v)
