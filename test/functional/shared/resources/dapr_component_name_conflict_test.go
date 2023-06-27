@@ -31,9 +31,9 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
+			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
 					{
 						Name: "corerp-resources-dapr-component-name-conflict",
 						Type: validation.ApplicationsResource,
