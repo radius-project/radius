@@ -28,4 +28,14 @@ func Test_Render_WithCancel(t *testing.T) {
     ...
 }
 
+// Test_Render_WithDeadline uses the default logger context with deadline.
+func Test_Render_WithDeadline(t *testing.T) {
+    ctx, cancel := testcontext.NewWithDeadline(t, time.Second * time.Duration(5))
+    t.Cleanup(cancel)
+
+    ...
+    resources, err := renderer.Render(ctx, nil)
+    ...
+}
+
 ```

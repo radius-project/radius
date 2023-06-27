@@ -56,7 +56,7 @@ func queueTestMessage(cli client.Client, num int) error {
 
 func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 	ctx, cancel := testcontext.NewWithCancel(t)
-	defer cancel()
+	t.Cleanup(cancel)
 
 	t.Run("nil message", func(t *testing.T) {
 		err := cli.Enqueue(ctx, &client.Message{Data: []byte("")})

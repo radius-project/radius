@@ -27,9 +27,8 @@ import (
 )
 
 func Test_Host_RequiresServices(t *testing.T) {
-	ctx := testcontext.New(t)
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	host := &Host{
 		Services: []Service{},
@@ -40,9 +39,8 @@ func Test_Host_RequiresServices(t *testing.T) {
 }
 
 func Test_Host_DetectsDuplicates(t *testing.T) {
-	ctx := testcontext.New(t)
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	host := &Host{
 		Services: []Service{
@@ -56,9 +54,8 @@ func Test_Host_DetectsDuplicates(t *testing.T) {
 }
 
 func Test_Host_RunMultipleServices_HandlesExit(t *testing.T) {
-	ctx := testcontext.New(t)
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	started := make(chan struct{})
 
@@ -139,9 +136,8 @@ func Test_Host_RunMultipleServices_HandlesExit(t *testing.T) {
 }
 
 func Test_Host_RunMultipleServices_ShutdownTimeout(t *testing.T) {
-	ctx := testcontext.New(t)
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	started := make(chan struct{})
 
