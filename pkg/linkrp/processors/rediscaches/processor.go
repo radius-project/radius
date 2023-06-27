@@ -92,10 +92,10 @@ func (p *Processor) computeConnectionURI(resource *datamodel.RedisCache) string 
 	}
 
 	if resource.Properties.Username != "" {
-		connectionURI += resource.Properties.Username + ":"
+		connectionURI += resource.Properties.Username
 	}
 	if resource.Properties.Secrets.Password != "" {
-		connectionURI += resource.Properties.Secrets.Password + "@"
+		connectionURI += ":" + resource.Properties.Secrets.Password + "@"
 	}
 
 	connectionURI = fmt.Sprintf("%s%s:%v/0?", connectionURI, resource.Properties.Host, resource.Properties.Port)
