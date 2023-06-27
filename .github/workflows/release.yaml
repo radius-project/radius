@@ -82,17 +82,17 @@ jobs:
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
       - name: Release project-radius/radius version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius-pr/.github/scripts/release-create-repo-tag.sh radius main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh radius ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/bicep version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius-pr/.github/scripts/release-create-repo-tag.sh bicep bicep-extensibility ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh bicep ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/deployment-engine version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius-pr/.github/scripts/release-create-repo-tag.sh deployment-engine main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh deployment-engine ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
       - name: Release project-radius/recipes version ${{ env.RELEASE_VERSION }}
         run: |
-          ./radius-pr/.github/scripts/release-create-repo-tag.sh recipes main ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
+          ./radius-pr/.github/scripts/release-create-repo-tag.sh recipes ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
