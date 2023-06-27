@@ -21,11 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/project-radius/radius/pkg/ucp/util/etag"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
+	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	"github.com/project-radius/radius/pkg/ucp/util/etag"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/ucp/kubeenv"
 	shared "github.com/project-radius/radius/test/ucp/storetest"
 )
@@ -113,7 +113,7 @@ func Test_APIServer_Client(t *testing.T) {
 		_ = env.Stop()
 	}()
 
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewContext(t, nil)
 	defer cancel()
 
 	ns := "radius-test"

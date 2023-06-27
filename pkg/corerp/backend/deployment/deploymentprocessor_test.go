@@ -41,10 +41,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/testutil"
 
-	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -269,17 +268,8 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 		RecipeData:      testResource.RecipeData}
 }
 
-func createContext(t *testing.T) context.Context {
-	logger, err := ucplog.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return context.Background()
-	}
-	return logr.NewContext(context.Background(), logger)
-}
-
 func Test_Render(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 
 	env := datamodel.Environment{
 		BaseResource: v1.BaseResource{
@@ -851,7 +841,7 @@ func Test_Render(t *testing.T) {
 }
 
 func Test_Deploy(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
@@ -952,7 +942,7 @@ func Test_Deploy(t *testing.T) {
 }
 
 func Test_Delete(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
@@ -990,7 +980,7 @@ func Test_Delete(t *testing.T) {
 }
 
 func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}
 
@@ -1049,7 +1039,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 }
 
 func Test_getResourceDataByID(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
@@ -1074,7 +1064,7 @@ func Test_getResourceDataByID(t *testing.T) {
 }
 
 func Test_fetchSecrets(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}

@@ -17,28 +17,17 @@ limitations under the License.
 package engine
 
 import (
-	"context"
 	"testing"
 
 	"github.com/go-errors/errors"
-	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
-
-func createContext(t *testing.T) context.Context {
-	logger, err := ucplog.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return context.Background()
-	}
-	return logr.NewContext(context.Background(), logger)
-}
 
 func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.MockDriver) {
 	ctrl := gomock.NewController(t)
@@ -93,7 +82,7 @@ func Test_Engine_Success(t *testing.T) {
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 	engine, configLoader, driver := setup(t)
 
 	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
@@ -106,7 +95,7 @@ func Test_Engine_Success(t *testing.T) {
 }
 
 func Test_Engine_InvalidDriver(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 	engine, configLoader, _ := setup(t)
 
 	recipeDefinition := &recipes.EnvironmentDefinition{
@@ -132,7 +121,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 }
 
 func Test_Engine_Lookup_Error(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 	engine, configLoader, _ := setup(t)
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
@@ -149,7 +138,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 }
 
 func Test_Engine_Load_Error(t *testing.T) {
-	ctx := createContext(t)
+	ctx, _ := testcontext.NewContext(t, nil)
 	engine, configLoader, _ := setup(t)
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",

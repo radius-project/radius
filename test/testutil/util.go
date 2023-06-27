@@ -47,18 +47,18 @@ func ReadFixture(filename string) []byte {
 	return raw
 }
 
-// TestContext represents the context of controller tests including common mocks.
-type TestContext struct {
+// ControllerTestContext represents the context of controller tests including common mocks.
+type ControllerTestContext struct {
 	Ctx    context.Context
 	MCtrl  *gomock.Controller
 	MockSC *store.MockStorageClient
 	MockSP *dataprovider.MockDataStorageProvider
 }
 
-// NewTestContext creates new TestContext.
-func NewTestContext(t *testing.T) *TestContext {
+// NewControllerTestContext creates a new ControllerTestContext for testing.
+func NewControllerTestContext(t *testing.T) *ControllerTestContext {
 	mctrl := gomock.NewController(t)
-	return &TestContext{
+	return &ControllerTestContext{
 		Ctx:    context.Background(),
 		MCtrl:  mctrl,
 		MockSC: store.NewMockStorageClient(mctrl),

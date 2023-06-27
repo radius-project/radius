@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/project-radius/radius/pkg/ucp/queue/client"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +55,7 @@ func queueTestMessage(cli client.Client, num int) error {
 }
 
 func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewContext(t, nil)
 	defer cancel()
 
 	t.Run("nil message", func(t *testing.T) {

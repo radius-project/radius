@@ -22,10 +22,10 @@ import (
 
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 
+	"github.com/project-radius/radius/test/testcontext"
 	shared "github.com/project-radius/radius/test/ucp/storetest"
 )
 
@@ -33,7 +33,7 @@ func Test_ETCDClient(t *testing.T) {
 	config := hosting.NewAsyncValue[etcdclient.Client]()
 	service := data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: config})
 
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewContext(t, nil)
 	defer cancel()
 
 	go func() {

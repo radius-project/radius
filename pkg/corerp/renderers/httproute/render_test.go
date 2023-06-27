@@ -22,13 +22,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/test/testcontext"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -88,16 +87,6 @@ type setupMaps struct {
 type expectedMaps struct {
 	metaAnn map[string]string
 	metaLbl map[string]string
-}
-
-func createContext(t *testing.T) context.Context {
-	logger, err := ucplog.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return context.Background()
-	}
-
-	return logr.NewContext(context.Background(), logger)
 }
 
 func TestHTTPRouteRenderer(t *testing.T) {
@@ -191,8 +180,9 @@ func TestHTTPRouteRenderer(t *testing.T) {
 }
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
+	ctx, _ := testcontext.NewContext(t, nil)
 	r := &Renderer{}
-	dependencies, _, err := r.GetDependencyIDs(createContext(t), &datamodel.HTTPRoute{})
+	dependencies, _, err := r.GetDependencyIDs(ctx, &datamodel.HTTPRoute{})
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
 }

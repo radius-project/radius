@@ -24,8 +24,13 @@ import (
 	"github.com/go-logr/logr/testr"
 )
 
-func New(t *testing.T) (context.Context, context.CancelFunc) {
-	ctx := logr.NewContext(context.Background(), testr.New(t))
+// NewContext creates a new cancellable context with test logger for testing.
+func NewContext(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	ctx = logr.NewContext(ctx, testr.New(t))
 	deadline, ok := t.Deadline()
 	if ok {
 		return context.WithDeadline(ctx, deadline)

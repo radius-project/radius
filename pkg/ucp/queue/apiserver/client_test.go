@@ -24,7 +24,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/ucp/queue/client"
 	v1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/ucp/kubeenv"
 	sharedtest "github.com/project-radius/radius/test/ucp/queuetest"
 	"github.com/stretchr/testify/require"
@@ -103,7 +103,7 @@ func TestClient(t *testing.T) {
 		_ = env.Stop()
 	}()
 
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewContext(t, nil)
 	defer cancel()
 
 	ns := "radius-test"

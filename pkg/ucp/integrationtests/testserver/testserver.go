@@ -45,9 +45,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
@@ -98,7 +98,7 @@ func (ts *TestServer) Close() {
 
 // StartWithMocks creates and starts a new TestServer that used an mocks for storage.
 func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) (*TestServer, *store.MockStorageClient, *secret.MockClient) {
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewContext(t, nil)
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
@@ -171,7 +171,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		Quiet:             false,
 	})
 
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewContext(t, nil)
 
 	stoppedChan := make(chan struct{})
 	defer close(stoppedChan)

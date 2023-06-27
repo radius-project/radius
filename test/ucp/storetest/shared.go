@@ -24,7 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -160,7 +160,7 @@ func CompareObjectLists(t *testing.T, expected []store.Object, actual []store.Ob
 }
 
 func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T)) {
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewContext(t, nil)
 	defer cancel()
 
 	t.Run("get_not_found", func(t *testing.T) {

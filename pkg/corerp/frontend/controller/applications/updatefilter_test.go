@@ -41,7 +41,7 @@ const (
 )
 
 func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
-	tCtx := testutil.NewTestContext(t)
+	tCtx := testutil.NewControllerTestContext(t)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
@@ -151,7 +151,7 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 }
 
 func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
-	tCtx := testutil.NewTestContext(t)
+	tCtx := testutil.NewControllerTestContext(t)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
