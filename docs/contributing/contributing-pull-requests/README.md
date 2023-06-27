@@ -33,7 +33,7 @@ Our pull request template will ask you to choose one of three options from a lis
 
 The following tips should help you decide which option to choose:
 
-- Does this change fix a bug in Radius? We define a bug as a case where Radius does not as advertised, or where a crash or some other kind of internal failure occurs. If you said Yes, then choose the first option (Bugfix).
+- Does this change fix a bug in Radius? We define a bug as a case where Radius does not work as advertised, or where a crash or some other kind of internal failure occurs. If you said Yes, then choose the first option (Bugfix).
 - Does this change introduce new features or behaviors? Does this change modify an existing feature of Radius in a way that's visible to users? If you said Yes, choose the second option (Feature).
 - If neither of the two previous options sounds right, and there's no user-visible change in your pull request then choose the third option (Task).
 
