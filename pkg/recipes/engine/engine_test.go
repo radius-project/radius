@@ -53,7 +53,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -111,7 +111,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -130,7 +130,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -147,7 +147,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},

@@ -88,7 +88,7 @@ func Test_Routes(t *testing.T) {
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
-		module := NewModule(options, "radius")
+		module := NewModule(options)
 		router, err := module.Initialize(ctx)
 		return router.(chi.Router), err
 	})
