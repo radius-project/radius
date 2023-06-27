@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -41,7 +42,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -341,9 +341,9 @@ func registerRP(t *testing.T, ucp *testserver.TestServer, db *store.MockStorageC
 	require.NoError(t, err)
 	var createPlaneRequest *http.Request
 	if ucpNative {
-		createPlaneRequest, err = testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+"/planes/radius/local?api-version=2022-09-01-privatepreview", body)
+		createPlaneRequest, err = rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+"/planes/radius/local?api-version=2022-09-01-privatepreview", body)
 	} else {
-		createPlaneRequest, err = testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+"/planes/azure/azurecloud?api-version=2022-09-01-privatepreview", body)
+		createPlaneRequest, err = rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+"/planes/azure/azurecloud?api-version=2022-09-01-privatepreview", body)
 	}
 	require.NoError(t, err)
 
@@ -385,7 +385,7 @@ func createResourceGroup(t *testing.T, ucp *testserver.TestServer, db *store.Moc
 		return nil, &store.ErrNotFound{}
 	})
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
-	createResourceGroupRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", body)
+	createResourceGroupRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", body)
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucp.Client().Do(createResourceGroupRequest)
 	require.NoError(t, err)
@@ -430,7 +430,7 @@ func sendProxyRequest(t *testing.T, ucp *testserver.TestServer, db *store.MockSt
 		}, nil
 	})
 
-	proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
+	proxyRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucp.Client().Do(proxyRequest)
 	require.NoError(t, err)
@@ -456,7 +456,7 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *testserver.TestServer, db *s
 		return &data, nil
 	})
 
-	proxyRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+"/planes/azure/azurecloud"+testProxyRequestAzurePath+"?"+apiVersionQueyParam, nil)
+	proxyRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+"/planes/azure/azurecloud"+testProxyRequestAzurePath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucp.Client().Do(proxyRequest)
 	require.NoError(t, err)

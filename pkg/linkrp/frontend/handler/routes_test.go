@@ -422,7 +422,8 @@ func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovid
 		}
 
 		t.Run(uri, func(t *testing.T) {
-			req, _ := http.NewRequestWithContext(context.Background(), tt.method, uri, nil)
+			req, err := http.NewRequestWithContext(context.Background(), tt.method, uri, nil)
+			require.NoError(t, err)
 			var match mux.RouteMatch
 			require.True(t, r.Match(req, &match), "no route found for %s", uri)
 			require.NoError(t, match.MatchErr, "route match error for %s", uri)

@@ -22,15 +22,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/go-logr/zapr"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
 )
 
 func Test_Host_RequiresServices(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	host := &Host{
 		Services: []Service{},
@@ -41,8 +39,8 @@ func Test_Host_RequiresServices(t *testing.T) {
 }
 
 func Test_Host_DetectsDuplicates(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	host := &Host{
 		Services: []Service{
@@ -56,8 +54,8 @@ func Test_Host_DetectsDuplicates(t *testing.T) {
 }
 
 func Test_Host_RunMultipleServices_HandlesExit(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	started := make(chan struct{})
 
@@ -138,8 +136,8 @@ func Test_Host_RunMultipleServices_HandlesExit(t *testing.T) {
 }
 
 func Test_Host_RunMultipleServices_ShutdownTimeout(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	started := make(chan struct{})
 
@@ -208,8 +206,4 @@ func (s *FuncService) Run(ctx context.Context) error {
 	}
 
 	return s.run(ctx)
-}
-
-func createContext(t *testing.T) context.Context {
-	return logr.NewContext(context.Background(), zapr.NewLogger(zaptest.NewLogger(t)))
 }

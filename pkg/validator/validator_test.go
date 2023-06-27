@@ -37,7 +37,8 @@ func Test_FindParam(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := mux.NewRouter()
-	req, _ := http.NewRequest(http.MethodPut, armResourceGroupScopedResourceURL, nil)
+	req, err := http.NewRequest(http.MethodPut, armResourceGroupScopedResourceURL, nil)
+	require.NoError(t, err)
 
 	router := r.PathPrefix("/{rootScope:.*}").Subrouter()
 	router.Path(environmentResourceRoute).Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -59,13 +60,15 @@ func Test_ToRouteParams(t *testing.T) {
 	}
 
 	t.Run("non-match", func(t *testing.T) {
-		req, _ := http.NewRequest("", "http://radius/test", nil)
+		req, err := http.NewRequest("", "http://radius/test", nil)
+		require.NoError(t, err)
 		ps := v.toRouteParams(req)
 		require.Empty(t, ps)
 	})
 
 	t.Run("azure subscription path", func(t *testing.T) {
-		req, _ := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
 		ps := v.toRouteParams(req)
 
 		expected := middleware.RouteParams{
@@ -76,7 +79,8 @@ func Test_ToRouteParams(t *testing.T) {
 	})
 
 	t.Run("azure resource-group path", func(t *testing.T) {
-		req, _ := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
 		ps := v.toRouteParams(req)
 
 		expected := middleware.RouteParams{
@@ -87,7 +91,8 @@ func Test_ToRouteParams(t *testing.T) {
 	})
 
 	t.Run("ucp plane path", func(t *testing.T) {
-		req, _ := http.NewRequest("", "http://radius/planes/radius/local/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/planes/radius/local/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
 		ps := v.toRouteParams(req)
 
 		expected := middleware.RouteParams{
@@ -98,7 +103,8 @@ func Test_ToRouteParams(t *testing.T) {
 	})
 
 	t.Run("ucp resource-group path", func(t *testing.T) {
-		req, _ := http.NewRequest("", "http://radius/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
 		ps := v.toRouteParams(req)
 
 		expected := middleware.RouteParams{

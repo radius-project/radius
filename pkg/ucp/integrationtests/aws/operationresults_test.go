@@ -24,8 +24,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -46,10 +46,10 @@ func Test_GetOperationResults(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
+	operationResultsRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(operationResultsRequest)
+	ctx := rpctest.ARMTestContextFromRequest(operationResultsRequest)
 	operationResultsRequest = operationResultsRequest.WithContext(ctx)
 
 	operationResultsResponse, err := ucp.Client().Do(operationResultsRequest)

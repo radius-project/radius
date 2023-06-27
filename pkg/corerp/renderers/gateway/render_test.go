@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -32,7 +31,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/test/testcontext"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -91,15 +90,6 @@ type expectedMaps struct {
 	metaLbl map[string]string
 }
 
-func createContext(t *testing.T) context.Context {
-	logger, err := ucplog.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return context.Background()
-	}
-	return logr.NewContext(context.Background(), logger)
-}
-
 func Test_GetDependencyIDs_Success(t *testing.T) {
 	testRouteAResourceID := makeRouteResourceID("testroutea")
 	testRouteBResourceID := makeRouteResourceID("testrouteb")
@@ -115,8 +105,9 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	radiusResourceIDs, resourceIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
+	radiusResourceIDs, resourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)
 	require.Len(t, radiusResourceIDs, 2)
 	require.Len(t, resourceIDs, 0)

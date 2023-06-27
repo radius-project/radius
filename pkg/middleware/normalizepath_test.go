@@ -24,6 +24,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNormalizePath(t *testing.T) {
@@ -72,7 +73,8 @@ func TestNormalizePath(t *testing.T) {
 
 		handler := NormalizePath(r)
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
+		require.NoError(t, err)
 		handler.ServeHTTP(w, req)
 
 		parsed := w.Body.String()

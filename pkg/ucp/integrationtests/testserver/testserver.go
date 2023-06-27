@@ -34,6 +34,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/data"
@@ -45,10 +46,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
@@ -98,7 +98,7 @@ func (ts *TestServer) Close() {
 
 // StartWithMocks creates and starts a new TestServer that used an mocks for storage.
 func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) (*TestServer, *store.MockStorageClient, *secret.MockClient) {
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewWithCancel(t)
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
@@ -171,7 +171,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		Quiet:             false,
 	})
 
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewWithCancel(t)
 
 	stoppedChan := make(chan struct{})
 	defer close(stoppedChan)
@@ -285,10 +285,10 @@ func (ts *TestServer) MakeFixtureRequest(method string, pathAndQuery string, fix
 // MakeRequest sends a request to the server.
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
 	client := ts.Server.Client()
-	request, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), method, ts.BaseURL+pathAndQuery, body)
+	request, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), method, ts.BaseURL+pathAndQuery, body)
 	require.NoError(ts.t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.ARMTestContextFromRequest(request)
 	request = request.WithContext(ctx)
 
 	response, err := client.Do(request)

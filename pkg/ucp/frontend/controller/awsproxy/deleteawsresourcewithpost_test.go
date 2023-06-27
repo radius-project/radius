@@ -32,7 +32,7 @@ import (
 	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,7 +73,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -124,7 +124,7 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -158,7 +158,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.ARMTestContextFromRequest(request)
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),

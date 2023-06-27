@@ -17,7 +17,6 @@ limitations under the License.
 package container
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -33,9 +32,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/test/testcontext"
 
-	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -72,15 +70,6 @@ var (
 		},
 	}
 )
-
-func createContext(t *testing.T) context.Context {
-	logger, err := ucplog.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return context.Background()
-	}
-	return logr.NewContext(context.Background(), logger)
-}
 
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
@@ -163,8 +152,10 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 
+	ctx := testcontext.New(t)
+
 	renderer := Renderer{}
-	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
+	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)
 	require.Len(t, radiusResourceIDs, 3)
 	require.Len(t, azureResourceIDs, 1)
@@ -198,14 +189,17 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
+	ids, azureIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.Error(t, err)
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
 }
 
 func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
+	ctx := testcontext.New(t)
+
 	properties := datamodel.ContainerProperties{
 		// Simulating error code path
 		// Revert this once TODO: https://github.com/project-radius/core-team/issues/238 is done.
@@ -224,7 +218,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	resource := makeResource(t, properties)
 
 	renderer := Renderer{}
-	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
+	ids, azureIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.Error(t, err)
 	require.Equal(t, err.(*apiv1.ErrClientRP).Code, apiv1.CodeInvalid)
 	require.Equal(t, err.(*apiv1.ErrClientRP).Message, "'/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
@@ -252,8 +246,9 @@ func Test_Render_Basic(t *testing.T) {
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -329,8 +324,9 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -396,8 +392,9 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -441,8 +438,9 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -509,8 +507,9 @@ func Test_Render_Connections(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -606,8 +605,9 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
 
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
@@ -658,8 +658,9 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -673,7 +674,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	// Update and render again
 	dependencies[makeResourceID(t, "SomeProvider/ResourceType", "A").String()].ComputedValues["ComputedKey1"] = "new value"
 
-	output, err = renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	output, err = renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
 	deployment, _ = kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
@@ -730,7 +731,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 	}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
+	ctx := testcontext.New(t)
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.ComputedValues, 2)
 	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rpv1.IdentitySettings).Kind, rpv1.AzureIdentityWorkload)
@@ -864,7 +866,8 @@ func Test_Render_AzureConnection(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
+	ctx := testcontext.New(t)
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 
 	require.Len(t, output.ComputedValues, 2)
@@ -934,7 +937,8 @@ func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 			datamodel.KindAzure: {},
 		},
 	}
-	_, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	ctx := testcontext.New(t)
+	_, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 }
 
@@ -971,8 +975,9 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 			ComputedValues: map[string]any{},
 		},
 	}
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -1050,8 +1055,9 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	renderOutput, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	renderOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
 
 	deploymentResource := rpv1.OutputResource{}
@@ -1153,8 +1159,9 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	renderOutput, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
+	renderOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 
 	require.NoError(t, err)
 	require.Lenf(t, renderOutput.Resources, 9, "expected 9 output resources, instead got %+v", len(renderOutput.Resources))
@@ -1238,8 +1245,9 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -1314,8 +1322,9 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -1383,8 +1392,9 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -1442,8 +1452,9 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 		},
 	}
 
+	ctx := testcontext.New(t)
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
