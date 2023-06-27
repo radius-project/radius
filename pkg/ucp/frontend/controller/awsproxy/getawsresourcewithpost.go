@@ -50,8 +50,7 @@ type GetAWSResourceWithPost struct {
 //
 // # Function Explanation
 //
-//	NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost controller with the given options and AWS clients, and
-//	returns it without an error.
+//	NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost controller with the given options and AWS clients.
 func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSResourceWithPost{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),

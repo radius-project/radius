@@ -46,8 +46,8 @@ type CreateOrUpdateAWSResource struct {
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
 //
 // # Function Explanation
-// 
-//	"NewCreateOrUpdateAWSResource" creates a new CreateOrUpdateAWSResource controller with the given Options and awsClients 
+//
+//	"NewCreateOrUpdateAWSResource" creates a new CreateOrUpdateAWSResource controller with the given Options and awsClients
 //	and returns it, or returns an error if one occurs.
 func NewCreateOrUpdateAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSResource{
@@ -57,8 +57,8 @@ func NewCreateOrUpdateAWSResource(opts armrpc_controller.Options, awsClients ucp
 }
 
 // # Function Explanation
-// 
-//	"CreateOrUpdateAWSResource" reads the request body, determines if the resource exists, and either creates or updates the
+//
+//	"Run" reads the request body, determines if the resource exists, and either creates or updates the
 //	 resource accordingly, returning an async operation response with the resource's properties and a request token.
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)

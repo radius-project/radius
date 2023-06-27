@@ -101,7 +101,7 @@ func NewService(options ServiceOptions) *Service {
 
 // # Function Explanation
 //
-//	"Name" is a function that returns the constant string "api".
+//	Returns the constant string "api" as the name.
 func (s *Service) Name() string {
 	return "api"
 }

@@ -60,7 +60,7 @@ func NewDeleteAzureCredential(opts armrpc_controller.Options, secretClient secre
 
 // # Function Explanation
 //
-//	DeleteAzureCredential retrieves the existing credential, deletes the associated secret, and then deletes the
+//	"Run" retrieves the existing credential, deletes the associated secret, and then deletes the
 //	credential from storage, returning an OK response if successful or an error if not.
 func (c *DeleteAzureCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)

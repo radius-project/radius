@@ -44,8 +44,7 @@ type GetAWSOperationStatuses struct {
 //
 // # Function Explanation
 //
-//	NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS
-//	operations and returns it along with a nil error.
+//	NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS operations.
 func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
