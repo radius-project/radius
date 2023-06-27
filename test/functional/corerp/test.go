@@ -30,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
+	"github.com/project-radius/radius/test/testcontext"
 )
 
 func NewCoreRPTestOptions(t *testing.T) CoreRPTestOptions {
@@ -43,7 +44,7 @@ func NewCoreRPTestOptions(t *testing.T) CoreRPTestOptions {
 	t.Logf("Using recipe registry: %s - set RECIPE_REGISTRY to override", recipeRegistry)
 	t.Logf("Using recipe tag: %s - set RECIPE_TAG_VERSION to override", recipeTag)
 
-	ctx, _ := test.GetContext(t)
+	ctx := testcontext.New(t)
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")

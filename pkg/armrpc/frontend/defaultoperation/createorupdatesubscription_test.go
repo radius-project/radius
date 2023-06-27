@@ -53,7 +53,8 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		require.NoError(t, err)
 
 		// arrange
-		op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})
+		op, err := NewCreateOrUpdateSubscription(ctrl.Options{})
+		require.NoError(t, err)
 		ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 			APIVersion: v1.SubscriptionAPIVersion,
 		})
@@ -73,14 +74,16 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 
 func TestSubscriptionsRunWithUnsupportedAPIVersion(t *testing.T) {
 	// arrange
-	op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})
+	op, err := NewCreateOrUpdateSubscription(ctrl.Options{})
+	require.NoError(t, err)
 	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 		APIVersion: "unknownversion",
 	})
 	w := httptest.NewRecorder()
 
 	// act
-	resp, _ := op.Run(ctx, w, nil)
+	resp, err := op.Run(ctx, w, nil)
+	require.NoError(t, err)
 
 	// assert
 	switch v := resp.(type) {

@@ -91,7 +91,8 @@ func TestGenerateID(t *testing.T) {
 	cli, err := New(nil, Options{Name: "applications.core", Namespace: "test"})
 	require.NoError(t, err)
 
-	id, _ := cli.generateID()
+	id, err := cli.generateID()
+	require.NoError(t, err)
 	require.Equal(t, 61, len(id))
 }
 

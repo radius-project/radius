@@ -36,6 +36,7 @@ import (
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -196,8 +197,8 @@ func (ct CoreRPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 }
 
 func (ct CoreRPTest) Test(t *testing.T) {
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	ct.CheckRequiredFeatures(ctx, t)
 

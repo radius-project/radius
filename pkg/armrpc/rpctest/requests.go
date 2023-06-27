@@ -34,7 +34,10 @@ func GetARMTestHTTPRequestFromURL(ctx context.Context, method string, url string
 		"Content-Length":  "305",
 		"Content-Type":    "application/json; charset=utf-8",
 	}
-	req, _ := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(body))
+	if err != nil {
+		panic(err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {
 		req.Header.Add(k, v)
@@ -59,7 +62,10 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 		raw, _ = json.Marshal(body)
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, method, parsed["Referer"], bytes.NewBuffer(raw))
+	req, err := http.NewRequestWithContext(ctx, method, parsed["Referer"], bytes.NewBuffer(raw))
+	if err != nil {
+		panic(err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range parsed {
 		req.Header.Add(k, v)
@@ -69,7 +75,10 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 
 func ARMTestContextFromRequest(req *http.Request) context.Context {
 	ctx := context.Background()
-	armctx, _ := v1.FromARMRequest(req, "", "West US")
+	armctx, err := v1.FromARMRequest(req, "", "West US")
+	if err != nil {
+		panic(err)
+	}
 	ctx = v1.WithARMRequestContext(ctx, armctx)
 	return ctx
 }
