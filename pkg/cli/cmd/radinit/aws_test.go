@@ -45,8 +45,8 @@ func Test_enterAWSCloudProvider(t *testing.T) {
 
 	setAWSAccessKeyIDPrompt(prompter, "access-key-id")
 	setAWSSecretAccessKeyPrompt(prompter, "secret-access-key")
-	setAWSCallerIdentity(client, DefaultRegion, "access-key-id", "secret-access-key", &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
-	setAWSListRegions(client, DefaultRegion, "access-key-id", "secret-access-key", &ec2.DescribeRegionsOutput{Regions: ec2Regions})
+	setAWSCallerIdentity(client, QueryRegion, "access-key-id", "secret-access-key", &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSListRegions(client, QueryRegion, "access-key-id", "secret-access-key", &ec2.DescribeRegionsOutput{Regions: ec2Regions})
 	setAWSRegionPrompt(prompter, regions, "region")
 
 	options := initOptions{}

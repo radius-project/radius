@@ -993,8 +993,8 @@ func setAWSListRegions(client *aws.MockClient, region string, accessKeyID string
 func setAWSCloudProvider(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
 	setAWSAccessKeyIDPrompt(prompter, provider.AccessKeyID)
 	setAWSSecretAccessKeyPrompt(prompter, provider.SecretAccessKey)
-	setAWSCallerIdentity(client, DefaultRegion, provider.AccessKeyID, provider.SecretAccessKey, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
-	setAWSListRegions(client, DefaultRegion, provider.AccessKeyID, provider.SecretAccessKey, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
+	setAWSCallerIdentity(client, QueryRegion, provider.AccessKeyID, provider.SecretAccessKey, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+	setAWSListRegions(client, QueryRegion, provider.AccessKeyID, provider.SecretAccessKey, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
 	setAWSRegionPrompt(prompter, getMockAWSRegionsString(), provider.Region)
 }
 

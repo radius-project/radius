@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	DefaultRegion = "us-east-1"
+	// QueryRegion is the region used for querying AWS before the user selects a region.
+	QueryRegion = "us-east-1"
 
 	selectAWSRegionPrompt                 = "Select the region you would like to deploy AWS resources to:"
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
@@ -52,12 +53,12 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 		return nil, err
 	}
 
-	accountId, err := r.getAccountId(ctx, DefaultRegion, accessKeyID, secretAccessKey)
+	accountId, err := r.getAccountId(ctx, QueryRegion, accessKeyID, secretAccessKey)
 	if err != nil {
 		return nil, err
 	}
 
-	region, err := r.selectAWSRegion(ctx, DefaultRegion, accessKeyID, secretAccessKey)
+	region, err := r.selectAWSRegion(ctx, QueryRegion, accessKeyID, secretAccessKey)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +72,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 }
 
 func (r *Runner) getAccountId(ctx context.Context, region, accessKeyID, secretAccessKey string) (string, error) {
-	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, DefaultRegion, accessKeyID, secretAccessKey)
+	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion, accessKeyID, secretAccessKey)
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "AWS credential verification failed.")
 	}
