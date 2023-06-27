@@ -9,7 +9,7 @@ import (
     ...
 )
 
-// Test_Render_Simple gets the default context.
+// Test_Render_Simple uses the default logger context.
 func Test_Render_Simple(t *testing.T) {
     ctx := testcontext.New(t)
 
@@ -18,7 +18,7 @@ func Test_Render_Simple(t *testing.T) {
     ...
 }
 
-// Test_Render_WithCancel gets the default context with cancel function.
+// Test_Render_WithCancel uses the default logger context with context cancel function.
 func Test_Render_WithCancel(t *testing.T) {
     ctx, cancel := testcontext.NewWithCancel(t)
     t.Cleanup(cancel)
