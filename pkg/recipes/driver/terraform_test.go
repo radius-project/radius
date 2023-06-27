@@ -17,7 +17,6 @@ limitations under the License.
 package driver
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -29,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,7 +70,7 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 }
 
 func TestTerraformDriver_Execute_Success(t *testing.T) {
-	ctx := context.Background()
+	ctx := testcontext.New(t)
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
@@ -99,7 +99,7 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 }
 
 func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := testcontext.New(t)
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
@@ -122,25 +122,21 @@ func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 }
 
 func TestTerraformDriver_Execute_EmptyPath(t *testing.T) {
-	ctx := context.Background()
-
 	_, driver := setup(t)
 	driver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
-	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	_, err := driver.Execute(testcontext.New(t), envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
 	require.Equal(t, "path and operationID are required options for Terraform driver", err.Error())
 }
 
 func TestTerraformDriver_Execute_EmptyOperationID(t *testing.T) {
-	ctx := context.Background()
-
 	_, driver := setup(t)
 	driver.options.OperationID = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
-	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	_, err := driver.Execute(testcontext.New(t), envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
 	require.Equal(t, "path and operationID are required options for Terraform driver", err.Error())
 }
