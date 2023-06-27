@@ -29,7 +29,7 @@ We expect that contributors have run basic validations (`make build test lint`) 
 
 ## Filling out the pull request template
 
-Our pull request template will ask you two choose one of three options from a list when submitting the pull request. Telling us what type of change the pull request contains will help us author the release notes and informs reviewers about what to look for in your pull request.
+Our pull request template will ask you to choose one of three options from a list when submitting the pull request. Telling us what type of change the pull request contains will help us author the release notes and informs reviewers about what to look for in your pull request.
 
 The following tips should help you decide which option to choose:
 
