@@ -33,7 +33,7 @@ func Test_ETCDClient(t *testing.T) {
 	config := hosting.NewAsyncValue[etcdclient.Client]()
 	service := data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: config})
 
-	ctx, cancel := testcontext.NewContext(t, nil)
+	ctx, cancel := testcontext.New(t, nil)
 	defer cancel()
 
 	go func() {

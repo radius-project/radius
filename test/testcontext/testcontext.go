@@ -24,8 +24,8 @@ import (
 	"github.com/go-logr/logr/testr"
 )
 
-// NewContext creates a new cancellable context with test logger for testing.
-func NewContext(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
+// New creates a new cancellable context with test logger for testing.
+func New(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		ctx = context.Background()
 	}

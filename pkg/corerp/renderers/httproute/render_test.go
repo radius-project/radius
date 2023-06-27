@@ -180,7 +180,7 @@ func TestHTTPRouteRenderer(t *testing.T) {
 }
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	r := &Renderer{}
 	dependencies, _, err := r.GetDependencyIDs(ctx, &datamodel.HTTPRoute{})
 	require.NoError(t, err)

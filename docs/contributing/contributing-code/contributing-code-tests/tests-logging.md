@@ -10,7 +10,7 @@ import (
 )
 
 func Test_Render_Simple(t *testing.T) {
-    ctx, cancel := testcontext.NewContext(t, nil)
+    ctx, cancel := testcontext.New(t, nil)
     defer cancel()
 
     ...

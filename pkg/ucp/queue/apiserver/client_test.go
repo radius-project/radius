@@ -103,7 +103,7 @@ func TestClient(t *testing.T) {
 		_ = env.Stop()
 	}()
 
-	ctx, cancel := testcontext.NewContext(t, nil)
+	ctx, cancel := testcontext.New(t, nil)
 	defer cancel()
 
 	ns := "radius-test"

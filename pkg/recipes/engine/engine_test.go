@@ -82,7 +82,7 @@ func Test_Engine_Success(t *testing.T) {
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
 	}
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	engine, configLoader, driver := setup(t)
 
 	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
@@ -95,7 +95,7 @@ func Test_Engine_Success(t *testing.T) {
 }
 
 func Test_Engine_InvalidDriver(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	engine, configLoader, _ := setup(t)
 
 	recipeDefinition := &recipes.EnvironmentDefinition{
@@ -121,7 +121,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 }
 
 func Test_Engine_Lookup_Error(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	engine, configLoader, _ := setup(t)
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
@@ -138,7 +138,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 }
 
 func Test_Engine_Load_Error(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	engine, configLoader, _ := setup(t)
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",

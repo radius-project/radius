@@ -105,7 +105,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	renderer := Renderer{}
 	radiusResourceIDs, resourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)

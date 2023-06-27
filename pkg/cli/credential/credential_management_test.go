@@ -75,7 +75,7 @@ func Test_AzureCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewContext(t, nil)
+			ctx, cancel := testcontext.New(t, nil)
 			defer cancel()
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
@@ -130,7 +130,7 @@ func Test_AWSCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewContext(t, nil)
+			ctx, cancel := testcontext.New(t, nil)
 			defer cancel()
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
@@ -243,7 +243,7 @@ func Test_Credential_Get(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewContext(t, nil)
+			ctx, cancel := testcontext.New(t, nil)
 			defer cancel()
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
@@ -269,7 +269,7 @@ func Test_Credential_Get(t *testing.T) {
 }
 
 func Test_Credential_List(t *testing.T) {
-	ctx, cancel := testcontext.NewContext(t, nil)
+	ctx, cancel := testcontext.New(t, nil)
 	defer cancel()
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -367,7 +367,7 @@ func Test_Credential_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewContext(t, nil)
+			ctx, cancel := testcontext.New(t, nil)
 			defer cancel()
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()

@@ -269,7 +269,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 }
 
 func Test_Render(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 
 	env := datamodel.Environment{
 		BaseResource: v1.BaseResource{
@@ -841,7 +841,7 @@ func Test_Render(t *testing.T) {
 }
 
 func Test_Deploy(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
@@ -942,7 +942,7 @@ func Test_Deploy(t *testing.T) {
 }
 
 func Test_Delete(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
@@ -980,7 +980,7 @@ func Test_Delete(t *testing.T) {
 }
 
 func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}
 
@@ -1039,7 +1039,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 }
 
 func Test_getResourceDataByID(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
@@ -1064,7 +1064,7 @@ func Test_getResourceDataByID(t *testing.T) {
 }
 
 func Test_fetchSecrets(t *testing.T) {
-	ctx, _ := testcontext.NewContext(t, nil)
+	ctx, _ := testcontext.New(t, nil)
 
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}
