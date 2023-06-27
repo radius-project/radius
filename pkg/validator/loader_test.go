@@ -56,12 +56,12 @@ func Test_ParseSpecFilePath(t *testing.T) {
 			},
 		},
 		{
-			path: "specification/applications/resource-manager/Applications.Core/stable/2022-03-15/gateways.json",
+			path: "specification/applications/resource-manager/Applications.Core/stable/2023-10-01/gateways.json",
 			parsed: map[string]string{
 				"productname":  "applications",
 				"provider":     "applications.core",
 				"state":        "stable",
-				"version":      "2022-03-15",
+				"version":      "2023-10-01",
 				"resourcetype": "gateways",
 			},
 		},

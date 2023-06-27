@@ -52,7 +52,7 @@ const (
 // Create an interface for deployment waiter and http proxy waiter
 type ResourceWaiter interface {
 	addDynamicEventHandler(ctx context.Context, informerFactory dynamicinformer.DynamicSharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error)
-	addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error)
+	addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus)
 	waitUntilReady(ctx context.Context, item client.Object) error
 }
 
