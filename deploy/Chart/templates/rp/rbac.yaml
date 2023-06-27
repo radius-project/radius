@@ -15,6 +15,7 @@ rules:
   - namespaces
   - serviceaccounts
   - pods
+  - events
   verbs:
   - create
   - delete

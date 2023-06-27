@@ -394,3 +394,34 @@ func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_Container_FailDueToBadReadinessProbe(t *testing.T) {
+	template := "testdata/corerp-resources-container-bad-readinessprobe.bicep"
+	name := "corerp-resources-container-bad-readiness"
+	appNamespace := "corerp-resources-container-bad-readiness-app"
+
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code:            "ResourceDeploymentFailure",
+		MessageContains: "Deployment timed out, possible failure causes: Readiness probe failed",
+	})
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor:                               step.NewDeployErrorExecutor(template, validate, functional.GetMagpieImage()),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-cntr-bad-readiness"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
