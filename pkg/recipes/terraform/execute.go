@@ -38,7 +38,7 @@ type executor struct {
 	ucpConn *sdk.Connection
 }
 
-func (e *executor) Deploy(ctx context.Context, options TerraformOptions) (*recipes.RecipeOutput, error) {
+func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Install Terraform

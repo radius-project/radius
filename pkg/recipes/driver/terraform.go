@@ -18,12 +18,11 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -33,8 +32,17 @@ import (
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, options hostoptions.TerraformOptions) Driver {
+func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions) Driver {
 	return &terraformDriver{terraformExecutor: terraform.NewExecutor(&ucpConn), options: options}
+}
+
+// Options represents the options required for execution of Terraform driver.
+type TerraformOptions struct {
+	// Path is the path to the directory mounted to the container where terraform can be installed and executed.
+	Path string
+
+	// OperationID is a unique id of the operation that the Recipe is being executed by.
+	OperationID string
 }
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
@@ -42,18 +50,22 @@ type terraformDriver struct {
 	// terraformExecutor is used to execute Terraform commands - deploy, destroy, etc.
 	terraformExecutor terraform.TerraformExecutor
 
-	// options contains resource provider options for executing Terraform recipe, such as the path to the directory mounted to the container where Terraform can be executed in sub directories.
-	options hostoptions.TerraformOptions
+	// options contains options required to execute a Terraform recipe, such as the path to the directory mounted to the container where Terraform can be executed in sub directories.
+	options TerraformOptions
 }
 
 // Execute deploys a Terraform recipe by using the Terraform CLI through terraform-exec
 func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
+	if d.options.Path == "" || d.options.OperationID == "" {
+		return nil, errors.New("path and operationID are required options for Terraform driver")
+	}
 
-	// We need a unique directory per execution of terraform. We generate this using the unique operation id of the async request so that names are always unique, but we can also trace them to the resource we were working on through operationID.
-	requestDirPath := filepath.Join(d.options.Path, v1.ARMRequestContextFromContext(ctx).OperationID.String())
+	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
+	// We need a unique directory per execution of terraform. We generate this using the unique operation id of the async request so that names are always unique,
+	// but we can also trace them to the resource we were working on through operationID.
+	requestDirPath := filepath.Join(d.options.Path, d.options.OperationID)
 	if err := os.MkdirAll(requestDirPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create directory %q to execute terraform: %w", requestDirPath, err)
 	}
@@ -63,7 +75,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		}
 	}()
 
-	recipeOutputs, err := d.terraformExecutor.Deploy(ctx, terraform.TerraformOptions{
+	recipeOutputs, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
 		RootDir:        requestDirPath,
 		EnvConfig:      &configuration,
 		ResourceRecipe: &recipe,

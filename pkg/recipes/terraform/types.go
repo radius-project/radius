@@ -26,11 +26,11 @@ import (
 
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
-	Deploy(ctx context.Context, options TerraformOptions) (*recipes.RecipeOutput, error)
+	Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error)
 }
 
-// TerraformOptions represents the options required to build inputs to interact with Terraform.
-type TerraformOptions struct {
+// Options represents the options required to build inputs to interact with Terraform.
+type Options struct {
 	// RootDir is the root directory of where Terraform is installed and executed for a specific recipe deployment/deletion request.
 	RootDir string
 

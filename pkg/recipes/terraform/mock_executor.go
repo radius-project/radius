@@ -36,7 +36,7 @@ func (m *MockTerraformExecutor) EXPECT() *MockTerraformExecutorMockRecorder {
 }
 
 // Deploy mocks base method.
-func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 TerraformOptions) (*recipes.RecipeOutput, error) {
+func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
