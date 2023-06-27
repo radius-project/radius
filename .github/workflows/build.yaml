@@ -263,6 +263,7 @@ jobs:
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
+      HELM_CHARTS_DIR: deploy/Chart
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -274,9 +275,10 @@ jobs:
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
+      - name: Run Helm linter
+        run: |
+          helm lint ${{ env.HELM_CHARTS_DIR }}
       - name: Package Helm chart
-        env:
-          HELM_CHARTS_DIR: deploy/Chart
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
           helm package ${{ env.HELM_CHARTS_DIR }} --version ${{ env.CHART_VERSION }} --app-version ${{ env.REL_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
