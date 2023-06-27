@@ -104,6 +104,9 @@ func Test_ResourceName_Normalize(t *testing.T) {
 }
 
 func Test_APIServer_Client(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
 	// The APIServer tests require installation of the Kubernetes test environment binaries.
 	// Our Makefile knows how to download the amd64 version of these on MacOS.
 	rc, env, err := kubeenv.StartEnvironment([]string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds", "ucpd")})
@@ -112,9 +115,6 @@ func Test_APIServer_Client(t *testing.T) {
 	defer func() {
 		_ = env.Stop()
 	}()
-
-	ctx, cancel := testcontext.New(t, nil)
-	defer cancel()
 
 	ns := "radius-test"
 	err = kubeenv.EnsureNamespace(ctx, rc, ns)

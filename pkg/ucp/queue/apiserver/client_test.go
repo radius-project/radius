@@ -103,8 +103,8 @@ func TestClient(t *testing.T) {
 		_ = env.Stop()
 	}()
 
-	ctx, cancel := testcontext.New(t, nil)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	ns := "radius-test"
 	err = kubeenv.EnsureNamespace(ctx, rc, ns)

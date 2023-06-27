@@ -98,7 +98,7 @@ func (ts *TestServer) Close() {
 
 // StartWithMocks creates and starts a new TestServer that used an mocks for storage.
 func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) (*TestServer, *store.MockStorageClient, *secret.MockClient) {
-	ctx, cancel := testcontext.New(t, nil)
+	ctx, cancel := testcontext.NewWithCancel(t)
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
@@ -171,7 +171,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		Quiet:             false,
 	})
 
-	ctx, cancel := testcontext.New(t, nil)
+	ctx, cancel := testcontext.NewWithCancel(t)
 
 	stoppedChan := make(chan struct{})
 	defer close(stoppedChan)

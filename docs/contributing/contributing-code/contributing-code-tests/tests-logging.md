@@ -9,12 +9,23 @@ import (
     ...
 )
 
+// Test_Render_Simple gets the default context.
 func Test_Render_Simple(t *testing.T) {
-    ctx, cancel := testcontext.New(t, nil)
-    defer cancel()
+    ctx := testcontext.New(t)
 
     ...
     resources, err := renderer.Render(ctx, nil)
     ...
 }
+
+// Test_Render_WithCancel gets the default context with cancel function.
+func Test_Render_WithCancel(t *testing.T) {
+    ctx, cancel := testcontext.NewWithCancel(t)
+    t.Cleanup(cancel)
+
+    ...
+    resources, err := renderer.Render(ctx, nil)
+    ...
+}
+
 ```

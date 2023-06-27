@@ -160,7 +160,7 @@ func CompareObjectLists(t *testing.T, expected []store.Object, actual []store.Ob
 }
 
 func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T)) {
-	ctx, cancel := testcontext.New(t, nil)
+	ctx, cancel := testcontext.NewWithCancel(t)
 	defer cancel()
 
 	t.Run("get_not_found", func(t *testing.T) {

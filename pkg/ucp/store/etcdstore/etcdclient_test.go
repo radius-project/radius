@@ -30,11 +30,11 @@ import (
 )
 
 func Test_ETCDClient(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
 	config := hosting.NewAsyncValue[etcdclient.Client]()
 	service := data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: config})
-
-	ctx, cancel := testcontext.New(t, nil)
-	defer cancel()
 
 	go func() {
 		// We can't pass the test logger into the etcd service because it is forbidden to log

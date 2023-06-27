@@ -55,7 +55,7 @@ func queueTestMessage(cli client.Client, num int) error {
 }
 
 func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
-	ctx, cancel := testcontext.New(t, nil)
+	ctx, cancel := testcontext.NewWithCancel(t)
 	defer cancel()
 
 	t.Run("nil message", func(t *testing.T) {

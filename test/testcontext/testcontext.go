@@ -24,8 +24,19 @@ import (
 	"github.com/go-logr/logr/testr"
 )
 
-// New creates a new cancellable context with test logger for testing.
-func New(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
+// New creates a new context with test logger for testing.
+func New(t *testing.T) context.Context {
+	ctx, _ := Wrap(t, context.Background())
+	return ctx
+}
+
+// NewWithCancel creates a new cancellable context with test logger for testing.
+func NewWithCancel(t *testing.T) (context.Context, context.CancelFunc) {
+	return Wrap(t, context.Background())
+}
+
+// Wrap wraps a context with test logger for testing and returns the context with cancel function.
+func Wrap(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
