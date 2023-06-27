@@ -179,6 +179,12 @@ type ARMRequestContext struct {
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
+//
+// # Function Explanation
+// 
+//	FromARMRequest parses the request headers and query parameters to create an ARMRequestContext object. It handles errors 
+//	by returning an error if the top query parameter is invalid. Callers should check the returned error to determine if the
+//	 request was valid.
 func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
 	log := ucplog.FromContextOrDiscard(r.Context())
 	refererUri := r.Header.Get(RefererHeader)
@@ -242,6 +248,12 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 }
 
 // SystemData returns unmarshalled RawSystemMetaData.
+//
+// # Function Explanation
+// 
+//	ARMRequestContext.SystemData() parses the RawSystemMetadata field of the ARMRequestContext object and returns a 
+//	SystemData object. If the RawSystemMetadata field is empty, an empty SystemData object is returned. If an error occurs 
+//	while parsing the RawSystemMetadata field, an empty SystemData object is returned.
 func (rc ARMRequestContext) SystemData() *SystemData {
 	if rc.RawSystemMetadata == "" {
 		return &SystemData{}
@@ -278,16 +290,32 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 }
 
 // ARMRequestContextFromContext extracts ARMRPContext from http context.
+//
+// # Function Explanation
+// 
+//	ARMRequestContextFromContext retrieves the ARMRequestContext from the context.Context, and returns it as an 
+//	ARMRequestContext. If the context does not contain an ARMRequestContext, it will return an error.
 func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 	return ctx.Value(armContextKey).(*ARMRequestContext)
 }
 
 // WithARMRequestContext injects ARMRequestContext into the given http context.
+//
+// # Function Explanation
+// 
+//	WithARMRequestContext adds an ARMRequestContext to the given context and returns the new context. If an error occurs, 
+//	the original context is returned.
 func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) context.Context {
 	return context.WithValue(ctx, armContextKey, armctx)
 }
 
 // ParsePathBase gets the URL info before the plane types (i.e. host, base path, etc)
+//
+// # Function Explanation
+// 
+//	ParsePathBase takes in a string and returns a string representing the base path of the input string. It checks for the 
+//	presence of "/planes/" and "/subscriptions/" in the string and returns the substring up to the index of the first 
+//	occurrence of either of these. If neither of these are present, it returns an empty string.
 func ParsePathBase(path string) string {
 	if path != "" {
 		normalized := strings.ToLower(path)

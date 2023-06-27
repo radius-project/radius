@@ -61,6 +61,10 @@ type testAsyncController struct {
 	fn func(ctx context.Context) (ctrl.Result, error)
 }
 
+// # Function Explanation
+// 
+//	The testAsyncController's Run function provides an asynchronous controller that can be used to execute a given function 
+//	with a context, and returns a ctrl.Result and an error if one occurs.
 func (c *testAsyncController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	if c.fn != nil {
 		return c.fn(ctx)

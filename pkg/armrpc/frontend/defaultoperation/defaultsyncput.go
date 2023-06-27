@@ -34,6 +34,11 @@ type DefaultSyncPut[P interface {
 }
 
 // NewDefaultSyncPut creates a new DefaultSyncPut.
+//
+// # Function Explanation
+// 
+//	The DefaultSyncPut function creates a new DefaultSyncPut controller and returns it, or an error if one occurs. It takes 
+//	in two parameters, opts and resourceOpts, and uses them to create a new Operation.
 func NewDefaultSyncPut[P interface {
 	*T
 	v1.ResourceDataModel
@@ -42,6 +47,11 @@ func NewDefaultSyncPut[P interface {
 }
 
 // Run executes DefaultSyncPut operation.
+//
+// # Function Explanation
+// 
+//	The DefaultSyncPut function runs a series of filters to validate and update a resource, then saves the resource and 
+//	returns a response with the new etag. If any of the filters or the save operation fail, an error is returned.
 func (e *DefaultSyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)
