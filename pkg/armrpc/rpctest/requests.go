@@ -36,7 +36,7 @@ func GetARMTestHTTPRequestFromURL(ctx context.Context, method string, url string
 	}
 	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(body))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {
@@ -60,13 +60,13 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 	var raw []byte
 	if body != nil {
 		if raw, err = json.Marshal(body); err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, parsed["Referer"], bytes.NewBuffer(raw))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range parsed {
