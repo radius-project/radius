@@ -59,7 +59,9 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 
 	var raw []byte
 	if body != nil {
-		raw, _ = json.Marshal(body)
+		if raw, err = json.Marshal(body); err != nil {
+			panic(err)
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, parsed["Referer"], bytes.NewBuffer(raw))
