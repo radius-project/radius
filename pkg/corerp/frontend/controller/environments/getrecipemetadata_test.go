@@ -43,7 +43,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe metadata run", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
+		require.NoError(t, err)
 
 		mStorageClient.
 			EXPECT().
@@ -73,7 +74,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("get recipe metadata run non existing environment", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -109,7 +111,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe metadata non existing recipe", func(t *testing.T) {
 		envInput, envDataModel := getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, envInput)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, envInput)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.

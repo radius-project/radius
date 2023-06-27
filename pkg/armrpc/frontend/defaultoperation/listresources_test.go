@@ -55,7 +55,8 @@ func TestListResourcesRun(t *testing.T) {
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -107,7 +108,8 @@ func TestListResourcesRun(t *testing.T) {
 	for _, tt := range listEnvsCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+			require.NoError(t, err)
 
 			q := req.URL.Query()
 			q.Add("top", tt.top)

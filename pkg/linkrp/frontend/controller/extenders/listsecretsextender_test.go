@@ -55,7 +55,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mds.
@@ -83,7 +84,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mds.
@@ -119,7 +121,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 		w := httptest.NewRecorder()
 

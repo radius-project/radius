@@ -102,7 +102,8 @@ func TestGetResourceRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -131,7 +132,8 @@ func TestGetResourceRun(t *testing.T) {
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		require.NoError(t, err)
 		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.

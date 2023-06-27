@@ -49,7 +49,8 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		expected := &v1.Subscription{}
 		_ = json.Unmarshal(rawReq, expected)
 
-		req, _ := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
+		req, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
+		require.NoError(t, err)
 
 		// arrange
 		op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})

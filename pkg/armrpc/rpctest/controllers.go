@@ -50,12 +50,12 @@ func NewControllerContext(t *testing.T) *ControllerContext {
 func FakeStoreObject(dm v1.DataModelInterface) *store.Object {
 	b, err := json.Marshal(dm)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	var r any
 	err = json.Unmarshal(b, &r)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	return &store.Object{Data: r}
 }
