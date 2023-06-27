@@ -35,7 +35,7 @@ The following tips should help you decide which option to choose:
 
 - Does this change fix a bug in Radius? We define a bug as a case where Radius does not as advertised, or where a crash or some other kind of internal failure occurs. If you said Yes, then choose the first option (Bugfix).
 - Does this change introduce new features or behaviors? Does this change modify an existing feature of Radius in a way that's visible to users? If you said Yes, choose the second option (Feature).
-- If neither of the two previous options sound right, and there's no user-visible change in your pull request then choose the third option (Task).
+- If neither of the two previous options sounds right, and there's no user-visible change in your pull request then choose the third option (Task).
 
 We use Task as a catch-all for changes that have no direct user-visible impact. In practice many changes are Tasks, and we don't include them in the release notes. This includes minor refactors, code/style cleanup, test improvements, correcting misspellings in comments, changes to build processes, etc.
 
