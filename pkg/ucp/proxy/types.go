@@ -78,6 +78,10 @@ type Transport struct {
 	roundTripper http.RoundTripper
 }
 
+// # Function Explanation
+//
+// The RoundTrip function in the Transport struct uses the roundTripper field to make a request and returns the response
+// or an error if one occurs.
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := t.roundTripper.RoundTrip(req)
 	if err != nil {
@@ -87,6 +91,9 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
+// # Function Explanation
+//
+// Build() configures a ReverseProxy with the given parameters and returns a http.HandlerFunc.
 func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 	rp := httputil.NewSingleHostReverseProxy(builder.Downstream)
 	rp.Transport = &builder.Transport
