@@ -53,6 +53,12 @@ import (
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
+// NoModules can be used to start a test server without any modules. This is useful for testing the server itself and core functionality
+// like planes.
+func NoModules(options modules.Options) []modules.Initializer {
+	return nil
+}
+
 // TestServer can run a UCP server using the Go httptest package. It provides access to an isolated ETCD instances for storage
 // of resources and secrets. Alteratively, it can also be used with gomock.
 //
@@ -282,6 +288,17 @@ func (ts *TestServer) MakeFixtureRequest(method string, pathAndQuery string, fix
 	return ts.MakeRequest(method, pathAndQuery, body)
 }
 
+// MakeTypedRequest sends a request to the server by marshalling the provided object to JSON.
+func (ts *TestServer) MakeTypedRequest(method string, pathAndQuery string, body any) *TestResponse {
+	if body == nil {
+		return ts.MakeRequest(method, pathAndQuery, nil)
+	}
+
+	b, err := json.Marshal(body)
+	require.NoError(ts.t, err, "marshalling body failed")
+	return ts.MakeRequest(method, pathAndQuery, b)
+}
+
 // MakeRequest sends a request to the server.
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
 	client := ts.Server.Client()
@@ -338,6 +355,11 @@ func (tr *TestResponse) EqualsFixture(statusCode int, fixture string) {
 	body, err := os.ReadFile(fixture)
 	require.NoError(tr.t, err, "reading fixture failed")
 	tr.EqualsResponse(statusCode, body)
+}
+
+// EqualsStatusCode compares a TestResponse against an expected status code (ingnores the body payload).
+func (tr *TestResponse) EqualsStatusCode(statusCode int) {
+	require.Equal(tr.t, statusCode, tr.Raw.StatusCode, "status code did not match expected")
 }
 
 // EqualsFixture compares a TestResponse against an expected status code and body payload.
