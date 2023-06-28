@@ -28,8 +28,8 @@ import (
 
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +55,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewNoContentResponse()
@@ -86,7 +86,7 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.ARMTestContextFromRequest(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

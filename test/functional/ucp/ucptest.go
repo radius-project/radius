@@ -26,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -56,8 +57,8 @@ func NewUCPTest(t *testing.T, name string, runMethod TestRunMethod) UCPTest {
 }
 
 func (ucptest UCPTest) Test(t *testing.T) {
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	t.Parallel()
 

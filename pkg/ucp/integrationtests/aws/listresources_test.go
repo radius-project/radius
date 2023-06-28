@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -58,10 +58,10 @@ func Test_ListAWSResources(t *testing.T) {
 		return &output, nil
 	})
 
-	listRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSListPath, nil)
+	listRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSListPath, nil)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(listRequest)
+	ctx := rpctest.ARMTestContextFromRequest(listRequest)
 	listRequest = listRequest.WithContext(ctx)
 
 	listResponse, err := ucp.Client().Do(listRequest)

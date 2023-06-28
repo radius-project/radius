@@ -37,11 +37,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 
@@ -237,8 +237,8 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 
 func Test_Run_Logger(t *testing.T) {
 	// Will be used to cancel `rad run`
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 	options := corerp.NewCoreRPTestOptions(t)
 
 	template := "testdata/corerp-kubernetes-cli-run.bicep"
@@ -295,8 +295,8 @@ func Test_Run_Logger(t *testing.T) {
 	// Now we can delete the application (before we report pass/fail)
 	t.Run("delete application", func(t *testing.T) {
 		// Create a new context since we canceled the outer one.
-		ctx, cancel := test.GetContext(t)
-		defer cancel()
+		ctx, cancel := testcontext.NewWithCancel(t)
+		t.Cleanup(cancel)
 
 		err := cli.ApplicationDelete(ctx, applicationName)
 		require.NoErrorf(t, err, "failed to delete %s", applicationName)
@@ -309,8 +309,8 @@ func Test_Run_Logger(t *testing.T) {
 
 func Test_Run_Portforward(t *testing.T) {
 	// Will be used to cancel `rad run`
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 	options := corerp.NewCoreRPTestOptions(t)
 
 	template := "testdata/corerp-kubernetes-cli-run-portforward.bicep"
@@ -381,8 +381,8 @@ func Test_Run_Portforward(t *testing.T) {
 	// Now we can delete the application (before we report pass/fail)
 	t.Run("delete application", func(t *testing.T) {
 		// Create a new context since we canceled the outer one.
-		ctx, cancel := test.GetContext(t)
-		defer cancel()
+		ctx, cancel := testcontext.NewWithCancel(t)
+		t.Cleanup(cancel)
 
 		err := cli.ApplicationDelete(ctx, applicationName)
 		require.NoErrorf(t, err, "failed to delete %s", applicationName)
@@ -474,8 +474,8 @@ func Test_CLI_JSON(t *testing.T) {
 }
 
 func Test_CLI_Delete(t *testing.T) {
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	options := corerp.NewCoreRPTestOptions(t)
 	appName := "kubernetes-cli-with-resources"
@@ -614,8 +614,8 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 }
 
 func Test_CLI_version(t *testing.T) {
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	options := corerp.NewTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
@@ -635,8 +635,8 @@ func Test_CLI_version(t *testing.T) {
 }
 
 func Test_CLI_Only_version(t *testing.T) {
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	options := corerp.NewTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)

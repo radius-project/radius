@@ -27,7 +27,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/to"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 )
 
 const (
@@ -75,8 +75,9 @@ func Test_AzureCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.New(t)
-			defer cancel()
+			ctx, cancel := testcontext.NewWithCancel(t)
+			t.Cleanup(cancel)
+
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 			azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)
@@ -130,8 +131,8 @@ func Test_AWSCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.New(t)
-			defer cancel()
+			ctx, cancel := testcontext.NewWithCancel(t)
+			t.Cleanup(cancel)
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 			azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)
@@ -243,8 +244,8 @@ func Test_Credential_Get(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.New(t)
-			defer cancel()
+			ctx, cancel := testcontext.NewWithCancel(t)
+			t.Cleanup(cancel)
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 			azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)
@@ -269,8 +270,9 @@ func Test_Credential_Get(t *testing.T) {
 }
 
 func Test_Credential_List(t *testing.T) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -367,8 +369,9 @@ func Test_Credential_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.New(t)
-			defer cancel()
+			ctx, cancel := testcontext.NewWithCancel(t)
+			t.Cleanup(cancel)
+
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 			azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)

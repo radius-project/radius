@@ -17,17 +17,11 @@
 set -xe
 
 REPOSITORY=$1
-MAIN_BRANCH=$2
-VERSION=$3
-FINAL_RELEASE=$4
+VERSION=$2
+FINAL_RELEASE=$3
 
 if [[ -z "$REPOSITORY" ]]; then
   echo "Error: REPOSITORY is not set."
-  exit 1
-fi
-
-if [[ -z "$MAIN_BRANCH" ]]; then
-  echo "Error: MAIN_BRANCH is not set."
   exit 1
 fi
 

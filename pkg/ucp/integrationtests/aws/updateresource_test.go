@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -94,10 +94,10 @@ func Test_UpdateAWSResource(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	updateRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+testProxyRequestAWSPath, body)
+	updateRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPut, ucp.BaseURL+testProxyRequestAWSPath, body)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(updateRequest)
+	ctx := rpctest.ARMTestContextFromRequest(updateRequest)
 	updateRequest = updateRequest.WithContext(ctx)
 
 	updateResponse, err := ucp.Client().Do(updateRequest)

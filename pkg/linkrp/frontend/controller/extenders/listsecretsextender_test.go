@@ -26,8 +26,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -55,8 +55,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mds.
 			EXPECT().
@@ -83,8 +84,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mds.
 			EXPECT().
@@ -119,8 +121,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)
 		defer teardownTest(t)
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 		w := httptest.NewRecorder()
 
 		mds.
