@@ -96,3 +96,11 @@ jobs:
         run: |
           ./radius-pr/.github/scripts/release-create-repo-tag.sh recipes ${{ env.RELEASE_VERSION }} ${{ env.FINAL_RELEASE }}
         if: success()
+      - name: Release project-radius/docs version ${{ env.RELEASE_VERSION }}
+        run: |
+          ./radius-pr/.github/scripts/release-update-docs.sh ${{ env.RELEASE_VERSION }}
+        if: ${{ env.FINAL_RELEASE == 'true' }}
+      - name: Release project-radius/samples version ${{ env.RELEASE_VERSION }}
+        run: |
+          ./radius-pr/.github/scripts/release-update-samples.sh ${{ env.RELEASE_VERSION }}
+        if: ${{ env.FINAL_RELEASE == 'true' }}
