@@ -41,9 +41,9 @@ type GetOperationResult struct {
 // NewGetOperationResult creates a new GetOperationResult.
 //
 // # Function Explanation
-// 
-//	GetOperationResult is a controller that creates a new base controller with the given options and returns it, or an error
-//	 if the controller could not be created.
+//
+// NewGetOperationResult creates a new GetOperationResult controller and returns it, or returns an error if the controller
+// cannot be created.
 func NewGetOperationResult(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetOperationResult{ctrl.NewBaseController(opts)}, nil
 }
@@ -52,10 +52,10 @@ func NewGetOperationResult(opts ctrl.Options) (ctrl.Controller, error) {
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 //
 // # Function Explanation
-// 
-//	GetOperationResult checks the status of an operation and returns a response based on the status. If the operation is not
-//	 yet complete, it returns an AsyncOperationResultResponse with a Location and Retry-After header. If the operation is 
-//	complete, it returns a NoContentResponse. If the operation is not found, it returns a NotFoundResponse.
+//
+// Run() checks if the operation is in a terminal state, and if not, returns an AsyncOperationResultResponse with the Location
+// and Retry-After headers set. If the operation is in a terminal state, it returns a NoContentResponse. If the operation is
+// not found, it returns a NotFoundResponse. If an error occurs, it returns a BadRequestResponse.
 func (e *GetOperationResult) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

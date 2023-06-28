@@ -34,11 +34,6 @@ type DefaultAsyncPut[P interface {
 }
 
 // NewDefaultAsyncPut creates a new DefaultAsyncPut.
-//
-// # Function Explanation
-// 
-//	The DefaultAsyncPut function creates a new DefaultAsyncPut controller with the given options and resource options, and 
-//	returns it or an error if one occurs.
 func NewDefaultAsyncPut[P interface {
 	*T
 	v1.ResourceDataModel
@@ -49,10 +44,9 @@ func NewDefaultAsyncPut[P interface {
 // Run executes DefaultAsyncPut operation.
 //
 // # Function Explanation
-// 
-//	DefaultAsyncPut is a function that handles an asynchronous PUT request. It retrieves the existing resource, validates 
-//	the new resource, applies any necessary filters, and prepares an asynchronous response with a timeout. If any errors 
-//	occur, they are returned to the caller.
+//
+// Run() function checks if the new resource is valid, compares it to the old resource, runs update filters,
+// prepares an async operation and returns an async response.
 func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)

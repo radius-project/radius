@@ -76,6 +76,11 @@ type HandlerOptions struct {
 }
 
 // HandlerForController returns a http.HandlerFunc that will run the given controller.
+//
+// # Function Explanation
+//
+// HandlerForController is a function that takes in a controller and returns a http.HandlerFunc which adds request
+// attributes to the context, runs the controller, and handles any errors that occur.
 func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -100,6 +105,11 @@ func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 
 // RegisterHandler registers a handler for the given resource type and method. This function should only
 // be used for controllers that process a single resource type.
+//
+// # Function Explanation
+//
+// RegisterHandler creates a new route for the specified resource type and method, and assigns a handler for the
+// controller associated with the resource type. If an error occurs, it is returned.
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Options) error {
 	if opts.OperationType == nil && (opts.ResourceType == "" || opts.Method == "") {
 		return fmt.Errorf("the resource type and method must be specified if the operation type is not specified")
@@ -148,8 +158,8 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 
 // # Function Explanation
 //
-//	ConfigureDefaultHandlers sets up the default handlers for the given root router, path base, provider namespace,
-//	operation controller factory and controller options. It returns an error if any of the handlers fail to register.
+// ConfigureDefaultHandlers registers handlers for the default operations such as getting operation statuses and
+// results, and creating or updating a subscription. It returns an error if any of the handler registrations fail.
 func ConfigureDefaultHandlers(
 	ctx context.Context,
 	rootRouter *mux.Router,
@@ -214,10 +224,9 @@ func ConfigureDefaultHandlers(
 //
 // # Function Explanation
 //
-//	HandleError is a function that handles errors and logs them. It takes in a context, a response writer, a request object
-//	and an error. It then logs the error and tries to use the ARM format to send back the error info. If the error is due to
-//	 api conversion failure, it returns a bad request response. Otherwise, it returns an internal server error response. The
-//	 function also handles any errors that occur while writing the response.
+// HandleError logs the error and then attempts to write an appropriate response to the http.ResponseWriter based on the
+// type of error. If an error occurs while writing the response, it logs the error and writes a generic internal server
+// error response.
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")

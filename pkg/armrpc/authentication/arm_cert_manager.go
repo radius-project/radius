@@ -41,10 +41,9 @@ type ArmCertManager struct {
 // NewArmCertManager creates a new ArmCertManager
 //
 // # Function Explanation
-// 
-//	ArmCertManager is a function that creates a new ArmCertManager object with the given armMetaEndpoint and log parameters,
-//	 and sets the period to 1 hour. It returns a pointer to the newly created ArmCertManager object. If any errors occur 
-//	during the creation of the object, they will be logged using the given log parameter.
+//
+// NewArmCertManager creates a new ArmCertManager struct with the given ARM metadata endpoint, log and a default period of
+// 1 hour, and returns a pointer to it.
 func NewArmCertManager(armMetaEndpoint string, log logr.Logger) *ArmCertManager {
 	certMgr := ArmCertManager{
 		armMetaEndpoint: armMetaEndpoint,
@@ -77,11 +76,6 @@ func (acm *ArmCertManager) fetchARMClientCert() ([]Certificate, error) {
 
 // IsValidThumbprint verifies the thumbprint received in the request header against the list of thumbprints
 // fetched from arm metadata endpoint
-//
-// # Function Explanation
-// 
-//	IsValidThumbprint checks if the given thumbprint is present in a list of valid certificates and returns true if it is 
-//	found. If the thumbprint is not found, it returns false.
 func IsValidThumbprint(thumbprint string) bool {
 	armPublicCerts := getValidCertificates()
 	for _, cert := range armPublicCerts {
@@ -92,16 +86,8 @@ func IsValidThumbprint(thumbprint string) bool {
 	return false
 }
 
-// Start fetching the client certificates from the arm metadata endpoint during service start up
-//
-//	and runs in the background the periodic certificate refresher.
-//
-// # Function Explanation
-// 
-//	ArmCertManager's Start function attempts to fetch client certificates from an ARM Meta endpoint and stores them in a 
-//	local store. If an error occurs during the fetch, an error is logged and ErrClientCertFetch is returned. If no 
-//	certificates are fetched, an error is logged and ErrClientCertFetch is returned. Otherwise, a periodic refresh of the 
-//	certificates is started.
+// Start() fetching the client certificates from the arm metadata endpoint during service start up
+// and runs in the background the periodic certificate refresher.
 func (acm *ArmCertManager) Start(ctx context.Context) error {
 	certs, err := acm.refreshCert()
 	if err != nil {

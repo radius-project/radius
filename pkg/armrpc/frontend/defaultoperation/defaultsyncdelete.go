@@ -36,12 +36,6 @@ type DefaultSyncDelete[P interface {
 }
 
 // NewDefaultSyncDelete creates a new DefaultSyncDelete.
-//
-// # Function Explanation
-// 
-//	The DefaultSyncDelete function creates a new controller for a given type of resource and returns it, or an error if 
-//	something goes wrong. It takes in two parameters, an Options object and a ResourceOptions object, and uses them to 
-//	create the controller.
 func NewDefaultSyncDelete[P interface {
 	*T
 	v1.ResourceDataModel
@@ -52,11 +46,9 @@ func NewDefaultSyncDelete[P interface {
 // Run executes DefaultSyncDelete operation
 //
 // # Function Explanation
-// 
-//	The DefaultSyncDelete function runs a delete operation on the given resource, performing any necessary filters and 
-//	validations before deleting it. If the resource is not found, a NoContentResponse is returned. If the delete operation 
-//	is successful, an OKResponse is returned. If any errors occur during the delete operation, they are returned to the 
-//	caller.
+//
+// Run() retrieves the resource from the store, runs any delete filters, and then deletes the resource from the store. If the
+// resource is not found, a No Content response is returned. If an error occurs during the delete, an error is returned.
 func (e *DefaultSyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

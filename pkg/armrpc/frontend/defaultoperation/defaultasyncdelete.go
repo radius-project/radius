@@ -34,12 +34,6 @@ type DefaultAsyncDelete[P interface {
 }
 
 // NewDefaultAsyncDelete creates a new DefaultAsyncDelete.
-//
-// # Function Explanation
-// 
-//	The DefaultAsyncDelete function creates a new controller for performing asynchronous delete operations on a given 
-//	resource type, and returns it along with any errors that may have occurred. If no errors occur, the controller is 
-//	returned successfully.
 func NewDefaultAsyncDelete[P interface {
 	*T
 	v1.ResourceDataModel
@@ -50,9 +44,8 @@ func NewDefaultAsyncDelete[P interface {
 // Run executes DefaultAsyncDelete operation
 //
 // # Function Explanation
-// 
-//	The DefaultAsyncDelete function runs a delete operation on a resource, performing various checks and filters before 
-//	returning an asynchronous response. If any of the checks or filters fail, an error is returned.
+//
+// Run() retrieves the resource, checks if it exists, runs filters, prepares an async operation, and returns an async response.
 func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)

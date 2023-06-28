@@ -62,9 +62,9 @@ type testAsyncController struct {
 }
 
 // # Function Explanation
-// 
-//	The testAsyncController's Run function provides an asynchronous controller that can be used to execute a given function 
-//	with a context, and returns a ctrl.Result and an error if one occurs.
+//
+// Run() executes the function stored in the controller if it is not nil, and returns the result of the
+// function or an empty result if the function is nil.
 func (c *testAsyncController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	if c.fn != nil {
 		return c.fn(ctx)

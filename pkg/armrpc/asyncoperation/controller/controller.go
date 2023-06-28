@@ -62,8 +62,7 @@ type BaseController struct {
 //
 // # Function Explanation
 //
-//	NewBaseAsyncController creates a new BaseController object with the given options and returns it. If any errors occur
-//	during the creation of the object, they will be returned to the caller.
+// NewBaseAsyncController creates a new BaseController struct with the given Options and returns it.
 func NewBaseAsyncController(options Options) BaseController {
 	return BaseController{options}
 }
@@ -72,8 +71,7 @@ func NewBaseAsyncController(options Options) BaseController {
 //
 // # Function Explanation
 //
-//	BaseController's StorageClient function returns the StorageClient option from the BaseController's options struct,
-//	allowing callers to access the StorageClient. If the StorageClient option is not set, an error is returned.
+// StorageClient returns the StorageClient from the options struct in the BaseController struct.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
@@ -82,8 +80,7 @@ func (b *BaseController) StorageClient() store.StorageClient {
 //
 // # Function Explanation
 //
-//	BaseController's DataProvider() function returns the DataStorageProvider from the options struct, allowing callers to
-//	access the data provider. If the data provider is not set, an error is returned.
+// DataProvider is a function that returns the DataStorageProvider from the options struct of the BaseController.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
 }
@@ -92,8 +89,7 @@ func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 //
 // # Function Explanation
 //
-//	The BaseController.KubeClient() function returns a runtimeclient.Client object which is used to interact with the
-//	Kubernetes API. It handles any errors that occur during the process and returns an error if one is encountered.
+// KubeClient returns the KubeClient from the options struct of the BaseController struct.
 func (b *BaseController) KubeClient() runtimeclient.Client {
 	return b.options.KubeClient
 }
@@ -102,8 +98,7 @@ func (b *BaseController) KubeClient() runtimeclient.Client {
 //
 // # Function Explanation
 //
-//	BaseController's ResourceType function returns the resource type of the controller, or an error if the resource type is
-//	not set.
+// ResourceType returns the resource type of the BaseController object, or an error if the resource type is not set.
 func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
@@ -112,8 +107,7 @@ func (b *BaseController) ResourceType() string {
 //
 // # Function Explanation
 //
-//	The DeploymentProcessor function returns the deployment processor from the options provided, and handles any errors that
-//	 may occur.
+// DeploymentProcessor() returns the DeploymentProcessor from the options provided.
 func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
 	return b.options.GetDeploymentProcessor()
 }

@@ -34,12 +34,6 @@ type GetResource[P interface {
 }
 
 // NewGetResource creates a new GetResource controller instance.
-//
-// # Function Explanation
-// 
-//	The NewGetResource function creates a new GetResource controller and returns it, or an error if one occurs. It takes in 
-//	two parameters, an Options object and a ResourceOptions object, and handles any errors that may occur during the 
-//	creation of the controller.
 func NewGetResource[P interface {
 	*T
 	v1.ResourceDataModel
@@ -52,10 +46,9 @@ func NewGetResource[P interface {
 // Run fetches the resource from the datastore.
 //
 // # Function Explanation
-// 
-//	The GetResource function retrieves a resource from the context, checks if it exists, and returns a response with the 
-//	resource and an ETag. If the resource is not found, a NotFoundResponse is returned. If an error occurs, it is returned 
-//	to the caller.
+//
+// Run() function retrieves a resource from the context, and if it exists, constructs a response with the resource and etag.
+// If the resource does not exist, a NotFoundResponse is returned. If an error occurs, an error is returned.
 func (e *GetResource[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

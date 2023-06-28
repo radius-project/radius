@@ -87,12 +87,6 @@ type AsyncRequestProcessWorker struct {
 }
 
 // New creates AsyncRequestProcessWorker server instance.
-//
-// # Function Explanation
-// 
-//	New() sets default values for the Options parameter and returns an AsyncRequestProcessWorker object with the given 
-//	parameters. If any of the Options parameters are not set, the default values are used. If any errors occur, the function
-//	 will return an error.
 func New(
 	options Options,
 	sm manager.StatusManager,
@@ -126,10 +120,10 @@ func New(
 // Start starts worker's message loop.
 //
 // # Function Explanation
-// 
-//	AsyncRequestProcessWorker.Start() starts a loop that listens for messages from a queue, unmarshals them into a request 
-//	object, checks for duplicates, updates the resource and operation statuses, and runs the operation. If any errors occur,
-//	 they are logged and the message is discarded.
+//
+// Start() starts a loop to process messages from a queue concurrently, and handles
+// deduplication, updating resource and operation status, and running the operation. It returns an error if it fails to
+// start the dequeuer.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

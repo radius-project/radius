@@ -114,8 +114,7 @@ type BaseController struct {
 //
 // # Function Explanation
 //
-//	NewBaseController creates a new BaseController object with the given options and returns it. If any errors occur, they
-//	will be returned to the caller.
+// NewBaseController creates a new BaseController struct with the given Options.
 func NewBaseController(options Options) BaseController {
 	return BaseController{
 		options,
@@ -126,8 +125,7 @@ func NewBaseController(options Options) BaseController {
 //
 // # Function Explanation
 //
-//	BaseController's StorageClient function returns the StorageClient option from the BaseController's options struct,
-//	allowing callers to access the StorageClient. If the StorageClient option is not set, an error is returned.
+// StorageClient() returns the StorageClient from the options struct of the BaseController struct.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
@@ -136,8 +134,7 @@ func (b *BaseController) StorageClient() store.StorageClient {
 //
 // # Function Explanation
 //
-//	BaseController's DataProvider() function returns the DataStorageProvider from the options struct, allowing callers to
-//	access the data provider. If the data provider is not set, an error is returned.
+// DataProvider() is a function that returns the DataStorageProvider from the options struct of the BaseController.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
 }
@@ -146,8 +143,7 @@ func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 //
 // # Function Explanation
 //
-//	The BaseController.KubeClient() function returns a runtimeclient.Client object which is used to interact with the
-//	Kubernetes API. It handles any errors that occur during the process and returns an error if one is encountered.
+// KubeClient() returns the KubeClient from the options struct of the BaseController struct.
 func (b *BaseController) KubeClient() runtimeclient.Client {
 	return b.options.KubeClient
 }
@@ -156,8 +152,7 @@ func (b *BaseController) KubeClient() runtimeclient.Client {
 //
 // # Function Explanation
 //
-//	BaseController's ResourceType function returns the resource type of the controller, or an error if the resource type is
-//	not set.
+// ResourceType() returns the resource type of the BaseController object, or an error if the resource type is not set.
 func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
@@ -166,8 +161,7 @@ func (b *BaseController) ResourceType() string {
 //
 // # Function Explanation
 //
-//	The StatusManager() function returns the StatusManager object from the options struct, allowing callers to access the
-//	status manager and handle errors accordingly.
+// StatusManager() returns the StatusManager from the options of the BaseController.
 func (b *BaseController) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
 }
@@ -176,8 +170,7 @@ func (b *BaseController) StatusManager() sm.StatusManager {
 //
 // # Function Explanation
 //
-//	GetResource retrieves an object from the storage client and attempts to convert it into the given output type. It
-//	returns the ETag of the object and any errors encountered. If an error is encountered, the output will be nil.
+// GetResource() retrieves a resource from the storage client and returns the ETag of the resource and an error if one occurs.
 func (c *BaseController) GetResource(ctx context.Context, id string, out any) (etag string, err error) {
 	etag = ""
 	var res *store.Object
@@ -194,8 +187,8 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out any) (e
 //
 // # Function Explanation
 //
-//	SaveResource saves a resource to the storage client, using the given ID and input data, and an optional ETag. It returns
-//	 the saved object or an error if the save fails.
+// SaveResource() saves a resource to the store, taking in a context, an ID, an input and an ETag,
+// and returns a store object or an error if the save fails.
 func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*store.Object, error) {
 	nr := &store.Object{
 		Metadata: store.Metadata{
@@ -214,9 +207,8 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in any, et
 //
 // # Function Explanation
 //
-//	UpdateSystemData updates the old SystemData with the new SystemData, backfilling the CreatedAt, CreatedBy, and
-//	CreatedByType fields if they are not set in the old SystemData. If LastModifiedAt is set in the new SystemData, it will
-//	update the LastModifiedAt, LastModifiedBy, and LastModifiedByType fields in the old SystemData.
+// UpdateSystemData updates the system data fields in the old object with the new object's fields, backfilling the created
+// fields if necessary.
 func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 	newSystemData := old
 
@@ -246,8 +238,8 @@ func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 //
 // # Function Explanation
 //
-//	BuildTrackedResource extracts information from the context and request object to create a TrackedResource object. It
-//	handles errors by returning an empty TrackedResource if the context or request object is invalid.
+// BuildTrackedResource takes in a context and returns a v1.TrackedResource object with the ID, Name, Type and Location
+// fields populated from the context.
 func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
 	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	serviceOpt := hostoptions.FromContext(ctx)

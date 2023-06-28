@@ -50,11 +50,6 @@ type TestResourceDataModel struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-//
-// # Function Explanation
-// 
-//	TestResourceDataModel.ResourceTypeName() returns a string representing the type of resource being used. It handles any 
-//	errors that may occur by returning an empty string.
 func (r *TestResourceDataModel) ResourceTypeName() string {
 	return "Applications.Core/resources"
 }
@@ -88,9 +83,8 @@ type TestResourceProperties struct {
 }
 
 // # Function Explanation
-// 
-//	TestResource's ConvertTo function converts a TestResource object into a TestResourceDataModel object, mapping the fields
-//	 of the former to the latter. It returns the converted object or an error if the conversion fails.
+//
+// ConvertTo() takes in a TestResource object and returns a TestResourceDataModel object and no error.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
@@ -117,10 +111,9 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 }
 
 // # Function Explanation
-// 
-//	TestResource's ConvertFrom function takes in a TestResourceDataModel and converts it into a TestResource, setting the 
-//	ID, Name, Type, SystemData, Location, Tags, and Properties fields. It returns an error if the input is not a 
-//	TestResourceDataModel.
+//
+// ConvertFrom function takes in a DataModelInterface and returns an error if the conversion is not
+// successful. It then assigns the values from the DataModelInterface to the TestResource struct.
 func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {

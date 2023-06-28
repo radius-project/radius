@@ -51,10 +51,10 @@ var (
 // ReadJSONBody extracts the content from request.
 //
 // # Function Explanation
-// 
-//	ReadJSONBody reads the body of an HTTP request and returns the data as a byte slice. It checks the Content-Type header 
-//	of the request to ensure it is application/json, and returns an error if it is not. It also returns an error if there is
-//	 an issue reading the request body.
+//
+// ReadJSONBody checks the content type of the request and reads the body of the request if the content type is
+// "application/json", returning the body as a byte slice or an error if the content type is not supported or an error
+// occurs while reading the body.
 func ReadJSONBody(r *http.Request) ([]byte, error) {
 	defer r.Body.Close()
 
@@ -77,8 +77,8 @@ func ReadJSONBody(r *http.Request) ([]byte, error) {
 // If-None-Match headers and then checks to see if the etag of the resource matches what is requested.
 //
 // # Function Explanation
-// 
-//	ValidateETag checks the If-Match and If-
+// ValidateETag checks the If-Match and If-None-Match headers of the ARMRequestContext against the provided etag,
+// and returns an error if the etag does not match either header.
 func ValidateETag(armRequestContext v1.ARMRequestContext, etag string) error {
 	ifMatchETag := armRequestContext.IfMatch
 	ifMatchCheck := checkIfMatchHeader(ifMatchETag, etag)
@@ -124,11 +124,6 @@ func checkIfNoneMatchHeader(ifNoneMatchETag string, etag string) error {
 }
 
 // GetURLFromReqWithQueryParameters function builds a URL from the request and query parameters
-//
-// # Function Explanation
-// 
-//	GetURLFromReqWithQueryParameters creates a URL from a given request object and query parameters, using the default 
-//	scheme if none is provided. It returns an error if the query parameters cannot be encoded.
 func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.URL {
 	url := url.URL{
 		Host:     req.Host,
@@ -145,12 +140,6 @@ func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.UR
 }
 
 // GetNextLinkUrl function returns the URL string by building a URL from the request and the pagination token.
-//
-// # Function Explanation
-// 
-//	GetNextLinkURL takes in a context, request and pagination token and returns a URL string with the pagination token 
-//	appended as a query parameter. If the pagination token is empty, an empty string is returned. Error handling is done by 
-//	returning an empty string if the pagination token is empty.
 func GetNextLinkURL(ctx context.Context, req *http.Request, paginationToken string) string {
 	if paginationToken == "" {
 		return ""

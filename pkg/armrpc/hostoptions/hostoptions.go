@@ -79,10 +79,9 @@ func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConf
 }
 
 // # Function Explanation
-// 
-//	NewHostOptionsFromEnvironment loads configuration from a given path, retrieves Kubernetes and ARM configurations, and 
-//	returns a HostOptions object containing the loaded configurations. If any of these operations fail, an error is 
-//	returned.
+//
+// NewHostOptionsFromEnvironment loads configuration from a given path, retrieves Kubernetes and ARM configurations, and
+// returns a HostOptions object containing the configurations, or an error if any of the operations fail.
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 	conf, err := loadConfig(configPath)
 	if err != nil {
@@ -142,21 +141,11 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 }
 
 // FromContext extracts ProviderConfig from http context.
-//
-// # Function Explanation
-// 
-//	FromContext retrieves a ProviderConfig from the given context and returns it. If the ProviderConfig is not present, an 
-//	error is returned.
 func FromContext(ctx context.Context) *ProviderConfig {
 	return ctx.Value(v1.HostingConfigContextKey).(*ProviderConfig)
 }
 
 // WithContext injects ProviderConfig into the given http context.
-//
-// # Function Explanation
-// 
-//	WithContext adds the given ProviderConfig to the context and returns the updated context. If an error occurs, the 
-//	function will panic and the caller should handle the panic accordingly.
 func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
 }

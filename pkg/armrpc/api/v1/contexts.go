@@ -21,9 +21,8 @@ type contextKey struct {
 }
 
 // # Function Explanation
-// 
-//	The contextKey function creates a new type of object that stores a name and implements the Stringer interface, allowing 
-//	it to be used as a key in a map. It also handles any errors that may occur when creating the object.
+//
+// String() returns a string containing the name of the context key.
 func (k *contextKey) String() string {
 	return "arm context name: " + k.name
 }
