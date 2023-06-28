@@ -21,8 +21,6 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
@@ -118,27 +116,6 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		return err
 	}
 	return nil
-}
-
-func populateProvidersToWorkspace(workspace *workspaces.Workspace, providersList []any) {
-	for _, provider := range providersList {
-		switch p := provider.(type) {
-		case *azure.Provider:
-			if p != nil {
-				workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
-					SubscriptionID: p.SubscriptionID,
-					ResourceGroup:  p.ResourceGroup,
-				}
-			}
-		case *aws.Provider:
-			if p != nil {
-				workspace.ProviderConfig.AWS = &workspaces.AWSProvider{
-					Region:    p.TargetRegion,
-					AccountId: p.AccountId,
-				}
-			}
-		}
-	}
 }
 
 // # Function Explanation

@@ -43,10 +43,9 @@ type ClusterOptions struct {
 }
 
 // # Function Explanation
-// 
-//	NewDefaultClusterOptions() sets the default values for the ClusterOptions struct, such as the chart version and tag, 
-//	based on the version of the CLI. If the version is an edge build, the latest available version is used. If an error 
-//	occurs, the function will return an empty ClusterOptions struct.
+//
+// NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
+// the channel of the CLI (major.minor) or the latest available version if it is an edge build.
 func NewDefaultClusterOptions() ClusterOptions {
 	// By default we use the chart version that matches the channel of the CLI (major.minor)
 	// If this is an edge build, we'll use the latest available.
@@ -66,10 +65,9 @@ func NewDefaultClusterOptions() ClusterOptions {
 }
 
 // # Function Explanation
-// 
-//	PopulateDefaultClusterOptions takes in a CLIClusterOptions object and returns a ClusterOptions object with the default 
-//	values, unless any of the CLI options are provided, in which case they will override the default values. If any of the 
-//	CLI options are invalid, an error will be returned.
+//
+// PopulateDefaultClusterOptions compares the CLI options provided by the user to the default options and returns a
+// ClusterOptions object with the CLI options overriding the default options if they are provided.
 func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 
@@ -89,6 +87,11 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 }
 
 // InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
+//
+// # Function Explanation
+//
+// Install takes in a context, clusterOptions and kubeContext and returns a boolean and an error. If an
+// error is encountered, it is returned.
 func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
 	foundExisting, err := InstallOnCluster(ctx, clusterOptions, kubeContext)
 	if err != nil {
@@ -99,10 +102,9 @@ func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext str
 }
 
 // # Function Explanation
-// 
-//	InstallOnCluster applies the Helm charts for Radius and Contour to the cluster specified in the ClusterOptions 
-//	parameter, using the kubeContext provided. It returns a boolean indicating whether an existing installation was found, 
-//	and an error if one occurred.
+//
+// InstallOnCluster applies the Helm charts for Radius and Contour to the cluster, and returns whether an existing
+// installation was found. If an error occurs, it is returned.
 func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext string) (bool, error) {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -123,10 +125,9 @@ func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext s
 }
 
 // # Function Explanation
-// 
-//	UninstallOnCluster is a function that uninstalls the Radius and Contour Helm charts from a Kubernetes cluster. It takes 
-//	in a kubeContext string and returns an error if any of the Helm uninstall commands fail. If an error is encountered, the
-//	 function will return the Helm output along with the error.
+//
+// UninstallOnCluster retrieves the Helm configuration and runs the Contour and Radius Helm uninstall commands to remove
+// the Helm releases from the cluster.
 func UninstallOnCluster(kubeContext string) error {
 	var helmOutput strings.Builder
 
@@ -155,6 +156,11 @@ func UninstallOnCluster(kubeContext string) error {
 }
 
 // CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
+//
+// # Function Explanation
+//
+// CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
+// with the version of the release if installed, or an error if an error occurs while checking.
 func CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	var helmOutput strings.Builder
 
@@ -220,6 +226,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	return Install(ctx, clusterOptions, kubeContext)
 }
 
+// # Function Explanation
+//
+// UninstallRadius uninstalls RADIUS from the specified Kubernetes cluster, and returns an error if it fails.
 func (i *Impl) UninstallRadius(ctx context.Context, kubeContext string) error {
 	return UninstallOnCluster(kubeContext)
 }

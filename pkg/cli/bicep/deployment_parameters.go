@@ -163,8 +163,8 @@ func (pp ParameterParser) mergeSingleParameter(output clients.DeploymentParamete
 
 // # Function Explanation
 //
-//	NewParameter creates a map containing a single key-value pair, where the key is "value" and the value is the parameter
-//	passed to the function. If the parameter is invalid, an empty map is returned.
+// NewParameter creates a map containing a single key-value pair, where the key is "value" and the value is the parameter
+// passed to the function. If the parameter is invalid, an empty map is returned.
 func NewParameter(value any) map[string]any {
 	return map[string]any{
 		"value": value,
