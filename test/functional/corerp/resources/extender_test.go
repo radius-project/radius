@@ -17,8 +17,12 @@ limitations under the License.
 package resource_test
 
 import (
+	"fmt"
 	"testing"
 
+	"os"
+
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
