@@ -51,6 +51,12 @@ type UCPDirectConnectionOptions struct {
 }
 
 // NewConnectionFromUCPConfig creates a Connection for UCP endpoint.
+//
+// # Function Explanation
+// 
+// NewConnectionFromUCPConfig checks if the connection kind is direct and if so, checks if the endpoint is provided and 
+// returns a direct connection, otherwise it returns a Kubernetes connection from the provided config. It returns an error 
+// if the endpoint is not provided when the connection kind is direct.
 func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config) (sdk.Connection, error) {
 	if option.Kind == UCPConnectionKindDirect {
 		if option.Direct == nil || option.Direct.Endpoint == "" {

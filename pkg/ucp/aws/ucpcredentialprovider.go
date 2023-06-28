@@ -65,6 +65,11 @@ func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSC
 }
 
 // Retrieve fetches the secret access key using UCP credential API.
+//
+// # Function Explanation
+//
+// Retrieve() fetches credentials from an external provider, checks if they are valid, logs the AccessKeyID, and returns the
+// credentials with an expiration time set. If the credentials are invalid, an error is returned.
 func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	s, err := c.options.Provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
