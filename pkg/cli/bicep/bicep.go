@@ -36,10 +36,8 @@ const (
 // IsBicepInstalled returns true if our local copy of bicep is installed
 //
 // # Function Explanation
-// 
-//	IsBicepInstalled() checks if the Bicep binary is installed on the local machine and returns a boolean value indicating 
-//	whether it is installed or not. If the binary is not found, it returns false and nil. If an error occurs while checking 
-//	for the binary, it returns false and an error.
+//
+// IsBicepInstalled checks if the Bicep binary is installed on the local machine and returns a boolean and an error if one occurs.
 func IsBicepInstalled() (bool, error) {
 	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
 	if err != nil {
@@ -59,9 +57,9 @@ func IsBicepInstalled() (bool, error) {
 // DeleteBicep cleans our local copy of bicep
 //
 // # Function Explanation
-// 
-//	DeleteBicep() deletes the Bicep binary from the local filepath specified by the environment variable, and returns an 
-//	error if the deletion fails.
+//
+// DeleteBicep() deletes the file specified by the environment variable radBicepEnvVar and binaryName, and returns an error
+// if the file cannot be deleted.
 func DeleteBicep() error {
 	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
 	if err != nil {
@@ -79,9 +77,9 @@ func DeleteBicep() error {
 // DownloadBicep updates our local copy of bicep
 //
 // # Function Explanation
-// 
-//	DownloadBicep() attempts to download a binary file from a given URL and save it to a local folder. It handles errors by 
-//	returning an error if the download fails or the status code is not in the 200 range.
+//
+// DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
+// the download fails. If an error occurs, an error is returned.
 func DownloadBicep() error {
 	dirPrefix := "bicep-extensibility"
 	// Placeholders are for: channel, platform, filename

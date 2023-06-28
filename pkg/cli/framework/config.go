@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
@@ -36,8 +38,7 @@ type contextKey string
 
 // # Function Explanation
 //
-//	NewContextKey creates a new context key with a given purpose, which can be used to store and retrieve values from a
-//	context. If an invalid purpose is provided, an error is returned.
+// NewContextKey creates a new context key based on the given purpose string.
 func NewContextKey(purpose string) contextKey {
 	return contextKey("radius context " + purpose)
 }
@@ -46,8 +47,8 @@ func NewContextKey(purpose string) contextKey {
 //
 // # Function Explanation
 //
-//	ConfigFromContext retrieves a viper.Viper configuration from the context, returning nil if the configuration is not
-//	present. If an error occurs, the function will panic.
+// The ConfigFromContext function retrieves a viper.Viper configuration from a context.Context, and returns nil if the
+// configuration is not found.
 func ConfigFromContext(ctx context.Context) *viper.Viper {
 	holder := ctx.Value(NewContextKey("config")).(*ConfigHolder)
 	if holder == nil {
@@ -73,8 +74,8 @@ type ConfigFileInterfaceImpl struct {
 
 // # Function Explanation
 //
-//	ConfigFileInterfaceImpl.SetDefaultWorkspace edits the workspace section of a given config file, setting the default
-//	workspace to the given name. It returns an error if the edit fails.
+// SetDefaultWorkspace edits the configuration file to set the default workspace to the given name, and returns an error
+// if the operation fails.
 func (i *ConfigFileInterfaceImpl) SetDefaultWorkspace(ctx context.Context, config *viper.Viper, name string) error {
 	return cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		section.Default = name
@@ -84,8 +85,8 @@ func (i *ConfigFileInterfaceImpl) SetDefaultWorkspace(ctx context.Context, confi
 
 // # Function Explanation
 //
-//	DeleteWorkspace edits the workspace section of the config file, deleting the workspace with the given name and resetting
-//	 the default workspace if it was the one being deleted. It returns an error if any part of the operation fails.
+// DeleteWorkspace deletes a workspace from the configuration file and sets the default workspace to an empty string if
+// the deleted workspace was the default workspace. It returns an error if the workspace could not be deleted.
 func (i *ConfigFileInterfaceImpl) DeleteWorkspace(ctx context.Context, config *viper.Viper, name string) error {
 	return cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		delete(section.Items, strings.ToLower(name))
@@ -101,8 +102,8 @@ func (i *ConfigFileInterfaceImpl) DeleteWorkspace(ctx context.Context, config *v
 //
 // # Function Explanation
 //
-//	The EditWorkspaces function edits the workspace configuration in the config file, by adding the workspace and its
-//	associated providers to the configuration. It returns an error if any issue occurs while editing the configuration.
+// EditWorkspaces adds a workspace to a configuration file, ensuring that the workspace name is lowercase and
+// that there are no duplicate workspace names.
 func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *viper.Viper, workspace *workspaces.Workspace) error {
 	err := cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		// TODO: Add checks for duplicate workspace names and append random number mechanisms
@@ -142,8 +143,7 @@ func populateProvidersToWorkspace(workspace *workspaces.Workspace, providersList
 
 // # Function Explanation
 //
-//	ConfigFileInterfaceImpl's ConfigFromContext function retrieves the configuration from the context and returns it as a
-//	Viper object. If the configuration is not found, an error is returned.
+// ConfigFromContext takes in a context object and returns a viper object, or an error if the context object is invalid.
 func (i *ConfigFileInterfaceImpl) ConfigFromContext(ctx context.Context) *viper.Viper {
 	return ConfigFromContext(ctx)
 }

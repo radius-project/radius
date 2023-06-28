@@ -29,10 +29,9 @@ type PublicEndpoint struct {
 }
 
 // # Function Explanation
-// 
-//	FindPublicEndpoints iterates through the resources in the given DeploymentResult and attempts to retrieve the public 
-//	endpoint for each resource using the DiagnosticsClient. If an endpoint is found, it is added to the list of 
-//	PublicEndpoints. If an error occurs during the retrieval, it is returned to the caller.
+//
+// FindPublicEndpoints iterates through a list of resources and attempts to retrieve a public endpoint for each one,
+// returning a list of public endpoints and an error if one occurs.
 func FindPublicEndpoints(ctx context.Context, diag clients.DiagnosticsClient, result clients.DeploymentResult) ([]PublicEndpoint, error) {
 	endpoints := []PublicEndpoint{}
 	for _, resource := range result.Resources {

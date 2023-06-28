@@ -61,6 +61,11 @@ type TextInputOptions = text.TextModelOptions
 type Impl struct{}
 
 // GetTextInput prompts user for a text input
+//
+// # Function Explanation
+//
+// GetTextInput takes a prompt string and a set of options, and returns a string or an error if the user exits the
+// console or an unsupported model is encountered.
 func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, error) {
 	tm := text.NewTextModel(prompt, options)
 
@@ -85,10 +90,9 @@ func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, er
 // GetListInput prompts user to select from a list
 //
 // # Function Explanation
-// 
-//	Impl.GetListInput creates a new ListModel with the given items and prompt message, then runs it using tea. If an error 
-//	occurs, it is returned. Otherwise, the ListModel is checked for validity and if it is quitting, an error is returned. 
-//	Otherwise, the choice from the ListModel is returned. If any errors occur, they should be handled by the caller.
+//
+// GetListInput displays a list of strings to the user and returns the user's selection as a string, or an error if the
+// user exits the console or an unsupported model is encountered.
 func (i *Impl) GetListInput(items []string, promptMsg string) (string, error) {
 	lm := cli_list.NewListModel(items, promptMsg)
 
@@ -129,21 +133,11 @@ func (*ErrExitConsole) IsFriendlyError() bool {
 }
 
 // Error returns the error message.
-//
-// # Function Explanation
-// 
-//	ErrExitConsole is an error type that is returned when the function encounters an error that requires the program to exit
-//	 the console. It provides a useful message to the callers of the function to inform them of the error.
 func (e *ErrExitConsole) Error() string {
 	return ErrExitConsoleMessage
 }
 
 // Is checks for the error type is ErrExitConsole.
-//
-// # Function Explanation
-// 
-//	ErrExitConsole is a custom error type that implements the error interface, allowing it to be used in error handling. It 
-//	provides a way for callers of the function to check if the error is of this type and handle it accordingly.
 func (e *ErrExitConsole) Is(target error) bool {
 	_, ok := target.(*ErrExitConsole)
 	return ok
@@ -154,6 +148,13 @@ func (e *ErrExitConsole) Is(target error) bool {
 //
 // Returns an *ErrExitConsole if the user cancels. This is a friendly error and does not need
 // special handling by calling code.
+//
+// # Function Explanation
+//
+// YesOrNoPrompt takes in a prompt message, a default string and a prompter interface, and returns a boolean value and an
+// error if one occurs. It checks if the default string is equal to "yes", and if so, sets the value list to ["yes", "no"],
+// otherwise it sets the value list to ["no", "yes"]. It then gets a list input from the prompter interface, and returns
+// true if the input is equal to "yes", and false otherwise.
 func YesOrNoPrompt(promptMsg string, defaultString string, prompter Interface) (bool, error) {
 	var valueList []string
 	if strings.EqualFold(ConfirmYes, defaultString) {

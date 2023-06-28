@@ -59,9 +59,10 @@ func configDir() string {
 // ProfilePath returns the path where the Azure Profile is stored from the Azure CLI
 //
 // # Function Explanation
-// 
-//	ProfilePath() attempts to locate the azure profile JSON file, first by looking for a config directory, and if that 
-//	fails, by looking in the user's home directory. If either of these attempts fail, an error is returned.
+//
+// ProfilePath() checks for the presence of a config directory and returns the path to the azureProfileJSON file in that
+// directory, or if the config directory is not present, it returns the path to the azureProfileJSON file in the user's
+// home directory. If an error occurs, an error is returned.
 func ProfilePath() (string, error) {
 	if cfgDir := configDir(); cfgDir != "" {
 		return filepath.Join(cfgDir, azureProfileJSON), nil
@@ -78,9 +79,9 @@ func ProfilePath() (string, error) {
 // LoadProfile restores a Profile object from a file located at 'path'.
 //
 // # Function Explanation
-// 
-//	LoadProfile reads a file from the given path and decodes its contents into a Profile representation. If any errors occur
-//	 while reading or decoding the file, an error is returned to the caller.
+//
+// LoadProfile reads a file from the given path, decodes it into a Profile representation and returns the result, or an
+// error if the file could not be read or decoded.
 func LoadProfile(path string) (result Profile, err error) {
 	var contents []byte
 	contents, err = os.ReadFile(path)

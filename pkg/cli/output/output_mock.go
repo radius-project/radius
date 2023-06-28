@@ -34,17 +34,16 @@ type FormattedOutput struct {
 }
 
 // # Function Explanation
-// 
-//	MockOutput.LogInfo appends a LogOutput struct containing the format string and parameters to the Writes slice, allowing 
-//	callers to track the output of the function. Error handling is implicit, as no errors are returned.
+//
+// LogInfo takes in a format string and a variable number of parameters and appends them to the Writes slice.
 func (o *MockOutput) LogInfo(format string, v ...any) {
 	o.Writes = append(o.Writes, LogOutput{Format: format, Params: v})
 }
 
 // # Function Explanation
-// 
-//	MockOutput.WriteFormatted appends a FormattedOutput object containing the given format, object and options to the Writes
-//	 slice, and returns nil if successful. If an error occurs, it will be returned instead.
+//
+// WriteFormatted takes in a format string, an object of any type, and a FormatterOptions object, and appends
+// them to the Writes slice, returning no error.
 func (o *MockOutput) WriteFormatted(format string, obj any, options FormatterOptions) error {
 	o.Writes = append(o.Writes, FormattedOutput{Format: format, Obj: obj, Options: options})
 	return nil

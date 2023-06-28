@@ -100,8 +100,8 @@ func runBicepJson(args ...string) (map[string]any, error) {
 //
 // # Function Explanation
 // 
-//	Build() runs the rad-bicep command to build a template from the given file path and returns the output as a map of 
-//	strings to any type, or an error if the build fails.
+// "Build" reads a Bicep file at the given file path and returns a map of the compiled output and an error if the 
+// compilation fails.
 func Build(filePath string) (map[string]any, error) {
 	// rad-bicep is being told to output the template to stdout and we will capture it
 	// rad-bicep will output compilation errors to stderr which will go to the user's console
@@ -114,8 +114,8 @@ func Build(filePath string) (map[string]any, error) {
 //
 // # Function Explanation
 // 
-//	Version() runs the "bicep --version" command and parses the output to return the version of bicep as a string. If the 
-//	command fails or the version cannot be parsed, it returns an error string.
+// Version() attempts to retrieve the version of Bicep by running the command "--version" and returns the version as a 
+// string, or an error message if an error occurs.
 func Version() string {
 	bytes, err := runBicepRaw("--version")
 	if err != nil {

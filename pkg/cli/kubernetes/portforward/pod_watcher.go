@@ -48,10 +48,9 @@ type podWatcher struct {
 }
 
 // # Function Explanation
-// 
-//	PodWatcher creates a new watcher for a given Pod, with the given Options and a cancel function. It sets up channels for 
-//	communication and returns a pointer to the watcher. If an error occurs, the forwarderDone channel will return the error,
-//	 allowing the caller to handle it.
+//
+// "NewPodWatcher" creates a new podWatcher struct with the given options, pod and cancel function, and initializes the
+// done, forwarderDone, log, and Updated channels.
 func NewPodWatcher(options Options, pod *corev1.Pod, cancel func()) *podWatcher {
 	return &podWatcher{
 		Cancel:  cancel,
@@ -66,10 +65,9 @@ func NewPodWatcher(options Options, pod *corev1.Pod, cancel func()) *podWatcher 
 }
 
 // # Function Explanation
-// 
-//	The podWatcher Run function watches for updates to a Pod and handles them accordingly. It bootstraps with the initial 
-//	state of the Pod and then listens for updates. If the Pod wasn't ready before but is now, the update is handled. If the 
-//	context is cancelled, the forwarder is closed and the function returns an error.
+//
+// Run listens for updates on the "Updated" channel and handles them by calling "handleUpdate" and handles
+// shutdown by cancelling the context.
 func (pw *podWatcher) Run(ctx context.Context) error {
 	defer close(pw.done)
 
@@ -234,10 +232,8 @@ func (pw *podWatcher) selectLocalPort(port int32) string {
 }
 
 // # Function Explanation
-// 
-//	PodWatcher's Wait function blocks until the done channel is closed, signaling that the pod watcher has finished its 
-//	work. If an error occurs, it is sent to the error channel and the done channel is closed. Callers of this function 
-//	should check the error channel for any errors that may have occurred.
+//
+// Wait() blocks until the done channel is closed, signaling that the podWatcher has finished its work.
 func (pw *podWatcher) Wait() {
 	<-pw.done
 }
@@ -256,26 +252,23 @@ type realforwarder struct {
 }
 
 // # Function Explanation
-// 
-//	Realforwarder's Ready() function returns a channel which will be closed when the inner forwarder is ready to process 
-//	requests. If an error occurs while checking the readiness of the inner forwarder, the error is logged and the channel is
-//	 closed.
+//
+// Ready returns a channel that is closed when the inner realforwarder is ready to accept requests.
 func (f *realforwarder) Ready() <-chan struct{} {
 	return f.inner.Ready
 }
 
 // # Function Explanation
-// 
-//	The Realforwarder Run function runs the inner ForwardPorts function and returns any errors that occur. If no errors 
-//	occur, the function returns nil.
+//
+// Run() calls the inner ForwardPorts function of the realforwarder struct, and returns any error that may occur.
 func (f *realforwarder) Run(ctx context.Context) error {
 	return f.inner.ForwardPorts()
 }
 
 // # Function Explanation
-// 
-//	The realforwarder GetPorts function retrieves the list of forwarded ports from the inner forwarder and returns them. If 
-//	an error occurs, the function panics as it should not happen after the forwarder is ready.
+//
+// GetPorts() retrieves the list of ports that have been forwarded and returns them as a slice of ForwardedPort objects.
+// If an error occurs, the function will panic.
 func (f *realforwarder) GetPorts() []clientgoportforward.ForwardedPort {
 	ports, err := f.inner.GetPorts()
 	if err != nil {
@@ -285,9 +278,9 @@ func (f *realforwarder) GetPorts() []clientgoportforward.ForwardedPort {
 }
 
 // # Function Explanation
-// 
-//	NewFakeForwarder creates a fakeforwarder struct and adds ports to it from the given map. It then returns the 
-//	fakeforwarder, which can be used to handle errors in the caller's code.
+//
+// NewFakeForwarder takes in a map of ports and returns a fakeforwarder which contains a ready channel and a list of
+// ForwardedPort objects with the same local and remote ports.
 func NewFakeForwarder(ports map[int32]bool) forwarder {
 	fake := &fakeforwarder{ready: make(chan struct{})}
 	for port := range ports {
@@ -303,17 +296,15 @@ type fakeforwarder struct {
 }
 
 // # Function Explanation
-// 
-//	fakeforwarder's Ready() function returns a channel that will be closed when the forwarder is ready to accept requests. 
-//	If an error occurs while preparing the forwarder, the error is returned and the channel is not closed.
+//
+// Ready returns a channel that is closed when the fakeforwarder is ready to accept requests.
 func (f *fakeforwarder) Ready() <-chan struct{} {
 	return f.ready
 }
 
 // # Function Explanation
-// 
-//	The fakeforwarder Run function creates a channel and sends a signal when it is ready, then waits for a signal from the 
-//	context to stop. It returns an error if the context is done before the signal is sent.
+//
+// Run sets up a channel and waits for a signal from the context to close the channel and return nil.
 func (f *fakeforwarder) Run(ctx context.Context) error {
 	close(f.ready)
 	<-ctx.Done()
@@ -321,9 +312,8 @@ func (f *fakeforwarder) Run(ctx context.Context) error {
 }
 
 // # Function Explanation
-// 
-//	fakeforwarder.GetPorts() returns a slice of ForwardedPort objects that were previously set in the fakeforwarder 
-//	instance. If an error occurs, it is returned to the caller.
+//
+// GetPorts() returns a slice of ForwardedPort objects from the fakeforwarder struct.
 func (f *fakeforwarder) GetPorts() []clientgoportforward.ForwardedPort {
 	return f.ports
 }

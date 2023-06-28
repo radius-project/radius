@@ -34,32 +34,30 @@ type MockFactory struct {
 }
 
 // # Function Explanation
-// 
-//	MockFactory.CreateDeploymentClient creates a DeploymentClient and returns it, or returns an error if one occurs.
+//
+// CreateDeploymentClient function takes in a context and a workspace and returns a DeploymentClient and an error, if any.
 func (f *MockFactory) CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error) {
 	return nil, nil
 }
 
 // # Function Explanation
-// 
-//	MockFactory's CreateDiagnosticsClient function creates a DiagnosticsClient and always returns nil as an error, allowing 
-//	callers to use the DiagnosticsClient without worrying about any errors.
+//
+// CreateDiagnosticsClient function takes in a context and a workspace and returns a DiagnosticsClient without any errors.
 func (f *MockFactory) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error) {
 	return f.DiagnosticsClient, nil
 }
 
 // # Function Explanation
-// 
-//	MockFactory.CreateApplicationsManagementClient creates a mock ApplicationsManagementClient and returns it, or an error 
-//	if one occurs.
+//
+// CreateApplicationsManagementClient function takes in a context and a workspace and returns an ApplicationsManagementClient
+// and an error if one occurs.
 func (f *MockFactory) CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error) {
 	return f.ApplicationsManagementClient, nil
 }
 
 // # Function Explanation
-// 
-//	MockFactory.CreateCredentialManagementClient creates a CredentialManagementClient and returns it, or an error if one 
-//	occurs.
+//
+// CreateCredentialManagementClient function takes in a context and a workspace and returns a CredentialManagementClient and does not return an error.
 func (f *MockFactory) CreateCredentialManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error) {
 	return f.CredentialManagementClient, nil
 }

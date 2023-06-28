@@ -58,22 +58,12 @@ type Workspace struct {
 
 // IsNamedWorkspace returns true for workspaces stored in per-user configuration. These workspaces have names that can
 // be referenced in commands with the `--workspace` flag.
-//
-// # Function Explanation
-// 
-//	"IsNamedWorkspace" checks if the workspace is a user-defined workspace and returns a boolean value. If an error occurs, 
-//	it is returned to the caller.
 func (w Workspace) IsNamedWorkspace() bool {
 	return w.Source == SourceUserConfig
 }
 
 // IsEditableWorkspace returns true for workspaces stored in per-user or directory-based configuration. These workspaces
 // have configuration files and thus can have their settings updated.
-//
-// # Function Explanation
-// 
-//	"IsEditableWorkspace" checks if the workspace is editable by checking if the source is not the fallback source. If it 
-//	is, an error is returned.
 func (w Workspace) IsEditableWorkspace() bool {
 	return w.Source != SourceFallback
 }

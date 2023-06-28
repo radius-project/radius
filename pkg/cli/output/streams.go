@@ -28,9 +28,9 @@ import (
 // NewStreamGroup creates a new StreamGroup for the given writer. All functionality of StreamGroup can be used concurrently.
 //
 // # Function Explanation
-// 
-//	StreamGroup creates a new StreamGroup object with a mutex lock and an output writer, which can be used to safely write 
-//	to the output concurrently. If any errors occur while writing, they will be logged and the write will be aborted.
+//
+// NewStreamGroup creates a new StreamGroup object with an output writer and a mutex, and returns a pointer to the newly
+// created StreamGroup.
 func NewStreamGroup(out io.Writer) *StreamGroup {
 	mutex := sync.Mutex{}
 	return &StreamGroup{out: out, mutex: &mutex}
@@ -46,9 +46,8 @@ type StreamGroup struct {
 }
 
 // # Function Explanation
-// 
-//	StreamGroup.NewStream() creates a new Stream object with a given name, assigns it a color, and adds it to the 
-//	StreamGroup. It also handles any errors that may occur during the process.
+//
+// NewStream() creates a new Stream object with a given name, assigns it a primary and secondary color, and returns it.
 func (sg *StreamGroup) NewStream(name string) *Stream {
 	sg.mutex.Lock()
 	defer sg.mutex.Unlock()
@@ -88,9 +87,8 @@ type Stream struct {
 }
 
 // # Function Explanation
-// 
-//	Stream.Print locks the mutex, prints the name of the stream in a secondary color and the text in a primary color, and 
-//	then unlocks the mutex, ensuring that the output is not interleaved. If an error occurs, it is returned to the caller.
+//
+// Print takes a string and prints it to the output stream with a prefix of the stream's name in a secondary color.
 func (s *Stream) Print(text string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -101,9 +99,8 @@ func (s *Stream) Print(text string) {
 }
 
 // # Function Explanation
-// 
-//	Stream.Writer() creates and returns a StreamWriter which implements the io.WriteCloser interface, allowing callers to 
-//	write data to the Stream. If an error occurs while writing, the StreamWriter will return an error to the caller.
+//
+// Writer() returns an io.WriteCloser which is a StreamWriter struct that contains a pointer to the Stream struct.
 func (s *Stream) Writer() io.WriteCloser {
 	return &StreamWriter{stream: s}
 }
@@ -123,10 +120,9 @@ type StreamWriter struct {
 var _ io.WriteCloser = (*StreamWriter)(nil)
 
 // # Function Explanation
-// 
-//	StreamWriter's Write function buffers all bytes written to it and outputs complete lines to the colorized stream. It 
-//	returns the number of bytes written and any errors encountered. If an error is encountered, it is returned to the 
-//	caller.
+//
+// Write buffers all bytes written to it and outputs complete lines to the colorized stream as it sees them,
+// and returns an error if it fails to flush the buffer.
 func (w *StreamWriter) Write(p []byte) (int, error) {
 	// The technique here is that we buffer all bytes written to us and output complete
 	// lines to the colorized stream as we see them.
@@ -146,9 +142,8 @@ func (w *StreamWriter) Write(p []byte) (int, error) {
 }
 
 // # Function Explanation
-// 
-//	StreamWriter.Close() flushes any buffered data to the stream and then closes the stream, returning any errors 
-//	encountered. If an error is encountered, it is returned to the caller.
+//
+// Close flushes the stream and returns an error if the flush fails.
 func (w *StreamWriter) Close() error {
 	err := w.flush(true)
 	if err != nil {

@@ -20,8 +20,8 @@ import "runtime"
 
 // # Function Explanation
 // 
-//	GetExecutableName() returns the name of the executable for the given tool, depending on the operating system. It handles
-//	 errors by returning the tool name as-is for any operating system other than Windows.
+// GetExecutableName returns the executable name of a given tool based on the operating system. It returns the tool name 
+// with a .exe extension if the operating system is Windows, otherwise it returns the tool name as is.
 func GetExecutableName(tool string) string {
 	switch runtime.GOOS {
 	case "windows":

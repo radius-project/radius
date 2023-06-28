@@ -174,8 +174,8 @@ type ApplicationsManagementClient interface {
 
 // # Function Explanation
 // 
-//	ShallowCopy creates a shallow copy of the DeploymentParameters object, copying each key-value pair from the original 
-//	object into the new one. It returns the new object, or an empty object if an error occurs.
+// ShallowCopy creates a shallow copy of the DeploymentParameters object by copying each key-value pair from the original 
+// object into a new object.
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
 	copy := DeploymentParameters{}
 	for k, v := range params {

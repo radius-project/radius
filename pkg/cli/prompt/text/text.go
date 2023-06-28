@@ -61,6 +61,11 @@ type Model struct {
 }
 
 // NewTextModel returns a new text model with prompt message.
+//
+// # Function Explanation
+//
+// NewTextModel creates a new Model struct with a textinput field, a prompt string, and options for the textinput field
+// such as placeholder and echo mode, and sets the default style and error style for the Model.
 func NewTextModel(prompt string, options TextModelOptions) Model {
 	// Note: we don't use the validation support provided by textinput due to a bug in the library.
 	//
@@ -84,11 +89,6 @@ func NewTextModel(prompt string, options TextModelOptions) Model {
 }
 
 // Init returns initial tea command for text input.
-//
-// # Function Explanation
-// 
-//	Model.Init() returns a textinput.Blink command, which is used to handle errors and provide useful feedback to the 
-//	caller.
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -96,8 +96,8 @@ func (m Model) Init() tea.Cmd {
 // Update updates model with input form user.
 //
 // # Function Explanation
-// 
-//	Model.Update handles user input and errors, and returns a Model and a Cmd. It handles KeyEnter, KeyCtrlC, and KeyEsc, 
+//
+//	Update handles user input and errors, and returns a Model and a Cmd. It handles KeyEnter, KeyCtrlC, and KeyEsc,
 //	and sets the valueEntered and Quitting flags accordingly. It also handles errors by setting the err field in the Model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -133,13 +133,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders a view with user selected value.
-//
-// # Function Explanation
-// 
-//	Model.View() returns a string based on the value of the textInput field. If the valueEntered flag is true, it will 
-//	return the promptMsg and either the value of the textInput field or its placeholder if the value is empty. Otherwise, it
-//	 will return the promptMsg, the textInput field's view, and a message to quit. If an error occurs, it will return an 
-//	empty string.
 func (m Model) View() string {
 	if m.valueEntered {
 		// Hide all of the input when complete.

@@ -42,10 +42,9 @@ type applicationWatcher struct {
 // NewApplicationWatcher creates a new applicationWatcher.
 //
 // # Function Explanation
-// 
-//	ApplicationWatcher creates a new applicationWatcher object with the given options and sets up a done channel and an 
-//	empty map of deploymentWatchers. It returns the applicationWatcher object. If an error occurs, it will be returned to 
-//	the caller.
+//
+// NewApplicationWatcher creates a new applicationWatcher struct with the given options and initializes the done channel
+// and deploymentWatchers map.
 func NewApplicationWatcher(options Options) *applicationWatcher {
 	return &applicationWatcher{
 		Options: options,
@@ -58,10 +57,9 @@ func NewApplicationWatcher(options Options) *applicationWatcher {
 // Run runs the applicationWatcher until canceled.
 //
 // # Function Explanation
-// 
-//	The applicationWatcher.Run function watches for changes to deployments in a given namespace that are labeled with the 
-//	application name. It handles added, modified, and deleted events, and returns an error if the watch fails or the context
-//	 is done.
+//
+// The Run function watches for changes to deployments in a given namespace that are labeled with the application name.
+// It handles added, modified, and deleted events, and returns an error if the watch fails or the context is done.
 func (aw *applicationWatcher) Run(ctx context.Context) error {
 	defer close(aw.done)
 
@@ -169,9 +167,8 @@ func (aw *applicationWatcher) deleted(ctx context.Context, deployment *appsv1.De
 // has processed all notifications.
 //
 // # Function Explanation
-// 
-//	ApplicationWatcher's Wait function blocks until the done channel is closed, signaling that the application has finished 
-//	running. If the done channel is closed with an error, the error is returned to the caller.
+//
+// Wait() blocks until the applicationWatcher's done channel is closed, indicating that the application has finished running.
 func (aw *applicationWatcher) Wait() {
 	<-aw.done
 }

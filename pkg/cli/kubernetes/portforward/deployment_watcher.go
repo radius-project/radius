@@ -44,10 +44,8 @@ type deploymentWatcher struct {
 }
 
 // # Function Explanation
-// 
-//	The NewDeploymentWatcher function creates a new deploymentWatcher object with the given options, matchLabels, 
-//	staleReplicaSets and cancel function. It also initializes a done channel and a pods map. If any errors occur during the 
-//	creation of the deploymentWatcher object, they will be returned to the caller.
+//
+// NewDeploymentWatcher creates a new deploymentWatcher struct with the given parameters and returns a pointer to it.
 func NewDeploymentWatcher(options Options, matchLabels map[string]string, staleReplicaSets map[string]bool, cancel func()) *deploymentWatcher {
 	return &deploymentWatcher{
 		Cancel:           cancel,
@@ -61,11 +59,9 @@ func NewDeploymentWatcher(options Options, matchLabels map[string]string, staleR
 }
 
 // # Function Explanation
-// 
-//	The deploymentWatcher.Run function watches for changes to Pods in a given namespace that match a set of labels. It sets 
-//	up a RetryWatcher to watch for changes, and when an event is received, it calls either the updated or deleted function 
-//	depending on the type of event. If an error occurs or the context is done, the watcher is stopped and the error is 
-//	returned.
+//
+// Run watches for changes to Pods in the given namespace that match the given labels and updates the deploymentWatcher
+// accordingly. It returns an error if there is an issue creating the watcher.
 func (dw *deploymentWatcher) Run(ctx context.Context) error {
 	defer close(dw.done)
 
@@ -234,10 +230,8 @@ func (dw *deploymentWatcher) selectBestPod() *corev1.Pod {
 }
 
 // # Function Explanation
-// 
-//	DeploymentWatcher's Wait() function blocks until the done channel is closed, signaling that the deployment has finished.
-//	 If an error occurs, it is sent to the error channel and the done channel is closed. Callers of this function should 
-//	check the error channel for any errors that occurred during the deployment.
+//
+// Wait() blocks until the done channel is closed, signaling that the deployment is complete.
 func (dw *deploymentWatcher) Wait() {
 	<-dw.done
 }

@@ -51,10 +51,9 @@ var (
 // ListAllResourcesByType lists the all the resources within a scope
 //
 // # Function Explanation
-// 
-//	ARMApplicationsManagementClient's ListAllResourcesByType function retrieves a list of all resources of a given type from
-//	 the Azure Resource Manager and returns them as a slice of GenericResource objects. It handles errors by returning them 
-//	to the caller.
+//
+// ListAllResourcesByType retrieves a list of resources of a given type from the Azure Resource Manager and returns
+// them as a slice of GenericResource objects. It returns an error if an error occurs while retrieving the resources.
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 
@@ -81,11 +80,9 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByType(ctx context.C
 // ListAllResourceOfTypeInApplication lists the resources of a particular type in an application
 //
 // # Function Explanation
-// 
-//	"ListAllResourcesOfTypeInApplication" takes in a context, an application name and a resource type and returns a slice of
-//	 GenericResources that are associated with the given application. It does this by first getting a list of all resources 
-//	of the given type and then filtering out the ones that are associated with the given application. If an error occurs 
-//	while getting the list of resources, it is returned to the caller.
+//
+// ListAllResourcesOfTypeInApplication takes in a context, an application name and a resource type and returns
+// a slice of GenericResources that are associated with the application, or an error if one occurs.
 func (amc *ARMApplicationsManagementClient) ListAllResourcesOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	resourceList, err := amc.ListAllResourcesByType(ctx, resourceType)
@@ -104,11 +101,10 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesOfTypeInApplication(
 // ListAllResourcesByApplication lists the resources of a particular application
 //
 // # Function Explanation
-// 
-//	The ListAllResourcesByApplication function loops through a list of resource types and calls the 
-//	ListAllResourcesOfTypeInApplication function for each resource type, appending the results to a slice of 
-//	GenericResources. If any of the calls to ListAllResourcesOfTypeInApplication returns an error, the function returns the 
-//	error to the caller.
+//
+// ListAllResourcesByApplication iterates through a list of resource types and calls ListAllResourcesOfTypeInApplication
+// to get a list of resources for each type, then combines them into a single list and returns it. It returns an error
+// if ListAllResourcesOfTypeInApplication returns an error.
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range ResourceTypesList {
@@ -125,11 +121,10 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 // ListAllResourcesByEnvironment lists the all the resources of a particular environment
 //
 // # Function Explanation
-// 
-//	The ListAllResourcesByEnvironment function loops through a list of resource types and calls the 
-//	ListAllResourcesOfTypeInEnvironment function for each resource type, appending the results to a slice of 
-//	GenericResources. If any of the calls to ListAllResourcesOfTypeInEnvironment returns an error, the function returns the 
-//	error to the caller.
+//
+// ListAllResourcesByEnvironment iterates through a list of resource types and calls ListAllResourcesOfTypeInEnvironment
+// for each resource type, appending the results to a slice of generic resources and returning the slice and nil error
+// if successful, or nil slice and an error if unsuccessful.
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByEnvironment(ctx context.Context, environmentName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range ResourceTypesList {
@@ -146,11 +141,10 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByEnvironment(ctx co
 // ListAllResourcesByTypeInEnvironment lists the all the resources of a particular type in an environment
 //
 // # Function Explanation
-// 
-//	"ListAllResourcesOfTypeInEnvironment" takes in a context, environment name and resource type and returns a slice of 
-//	GenericResources that are in the specified environment. It does this by first getting a list of all resources of the 
-//	specified type and then filtering out the ones that are not in the specified environment. If an error occurs while 
-//	getting the list of resources, it is returned to the caller.
+//
+// ListAllResourcesOfTypeInEnvironment takes in a context, environment name and resource type and returns a slice of
+// GenericResources and an error if one occurs. It does this by first getting a list of all resources of the given type,
+// then checking if each resource is in the given environment and appending it to the results if it is.
 func (amc *ARMApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(ctx context.Context, environmentName string, resourceType string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	resourceList, err := amc.ListAllResourcesByType(ctx, resourceType)
@@ -167,9 +161,9 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(
 }
 
 // # Function Explanation
-// 
-//	The ShowResource function retrieves a resource of the specified type and name from the ARMApplicationsManagementClient. 
-//	It returns the resource or an error if one occurs. Error handling is done by returning the error to the caller.
+//
+// ShowResource is a function that creates a new client for a given resource type and then uses it to get the resource
+// with the given name, returning the resource or an error if one occurs.
 func (amc *ARMApplicationsManagementClient) ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error) {
 	client, err := generated.NewGenericResourcesClient(amc.RootScope, resourceType, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
@@ -185,10 +179,9 @@ func (amc *ARMApplicationsManagementClient) ShowResource(ctx context.Context, re
 }
 
 // # Function Explanation
-// 
-//	The DeleteResource function uses the ARMApplicationsManagementClient to delete a resource of the given type and name. It
-//	 returns a boolean indicating whether the resource was successfully deleted and an error if one occurred. If an error 
-//	occurs, the function will return false and the error should be handled by the caller.
+//
+// DeleteResource creates a new client, begins a delete request, polls until the request is done, and returns a boolean
+// and an error depending on the response status code. If the response status code is not 204, an error is returned.
 func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error) {
 	client, err := generated.NewGenericResourcesClient(amc.RootScope, resourceType, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
@@ -212,10 +205,9 @@ func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, 
 }
 
 // # Function Explanation
-// 
-//	The ListApplications function queries the ARM Applications Management Client to retrieve a list of ApplicationResources.
-//	 It uses a pager to iterate through the results and appends each ApplicationResource to a slice of ApplicationResources,
-//	 which is then returned. If an error occurs during the query, it is returned to the caller.
+//
+// ListApplications retrieves a list of applications from the ARM Applications Management Client and returns them as a
+// slice of ApplicationResource objects, or an error if one occurs.
 func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]corerpv20220315.ApplicationResource, error) {
 	results := []corerpv20220315.ApplicationResource{}
 
@@ -240,10 +232,9 @@ func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context
 }
 
 // # Function Explanation
-// 
-//	The ListApplicationsByEnv function takes in a context and an environment name and returns a slice of ApplicationResource
-//	 objects. It first retrieves a list of all applications and then filters out the ones that match the given environment 
-//	name. If an error occurs while retrieving the list of applications, it is returned to the caller.
+//
+// ListApplicationsByEnv takes in a context and an environment name and returns a slice of ApplicationResource objects
+// and an error if one occurs.
 func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]corerpv20220315.ApplicationResource, error) {
 	results := []corerpv20220315.ApplicationResource{}
 	applicationsList, err := amc.ListApplications(ctx)
@@ -260,9 +251,9 @@ func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Co
 }
 
 // # Function Explanation
-// 
-//	The ShowApplication function uses the ARMApplicationsManagementClient to retrieve an ApplicationResource from the Azure 
-//	Resource Manager. It handles any errors that occur during the request and returns the ApplicationResource or an error.
+//
+// ShowApplication attempts to retrieve an application resource from the Azure Resource Manager using the provided
+// application name and returns the resource or an error if unsuccessful.
 func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (corerpv20220315.ApplicationResource, error) {
 	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
@@ -279,11 +270,8 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 }
 
 // # Function Explanation
-// 
-//	The DeleteApplication function deletes an application and all its associated resources. It first lists all the resources
-//	 associated with the application, then deletes each resource in parallel, and finally deletes the application itself. If
-//	 any of the resource deletions fail, the function returns an error. If the application doesn't exist, the function 
-//	returns without an error.
+//
+// DeleteApplication deletes an application and all its resources, and returns an error if any of the operations fail.
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (bool, error) {
 	// This handles the case where the application doesn't exist.
 	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
@@ -327,10 +315,9 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 // CreateOrUpdateApplication creates or updates an application.
 //
 // # Function Explanation
-// 
-//	The CreateOrUpdateApplication function creates or updates an application resource in Azure using the 
-//	ARMApplicationsManagementClient. It creates a new ApplicationsClient, and if successful, calls the CreateOrUpdate method
-//	 with the given application name and resource. If an error occurs, it is returned to the caller.
+//
+// CreateOrUpdateApplication creates or updates an application using the given application name and resource, and
+// returns an error if one occurs.
 func (amc *ARMApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationName string, resource corerpv20220315.ApplicationResource) error {
 	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
@@ -348,10 +335,8 @@ func (amc *ARMApplicationsManagementClient) CreateOrUpdateApplication(ctx contex
 // CreateApplicationIfNotFound creates an application if it does not exist.
 //
 // # Function Explanation
-// 
-//	The CreateApplicationIfNotFound function checks if an application with the given name already exists, and if not, 
-//	creates it with the given resource. It handles errors by returning them to the caller, so they can be handled 
-//	appropriately.
+//
+// CreateApplicationIfNotFound checks if an application exists and creates it if it doesn't, returning an error if any of the operations fail.
 func (amc *ARMApplicationsManagementClient) CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerpv20220315.ApplicationResource) error {
 	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
@@ -379,10 +364,9 @@ func (amc *ARMApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 // Creates a radius environment resource
 //
 // # Function Explanation
-// 
-//	The CreateEnvironment function creates an environment with the given name, location and properties in the ARM 
-//	Applications Management service. It returns a boolean indicating success or failure and an error if one occurs. If an 
-//	error occurs, the caller should check the error message for more information.
+//
+// CreateEnvironment creates an environment with the given name, location and properties, and returns a boolean value
+// indicating success or failure, and an error if one occurs.
 func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerpv20220315.EnvironmentProperties) (bool, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
@@ -447,9 +431,10 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 }
 
 // # Function Explanation
-// 
-//	ListEnvironmentsInResourceGroup retrieves a list of EnvironmentResource objects from the EnvironmentsClient and returns 
-//	them in a slice. It handles errors by returning an empty slice and the error encountered.
+//
+// ListEnvironmentsInResourceGroup creates a list of environment resources by paging through the list of environments in
+// the resource group and appending each environment to the list. It returns the list of environment resources or an error
+// if one occurs.
 func (amc *ARMApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerpv20220315.EnvironmentResource, error) {
 	envResourceList := []corerpv20220315.EnvironmentResource{}
 
@@ -474,10 +459,9 @@ func (amc *ARMApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx 
 }
 
 // # Function Explanation
-// 
-//	The ListEnvironmentsAll function queries all resource groups in the root scope and then queries all environments in each
-//	 resource group, returning a list of environment resources. If any errors occur during the process, they are returned to
-//	 the caller.
+//
+// ListEnvironmentsAll retrieves a list of all environments in the root scope by looping through all resource groups and
+// retrieving the environments in each group. It returns a slice of EnvironmentResource and an error if one occurs.
 func (amc *ARMApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]corerpv20220315.EnvironmentResource, error) {
 	// This is inefficient, but we haven't yet implemented plane-scoped list APIs for our resources yet.
 
@@ -531,10 +515,9 @@ func (amc *ARMApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 }
 
 // # Function Explanation
-// 
-//	This function, GetEnvDetails, creates a new EnvironmentsClient and uses it to retrieve the EnvironmentResource 
-//	associated with the given environment name. If the retrieval is successful, the EnvironmentResource is returned, 
-//	otherwise an error is returned.
+//
+// GetEnvDetails attempts to retrieve an environment resource from an Azure Resource Manager (ARM) using the given
+// environment name, and returns the environment resource or an error if unsuccessful.
 func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerpv20220315.EnvironmentResource, error) {
 	envClient, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
@@ -551,11 +534,9 @@ func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, e
 }
 
 // # Function Explanation
-// 
-//	The DeleteEnv function first lists all applications associated with the given environment name, then deletes each 
-//	application one by one. If any of the deletions fail, an error is returned. Finally, the environment is deleted and a 
-//	boolean is returned to indicate success or failure. Error handling is done by returning an error if any of the 
-//	operations fail.
+//
+// DeleteEnv function deletes an environment by first deleting all applications associated with it and then deleting the
+// environment itself. It returns a boolean and an error if one occurs.
 func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (bool, error) {
 	applicationsWithEnv, err := amc.ListApplicationsByEnv(ctx, envName)
 	if err != nil {
@@ -586,10 +567,9 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 }
 
 // # Function Explanation
-// 
-//	The CreateUCPGroup function creates a new resource group in the specified plane using the provided resource group 
-//	resource. It returns a boolean indicating success or failure and an error if one occurs. Error handling is done by 
-//	returning false and the error encountered.
+//
+// CreateUCPGroup creates or updates a resource group in the specified plane and returns a boolean value indicating
+// success or failure, and an error if one occurs.
 func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20220901.ResourceGroupResource) (bool, error) {
 	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientCreateOrUpdateOptions
 	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -606,10 +586,9 @@ func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, 
 }
 
 // # Function Explanation
-// 
-//	The DeleteUCPGroup function attempts to delete a resource group from the UCP plane using the provided plane type, plane 
-//	name and resource group name. It returns a boolean indicating success or failure and an error if one occurs. If an error
-//	 occurs, the function will return false and the error should be handled by the caller.
+//
+// DeleteUCPGroup attempts to delete a resource group from the specified plane and returns a boolean indicating success
+// or failure, and an error if one occurs.
 func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {
 	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientDeleteOptions
 	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -630,10 +609,10 @@ func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 }
 
 // # Function Explanation
-// 
-//	The ShowUCPGroup function retrieves a resource group from the Azure Resource Manager using the provided plane type, 
-//	plane name and resource group name. It handles any errors that occur during the retrieval process and returns the 
-//	resource group resource or an error.
+//
+// ShowUCPGroup uses an anonymous credential to create a new resource group client, then attempts to get the resource
+// group with the given plane type, plane name and resource group name, and returns the resource group resource or an error
+// if one occurs.
 func (amc *ARMApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucpv20220901.ResourceGroupResource, error) {
 	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientGetOptions
 	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -650,10 +629,10 @@ func (amc *ARMApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 }
 
 // # Function Explanation
-// 
-//	The ListUCPGroup function retrieves a list of resource groups from the Azure Resource Manager using the provided plane 
-//	type and plane name. It returns a slice of ResourceGroupResource objects or an error if one occurs. Error handling is 
-//	done by returning the error to the caller.
+//
+// ListUCPGroup is a function that retrieves a list of resource groups from the Azure Resource Manager using the given
+// plane type and plane name, and returns the list of resource groups as a slice of ResourceGroupResource objects. It may
+// return an error if an error occurs while retrieving the list.
 func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20220901.ResourceGroupResource, error) {
 	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListByRootScopeOptions
 	resourceGroupResources := []ucpv20220901.ResourceGroupResource{}
@@ -681,9 +660,9 @@ func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 }
 
 // # Function Explanation
-// 
-//	The ShowRecipe function retrieves the metadata of a given recipe from an environment, and returns the 
-//	EnvironmentRecipeProperties object. It handles errors by returning an error if one occurs during the retrieval process.
+//
+// ShowRecipe is a function that retrieves the metadata of a recipe from an environment and returns the recipe
+// properties, or an error if one occurs.
 func (amc *ARMApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.Recipe) (corerpv20220315.EnvironmentRecipeProperties, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
