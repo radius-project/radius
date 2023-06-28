@@ -92,7 +92,7 @@ var _ hosting.Service = (*Service)(nil)
 //
 // # Function Explanation
 //
-//	NewService creates a new Service struct with the given ServiceOptions and returns a pointer to it.
+// NewService creates a new Service struct with the given ServiceOptions and returns a pointer to it.
 func NewService(options ServiceOptions) *Service {
 	return &Service{
 		options: options,
@@ -101,7 +101,7 @@ func NewService(options ServiceOptions) *Service {
 
 // # Function Explanation
 //
-//	Returns the constant string "api" as the name.
+// Returns the constant string "api" as the name.
 func (s *Service) Name() string {
 	return "api"
 }
@@ -134,9 +134,9 @@ func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
 
 // # Function Explanation
 //
-//	Service.Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
-//	registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
-//	returns an http server and an error if one occurs.
+// Initialize() sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
+// registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
+// returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
@@ -282,8 +282,8 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 
 // # Function Explanation
 //
-//	Service.Run sets up a server to listen on a given address, and shuts it down when the context is done. It returns an
-//	error if the server fails to start or stops unexpectedly.
+// Run() sets up a server to listen on a given address, and shuts it down when the context is done. It returns an
+// error if the server fails to start or stops unexpectedly.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	service, err := s.Initialize(ctx)

@@ -44,7 +44,7 @@ type GetAWSOperationStatuses struct {
 //
 // # Function Explanation
 //
-//	NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS operations.
+// NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS operations.
 func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
@@ -54,9 +54,9 @@ func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_a
 
 // # Function Explanation
 //
-//	GetAWSOperationStatuses.Run reads the region from the request, uses the region to get the resource request status
-//	from AWS CloudControl, and returns the async operation status. If the resource is not found, it returns a
-//	NotFoundResponse, and if there is an error, it returns an error response.
+// Run() reads the region from the request, uses the region to get the resource request status
+// from AWS CloudControl, and returns the async operation status. If the resource is not found, it returns a
+// NotFoundResponse, and if there is an error, it returns an error response.
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)

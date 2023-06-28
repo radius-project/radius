@@ -64,8 +64,8 @@ const (
 //
 // # Function Explanation
 //
-//	This function registers handlers for various operations on Azure and AWS, such as Get, Put, Delete, and List,
-//	 as well as a catch-all route for proxying.
+// This function registers handlers for various operations on Azure and AWS, such as Get, Put, Delete, and List,
+// as well as a catch-all route for proxying.
 func Register(ctx context.Context, router *mux.Router, ctrlOpts frontend_ctrl.Options, secretClient secret.Client, awsClients ucp_aws.Clients) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with path base: %s", ctrlOpts.PathBase))
