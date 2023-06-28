@@ -24,14 +24,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestARMRequestCtx(t *testing.T) {
-
 	outOfBoundsTopParamError := v1.ErrorDetails{
 		Code:    v1.CodeInvalid,
 		Message: fmt.Sprintf("unexpected error: %v", v1.ErrTopQueryParamOutOfBounds),
@@ -80,8 +79,10 @@ func TestARMRequestCtx(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			const testPathBase = "/base"
 			w := httptest.NewRecorder()
-			r := mux.NewRouter()
-			r.Path(testPathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}").Methods(http.MethodPut).HandlerFunc(
+			r := chi.NewRouter()
+			r.MethodFunc(
+				http.MethodPut,
+				testPathBase+"/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}",
 				func(w http.ResponseWriter, r *http.Request) {
 					rpcCtx := v1.ARMRequestContextFromContext(r.Context())
 					_, _ = w.Write([]byte(rpcCtx.ResourceID.ScopeSegments()[0].Name))

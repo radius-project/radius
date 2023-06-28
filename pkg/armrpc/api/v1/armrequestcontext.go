@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -234,8 +233,8 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		OrignalURL: *r.URL,
 	}
 
-	if route := mux.CurrentRoute(r); route != nil {
-		rpcCtx.OperationType = route.GetName()
+	if ot, ok := r.Context().Value(OperationTypeContextKey).(string); ok {
+		rpcCtx.OperationType = ot
 	}
 
 	return rpcCtx, nil

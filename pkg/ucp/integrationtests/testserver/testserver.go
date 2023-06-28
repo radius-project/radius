@@ -29,10 +29,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/require"
+	etcdclient "go.etcd.io/etcd/client/v3"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
@@ -49,8 +52,6 @@ import (
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 	"github.com/project-radius/radius/test/testcontext"
-	"github.com/stretchr/testify/require"
-	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 // NoModules can be used to start a test server without any modules. This is useful for testing the server itself and core functionality
@@ -121,7 +122,7 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
 	secretProvider.SetClient(secretClient)
 
-	router := mux.NewRouter()
+	router := chi.NewRouter()
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 
 	app := http.Handler(router)
@@ -215,7 +216,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	dataProvider := dataprovider.NewStorageProvider(storageOptions)
 	secretProvider := secretprovider.NewSecretProvider(secretOptions)
 
-	router := mux.NewRouter()
+	router := chi.NewRouter()
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 
 	app := http.Handler(router)
