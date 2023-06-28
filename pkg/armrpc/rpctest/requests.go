@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package testutil
+package rpctest
 
 import (
 	"bytes"
@@ -34,7 +34,10 @@ func GetARMTestHTTPRequestFromURL(ctx context.Context, method string, url string
 		"Content-Length":  "305",
 		"Content-Type":    "application/json; charset=utf-8",
 	}
-	req, _ := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {
 		req.Header.Add(k, v)
@@ -56,10 +59,15 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 
 	var raw []byte
 	if body != nil {
-		raw, _ = json.Marshal(body)
+		if raw, err = json.Marshal(body); err != nil {
+			return nil, err
+		}
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, method, parsed["Referer"], bytes.NewBuffer(raw))
+	req, err := http.NewRequestWithContext(ctx, method, parsed["Referer"], bytes.NewBuffer(raw))
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range parsed {
 		req.Header.Add(k, v)
@@ -69,7 +77,10 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 
 func ARMTestContextFromRequest(req *http.Request) context.Context {
 	ctx := context.Background()
-	armctx, _ := v1.FromARMRequest(req, "", "West US")
+	armctx, err := v1.FromARMRequest(req, "", "West US")
+	if err != nil {
+		panic(err)
+	}
 	ctx = v1.WithARMRequestContext(ctx, armctx)
 	return ctx
 }

@@ -34,6 +34,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/data"
@@ -45,13 +46,18 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
+
+// NoModules can be used to start a test server without any modules. This is useful for testing the server itself and core functionality
+// like planes.
+func NoModules(options modules.Options) []modules.Initializer {
+	return nil
+}
 
 // TestServer can run a UCP server using the Go httptest package. It provides access to an isolated ETCD instances for storage
 // of resources and secrets. Alteratively, it can also be used with gomock.
@@ -98,7 +104,7 @@ func (ts *TestServer) Close() {
 
 // StartWithMocks creates and starts a new TestServer that used an mocks for storage.
 func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) (*TestServer, *store.MockStorageClient, *secret.MockClient) {
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewWithCancel(t)
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
@@ -171,7 +177,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		Quiet:             false,
 	})
 
-	ctx, cancel := testcontext.New(t)
+	ctx, cancel := testcontext.NewWithCancel(t)
 
 	stoppedChan := make(chan struct{})
 	defer close(stoppedChan)
@@ -282,13 +288,24 @@ func (ts *TestServer) MakeFixtureRequest(method string, pathAndQuery string, fix
 	return ts.MakeRequest(method, pathAndQuery, body)
 }
 
+// MakeTypedRequest sends a request to the server by marshalling the provided object to JSON.
+func (ts *TestServer) MakeTypedRequest(method string, pathAndQuery string, body any) *TestResponse {
+	if body == nil {
+		return ts.MakeRequest(method, pathAndQuery, nil)
+	}
+
+	b, err := json.Marshal(body)
+	require.NoError(ts.t, err, "marshalling body failed")
+	return ts.MakeRequest(method, pathAndQuery, b)
+}
+
 // MakeRequest sends a request to the server.
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
 	client := ts.Server.Client()
-	request, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), method, ts.BaseURL+pathAndQuery, body)
+	request, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), method, ts.BaseURL+pathAndQuery, body)
 	require.NoError(ts.t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.ARMTestContextFromRequest(request)
 	request = request.WithContext(ctx)
 
 	response, err := client.Do(request)
@@ -338,6 +355,11 @@ func (tr *TestResponse) EqualsFixture(statusCode int, fixture string) {
 	body, err := os.ReadFile(fixture)
 	require.NoError(tr.t, err, "reading fixture failed")
 	tr.EqualsResponse(statusCode, body)
+}
+
+// EqualsStatusCode compares a TestResponse against an expected status code (ingnores the body payload).
+func (tr *TestResponse) EqualsStatusCode(statusCode int) {
+	require.Equal(tr.t, statusCode, tr.Raw.StatusCode, "status code did not match expected")
 }
 
 // EqualsFixture compares a TestResponse against an expected status code and body payload.

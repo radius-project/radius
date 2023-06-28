@@ -58,8 +58,10 @@ func Test_FirstApplicationSample(t *testing.T) {
 		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
 	}
 
-	cwd, _ := os.Getwd()
-	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepoAbsPath)
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	relPathSamplesRepo, err := filepath.Rel(cwd, samplesRepoAbsPath)
+	require.NoError(t, err)
 	template := filepath.Join(relPathSamplesRepo, "demo/app.bicep")
 	appName := "demo"
 	appNamespace := "default-demo"

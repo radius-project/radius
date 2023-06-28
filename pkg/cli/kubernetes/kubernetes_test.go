@@ -50,10 +50,11 @@ func TestEnsureNamespace(t *testing.T) {
 }
 
 func TestGetContextFromConfigFileIfExists(t *testing.T) {
-	configFile, _ := os.CreateTemp("", "")
+	configFile, err := os.CreateTemp("", "")
+	require.NoError(t, err)
 	defer os.Remove(configFile.Name())
 
-	err := os.WriteFile(configFile.Name(), []byte(`
+	err = os.WriteFile(configFile.Name(), []byte(`
 kind: Config
 apiVersion: v1
 clusters:
@@ -78,7 +79,8 @@ users:
 `), os.FileMode(0755))
 	require.NoError(t, err)
 
-	emptyConfig, _ := os.CreateTemp("", "")
+	emptyConfig, err := os.CreateTemp("", "")
+	require.NoError(t, err)
 	defer os.Remove(emptyConfig.Name())
 
 	err = os.WriteFile(emptyConfig.Name(), []byte(`

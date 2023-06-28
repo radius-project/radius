@@ -46,10 +46,11 @@ func TestDecodeMap_WithoutTimeDecodeHook(t *testing.T) {
 		},
 	}
 
-	jsv, _ := json.Marshal(test)
+	jsv, err := json.Marshal(test)
+	require.NoError(t, err)
 	i := make(map[string]any)
 
-	err := json.Unmarshal(jsv, &i)
+	err = json.Unmarshal(jsv, &i)
 	require.NoError(t, err)
 
 	r := TestTime{}

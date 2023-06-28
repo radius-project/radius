@@ -24,7 +24,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/ucp/queue/client"
 	v1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/ucp/kubeenv"
 	sharedtest "github.com/project-radius/radius/test/ucp/queuetest"
 	"github.com/stretchr/testify/require"
@@ -91,7 +91,8 @@ func TestGenerateID(t *testing.T) {
 	cli, err := New(nil, Options{Name: "applications.core", Namespace: "test"})
 	require.NoError(t, err)
 
-	id, _ := cli.generateID()
+	id, err := cli.generateID()
+	require.NoError(t, err)
 	require.Equal(t, 61, len(id))
 }
 
@@ -103,8 +104,8 @@ func TestClient(t *testing.T) {
 		_ = env.Stop()
 	}()
 
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	ns := "radius-test"
 	err = kubeenv.EnsureNamespace(ctx, rc, ns)
