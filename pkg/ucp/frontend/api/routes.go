@@ -20,11 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	server "github.com/project-radius/radius/pkg/armrpc/frontend/serverv2"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
@@ -55,16 +56,13 @@ const (
 	OperationTypePlanesByType = "PLANESBYTYPE"
 )
 
-// # Function Explanation
-//
-// This function registers handlers for various operations on Azure and AWS, such as Get, Put, Delete, and List,
-// as well as a catch-all route for proxying.
-func Register(ctx context.Context, router *mux.Router, modules []modules.Initializer, options modules.Options) error {
+// Register registers the routes for UCP including modules.
+func Register(ctx context.Context, router chi.Router, modules []modules.Initializer, options modules.Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with path base: %s", options.PathBase))
 
-	router.NotFoundHandler = validator.APINotFoundHandler()
-	router.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
+	router.NotFound(validator.APINotFoundHandler())
+	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	handlerOptions := []server.HandlerOptions{}
 
@@ -74,13 +72,15 @@ func Register(ctx context.Context, router *mux.Router, modules []modules.Initial
 		// the URL for swagger routes.
 		handlerOptions = append(handlerOptions, []server.HandlerOptions{
 			{
-				ParentRouter:      router.Path("/openapi/v2").Subrouter(),
+				ParentRouter:      router,
+				Path:              "/openapi/v2",
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet},
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
 			},
 			{
-				ParentRouter:      router.Path(options.PathBase).Subrouter(),
+				ParentRouter:      router,
+				Path:              options.PathBase,
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet},
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewDiscoveryDoc,
@@ -89,31 +89,30 @@ func Register(ctx context.Context, router *mux.Router, modules []modules.Initial
 	}
 
 	// This router applies validation and will be used for CRUDL operations on planes
-	rootScopeRouter := router.PathPrefix(options.PathBase).Name("subrouter: <pathbase>").Subrouter()
+	rootScopeRouter := server.NewSubrouter(router, options.PathBase)
 	rootScopeRouter.Use(validator.APIValidatorUCP(options.SpecLoader))
-
-	planeCollectionRouter := rootScopeRouter.Path(planeCollectionPath).Subrouter()
-	planeCollectionByTypeRouter := rootScopeRouter.Path(planeCollectionByTypePath).Subrouter()
-	planeResourceRouter := rootScopeRouter.Path(planeResourcePath).Subrouter()
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		// Planes resource handler registration.
 		{
 			// This is scope query unlike the default list handler.
-			ParentRouter:      planeCollectionRouter,
+			ParentRouter:      rootScopeRouter,
+			Path:              planeCollectionPath,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanes,
 		},
 		{
 			// This is scope query unlike the default list handler.
-			ParentRouter:      planeCollectionByTypeRouter,
+			ParentRouter:      rootScopeRouter,
+			Path:              planeCollectionByTypePath,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanesByType,
 		},
 		{
-			ParentRouter:  planeResourceRouter,
+			ParentRouter:  rootScopeRouter,
+			Path:          planeResourcePath,
 			Method:        v1.OperationGet,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationGet},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -126,7 +125,8 @@ func Register(ctx context.Context, router *mux.Router, modules []modules.Initial
 			},
 		},
 		{
-			ParentRouter:  planeResourceRouter,
+			ParentRouter:  rootScopeRouter,
+			Path:          planeResourcePath,
 			Method:        v1.OperationPut,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationPut},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -139,7 +139,8 @@ func Register(ctx context.Context, router *mux.Router, modules []modules.Initial
 			},
 		},
 		{
-			ParentRouter:  planeResourceRouter,
+			ParentRouter:  rootScopeRouter,
+			Path:          planeResourcePath,
 			Method:        v1.OperationDelete,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationDelete},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -172,8 +173,7 @@ func Register(ctx context.Context, router *mux.Router, modules []modules.Initial
 			return fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
 		}
 
-		name := fmt.Sprintf("subrouter: <pathbase>/planes/%s", module.PlaneType())
-		router.PathPrefix(options.PathBase + fmt.Sprintf(planePrefixPathFmt, module.PlaneType())).Name(name).Handler(handler)
+		router.Handle(options.PathBase+fmt.Sprintf(planePrefixPathFmt, module.PlaneType()), handler)
 		logger.Info(fmt.Sprintf("Registered module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
 	}
 

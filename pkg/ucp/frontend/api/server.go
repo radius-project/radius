@@ -46,11 +46,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
+
+	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
-
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -64,7 +64,7 @@ type ServiceOptions struct {
 	ProviderName            string
 	Address                 string
 	PathBase                string
-	Configure               func(*mux.Router)
+	Configure               func(chi.Router)
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
@@ -120,7 +120,7 @@ func (s *Service) Name() string {
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	var err error
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
 	s.queueProvider = queueprovider.New(s.options.ProviderName, s.options.QueueProviderOptions)

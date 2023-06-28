@@ -23,7 +23,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+	chi_middleware "github.com/go-chi/chi/v5/middleware"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -54,7 +55,9 @@ type ControllerFunc func(ctrl.Options) (ctrl.Controller, error)
 // - When OperationType is set, the StorageClient will be generic and not filtered to a specific resource type.
 type HandlerOptions struct {
 	// ParentRouter is the router to register the handler with.
-	ParentRouter *mux.Router
+	ParentRouter chi.Router
+
+	Path string
 
 	// ResourceType is the resource type of the operation. May be blank if Operation is specified.
 	//
@@ -76,12 +79,13 @@ type HandlerOptions struct {
 	ControllerFactory ControllerFunc
 }
 
+func NewSubrouter(parent chi.Router, path string) chi.Router {
+	subrouter := chi.NewRouter()
+	parent.Mount(path, subrouter)
+	return subrouter
+}
+
 // HandlerForController returns a http.HandlerFunc that will run the given controller.
-//
-// # Function Explanation
-//
-// HandlerForController creates a http.HandlerFunc function that runs resource provider frontend controller, renders a
-// http response from the returned rest.Response, and handles the error as a default internal error if this controller returns error.
 func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -129,10 +133,11 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 	}
 
 	handler := HandlerForController(ctrl)
+	namedRouter := opts.ParentRouter.With(chi_middleware.WithValue(v1.OperationTypeContextKey, opts.OperationType.String()))
 	if opts.Method == "" {
-		opts.ParentRouter.NewRoute().Handler(handler).Name(opts.OperationType.String())
+		namedRouter.HandleFunc(opts.Path, handler)
 	} else {
-		opts.ParentRouter.Methods(opts.Method.HTTPMethod()).Handler(handler).Name(opts.OperationType.String())
+		namedRouter.Method(opts.Method.HTTPMethod(), opts.Path, handler)
 	}
 
 	return nil
@@ -152,13 +157,9 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 	}
 }
 
-// # Function Explanation
-//
-// ConfigureDefaultHandlers registers handlers for the default operations such as getting operationStatuses and
-// operationResults, and updating a subscription lifecycle. It returns an error if any of the handler registrations fail.
 func ConfigureDefaultHandlers(
 	ctx context.Context,
-	rootRouter *mux.Router,
+	rootRouter chi.Router,
 	rootScopePath string,
 	isAzureProvider bool,
 	providerNamespace string,
@@ -170,7 +171,8 @@ func ConfigureDefaultHandlers(
 	if isAzureProvider {
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 		err := RegisterHandler(ctx, HandlerOptions{
-			ParentRouter:      rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+			ParentRouter:      rootRouter,
+			Path:              fmt.Sprintf("/providers/%s/operations", providerNamespace),
 			ResourceType:      rt,
 			Method:            v1.OperationGet,
 			ControllerFactory: operationCtrlFactory,
@@ -180,7 +182,8 @@ func ConfigureDefaultHandlers(
 		}
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 		err = RegisterHandler(ctx, HandlerOptions{
-			ParentRouter:      rootRouter.Path(rootScopePath).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+			ParentRouter:      rootRouter,
+			Path:              rootScopePath,
 			ResourceType:      rt,
 			Method:            v1.OperationPut,
 			ControllerFactory: defaultoperation.NewCreateOrUpdateSubscription,
@@ -193,7 +196,8 @@ func ConfigureDefaultHandlers(
 	statusRT := providerNamespace + "/operationstatuses"
 	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", rootScopePath, providerNamespace)
 	err := RegisterHandler(ctx, HandlerOptions{
-		ParentRouter:      rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ParentRouter:      rootRouter,
+		Path:              opStatus,
 		ResourceType:      statusRT,
 		Method:            v1.OperationGetOperationStatuses,
 		ControllerFactory: defaultoperation.NewGetOperationStatus,
@@ -204,7 +208,8 @@ func ConfigureDefaultHandlers(
 
 	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", rootScopePath, providerNamespace)
 	err = RegisterHandler(ctx, HandlerOptions{
-		ParentRouter:      rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ParentRouter:      rootRouter,
+		Path:              opResult,
 		ResourceType:      statusRT,
 		Method:            v1.OperationGetOperationResult,
 		ControllerFactory: defaultoperation.NewGetOperationResult,
@@ -216,7 +221,7 @@ func ConfigureDefaultHandlers(
 	return nil
 }
 
-// HandleError handles unhandled errors from frontend controller and creates internal server error response based on the error type.
+// HandleError creates the internal error respones with 500 code.
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
