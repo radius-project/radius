@@ -23,6 +23,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -42,7 +44,7 @@ type TerraformOptions struct {
 	Path string
 
 	// OperationID is a unique id of the operation that the Recipe is being executed by.
-	OperationID string
+	// OperationID string
 }
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
@@ -58,14 +60,23 @@ type terraformDriver struct {
 func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	if d.options.Path == "" || d.options.OperationID == "" {
-		return nil, errors.New("path and operationID are required options for Terraform driver")
+	if d.options.Path == "" {
+		return nil, errors.New("path is a required option for Terraform driver")
 	}
 
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, definition.TemplatePath))
 	// We need a unique directory per execution of terraform. We generate this using the unique operation id of the async request so that names are always unique,
 	// but we can also trace them to the resource we were working on through operationID.
-	requestDirPath := filepath.Join(d.options.Path, d.options.OperationID)
+	operationID := v1.ARMRequestContextFromContext(ctx).OperationID
+	dirID := ""
+	if operationID != uuid.Nil {
+		dirID = operationID.String()
+	} else {
+		// If the operationID is nil, we generate a new UUID a unique directory name. Ideally operationID should not be nil.
+		logger.Info("Empty operation ID provided in the request context, using uuid to generate a unique directory name")
+		dirID = uuid.NewString()
+	}
+	requestDirPath := filepath.Join(d.options.Path, dirID)
 	if err := os.MkdirAll(requestDirPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create directory %q to execute terraform: %w", requestDirPath, err)
 	}

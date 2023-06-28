@@ -102,8 +102,7 @@ func (s *Service) Run(ctx context.Context) error {
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient),
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, driver.TerraformOptions{
-				Path:        s.Options.Config.Terraform.Path,
-				OperationID: v1.ARMRequestContextFromContext(ctx).OperationID.String(),
+				Path: s.Options.Config.Terraform.Path,
 			}),
 		},
 	})

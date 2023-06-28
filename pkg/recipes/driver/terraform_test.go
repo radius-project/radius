@@ -25,6 +25,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
@@ -36,7 +37,7 @@ func setup(t *testing.T) (terraform.MockTerraformExecutor, terraformDriver) {
 	ctrl := gomock.NewController(t)
 	tfExecutor := terraform.NewMockTerraformExecutor(ctrl)
 
-	driver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir(), OperationID: uuid.New().String()}}
+	driver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}}
 
 	return *tfExecutor, driver
 }
@@ -71,10 +72,14 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 
 func TestTerraformDriver_Execute_Success(t *testing.T) {
 	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	tfDir := filepath.Join(driver.options.Path, driver.options.OperationID)
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
 	options := terraform.Options{
 		RootDir:        tfDir,
 		EnvConfig:      &envConfig,
@@ -100,10 +105,14 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 
 func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	tfDir := filepath.Join(driver.options.Path, driver.options.OperationID)
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
 	options := terraform.Options{
 		RootDir:        tfDir,
 		EnvConfig:      &envConfig,
@@ -128,15 +137,34 @@ func TestTerraformDriver_Execute_EmptyPath(t *testing.T) {
 
 	_, err := driver.Execute(testcontext.New(t), envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
-	require.Equal(t, "path and operationID are required options for Terraform driver", err.Error())
+	require.Equal(t, "path is a required option for Terraform driver", err.Error())
 }
 
-func TestTerraformDriver_Execute_EmptyOperationID(t *testing.T) {
-	_, driver := setup(t)
-	driver.options.OperationID = ""
-	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+// func TestTerraformDriver_Execute_EmptyOperationID(t *testing.T) {
+// 	ctx := testcontext.New(t)
 
-	_, err := driver.Execute(testcontext.New(t), envConfig, recipeMetadata, envRecipe)
-	require.Error(t, err)
-	require.Equal(t, "path and operationID are required options for Terraform driver", err.Error())
-}
+// 	tfExecutor, driver := setup(t)
+// 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+// 	tfDir := filepath.Join(driver.options.Path, uuid.New().String())
+// 	options := terraform.Options{
+// 		RootDir:        tfDir,
+// 		EnvConfig:      &envConfig,
+// 		ResourceRecipe: &recipeMetadata,
+// 		EnvRecipe:      &envRecipe,
+// 	}
+// 	expectedOutput := &recipes.RecipeOutput{
+// 		Values: map[string]any{
+// 			"host": "myrediscache.redis.cache.windows.net",
+// 			"port": json.Number("6379"),
+// 		},
+// 	}
+
+// 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
+
+// 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+// 	require.NoError(t, err, "Expected error to be nil")
+// 	require.Equal(t, expectedOutput, recipeOutput)
+// 	// Verify directory cleanup
+// 	_, err = os.Stat(tfDir)
+// 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+// }
