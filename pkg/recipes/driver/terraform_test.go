@@ -140,31 +140,33 @@ func TestTerraformDriver_Execute_EmptyPath(t *testing.T) {
 	require.Equal(t, "path is a required option for Terraform driver", err.Error())
 }
 
-// func TestTerraformDriver_Execute_EmptyOperationID(t *testing.T) {
-// 	ctx := testcontext.New(t)
+func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
-// 	tfExecutor, driver := setup(t)
-// 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-// 	tfDir := filepath.Join(driver.options.Path, uuid.New().String())
-// 	options := terraform.Options{
-// 		RootDir:        tfDir,
-// 		EnvConfig:      &envConfig,
-// 		ResourceRecipe: &recipeMetadata,
-// 		EnvRecipe:      &envRecipe,
-// 	}
-// 	expectedOutput := &recipes.RecipeOutput{
-// 		Values: map[string]any{
-// 			"host": "myrediscache.redis.cache.windows.net",
-// 			"port": json.Number("6379"),
-// 		},
-// 	}
+	tfExecutor, driver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	expectedOutput := &recipes.RecipeOutput{
+		Values: map[string]any{
+			"host": "myrediscache.redis.cache.windows.net",
+			"port": json.Number("6379"),
+		},
+	}
 
-// 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
 
-// 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
-// 	require.NoError(t, err, "Expected error to be nil")
-// 	require.Equal(t, expectedOutput, recipeOutput)
-// 	// Verify directory cleanup
-// 	_, err = os.Stat(tfDir)
-// 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
-// }
+	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	require.NoError(t, err, "Expected error to be nil")
+	require.Equal(t, expectedOutput, recipeOutput)
+}
+
+func TestTerraformDriver_Execute_InvalidContextPanics(t *testing.T) {
+	ctx := testcontext.New(t)
+
+	_, driver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+
+	require.Panics(t, func() {
+		_, _ = driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	})
+}
