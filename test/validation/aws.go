@@ -41,10 +41,16 @@ const (
 )
 
 type AWSResource struct {
-	Type       string
-	Name       string
+	// Type of the resource (e.g. AWS.S3/Bucket)
+	Type string
+	// Name of the resource (e.g. my-bucket)
+	Name string
+	// Primary identifier of the resource (e.g. my-bucket)
 	Identifier string
+	// Properties of the resource
 	Properties map[string]any
+	// Determines whether or not the resource should be deleted after the test
+	SkipDeletion bool
 }
 
 type AWSResourceSet struct {
