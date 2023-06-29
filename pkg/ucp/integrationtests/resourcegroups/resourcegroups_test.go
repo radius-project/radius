@@ -36,6 +36,8 @@ const (
 	resourceGroupListResponseFixture    = "testdata/resourcegroup_v20220901privatepreview_list_responsebody.json"
 	resourceGroupUpdatedRequestFixture  = "testdata/resourcegroup_updated_v20220901privatepreview_requestbody.json"
 	resourceGroupUpdatedResponseFixture = "testdata/resourcegroup_updated_v20220901privatepreview_responsebody.json"
+	resourceGroupInvalidRequestFixture  = "testdata/resourcegroup_invalid_v20220901privatepreview_requestbody.json"
+	resourceGroupInvalidResponseFixture = "testdata/resourcegroup_invalid_v20220901privatepreview_responsebody.json"
 )
 
 func createRadiusPlane(server *testserver.TestServer) {
@@ -64,6 +66,16 @@ func Test_ResourceGroup_PUT_Update(t *testing.T) {
 
 	response = server.MakeFixtureRequest("PUT", resourceGroupResourceURL, resourceGroupUpdatedRequestFixture)
 	response.EqualsFixture(200, resourceGroupUpdatedResponseFixture)
+}
+
+func Test_ResourceGroup_PUT_APIValidation(t *testing.T) {
+	server := testserver.StartWithETCD(t, api.DefaultModules)
+	defer server.Close()
+
+	createRadiusPlane(server)
+
+	response := server.MakeFixtureRequest("PUT", resourceGroupResourceURL, resourceGroupInvalidRequestFixture)
+	response.EqualsFixture(400, resourceGroupInvalidResponseFixture)
 }
 
 func Test_ResourceGroup_GET_Empty(t *testing.T) {
