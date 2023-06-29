@@ -382,10 +382,6 @@
     "RabbitMQQueueProperties": {
       "type": "object",
       "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Discriminator property for RabbitMQQueueProperties."
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the rabbitMQ message queue portable resource at the time the operation was called",
@@ -394,13 +390,21 @@
         "secrets": {
           "$ref": "#/definitions/RabbitMQSecrets",
           "description": "Secrets provided by resources,"
+        },
+        "queue": {
+          "type": "string",
+          "description": "The name of the queue"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource"
         }
       },
       "description": "RabbitMQQueue portable resource properties",
-      "discriminator": "mode",
-      "required": [
-        "mode"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -477,28 +481,17 @@
         "name"
       ]
     },
-    "RecipeRabbitMQQueueProperties": {
-      "type": "object",
-      "properties": {
-        "queue": {
-          "type": "string",
-          "description": "The name of the queue"
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource"
-        }
-      },
-      "description": "RabbitMQQueue Properties for Mode Recipe",
-      "required": [
-        "recipe"
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
+      "enum": [
+        "recipe",
+        "manual"
       ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RabbitMQQueueProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "recipe"
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true
+      }
     },
     "ResourceStatus": {
       "type": "object",
@@ -514,25 +507,6 @@
         }
       },
       "description": "Status of a resource."
-    },
-    "ValuesRabbitMQQueueProperties": {
-      "type": "object",
-      "properties": {
-        "queue": {
-          "type": "string",
-          "description": "The name of the queue"
-        }
-      },
-      "description": "RabbitMQQueue Properties for Mode Values",
-      "required": [
-        "queue"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/RabbitMQQueueProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "values"
     }
   },
   "parameters": {

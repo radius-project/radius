@@ -38,6 +38,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/testcontext"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -244,8 +245,8 @@ func Test_Run(t *testing.T) {
 
 	// We'll run the actual command in the background, and do cancellation and verification in
 	// the foreground.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel() // Cancel if any test validation values
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	resultErrChan := make(chan error, 1)
 	go func() {

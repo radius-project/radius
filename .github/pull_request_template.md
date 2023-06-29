@@ -2,23 +2,27 @@
 
 _Please explain the changes you've made._
 
-## Issue reference
+## Type of change
 
 <!--
-We strive to have all PR being opened based on an issue, where the problem or feature have been discussed prior to implementation.
+
+Please select **one** of the following options that describes your change and delete the others. Clearly identifying the type of change you are making will help us review your PR faster, and is used in authoring release notes.
+
+If you are making a bug fix or functionality change to Radius and do not have an associated issue link please create one now. 
+
+-->
+
+- This pull request fixes a bug in Radius and has an approved issue (issue link required).
+- This pull request adds or changes features of Radius and has an approved issue (issue link required).
+- This pull request is a minor refactor, code cleanup, test improvement, or other maintenance task and doesn't change the functionality of Radius (issue link optional).
+
+<!--
+
+Please update the following to link the associated issue. This is required for some kinds of changes (see above).
+
 -->
 
 Fixes: #issue_number
-
-## Checklist
-
-Please make sure you've  completed the relevant tasks for this PR, out of the following list:
-
-* [ ] Code compiles correctly
-* [ ] Adds necessary unit tests for change
-* [ ] Adds necessary E2E tests for change
-* [ ] Unit tests passing
-* [ ] Extended the documentation / Created issue for it
 
 ## Auto-generated summary
 

@@ -58,30 +58,7 @@ model RabbitMQSecrets {
   connectionString?: string;
 }
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use PascalCase"
-@doc("RabbitMQQueue Properties for Mode Values")
-model ValuesRabbitMQQueueProperties extends RabbitMQQueueProperties {
-  @doc("How to build the RabbitMQQueue portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
-
-  @doc("The name of the queue")
-  queue: string;
-}
-#suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use PascalCase"
-@doc("RabbitMQQueue Properties for Mode Recipe")
-model RecipeRabbitMQQueueProperties extends RabbitMQQueueProperties {
-  @doc("How to build the RabbitMQQueue portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "recipe";
-
-  @doc("The name of the queue")
-  queue?: string;
-
-  @doc("The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource")
-  recipe: Recipe;
-}
-
-#suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("RabbitMQQueue portable resource properties")
-@discriminator("mode")
 model RabbitMQQueueProperties extends BasicResourceProperties {
   @doc("Provisioning state of the rabbitMQ message queue portable resource at the time the operation was called")
   @visibility("read")
@@ -89,6 +66,16 @@ model RabbitMQQueueProperties extends BasicResourceProperties {
 
   @doc("Secrets provided by resources,")
   secrets?: RabbitMQSecrets;
+
+  @doc("The name of the queue")
+  queue?: string;
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource")
+  recipe?: Recipe;
+
 }
 
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use camelCase"

@@ -155,7 +155,7 @@ func ConfigureDefaultHandlers(
 	operationCtrlFactory ControllerFunc,
 	ctrlOpts ctrl.Options) error {
 	providerNamespace = strings.ToLower(providerNamespace)
-	rt := providerNamespace + "/provider"
+	rt := providerNamespace + "/providers"
 
 	if isAzureProvider {
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations

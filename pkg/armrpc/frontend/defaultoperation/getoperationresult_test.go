@@ -27,6 +27,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -51,8 +52,9 @@ func TestGetOperationResultRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -113,8 +115,9 @@ func TestGetOperationResultRun(t *testing.T) {
 	for _, tt := range opResTestCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
-			ctx := testutil.ARMTestContextFromRequest(req)
+			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+			require.NoError(t, err)
+			ctx := rpctest.ARMTestContextFromRequest(req)
 
 			osDataModel.Status = tt.provisioningState
 			osDataModel.RetryAfter = time.Second * 5

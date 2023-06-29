@@ -654,9 +654,9 @@
               "uid": "${DATA_SOURCE}"
             },
             "editorMode": "code",
-            "expr": "sum(rate(http_server_duration_count{http_status_code!~\"[5]..\", control_plane=\"appcore-rp\"}[$__rate_interval])) / sum(rate(http_server_duration_count{control_plane=\"appcore-rp\"}[$__rate_interval])) * 100",
+            "expr": "sum(rate(http_server_duration_count{http_status_code!~\"[5]..\", control_plane=\"applications-rp\"}[$__rate_interval])) / sum(rate(http_server_duration_count{control_plane=\"applications-rp\"}[$__rate_interval])) * 100",
             "hide": false,
-            "legendFormat": "appcore-rp",
+            "legendFormat": "applications-rp",
             "range": true,
             "refId": "B"
           },
@@ -772,9 +772,9 @@
               "uid": "${DATA_SOURCE}"
             },
             "editorMode": "code",
-            "expr": "sum(rate(http_server_duration_count{http_status_code!~\"[5]..\", control_plane=\"appcore-rp\"}[$__rate_interval])) / sum(rate(http_server_duration_count{control_plane=\"appcore-rp\"}[$__rate_interval])) * 100",
+            "expr": "sum(rate(http_server_duration_count{http_status_code!~\"[5]..\", control_plane=\"applications-rp\"}[$__rate_interval])) / sum(rate(http_server_duration_count{control_plane=\"applications-rp\"}[$__rate_interval])) * 100",
             "hide": false,
-            "legendFormat": "appcore-rp",
+            "legendFormat": "applications-rp",
             "range": true,
             "refId": "B"
           },
@@ -1504,7 +1504,7 @@
         {
           "hide": 2,
           "name": "servicenames",
-          "query": "^de|^ucp|^appcore-rp",
+          "query": "^de|^ucp|^applications-rp",
           "skipUrlSync": false,
           "type": "constant"
         },

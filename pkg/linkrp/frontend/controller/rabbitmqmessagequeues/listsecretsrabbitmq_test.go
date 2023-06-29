@@ -25,11 +25,10 @@ import (
 	"testing"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
-
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/ucp/store"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -46,8 +45,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -72,8 +72,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 		expectedSecrets := map[string]any{
 			renderers.ConnectionStringValue: "connection://string",
 		}
@@ -108,8 +109,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.ARMTestContextFromRequest(req)
 		w := httptest.NewRecorder()
 
 		mStorageClient.

@@ -51,6 +51,7 @@ var (
 		linkrp.DaprSecretStoresResourceType,
 		linkrp.DaprPubSubBrokersResourceType,
 		linkrp.ExtendersResourceType,
+		linkrp.N_RabbitMQQueuesResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
