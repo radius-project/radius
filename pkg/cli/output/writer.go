@@ -34,15 +34,26 @@ type OutputWriter struct {
 	Writer io.Writer
 }
 
+// # Function Explanation
+//
+// LogInfo takes in a format string and a variable number of arguments and prints the formatted string to the Writer.
 func (o *OutputWriter) LogInfo(format string, v ...any) {
 	fmt.Fprintf(o.Writer, format, v...)
 	fmt.Fprintln(o.Writer)
 }
 
+// # Function Explanation
+//
+// WriteFormatted takes in a format string, an object of any type, and a FormatterOptions object, and calls
+// the Write function with the given parameters, writing the output to the Writer field of the OutputWriter object.
 func (o *OutputWriter) WriteFormatted(format string, obj any, options FormatterOptions) error {
 	return Write(format, obj, o.Writer, options)
 }
 
+// # Function Explanation
+//
+// Write takes in a format string, an object, a writer and formatter options and attempts to format the object according
+// to the format string and write it to the writer. If an error occurs during formatting or writing, an error is returned.
 func Write(format string, obj any, writer io.Writer, options FormatterOptions) error {
 	formatter, err := NewFormatter(format)
 	if err != nil {
