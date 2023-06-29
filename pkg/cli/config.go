@@ -49,11 +49,6 @@ type WorkspaceSection struct {
 }
 
 // HasWorkspace returns true if the specified workspace already exists. This function ignores the default workspace.
-//
-// # Function Explanation
-//
-// "HasWorkspace" checks if a workspace with the given name exists in the WorkspaceSection and returns a boolean value
-// indicating the result. If the name is not found, an error is returned.
 func (ws WorkspaceSection) HasWorkspace(name string) bool {
 	_, ok := ws.Items[cases.Fold().String(name)]
 	return ok
@@ -63,7 +58,7 @@ func (ws WorkspaceSection) HasWorkspace(name string) bool {
 //
 // # Function Explanation
 //
-// "GetWorkspace" checks if the given workspace name is empty and if so, checks if a default workspace is set. If a
+// GetWorkspace checks if the given workspace name is empty and if so, checks if a default workspace is set. If a
 // workspace name is provided, it looks up the workspace in the Items map and returns it. If the workspace does not exist,
 // it returns an error.
 func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, error) {
@@ -141,8 +136,7 @@ func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
 
 // # Function Explanation
 //
-// UpdateWorkspaceSection updates the WorkspacesKey in the given viper instance with the given WorkspaceSection. If an
-// error occurs, it will be returned to the caller.
+// UpdateWorkspaceSection updates the WorkspacesKey in the given viper instance with the given WorkspaceSection.
 func UpdateWorkspaceSection(v *viper.Viper, section WorkspaceSection) {
 	v.Set(WorkspacesKey, section)
 }

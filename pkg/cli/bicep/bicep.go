@@ -55,11 +55,6 @@ func IsBicepInstalled() (bool, error) {
 }
 
 // DeleteBicep cleans our local copy of bicep
-//
-// # Function Explanation
-//
-// DeleteBicep() deletes the file specified by the environment variable radBicepEnvVar and binaryName, and returns an error
-// if the file cannot be deleted.
 func DeleteBicep() error {
 	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
 	if err != nil {
