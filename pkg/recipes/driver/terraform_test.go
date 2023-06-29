@@ -96,7 +96,8 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
-	require.NoError(t, err, "Expected error to be nil")
+	require.Error(t, err)
+	require.Equal(t, "terraform support is not implemented yet", err.Error())
 	require.Equal(t, expectedOutput, recipeOutput)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)

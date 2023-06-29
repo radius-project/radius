@@ -19,8 +19,12 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/go-logr/logr"
 	install "github.com/hashicorp/hc-install"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -30,6 +34,10 @@ import (
 func NewExecutor(ucpConn *sdk.Connection) *executor {
 	return &executor{ucpConn: ucpConn}
 }
+
+const (
+	executionSubDir = "deploy"
+)
 
 var _ TerraformExecutor = (*executor)(nil)
 
@@ -43,7 +51,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 
 	// Install Terraform
 	i := install.NewInstaller()
-	_, err := Install(ctx, i, options.RootDir)
+	execPath, err := Install(ctx, i, options.RootDir)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -55,7 +63,53 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
-	// TODO Generate Terraform configs, run TF init and apply
+	// Create Working Directory
+	workingDir, err := createWorkingDir(ctx, options.RootDir)
+	if err != nil {
+		return nil, err
+	}
+
+	// Run TF Init and Apply
+	_, err = initAndApply(ctx, workingDir, execPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+
+	workingDir := filepath.Join(tfDir, executionSubDir)
+	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
+	if err := os.MkdirAll(workingDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create working directory for terraform execution: %w", err)
+	}
+
+	return workingDir, nil
+}
+
+// Runs Terraform init and apply in the provided working directory.
+func initAndApply(ctx context.Context, workingDir, execPath string) (*recipes.RecipeOutput, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+
+	tf, err := tfexec.NewTerraform(workingDir, execPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize Terraform
+	logger.Info("Initializing Terraform")
+	if err := tf.Init(ctx); err != nil {
+		return nil, fmt.Errorf("terraform init failure: %w", err)
+	}
+
+	// Apply Terraform configuration
+	logger.Info("Running Terraform apply")
+	if err := tf.Apply(ctx); err != nil {
+		return nil, fmt.Errorf("terraform apply failure: %w", err)
+	}
 
 	return nil, nil
 }
