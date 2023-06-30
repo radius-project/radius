@@ -92,7 +92,6 @@ func Test_Routes(t *testing.T) {
 
 	router := handler.(chi.Router)
 
-	//namesMatched := map[string]bool{}
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s_%s", test.method, test.path), func(t *testing.T) {
 			p := pathBase + test.path
@@ -104,8 +103,7 @@ func Test_Routes(t *testing.T) {
 			tctx.Reset()
 
 			result := router.Match(tctx, test.method, p)
-			t.Logf("result: %v", tctx)
-			require.Truef(t, result, "no route found for %s %s", test.method, p)
+			require.Truef(t, result, "no route found for %s %s, context: %v", test.method, p, tctx)
 		})
 	}
 

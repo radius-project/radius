@@ -43,13 +43,13 @@ import (
 )
 
 const (
-	prefixPath               = "/planes/aws/{planeName}"
-	resourcePath             = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}/{resourceName}"
-	resourceCollectionPath   = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}"
-	operationResultsPath     = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationResults/{operationId}"
-	operationStatusesPath    = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationStatuses/{operationId}"
-	credentialResourcePath   = "/providers/System.AWS/credentials/{credentialName}"
-	credentialCollectionPath = "/providers/System.AWS/credentials"
+	prefixPath             = "/planes/aws/{planeName}"
+	resourcePath           = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}/{resourceName}"
+	resourceCollectionPath = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}"
+	operationResultsPath   = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationResults/{operationId}"
+	operationStatusesPath  = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationStatuses/{operationId}"
+
+	systemAWSProviderPath = "/providers/System.AWS"
 
 	// OperationTypeAWSResource is the operation type for CRUDL operations on AWS resources.
 	OperationTypeAWSResource = "AWSRESOURCE"
@@ -178,20 +178,17 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 	}...)
 
-	// URLS for operations on AWS credential resources.
+	// URLs for operations on AWS credential resources.
 	//
 	// These use the OpenAPI spec validator. General AWS operations DO NOT use the spec validator
 	// because we rely on CloudControl's validation.
-
-	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath)
-	credentialResourceRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
-	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath)
-	credentialCollectionRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
+	awsProviderRouter := server.NewSubrouter(baseRouter, systemAWSProviderPath)
+	awsProviderRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: credentialCollectionRouter,
-			Path:         "/",
+			ParentRouter: awsProviderRouter,
+			Path:         "/credentials",
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -204,8 +201,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: credentialResourceRouter,
-			Path:         "/",
+			ParentRouter: awsProviderRouter,
+			Path:         "/credentials/{credentialName}",
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -218,8 +215,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: credentialResourceRouter,
-			Path:         "/",
+			ParentRouter: awsProviderRouter,
+			Path:         "/credentials/{credentialName}",
 			Method:       v1.OperationPut,
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
@@ -227,8 +224,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: credentialResourceRouter,
-			Path:         "/",
+			ParentRouter: awsProviderRouter,
+			Path:         "/credentials/{credentialName}",
 			Method:       v1.OperationDelete,
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
