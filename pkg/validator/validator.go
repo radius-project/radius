@@ -75,7 +75,7 @@ type validator struct {
 // of a [name](#parameterName) and [location](#parameterIn). This spec.Parameter are loaded from swagger
 // file and consumed by middleware.NewUntypedRequestBinder. To fetch spec.Parameter, we need to get
 // the case-sensitive route path which is defined in swagger file. findParam first gets route defined
-// by chi router, replace {rootScope:.*} in chi route with {rootScope} and iterate the loaded
+// by chi router, replace v.rootScopePrefixes in chi route with {rootScope} and iterate the loaded
 // parameters from swagger file to find the matched route path defined in swagger file. Then it caches
 // spec.Parameter for the next lookup to improve the performance.
 func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, error) {
@@ -103,7 +103,7 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 		return p, nil
 	}
 
-	// The chi mux route path for our RPs should start with {rootScope:.*} to handle UCP and Azure root scope.
+	// The chi mux route path for our RPs should start with v.rootScopePrefixes to handle UCP and Azure root scope.
 	//
 	// The UCP functionality like resource groups does not have a "/{rootScope}/" in the path.
 	// Need to handle this difference in the CoreRP vs UCP schema.
