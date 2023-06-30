@@ -49,7 +49,8 @@ const (
 	operationResultsPath   = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationResults/{operationId}"
 	operationStatusesPath  = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationStatuses/{operationId}"
 
-	systemAWSProviderPath = "/providers/System.AWS"
+	credentialResourcePath   = "/providers/System.AWS/credentials/{credentialName}"
+	credentialCollectionPath = "/providers/System.AWS/credentials"
 
 	// OperationTypeAWSResource is the operation type for CRUDL operations on AWS resources.
 	OperationTypeAWSResource = "AWSRESOURCE"
@@ -182,13 +183,14 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	//
 	// These use the OpenAPI spec validator. General AWS operations DO NOT use the spec validator
 	// because we rely on CloudControl's validation.
-	awsProviderRouter := server.NewSubrouter(baseRouter, systemAWSProviderPath)
-	awsProviderRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
+	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
+
+	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath, apiValidator)
+	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath, apiValidator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: awsProviderRouter,
-			Path:         "/credentials",
+			ParentRouter: credentialCollectionRouter,
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -201,8 +203,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: awsProviderRouter,
-			Path:         "/credentials/{credentialName}",
+			ParentRouter: credentialResourceRouter,
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -215,8 +216,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: awsProviderRouter,
-			Path:         "/credentials/{credentialName}",
+			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationPut,
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
@@ -224,8 +224,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: awsProviderRouter,
-			Path:         "/credentials/{credentialName}",
+			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationDelete,
 			ResourceType: v20220901privatepreview.AWSCredentialType,
 			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
