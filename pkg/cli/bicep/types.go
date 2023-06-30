@@ -40,6 +40,10 @@ var _ Interface = (*Impl)(nil)
 type Impl struct {
 }
 
+// # Function Explanation
+// 
+// PrepareTemplate checks if the file is a .json or .bicep file, downloads Bicep if it is not installed, checks if the file
+//  exists, and builds the template if it does. It returns a map of strings to any and an error if one occurs.
 func (*Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	if strings.EqualFold(path.Ext(filePath), ".json") {
 		return ReadARMJSON(filePath)
@@ -76,6 +80,10 @@ func (*Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	return template, nil
 }
 
+// # Function Explanation
+// 
+// ConvertToMapStringInterface takes in a map of strings to maps of strings to any type and returns a map of strings to any
+//  type, with the values of the inner maps being the values of the returned map. No errors are returned.
 func ConvertToMapStringInterface(in map[string]map[string]any) map[string]any {
 	result := make(map[string]any)
 	for k, v := range in {
