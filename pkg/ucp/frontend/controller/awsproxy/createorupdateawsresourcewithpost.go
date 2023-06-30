@@ -54,6 +54,10 @@ func NewCreateOrUpdateAWSResourceWithPost(opts armrpc_controller.Options, awsCli
 	}, nil
 }
 
+// # Function Explanation
+//
+// "Run" reads the request body to get properties, checks if the resource exists, and creates or updates
+// the resource accordingly, returning an async operation response.
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
