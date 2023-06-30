@@ -30,6 +30,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad group list` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command that can be used to list resource groups within the current or specified workspace, and returns
+// a Runner object that can be used to execute the command. It also adds workspace and output flags to the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -67,6 +72,10 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad group list` runner.
+//
+// # Function Explanation
+//
+// NewRunner creates a new Runner struct with the given factory's ConnectionFactory, ConfigHolder, and Output.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
@@ -76,6 +85,10 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad group list` command.
+//
+// # Function Explanation
+//
+// Validate checks if a workspace is required and sets the output format, returning an error if either of these checks fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -96,6 +109,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad group list` command.
+//
+// # Function Explanation
+//
+// Run creates an ApplicationsManagementClient, retrieves a list of UCPGroup resources, and writes the results to
+// an output in a formatted way, returning an error if one occurs.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {

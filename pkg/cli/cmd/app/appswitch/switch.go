@@ -32,6 +32,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad app switch` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for switching the default Radius application, which takes in a factory and
+// returns a cobra command and a runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
@@ -59,6 +64,10 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad app switch` runner.
+//
+// # Function Explanation
+//
+// NewRunner creates a new Runner struct with the given factory's ConfigHolder, Output and ConnectionFactory.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -68,6 +77,12 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad app switch` command.
+//
+// # Function Explanation
+//
+// Validate checks if the workspace is editable, reads the application name from the command line arguments, checks
+// if the application exists. It returns an error if the workspace is not editable, if the application name is not provided,
+// or if the application does not exist.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -114,6 +129,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad app switch` command.
+//
+// # Function Explanation
+//
+// The function Run takes in a context and updates the configuration of the workspace with the given application name,
+// and returns an error if any.
 func (r *Runner) Run(ctx context.Context) error {
 	err := cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
 		r.Workspace.DefaultApplication = r.ApplicationName

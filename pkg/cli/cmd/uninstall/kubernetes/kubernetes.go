@@ -27,6 +27,11 @@ import (
 )
 
 // NewCommand creates an instance of the `rad <fill in the blank>` command and runner.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command for uninstalling Radius from a Kubernetes cluster, which takes in a factory
+// object and returns a Cobra command and a Runner object.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -57,6 +62,10 @@ type Runner struct {
 }
 
 // NewRunner creates an instance of the runner for the `rad uninstall kubernetes` command.
+//
+// # Function Explanation
+//
+// NewRunner creates a new Runner struct with Helm and Output fields initialized using the Factory interface.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		Helm:   factory.GetHelmInterface(),
@@ -65,11 +74,20 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad uninstall kubernetes` command.
+//
+// # Function Explanation
+//
+// Validate checks the command and arguments passed to it and returns an error if any of them are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
 // Run runs the `rad uninstall kubernetes` command.
+//
+// # Function Explanation
+//
+// Run checks if Radius is installed on the Kubernetes cluster, and if so, uninstalls it, logging a success message
+// if successful. It returns an error if an error occurs during the uninstallation.
 func (r *Runner) Run(ctx context.Context) error {
 	state, err := r.Helm.CheckRadiusInstall(r.KubeContext)
 	if err != nil {

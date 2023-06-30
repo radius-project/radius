@@ -35,6 +35,11 @@ const (
 )
 
 // NewCommand creates an instance of the `rad app delete` command and runner.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command for deleting a Radius application, with flags for workspace, resource group,
+// application name and confirmation, and returns the command and a Runner object.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -81,6 +86,10 @@ type Runner struct {
 }
 
 // NewRunner creates an instance of the runner for the `rad app delete` command.
+//
+// # Function Explanation
+//
+// NewRunner creates a new Runner struct with the given factory's ConfigHolder, ConnectionFactory, InputPrompter, and Output.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -91,6 +100,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad app delete` command.
+//
+// # Function Explanation
+//
+// Validate checks the workspace, scope, application name, and confirm flag from the command line arguments and
+// request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -119,6 +133,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad app delete` command.
+//
+// # Function Explanation
+//
+// "Run" prompts the user to confirm the deletion of an application, creates a connection to the application management
+// client, and deletes the application if it exists. If the application does not exist, it logs a message. It returns an
+// error if there is an issue with the connection or the prompt.
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {

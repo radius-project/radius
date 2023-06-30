@@ -42,10 +42,17 @@ type DevRecipeClient interface {
 type devRecipeClient struct {
 }
 
+// # Function Explanation
+//
+// NewDevRecipeClient creates a new DevRecipeClient object and returns it.
 func NewDevRecipeClient() DevRecipeClient {
 	return &devRecipeClient{}
 }
 
+// # Function Explanation
+//
+// GetDevRecipes is a function that queries a registry for recipes with a specific tag and returns a map of recipes.
+// If an error occurs, an error is returned.
 func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]*corerp.EnvironmentRecipeProperties, error) {
 	reg, err := remote.NewRegistry(DevRecipesRegistry)
 	if err != nil {

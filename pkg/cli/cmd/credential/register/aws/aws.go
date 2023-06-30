@@ -35,6 +35,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad credential register aws` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for registering AWS cloud provider credentials with IAM authentication, and
+// returns a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -82,6 +87,10 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad credential register aws` runner.
+//
+// # Function Explanation
+//
+// NewRunner creates a new Runner struct with the given factory's ConfigHolder, ConnectionFactory, and Output.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -91,6 +100,10 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad credential register aws` command.
+//
+// # Function Explanation
+//
+// Validate() checks if the required workspace, output format, access key ID and secret access key are present, and if not, returns an error.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -131,6 +144,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad credential register aws` command.
+//
+// # Function Explanation
+//
+// Run() registers an AWS credential with the given context and workspace, and returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "aws", r.Workspace.FmtConnection())
