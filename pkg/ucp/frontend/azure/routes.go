@@ -23,7 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	server "github.com/project-radius/radius/pkg/armrpc/frontend/serverv2"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
@@ -47,12 +47,13 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return nil, err
 	}
 
-	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+prefix)
+	basePath := m.options.PathBase + prefix
+	baseRouter := server.NewSubrouter(m.router, basePath)
 
 	// URLS for operations on Azure credential resources.
-	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath)
+	credentialResourceRouter := server.NewSubrouter(baseRouter, basePath+credentialResourcePath)
 	credentialResourceRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
-	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath)
+	credentialCollectionRouter := server.NewSubrouter(baseRouter, basePath+credentialCollectionPath)
 	credentialCollectionRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
 
 	handlerOptions := []server.HandlerOptions{

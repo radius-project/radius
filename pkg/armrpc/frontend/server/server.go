@@ -21,14 +21,13 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gorilla/mux"
-
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/pkg/version"
 
+	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
@@ -37,8 +36,6 @@ import (
 const (
 	versionEndpoint = "/version"
 	healthzEndpoint = "/healthz"
-	versionAPIName  = "versionAPI"
-	healthzAPIName  = "heathzAPI"
 )
 
 type Options struct {
@@ -47,7 +44,7 @@ type Options struct {
 	Address           string
 	PathBase          string
 	EnableArmAuth     bool
-	Configure         func(*mux.Router) error
+	Configure         func(chi.Router) error
 	ArmCertMgr        *authentication.ArmCertManager
 }
 
@@ -58,7 +55,7 @@ type Options struct {
 // New creates an HTTP server with a router, configures the router with the given options, adds the default middlewares for logging,
 // authentication, and service context, and returns the server.
 func New(ctx context.Context, options Options) (*http.Server, error) {
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 	if options.Configure != nil {
 		err := options.Configure(r)
 		if err != nil {
@@ -66,8 +63,8 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 		}
 	}
 
-	r.NotFoundHandler = validator.APINotFoundHandler()
-	r.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
+	r.NotFound(validator.APINotFoundHandler())
+	r.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues(options.ProviderNamespace))
@@ -78,8 +75,8 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	}
 	r.Use(servicecontext.ARMRequestCtx(options.PathBase, options.Location))
 
-	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
-	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
+	r.Get(versionEndpoint, version.ReportVersionHandler)
+	r.Get(healthzEndpoint, version.ReportVersionHandler)
 
 	handlerFunc := otelhttp.NewHandler(
 		middleware.LowercaseURLPath(r),

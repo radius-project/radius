@@ -28,7 +28,7 @@ import (
 	"github.com/project-radius/radius/swagger"
 	"github.com/project-radius/radius/test/testutil"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -467,28 +467,29 @@ func runTest(t *testing.T, resourceIDUrl string) {
 	for _, tc := range validatorTests {
 		t.Run(tc.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			r := mux.NewRouter()
+			r := chi.NewRouter()
 
-			r.NotFoundHandler = APINotFoundHandler()
-			r.MethodNotAllowedHandler = APIMethodNotAllowedHandler()
+			r.NotFound(APINotFoundHandler())
+			r.MethodNotAllowed(APIMethodNotAllowedHandler())
 
 			// APIs undocumented in OpenAPI spec.
-			r.Path(operationGetRoute).Methods(http.MethodGet).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			r.MethodFunc(http.MethodGet, operationGetRoute, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusAccepted)
 			})
-			r.Path("/subscriptions/{subscriptions}").Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.MethodFunc(http.MethodPut, "/subscriptions/{subscriptions}", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusAccepted)
 			})
 
 			if tc.rootScope != "" {
 				// Add API validator middleware
 				validator := APIValidator(l)
-				router := r.PathPrefix(tc.rootScope).Subrouter()
-				// Register validator at {rootScope} level
-				router.Use(validator)
-
-				router.Path(tc.route).Methods(tc.method).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusAccepted)
+				r.Route(tc.rootScope, func(r chi.Router) {
+					// Register validator at {rootScope} level
+					r.Use(validator)
+					r.MethodFunc(tc.method, tc.route, func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusAccepted)
+					})
 				})
 			}
 

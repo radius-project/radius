@@ -28,7 +28,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	server "github.com/project-radius/radius/pkg/armrpc/frontend/serverv2"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"

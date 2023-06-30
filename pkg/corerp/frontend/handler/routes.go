@@ -19,7 +19,7 @@ package handler
 import (
 	"context"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -45,7 +45,7 @@ const (
 	ProviderNamespaceName = "Applications.Core"
 )
 
-func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
+func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 	rootScopePath := ctrlOpts.PathBase
 	if isARM {
 		rootScopePath += "/subscriptions/{subscriptionID}"
@@ -56,7 +56,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 	resourceGroupPath := "/resourcegroups/{resourceGroupName}"
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, router, rootScopePath, isARM, ProviderNamespaceName, NewGetOperations, ctrlOpts)
+	err := server.ConfigureDefaultHandlers(ctx, r, rootScopePath, isARM, ProviderNamespaceName, NewGetOperations, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -74,57 +74,15 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 		return err
 	}
 
-	// Used to register routes like:
-	//
-	// /planes/radius/{planeName}/providers/applications.core/environments
-	planeScopeRouter := router.PathPrefix(rootScopePath).Subrouter()
-	planeScopeRouter.Use(validator.APIValidator(specLoader))
-
-	// Used to register routes like:
-	//
-	// /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/providers/applications.core/environments
-	resourceGroupScopeRouter := router.PathPrefix(rootScopePath + resourceGroupPath).Subrouter()
-	resourceGroupScopeRouter.Use(validator.APIValidator(specLoader))
-
-	// Adds environment resource type routes
-	environmentPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.core/environments").Subrouter()
-	environmentResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.core/environments").Subrouter()
-	environmentResourceRouter := environmentResourceGroupRouter.Path("/{environmentName}").Subrouter()
-
-	// Adds httproute resource type routes
-	httpRoutePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.core/httproutes").Subrouter()
-	httpRouteResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.core/httproutes").Subrouter()
-	httpRouteResourceRouter := httpRouteResourceGroupRouter.Path("/{httpRouteName}").Subrouter()
-
-	// Adds container resource type routes
-	containerPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.core/containers").Subrouter()
-	containerResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.core/containers").Subrouter()
-	containerResourceRouter := containerResourceGroupRouter.Path("/{containerName}").Subrouter()
-
-	// Adds application resource type routes
-	applicationPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.core/applications").Subrouter()
-	applicationResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.core/applications").Subrouter()
-	applicationResourceRouter := applicationResourceGroupRouter.Path("/{applicationName}").Subrouter()
-
-	// Adds gateway resource type routes
-	gatewayPlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.core/gateways").Subrouter()
-	gatewayResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.core/gateways").Subrouter()
-	gatewayResourceRouter := gatewayResourceGroupRouter.Path("/{gatewayName}").Subrouter()
-
-	// Adds volume resource type routes
-	volumePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.core/volumes").Subrouter()
-	volumeResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.core/volumes").Subrouter()
-	volumeResourceRouter := volumeResourceGroupRouter.Path("/{volumeName}").Subrouter()
-
-	// Adds secretstore resource type routes
-	secretStorePlaneRouter := planeScopeRouter.PathPrefix("/providers/applications.core/secretstores").Subrouter()
-	secretStoreResourceGroupRouter := resourceGroupScopeRouter.PathPrefix("/providers/applications.core/secretstores").Subrouter()
-	secretStoreResourceRouter := secretStoreResourceGroupRouter.Path("/{secretStoreName}").Subrouter()
+	// Register Opena API validator middleware.
+	router := server.NewSubrouter(r, rootScopePath)
+	router.Use(validator.APIValidator(specLoader))
 
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.
 		{
-			ParentRouter: environmentPlaneRouter,
+			ParentRouter: router,
+			Path:         "/providers/applications.core/environments",
 			ResourceType: env_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -137,7 +95,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: environmentResourceGroupRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/environments",
 			ResourceType: env_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -149,7 +108,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: environmentResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/environments/{environmentName}",
 			ResourceType: env_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -161,19 +121,22 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:      environmentResourceRouter,
+			ParentRouter:      router,
+			Path:              resourceGroupPath + "/providers/applications.core/environments/{environmentName}",
 			ResourceType:      env_ctrl.ResourceTypeName,
 			Method:            v1.OperationPut,
 			ControllerFactory: env_ctrl.NewCreateOrUpdateEnvironment,
 		},
 		{
-			ParentRouter:      environmentResourceRouter,
+			ParentRouter:      router,
+			Path:              resourceGroupPath + "/providers/applications.core/environments/{environmentName}",
 			ResourceType:      env_ctrl.ResourceTypeName,
 			Method:            v1.OperationPatch,
 			ControllerFactory: env_ctrl.NewCreateOrUpdateEnvironment,
 		},
 		{
-			ParentRouter: environmentResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/environments/{environmentName}",
 			ResourceType: env_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -186,14 +149,16 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:      environmentResourceGroupRouter.Path("/{environmentName}/getmetadata").Subrouter(),
+			ParentRouter:      router,
+			Path:              resourceGroupPath + "/providers/applications.core/environments/{environmentName}/getmetadata",
 			ResourceType:      env_ctrl.ResourceTypeName,
 			Method:            env_ctrl.OperationGetRecipeMetadata,
 			ControllerFactory: env_ctrl.NewGetRecipeMetadata,
 		},
 		// httpRoute resource handler registration.
 		{
-			ParentRouter: httpRoutePlaneRouter,
+			ParentRouter: router,
+			Path:         "/providers/applications.core/httproutes",
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -206,7 +171,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: httpRouteResourceGroupRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/httproutes",
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -218,7 +184,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: httpRouteResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/httproutes/{httpRouteName}",
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -230,7 +197,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: httpRouteResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/httproutes/{httpRouteName}",
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -243,7 +211,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: httpRouteResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/httproutes/{httpRouteName}",
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -256,7 +225,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: httpRouteResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/httproutes/{httpRouteName}",
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -270,7 +240,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 		},
 		// Container resource handlers
 		{
-			ParentRouter: containerPlaneRouter,
+			ParentRouter: router,
+			Path:         "/providers/applications.core/containers",
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -283,7 +254,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: containerResourceGroupRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/containers",
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -295,7 +267,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: containerResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/containers/{containerName}",
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -307,7 +280,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: containerResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/containers/{containerName}",
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -324,7 +298,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: containerResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/containers/{containerName}",
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -341,7 +316,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: containerResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/containers/{containerName}",
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -355,7 +331,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 		},
 		// Applications resource handler registration.
 		{
-			ParentRouter: applicationPlaneRouter,
+			ParentRouter: router,
+			Path:         "/providers/applications.core/applications",
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -368,7 +345,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: applicationResourceGroupRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/applications",
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -380,7 +358,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: applicationResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/applications/{applicationName}",
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -392,7 +371,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: applicationResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/applications/{applicationName}",
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -409,7 +389,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: applicationResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/applications/{applicationName}",
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -426,7 +407,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: applicationResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/applications/{applicationName}",
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -440,7 +422,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 		},
 		// Gateway resource handler registration.
 		{
-			ParentRouter: gatewayPlaneRouter,
+			ParentRouter: router,
+			Path:         "/providers/applications.core/gateways",
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -453,7 +436,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: gatewayResourceGroupRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/gateways",
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -465,7 +449,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: gatewayResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/gateways/{gatewayName}",
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -477,7 +462,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: gatewayResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/gateways/{gatewayName}",
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -494,7 +480,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: gatewayResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/gateways/{gatewayName}",
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -511,7 +498,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: gatewayResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/gateways/{gatewayName}",
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -525,7 +513,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 		},
 		// Volumes resource handler registration.
 		{
-			ParentRouter: volumePlaneRouter,
+			ParentRouter: router,
+			Path:         "/providers/applications.core/volumes",
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -539,7 +528,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: volumeResourceGroupRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/volumes",
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -552,7 +542,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: volumeResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/volumes/{volumeName}",
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -565,7 +556,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: volumeResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/volumes/{volumeName}",
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -582,7 +574,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: volumeResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/volumes/{volumeName}",
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -599,7 +592,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: volumeResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/volumes/{volumeName}",
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -613,7 +607,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 		},
 		// Secret Store resource handler registration.
 		{
-			ParentRouter: secretStorePlaneRouter,
+			ParentRouter: router,
+			Path:         "/providers/applications.core/secretstores",
 			ResourceType: secret_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -626,7 +621,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: secretStoreResourceGroupRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/secretstores",
 			ResourceType: secret_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -638,7 +634,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: secretStoreResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/secretstores/{secretStoreName}",
 			ResourceType: secret_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -650,7 +647,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: secretStoreResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/secretstores/{secretStoreName}",
 			ResourceType: secret_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -668,7 +666,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: secretStoreResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/secretstores/{secretStoreName}",
 			ResourceType: secret_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -686,7 +685,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter: secretStoreResourceRouter,
+			ParentRouter: router,
+			Path:         resourceGroupPath + "/providers/applications.core/secretstores/{secretStoreName}",
 			ResourceType: secret_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -701,7 +701,8 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 			},
 		},
 		{
-			ParentRouter:      secretStoreResourceGroupRouter.Path("/{secretStoreName}/listsecrets").Subrouter(),
+			ParentRouter:      router,
+			Path:              resourceGroupPath + "/providers/applications.core/secretstores/{secretStoreName}/listsecrets",
 			ResourceType:      secret_ctrl.ResourceTypeName,
 			Method:            secret_ctrl.OperationListSecrets,
 			ControllerFactory: secret_ctrl.NewListSecrets,

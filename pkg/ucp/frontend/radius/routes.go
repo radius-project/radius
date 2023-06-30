@@ -42,23 +42,26 @@ const (
 )
 
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
-	baseRouter := m.router.PathPrefix(m.options.PathBase + prefix).Subrouter()
+	basePath := m.options.PathBase + prefix
+	baseRouter := server.NewSubrouter(m.router, basePath)
 
 	// URLs for lifecycle of resource groups
-	resourceGroupResourceRouter := baseRouter.Path(resourceGroupResourcePath).Subrouter()
+	resourceGroupResourceRouter := server.NewSubrouter(m.router, basePath+resourceGroupResourcePath)
 	resourceGroupResourceRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
-	resourceGroupCollectionRouter := baseRouter.Path(resourceGroupCollectionPath).Subrouter()
+	resourceGroupCollectionRouter := server.NewSubrouter(m.router, basePath+resourceGroupCollectionPath)
 	resourceGroupCollectionRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
 
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:      resourceGroupCollectionRouter,
+			Path:              "/",
 			ResourceType:      v20220901privatepreview.ResourceGroupType,
 			Method:            v1.OperationList,
 			ControllerFactory: resourcegroups_ctrl.NewListResourceGroups,
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
+			Path:         "/",
 			ResourceType: v20220901privatepreview.ResourceGroupType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -72,6 +75,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
+			Path:         "/",
 			ResourceType: v20220901privatepreview.ResourceGroupType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -85,6 +89,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
+			Path:         "/",
 			ResourceType: v20220901privatepreview.ResourceGroupType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -102,7 +107,15 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		// Note that the API validation is not applied to the router used for proxying
 		{
 			// Method deliberately omitted. This is a catch-all route for proxying.
+			ParentRouter:      resourceGroupResourceRouter,
+			Path:              "/*",
+			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			ControllerFactory: planes_ctrl.NewProxyPlane,
+		},
+		{
+			// Method deliberately omitted. This is a catch-all route for proxying.
 			ParentRouter:      baseRouter,
+			Path:              "/*",
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
 			ControllerFactory: planes_ctrl.NewProxyPlane,
 		},
