@@ -61,6 +61,11 @@ type TextInputOptions = text.TextModelOptions
 type Impl struct{}
 
 // GetTextInput prompts user for a text input
+//
+// # Function Explanation
+//
+// GetTextInput takes a prompt string and a set of options, and returns a string or an error if the user exits the
+// console or an unsupported model is encountered.
 func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, error) {
 	tm := text.NewTextModel(prompt, options)
 
@@ -83,6 +88,11 @@ func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, er
 }
 
 // GetListInput prompts user to select from a list
+//
+// # Function Explanation
+//
+// GetListInput displays a list of strings to the user and returns the user's selection as a string, or an error if the
+// user exits the console or an unsupported model is encountered.
 func (i *Impl) GetListInput(items []string, promptMsg string) (string, error) {
 	lm := cli_list.NewListModel(items, promptMsg)
 
@@ -138,6 +148,13 @@ func (e *ErrExitConsole) Is(target error) bool {
 //
 // Returns an *ErrExitConsole if the user cancels. This is a friendly error and does not need
 // special handling by calling code.
+//
+// # Function Explanation
+//
+// YesOrNoPrompt takes in a prompt message, a default string and a prompter interface, and returns a boolean value and an
+// error if one occurs. It checks if the default string is equal to "yes", and if so, sets the value list to ["yes", "no"],
+// otherwise it sets the value list to ["no", "yes"]. It then gets a list input from the prompter interface, and returns
+// true if the input is equal to "yes", and false otherwise.
 func YesOrNoPrompt(promptMsg string, defaultString string, prompter Interface) (bool, error) {
 	var valueList []string
 	if strings.EqualFold(ConfirmYes, defaultString) {

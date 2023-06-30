@@ -28,6 +28,10 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
+// # Function Explanation
+//
+// NewProgressListener creates a new ProgressListener based on whether the output is a terminal or not, returning an
+// InteractiveListener if it is a terminal and a NoOpListener if it is not.
 func NewProgressListener(progressChan <-chan clients.ResourceProgress) ProgressListener {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		return &InteractiveListener{
@@ -52,6 +56,9 @@ type NoOpListener struct {
 	progressChan <-chan clients.ResourceProgress
 }
 
+// # Function Explanation
+//
+// Run() continuously drains the updates from the progressChan channel without taking any action.
 func (listener *NoOpListener) Run() {
 	for range listener.progressChan {
 		// Do nothing except drain the updates.
@@ -91,6 +98,9 @@ func (listener *InteractiveListener) updateEntry(index int, state string, format
 	listener.entries[index] = Entry{FinalState: state, Format: format}
 }
 
+// # Function Explanation
+//
+// Run() concurrently updates the UI with a spinner and writes output for each resource update received from the progressChan channel.
 func (listener *InteractiveListener) Run() {
 	ticker := time.NewTicker(500 * time.Millisecond)
 
