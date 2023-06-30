@@ -77,11 +77,14 @@ type HandlerOptions struct {
 
 	// ControllerFactory is a function invoked to create the controller. Will be invoked once during server startup.
 	ControllerFactory ControllerFunc
+
+	Middlewares chi.Middlewares
 }
 
-func NewSubrouter(parent chi.Router, path string) chi.Router {
+func NewSubrouter(parent chi.Router, path string, middlewares ...func(http.Handler) http.Handler) chi.Router {
 	subrouter := chi.NewRouter()
 	parent.Mount(path, subrouter)
+	subrouter.Use(middlewares...)
 	return subrouter
 }
 
@@ -137,8 +140,13 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 		opts.OperationType = &v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
 	}
 
+	if opts.Path == "" {
+		opts.Path = "/"
+	}
+
 	handler := HandlerForController(ctrl)
-	namedRouter := opts.ParentRouter.With(chi_middleware.WithValue(v1.OperationTypeContextKey, opts.OperationType.String()))
+	middlewares := append(opts.Middlewares, chi_middleware.WithValue(v1.OperationTypeContextKey, opts.OperationType.String()))
+	namedRouter := opts.ParentRouter.With(middlewares...)
 	if opts.Method == "" {
 		namedRouter.HandleFunc(opts.Path, handler)
 	} else {
