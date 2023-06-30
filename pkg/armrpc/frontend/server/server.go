@@ -51,18 +51,12 @@ type Options struct {
 // New creates a frontend server that can listen on the provided address and serve requests.
 func New(ctx context.Context, options Options) (*http.Server, error) {
 	r := chi.NewRouter()
-	if options.Configure != nil {
-		err := options.Configure(r)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	r.NotFound(validator.APINotFoundHandler())
-	r.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues(options.ProviderNamespace))
+
+	r.NotFound(validator.APINotFoundHandler())
+	r.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	// add the arm cert validation if EnableAuth is true
 	if options.EnableArmAuth {
@@ -72,6 +66,13 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 
 	r.Get(versionEndpoint, version.ReportVersionHandler)
 	r.Get(healthzEndpoint, version.ReportVersionHandler)
+
+	if options.Configure != nil {
+		err := options.Configure(r)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	handlerFunc := otelhttp.NewHandler(
 		middleware.LowercaseURLPath(r),

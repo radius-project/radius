@@ -103,17 +103,16 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		return err
 	}
 
-	planeScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.messaging")
-	planeScopeRouter.Use(validator.APIValidator(specLoader))
+	validator := validator.APIValidator(specLoader)
 
-	router := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging")
-	router.Use(validator.APIValidator(specLoader))
+	rmqPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.messaging/rabbitmqqueues")
+	rmqCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues")
+	rmqResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues/{rabbitMQQueueName}", validator)
 
 	// Messaging handlers:
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/rabbitmqqueues",
+			ParentRouter: rmqPlaneScopeRouter,
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -124,10 +123,10 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqqueues",
+			ParentRouter: rmqCollectionRouter,
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -137,10 +136,10 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqqueues/{rabbitMQQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -152,8 +151,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqqueues/{rabbitMQQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -170,8 +168,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqqueues/{rabbitMQQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -188,8 +185,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqqueues/{rabbitMQQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.N_RabbitMQQueuesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -203,8 +199,8 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/rabbitmqqueues/{rabbitMQQueueName}/listsecrets",
+			ParentRouter:      rmqResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.N_RabbitMQQueuesResourceType,
 			Method:            msg_ctrl.OperationListSecret,
 			ControllerFactory: msg_ctrl.NewListSecretsRabbitMQQueue,
@@ -233,18 +229,15 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		return err
 	}
 
-	planeScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr")
-	planeScopeRouter.Use(validator.APIValidator(specLoader))
+	validator := validator.APIValidator(specLoader)
 
-	// Register Opena API validator middleware.
-	router := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr")
-	router.Use(validator.APIValidator(specLoader))
+	pubsubPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprpubsubbrokers")
+	pubsubCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers")
+	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers/{daprPubSubBrokerName}", validator)
 
-	// Dapr handlers:
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/daprpubsubbrokers",
+			ParentRouter: pubsubPlaneScopeRouter,
 			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -255,10 +248,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers",
+			ParentRouter: pubsubCollectionRouter,
 			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -268,10 +261,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -283,8 +276,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -301,8 +293,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -319,8 +310,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.N_DaprPubSubBrokersResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -333,9 +323,15 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 				)
 			},
 		},
+	}
+
+	secretStorePlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprsecretstores")
+	secretStoreCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprsecretstores")
+	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprsecretstores/{daprSecretStoreName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/daprsecretstores",
+			ParentRouter: secretStorePlaneScopeRouter,
 			ResourceType: linkrp.N_DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -346,10 +342,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores",
+			ParentRouter: secretStoreCollectionRouter,
 			ResourceType: linkrp.N_DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -359,10 +355,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.N_DaprSecretStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -374,8 +370,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.N_DaprSecretStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -392,8 +387,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.N_DaprSecretStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -410,8 +404,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.N_DaprSecretStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -424,9 +417,15 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 				)
 			},
 		},
+	}...)
+
+	stateStorePlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprstatestores")
+	stateStoreCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprstatestores")
+	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprstatestores/{daprStateStoreName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/daprstatestores",
+			ParentRouter: stateStorePlaneScopeRouter,
 			ResourceType: linkrp.N_DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -437,10 +436,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores",
+			ParentRouter: stateStoreCollectionRouter,
 			ResourceType: linkrp.N_DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -450,10 +449,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.N_DaprStateStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -465,8 +464,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.N_DaprStateStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -483,8 +481,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.N_DaprStateStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -501,8 +498,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.N_DaprStateStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -515,7 +511,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 				)
 			},
 		},
-	}
+	}...)
 
 	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
@@ -539,17 +535,16 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		return err
 	}
 
-	planeScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores")
-	planeScopeRouter.Use(validator.APIValidator(specLoader))
+	validator := validator.APIValidator(specLoader)
 
-	router := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores")
-	router.Use(validator.APIValidator(specLoader))
+	mongoPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/mongodatabases")
+	mongoCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/mongodatabases")
+	mongoResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/mongodatabases/{mongoDatabaseName}", validator)
 
 	// Datastores handlers:
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/mongodatabases",
+			ParentRouter: mongoPlaneScopeRouter,
 			ResourceType: linkrp.N_MongoDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -560,10 +555,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases",
+			ParentRouter: mongoCollectionRouter,
 			ResourceType: linkrp.N_MongoDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -573,10 +568,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ResponseConverter: ds_conv.MongoDatabaseDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.N_MongoDatabasesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -588,8 +583,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.N_MongoDatabasesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -606,8 +600,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -624,8 +617,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.N_MongoDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -639,15 +631,21 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/mongodatabases/{mongoDatabaseName}/listsecrets",
+			ParentRouter:      mongoResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.MongoDatabasesResourceType,
 			Method:            mongo_ctrl.OperationListSecret,
 			ControllerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
+	}
+
+	redisPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/rediscaches")
+	redisCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/rediscaches")
+	redisResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/rediscaches/{redisCacheName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/rediscaches",
+			ParentRouter: redisPlaneScopeRouter,
 			ResourceType: linkrp.N_RedisCachesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -658,10 +656,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches",
+			ParentRouter: redisCollectionRouter,
 			ResourceType: linkrp.N_RedisCachesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -671,10 +669,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ResponseConverter: ds_conv.RedisCacheDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.N_RedisCachesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -686,8 +684,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.N_RedisCachesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -704,8 +701,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.N_RedisCachesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -722,8 +718,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.N_RedisCachesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -737,15 +732,21 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/rediscaches/{redisCacheName}/listsecrets",
+			ParentRouter:      redisResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.RedisCachesResourceType,
 			Method:            redis_ctrl.OperationListSecret,
 			ControllerFactory: redis_ctrl.NewListSecretsRedisCache,
 		},
+	}...)
+
+	sqlPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/sqldatabases")
+	sqlCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/sqldatabases")
+	sqlResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/sqldatabases/{sqlDatabaseName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/sqldatabases",
+			ParentRouter: sqlPlaneScopeRouter,
 			ResourceType: linkrp.N_SqlDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -756,10 +757,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases",
+			ParentRouter: sqlCollectionRouter,
 			ResourceType: linkrp.N_SqlDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -769,10 +770,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ResponseConverter: ds_conv.SqlDatabaseDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.N_SqlDatabasesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -784,8 +785,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.N_SqlDatabasesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -802,8 +802,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.N_SqlDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -820,8 +819,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.N_SqlDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -834,7 +832,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 				)
 			},
 		},
-	}
+	}...)
 
 	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
@@ -858,16 +856,15 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		return err
 	}
 
-	planeScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link")
-	planeScopeRouter.Use(validator.APIValidator(specLoader))
+	validator := validator.APIValidator(specLoader)
 
-	router := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link")
-	router.Use(validator.APIValidator(specLoader))
+	mongoPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/mongodatabases")
+	mongoCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/mongodatabases")
+	mongoResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/mongodatabases/{mongoDatabaseName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/mongodatabases",
+			ParentRouter: mongoPlaneScopeRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -878,10 +875,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases",
+			ParentRouter: mongoCollectionRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -891,10 +888,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -906,8 +903,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -924,8 +920,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -942,8 +937,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/mongodatabases/{mongoDatabaseName}",
+			ParentRouter: mongoResourceRouter,
 			ResourceType: linkrp.MongoDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -957,15 +951,21 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/mongodatabases/{mongoDatabaseName}/listsecrets",
+			ParentRouter:      mongoResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.MongoDatabasesResourceType,
 			Method:            mongo_ctrl.OperationListSecret,
 			ControllerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
+	}
+
+	pubsubPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprpubsubbrokers")
+	pubsubCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprpubsubbrokers")
+	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprpubsubbrokers/{daprPubSubBrokerName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/daprpubsubbrokers",
+			ParentRouter: pubsubPlaneScopeRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -976,10 +976,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers",
+			ParentRouter: pubsubCollectionRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -989,10 +989,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1004,8 +1004,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1022,8 +1021,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1040,8 +1038,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprpubsubbrokers/{daprPubSubBrokerName}",
+			ParentRouter: pubsubResourceRouter,
 			ResourceType: linkrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1054,9 +1051,15 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 				)
 			},
 		},
+	}...)
+
+	secretStorePlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprsecretstores")
+	secretStoreCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprsecretstores")
+	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprsecretstores/{daprSecretStoreName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/daprsecretstores",
+			ParentRouter: secretStorePlaneScopeRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1067,10 +1070,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores",
+			ParentRouter: secretStoreCollectionRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1080,10 +1083,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1095,8 +1098,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1113,8 +1115,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1131,8 +1132,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprsecretstores/{daprSecretStoreName}",
+			ParentRouter: secretStoreResourceRouter,
 			ResourceType: linkrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1145,9 +1145,15 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 				)
 			},
 		},
+	}...)
+
+	stateStorePlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprstatestores")
+	stateStoreCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprstatestores")
+	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprstatestores/{daprStateStoreName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/daprstatestores",
+			ParentRouter: stateStorePlaneScopeRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1158,10 +1164,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores",
+			ParentRouter: stateStoreCollectionRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1171,10 +1177,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1186,8 +1192,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1204,8 +1209,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1222,8 +1226,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/daprstatestores/{daprStateStoreName}",
+			ParentRouter: stateStoreResourceRouter,
 			ResourceType: linkrp.DaprStateStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1236,9 +1239,15 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 				)
 			},
 		},
+	}...)
+
+	redisPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/rediscaches")
+	redisCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rediscaches")
+	redisResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rediscaches/{redisCacheName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/rediscaches",
+			ParentRouter: redisPlaneScopeRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1249,10 +1258,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches",
+			ParentRouter: redisCollectionRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1262,10 +1271,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.RedisCacheDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1277,8 +1286,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1295,8 +1303,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1313,8 +1320,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rediscaches/{redisCacheName}",
+			ParentRouter: redisResourceRouter,
 			ResourceType: linkrp.RedisCachesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1328,15 +1334,22 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/rediscaches/{redisCacheName}/listsecrets",
+			ParentRouter:      redisResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.RedisCachesResourceType,
 			Method:            redis_ctrl.OperationListSecret,
 			ControllerFactory: redis_ctrl.NewListSecretsRedisCache,
 		},
+	}...)
+
+	rmqPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/rabbitmqmessagequeues")
+	rmqCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rabbitmqmessagequeues")
+	rmqResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rabbitmqmessagequeues/{rabbitMQMessageQueueName}", validator)
+
+	// Messaging handlers:
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/rabbitmqmessagequeues",
+			ParentRouter: rmqPlaneScopeRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1347,10 +1360,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqmessagequeues",
+			ParentRouter: rmqCollectionRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1360,10 +1373,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqmessagequeues/{rabbitMQMessageQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1375,8 +1388,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqmessagequeues/{rabbitMQMessageQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1393,8 +1405,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqmessagequeues/{rabbitMQMessageQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1411,8 +1422,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/rabbitmqmessagequeues/{rabbitMQMessageQueueName}",
+			ParentRouter: rmqResourceRouter,
 			ResourceType: linkrp.RabbitMQMessageQueuesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1426,15 +1436,21 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/rabbitmqmessagequeues/{rabbitMQMessageQueueName}/listsecrets",
+			ParentRouter:      rmqResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.RabbitMQMessageQueuesResourceType,
 			Method:            rabbitmq_ctrl.OperationListSecret,
 			ControllerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
 		},
+	}...)
+
+	sqlPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/sqldatabases")
+	sqlCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/sqldatabases")
+	sqlResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/sqldatabases/{sqlDatabaseName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/sqldatabases",
+			ParentRouter: sqlPlaneScopeRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1445,10 +1461,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases",
+			ParentRouter: sqlCollectionRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1458,10 +1474,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1473,8 +1489,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1491,8 +1506,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1509,8 +1523,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/sqldatabases/{sqlDatabaseName}",
+			ParentRouter: sqlResourceRouter,
 			ResourceType: linkrp.SqlDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1524,15 +1537,21 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/sqldatabases/{sqlDatabaseName}/listsecrets",
+			ParentRouter:      sqlResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.SqlDatabasesResourceType,
 			Method:            sql_ctrl.OperationListSecret,
 			ControllerFactory: sql_ctrl.NewListSecretsSqlDatabase,
 		},
+	}...)
+
+	extPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/extenders")
+	extCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/extenders")
+	extResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/extenders/{extenderName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter: planeScopeRouter,
-			Path:         "/extenders",
+			ParentRouter: extPlaneScopeRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1543,10 +1562,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/extenders",
+			ParentRouter: extCollectionRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1556,10 +1575,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.ExtenderDataModelToVersioned,
 					})
 			},
+			Middlewares: chi.Middlewares{validator},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/extenders/{extenderName}",
+			ParentRouter: extResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1571,8 +1590,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/extenders/{extenderName}",
+			ParentRouter: extResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1589,8 +1607,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/extenders/{extenderName}",
+			ParentRouter: extResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1607,8 +1624,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter: router,
-			Path:         "/extenders/{extenderName}",
+			ParentRouter: extResourceRouter,
 			ResourceType: linkrp.ExtendersResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -1622,13 +1638,13 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			},
 		},
 		{
-			ParentRouter:      router,
-			Path:              "/extenders/{extenderName}/listsecrets",
+			ParentRouter:      extResourceRouter,
+			Path:              "/listsecrets",
 			ResourceType:      linkrp.ExtendersResourceType,
 			Method:            extender_ctrl.OperationListSecret,
 			ControllerFactory: extender_ctrl.NewListSecretsExtender,
 		},
-	}
+	}...)
 
 	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
