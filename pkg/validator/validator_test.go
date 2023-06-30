@@ -30,7 +30,7 @@ import (
 )
 
 func Test_FindParam(t *testing.T) {
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"/{rootScope:.*}"}, "rootScope")
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"/subscriptions/{subscriptionID}/resourceGroups/{rgName}"}, "rootScope")
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
 	require.True(t, ok)
@@ -41,16 +41,7 @@ func Test_FindParam(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut, armResourceGroupScopedResourceURL, nil)
 	require.NoError(t, err)
 
-	r.MethodFunc(http.MethodPut, "/{rootScope:.*}"+environmentResourceRoute, func(w http.ResponseWriter, r *http.Request) {
-		param, err := validator.findParam(r)
-		require.NoError(t, err)
-		require.NotNil(t, param)
-		require.Equal(t, 1, len(validator.paramCache))
-
-		w.WriteHeader(http.StatusAccepted)
-	})
-
-	r.MethodFunc(http.MethodPut, "/{rootScope:.*}"+environmentResourceRoute, func(w http.ResponseWriter, r *http.Request) {
+	r.MethodFunc(http.MethodPut, "/subscriptions/{subscriptionID}/resourceGroups/{rgName}"+environmentResourceRoute, func(w http.ResponseWriter, r *http.Request) {
 		param, err := validator.findParam(r)
 		require.NoError(t, err)
 		require.NotNil(t, param)
