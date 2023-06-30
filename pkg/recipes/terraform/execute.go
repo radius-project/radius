@@ -26,6 +26,7 @@ import (
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -69,7 +70,13 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
-	// Run TF Init and Apply
+	// Generate Terraform json config in the working directory
+	err = config.GenerateMainConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir)
+	if err != nil {
+		return nil, err
+	}
+
+	// Run TF Init and Apply in the working directory
 	_, err = initAndApply(ctx, workingDir, execPath)
 	if err != nil {
 		return nil, err

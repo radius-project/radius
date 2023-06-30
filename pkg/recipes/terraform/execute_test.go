@@ -38,3 +38,16 @@ func TestCreateWorkingDir(t *testing.T) {
 	_, err = os.Stat(workingDir)
 	require.NoError(t, err)
 }
+
+func TestInitAndApply_EmptyWorkingDirPath(t *testing.T) {
+	// Create a temporary directory for testing.
+	testDir := t.TempDir()
+	execPath := filepath.Join(testDir, "terraform")
+
+	// Call initAndApply with the mock Terraform executable.
+	ctx := testcontext.New(t)
+	output, err := initAndApply(ctx, "", execPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
+	require.Nil(t, output)
+}
