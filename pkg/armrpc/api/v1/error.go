@@ -55,14 +55,14 @@ type ErrClientRP struct {
 
 // # Function Explanation
 //
-// ErrClientRP's Error() function formats the error code and message into a string for easier readability.
+// Error returns an error string describing the error code and message.
 func (r *ErrClientRP) Error() string {
 	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
 }
 
 // # Function Explanation
 //
-// Is() checks if the target error is of type ErrClientRP and returns a boolean value indicating the result.
+// Is checks if the target error is the type of ErrClientRP and returns true if it is the same error type.
 func (e *ErrClientRP) Is(target error) bool {
 	_, ok := target.(*ErrClientRP)
 	return ok
