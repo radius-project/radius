@@ -100,10 +100,6 @@ func DefaultModules(options modules.Options) []modules.Initializer {
 var _ hosting.Service = (*Service)(nil)
 
 // NewService will create a server that can listen on the provided address and serve requests.
-//
-// # Function Explanation
-//
-// NewService creates a new Service struct with the given ServiceOptions and returns a pointer to it.
 func NewService(options ServiceOptions) *Service {
 	return &Service{
 		options: options,
@@ -117,35 +113,9 @@ func (s *Service) Name() string {
 	return "api"
 }
 
-func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	credProviders := []func(*config.LoadOptions) error{}
-
-	switch s.options.Identity.AuthMethod {
-	case hostoptions.AuthUCPCredential:
-		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection, &aztoken.AnonymousCredential{})
-		if err != nil {
-			return aws.Config{}, err
-		}
-		p := ucp_aws.NewUCPCredentialProvider(provider, ucp_aws.DefaultExpireDuration)
-		credProviders = append(credProviders, config.WithCredentialsProvider(p))
-		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
-
-	default:
-		logger.Info("Configuring default authentication mode with environment variable.")
-	}
-
-	awscfg, err := config.LoadDefaultConfig(ctx, credProviders...)
-	if err != nil {
-		return aws.Config{}, err
-	}
-
-	return awscfg, nil
-}
-
 // # Function Explanation
 //
-// Initialize() sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
+// Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
