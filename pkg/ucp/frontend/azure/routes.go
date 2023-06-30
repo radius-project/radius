@@ -33,8 +33,9 @@ import (
 )
 
 const (
-	prefix                  = "/planes/azure/{planeName}"
-	systemAzureProviderPath = "/providers/System.Azure"
+	prefix                   = "/planes/azure/{planeName}"
+	credentialResourcePath   = "/providers/System.Azure/credentials/{credentialName}"
+	credentialCollectionPath = "/providers/System.Azure/credentials"
 
 	// OperationTypeUCPAzureProxy is the operation type for proxying Azure API calls.
 	OperationTypeUCPAzureProxy = "UCPAZUREPROXY"
@@ -50,13 +51,15 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	baseRouter := server.NewSubrouter(m.router, basePath)
 
 	// URL for operations on System.Azure provider.
-	azureProviderRouter := server.NewSubrouter(baseRouter, basePath+systemAzureProviderPath)
-	azureProviderRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
+
+	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
+
+	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath, apiValidator)
+	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter: azureProviderRouter,
-			Path:         "/credentials",
+			ParentRouter: credentialCollectionRouter,
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {
@@ -69,8 +72,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: azureProviderRouter,
-			Path:         "/credentials/{credentialName}",
+			ParentRouter: credentialResourceRouter,
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {
@@ -83,8 +85,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: azureProviderRouter,
-			Path:         "/credentials/{credentialName}",
+			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationPut,
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {
@@ -92,8 +93,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: azureProviderRouter,
-			Path:         "/credentials/{credentialName}",
+			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationDelete,
 			ResourceType: v20220901privatepreview.AzureCredentialType,
 			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {

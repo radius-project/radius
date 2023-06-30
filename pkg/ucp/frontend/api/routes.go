@@ -89,30 +89,30 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 	}
 
 	// This router applies validation and will be used for CRUDL operations on planes
-	rootScopeRouter := server.NewSubrouter(router, options.PathBase)
-	rootScopeRouter.Use(validator.APIValidatorUCP(options.SpecLoader))
+	validator := validator.APIValidatorUCP(options.SpecLoader)
+
+	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, validator)
+	planeCollectionByTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath, validator)
+	planeResourceRouter := server.NewSubrouter(router, options.PathBase+planeResourcePath, validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		// Planes resource handler registration.
 		{
 			// This is scope query unlike the default list handler.
-			ParentRouter:      rootScopeRouter,
-			Path:              planeCollectionPath,
+			ParentRouter:      planeCollectionRouter,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanes,
 		},
 		{
 			// This is scope query unlike the default list handler.
-			ParentRouter:      rootScopeRouter,
-			Path:              planeCollectionByTypePath,
+			ParentRouter:      planeCollectionByTypeRouter,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanesByType,
 		},
 		{
-			ParentRouter:  rootScopeRouter,
-			Path:          planeResourcePath,
+			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationGet,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationGet},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -125,8 +125,7 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 			},
 		},
 		{
-			ParentRouter:  rootScopeRouter,
-			Path:          planeResourcePath,
+			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationPut,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationPut},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -139,8 +138,7 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 			},
 		},
 		{
-			ParentRouter:  rootScopeRouter,
-			Path:          planeResourcePath,
+			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationDelete,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationDelete},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {

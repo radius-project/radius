@@ -20,6 +20,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
@@ -45,21 +47,22 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	basePath := m.options.PathBase + prefix
 	baseRouter := server.NewSubrouter(m.router, basePath)
 
+	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
+
 	// URLs for lifecycle of resource groups
-	resourceGroupCollectionRouter := server.NewSubrouter(m.router, basePath+resourceGroupCollectionPath)
-	resourceGroupCollectionRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
+	resourceGroupCollectionRouter := server.NewSubrouter(baseRouter, basePath+resourceGroupCollectionPath)
+	resourceGroupResourceRouter := server.NewSubrouter(baseRouter, basePath+resourceGroupResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:      resourceGroupCollectionRouter,
-			Path:              "/",
 			ResourceType:      v20220901privatepreview.ResourceGroupType,
 			Method:            v1.OperationList,
 			ControllerFactory: resourcegroups_ctrl.NewListResourceGroups,
+			Middlewares:       chi.Middlewares{apiValidator},
 		},
 		{
-			ParentRouter: resourceGroupCollectionRouter,
-			Path:         "/{resourceGroupName}",
+			ParentRouter: resourceGroupResourceRouter,
 			ResourceType: v20220901privatepreview.ResourceGroupType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -72,8 +75,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: resourceGroupCollectionRouter,
-			Path:         "/{resourceGroupName}",
+			ParentRouter: resourceGroupResourceRouter,
 			ResourceType: v20220901privatepreview.ResourceGroupType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -86,8 +88,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter: resourceGroupCollectionRouter,
-			Path:         "/{resourceGroupName}",
+			ParentRouter: resourceGroupResourceRouter,
 			ResourceType: v20220901privatepreview.ResourceGroupType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -103,13 +104,6 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		// Proxy request should take the least priority in routing and should therefore be last
 		//
 		// Note that the API validation is not applied to the router used for proxying
-		{
-			// Method deliberately omitted. This is a catch-all route for proxying.
-			ParentRouter:      resourceGroupCollectionRouter,
-			Path:              "/{resourceGroupName}/*",
-			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyPlane,
-		},
 		{
 			// Method deliberately omitted. This is a catch-all route for proxying.
 			ParentRouter:      baseRouter,
