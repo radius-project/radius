@@ -39,15 +39,15 @@ type Plane struct {
 }
 
 // # Function Explanation
-// 
-// Plane.ResourceTypeName() returns the type of the Plane as a string.
+//
+// ResourceTypeName returns the type of the Plane as a string.
 func (p Plane) ResourceTypeName() string {
 	return p.Type
 }
 
 // # Function Explanation
-// 
-// "LookupResourceProvider" searches through a map of strings and returns the value associated with the given key.
+//
+// LookupResourceProvider searches through a map of strings and returns the value associated with the given key.
 func (plane *Plane) LookupResourceProvider(key string) string {
 	var value string
 	for k, v := range plane.Properties.ResourceProviders {

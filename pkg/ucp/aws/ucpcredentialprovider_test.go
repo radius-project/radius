@@ -35,7 +35,7 @@ type mockProvider struct {
 //
 // # Function Explanation
 //
-// Fetch() takes in a context, planeName and name and returns an AWSCredential or an error if the fakeCredential is nil.
+// Fetch takes in a context, planeName and name and returns an AWSCredential or an error if the fakeCredential is nil.
 func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_cred.AWSCredential, error) {
 	if p.fakeCredential == nil {
 		return nil, errors.New("failed to fetch credential")

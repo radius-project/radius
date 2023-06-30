@@ -63,7 +63,7 @@ func NewEmbeddedETCDService(options EmbeddedETCDServiceOptions) *EmbeddedETCDSer
 
 // # Function Explanation
 //
-// Name() returns a string "etcd" which is the name of the service.
+// Name returns a string "etcd" which is the name of the service.
 func (s *EmbeddedETCDService) Name() string {
 	return "etcd"
 }

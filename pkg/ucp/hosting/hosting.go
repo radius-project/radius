@@ -58,7 +58,7 @@ type LifecycleMessage struct {
 
 // # Function Explanation
 //
-// Host.RunAsync runs the host's services asynchronously and returns two channels, one for errors and one for lifecycle
+// RunAsync runs the host's services asynchronously and returns two channels, one for errors and one for lifecycle
 // messages, which can be used to monitor the progress of the services.
 func (host *Host) RunAsync(ctx context.Context) (<-chan error, <-chan LifecycleMessage) {
 	stopped := make(chan error, 1)
@@ -77,7 +77,7 @@ func (host *Host) RunAsync(ctx context.Context) (<-chan error, <-chan LifecycleM
 //
 // # Function Explanation
 //
-// Run() starts all services in the host, waits for them to finish, and returns an error if any of them fail or if a
+// Run starts all services in the host, waits for them to finish, and returns an error if any of them fail or if a
 // timeout is reached.
 func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage) error {
 	if serviceErrors != nil {

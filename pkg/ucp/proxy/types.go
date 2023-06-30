@@ -93,7 +93,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // # Function Explanation
 //
-// Build() configures a ReverseProxy with the given parameters and returns a http.HandlerFunc.
+// Build configures a ReverseProxy with the given parameters and returns a http.HandlerFunc.
 func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 	rp := httputil.NewSingleHostReverseProxy(builder.Downstream)
 	rp.Transport = &builder.Transport

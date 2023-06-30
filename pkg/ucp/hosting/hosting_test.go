@@ -188,8 +188,7 @@ func Test_Host_RunMultipleServices_ShutdownTimeout(t *testing.T) {
 
 // # Function Explanation
 //
-// NewFuncService creates a new Service with the given name and run function, which takes a context and returns an error if
-// one occurs.
+// NewFuncService creates a new Service with the given name and run function, which takes a context and returns an error if one occurs.
 func NewFuncService(name string, run func(context.Context) error) Service {
 	return &FuncService{name: name, run: run}
 }
@@ -201,14 +200,14 @@ type FuncService struct {
 
 // # Function Explanation
 //
-// Name() returns the name of the FuncService instance, or an error if the name is not set.
+// Name returns the name of the FuncService instance, or an error if the name is not set.
 func (s *FuncService) Name() string {
 	return s.name
 }
 
 // # Function Explanation
 //
-// Run() takes in a context and calls the run function if it is not nil, otherwise it waits for the context to
+// Run takes in a context and calls the run function if it is not nil, otherwise it waits for the context to
 // be done and returns nil.
 func (s *FuncService) Run(ctx context.Context) error {
 	if s.run == nil {
