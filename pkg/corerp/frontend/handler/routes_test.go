@@ -328,8 +328,7 @@ func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovid
 			tctx.Reset()
 
 			result := r.Match(tctx, tt.method, uri)
-			t.Logf("result: %v", tctx)
-			require.Truef(t, result, "no route found for %s %s", tt.method, uri)
+			require.Truef(t, result, "no route found for %s %s, context: %v", tt.method, uri, tctx)
 		})
 	}
 
