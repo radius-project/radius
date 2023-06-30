@@ -191,7 +191,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if (tt.getErr == nil || errors.Is(&store.ErrNotFound{}, tt.getErr)) && !tt.convErr {
+			if (tt.getErr == nil || errors.Is(&store.ErrNotFound{ID: tt.rId}, tt.getErr)) && !tt.convErr {
 				renderCall := mdp.EXPECT().
 					Render(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(renderers.RendererOutput{}, tt.renderErr).

@@ -65,17 +65,17 @@ func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 
 func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+	if err != nil && !errors.Is(&store.ErrNotFound{ID: request.ResourceID}, err) {
 		return ctrl.Result{}, err
 	}
 
 	isNewResource := false
-	if errors.Is(&store.ErrNotFound{}, err) {
+	if errors.Is(&store.ErrNotFound{ID: request.ResourceID}, err) {
 		isNewResource = true
 	}
 
 	opType, _ := v1.ParseOperationType(request.OperationType)
-	if opType.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
+	if opType.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{ID: request.ResourceID}, err) {
 		return ctrl.Result{}, err
 	}
 

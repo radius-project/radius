@@ -607,7 +607,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&store.Object{}, &store.ErrNotFound{})
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&store.Object{}, &store.ErrNotFound{ID: testResource.ID})
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)

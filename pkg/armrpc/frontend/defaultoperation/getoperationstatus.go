@@ -49,7 +49,7 @@ func (e *GetOperationStatus) Run(ctx context.Context, w http.ResponseWriter, req
 
 	os := &manager.Status{}
 	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
-	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
+	if err != nil && errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 

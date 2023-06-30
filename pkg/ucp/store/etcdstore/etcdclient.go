@@ -140,7 +140,7 @@ func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOpt
 	}
 
 	if response.Count == 0 {
-		return nil, &store.ErrNotFound{}
+		return nil, &store.ErrNotFound{ID: id}
 	}
 
 	value := store.Object{}
@@ -194,7 +194,7 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 
 		response := txn.Responses[0].GetResponseDeleteRange()
 		if response.Deleted == 0 {
-			return &store.ErrNotFound{}
+			return &store.ErrNotFound{ID: id}
 		} else {
 			return nil
 		}
@@ -207,7 +207,7 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 	}
 
 	if response.Deleted == 0 {
-		return &store.ErrNotFound{}
+		return &store.ErrNotFound{ID: id}
 	}
 
 	return nil
