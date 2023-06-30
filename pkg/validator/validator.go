@@ -25,13 +25,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
 	oai_errors "github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/gorilla/mux"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -78,12 +79,13 @@ type validator struct {
 // parameters from swagger file to find the matched route path defined in swagger file. Then it caches
 // spec.Parameter for the next lookup to improve the performance.
 func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, error) {
-	// Fetch gorilla mux route path from the current request.
-	route := mux.CurrentRoute(req)
-	pathTemplate, err := route.GetPathTemplate()
-	if err != nil {
-		return nil, err
+	// Fetch route path from the current request.
+	rctx := chi.RouteContext(req.Context())
+	if rctx == nil {
+		return nil, errors.New("chi.RouteContext is nil")
 	}
+
+	pathTemplate := rctx.RoutePattern()
 
 	templateKey := req.Method + "-" + pathTemplate
 	v.paramCacheMu.RLock()
@@ -138,8 +140,14 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	for k := range req.URL.Query() {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
-	for k, v := range mux.Vars(req) {
-		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: v})
+
+	rctx := chi.RouteContext(req.Context())
+	if rctx == nil {
+		return routeParams
+	}
+
+	for i := 0; i < len(rctx.URLParams.Keys); i++ {
+		routeParams = append(routeParams, middleware.RouteParam{Name: rctx.URLParams.Keys[i], Value: rctx.URLParams.Values[i]})
 	}
 
 	return routeParams

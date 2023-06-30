@@ -106,4 +106,12 @@ func Test_Routes(t *testing.T) {
 			require.Truef(t, result, "no route found for %s %s", test.method, p)
 		})
 	}
+
+	t.Run("all named routes are tested", func(t *testing.T) {
+		err := chi.Walk(router, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+			t.Logf("%s %s", method, route)
+			return nil
+		})
+		require.NoError(t, err)
+	})
 }

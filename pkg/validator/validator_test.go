@@ -22,10 +22,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/swagger"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/swagger"
 )
 
 func Test_FindParam(t *testing.T) {
@@ -36,12 +37,20 @@ func Test_FindParam(t *testing.T) {
 	validator := v.(*validator)
 
 	w := httptest.NewRecorder()
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 	req, err := http.NewRequest(http.MethodPut, armResourceGroupScopedResourceURL, nil)
 	require.NoError(t, err)
 
-	router := r.PathPrefix("/{rootScope:.*}").Subrouter()
-	router.Path(environmentResourceRoute).Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.MethodFunc(http.MethodPut, "/{rootScope:.*}"+environmentResourceRoute, func(w http.ResponseWriter, r *http.Request) {
+		param, err := validator.findParam(r)
+		require.NoError(t, err)
+		require.NotNil(t, param)
+		require.Equal(t, 1, len(validator.paramCache))
+
+		w.WriteHeader(http.StatusAccepted)
+	})
+
+	r.MethodFunc(http.MethodPut, "/{rootScope:.*}"+environmentResourceRoute, func(w http.ResponseWriter, r *http.Request) {
 		param, err := validator.findParam(r)
 		require.NoError(t, err)
 		require.NotNil(t, param)
