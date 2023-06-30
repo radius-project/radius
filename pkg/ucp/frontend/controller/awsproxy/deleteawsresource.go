@@ -39,8 +39,6 @@ type DeleteAWSResource struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewDeleteAWSResource creates a new DeleteAWSResource.
-//
 // # Function Explanation
 //
 // NewDeleteAWSResource creates a new DeleteAWSResource controller which is used to delete AWS resources and returns it

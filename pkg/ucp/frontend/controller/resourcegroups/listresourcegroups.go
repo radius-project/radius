@@ -37,8 +37,6 @@ type ListResourceGroups struct {
 	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
 }
 
-// NewListResourceGroups creates a new ListResourceGroups.
-//
 // # Function Explanation
 //
 // NewListResourceGroups creates a new controller for listing resource groups.

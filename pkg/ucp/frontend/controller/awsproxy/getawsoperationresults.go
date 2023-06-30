@@ -39,8 +39,6 @@ type GetAWSOperationResults struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewGetAWSOperationResults creates a new GetAWSOperationResults.
-//
 // # Function Explanation
 //
 // NewGetAWSOperationResults creates a new GetAWSOperationResults controller with the given options and AWS clients, and

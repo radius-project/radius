@@ -36,8 +36,6 @@ type CreateOrUpdateAzureCredential struct {
 	secretClient secret.Client
 }
 
-// NewCreateOrUpdateAzureCredential creates a new CreateOrUpdateAzureCredential.
-//
 // # Function Explanation
 //
 // NewCreateOrUpdateAzureCredential creates a new CreateOrUpdateAzureCredential controller which is used to create or

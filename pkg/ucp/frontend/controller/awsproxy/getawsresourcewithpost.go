@@ -46,8 +46,6 @@ type GetAWSResourceWithPost struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost.
-//
 // # Function Explanation
 //
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost controller with the given options and AWS clients.

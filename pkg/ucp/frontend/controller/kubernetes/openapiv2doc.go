@@ -32,8 +32,6 @@ type OpenAPIv2Doc struct {
 	armrpc_controller.BaseController
 }
 
-// NewOpenAPIv2Doc creates a new OpenAPIv2Doc.
-//
 // # Function Explanation
 //
 // NewOpenAPIv2Doc creates a new OpenAPIv2Doc controller with the given options and returns it, or returns an error if the

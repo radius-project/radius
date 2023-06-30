@@ -36,8 +36,6 @@ type CreateOrUpdateAWSCredential struct {
 	secretClient secret.Client
 }
 
-// NewCreateOrUpdateAWSCredential creates a new CreateOrUpdateAWSCredential.
-//
 // # Function Explanation
 //
 // NewCreateOrUpdateAWSCredential creates a new CreateOrUpdateAWSCredential controller which is used to create or update

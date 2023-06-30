@@ -36,8 +36,6 @@ type ListPlanes struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewListPlanes creates a new ListPlanes.
-//
 // # Function Explanation
 //
 // NewListPlanes creates a new controller for listing for the Plane resource type.

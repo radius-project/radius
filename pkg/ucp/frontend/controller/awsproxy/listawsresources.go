@@ -39,8 +39,6 @@ type ListAWSResources struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewListAWSResources creates a new ListAWSResources.
-//
 // # Function Explanation
 //
 // NewListAWSResources creates a new ListAWSResources controller with the given options and AWS clients.

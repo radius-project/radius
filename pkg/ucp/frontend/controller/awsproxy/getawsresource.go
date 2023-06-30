@@ -39,8 +39,6 @@ type GetAWSResource struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewGetAWSResource creates a new GetAWSResource.
-//
 // # Function Explanation
 //
 // NewGetAWSResource creates a new GetAWSResource controller with the given options and AWS clients, and returns it or an

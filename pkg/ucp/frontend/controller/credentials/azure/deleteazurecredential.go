@@ -40,8 +40,6 @@ type DeleteAzureCredential struct {
 	secretClient secret.Client
 }
 
-// NewDeleteAzureCredential creates a new DeleteAzureCredential.
-//
 // # Function Explanation
 //
 // NewDeleteAzureCredential creates a new DeleteAzureCredential controller which is used to delete Azure credentials from

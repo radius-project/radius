@@ -40,8 +40,6 @@ type GetAWSOperationStatuses struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
-//
 // # Function Explanation
 //
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS operations.

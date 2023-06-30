@@ -44,8 +44,6 @@ type ProxyPlane struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewProxyPlane creates a new ProxyPlane.
-//
 // # Function Explanation
 //
 // NewProxyPlane creates a new ProxyPlane controller with the given options and returns it, or returns an error if the

@@ -55,8 +55,6 @@ const (
 	OperationTypePlanesByType = "PLANESBYTYPE"
 )
 
-// Register registers the routes for UCP including modules.
-//
 // # Function Explanation
 //
 // This function registers handlers for various operations on Azure and AWS, such as Get, Put, Delete, and List,

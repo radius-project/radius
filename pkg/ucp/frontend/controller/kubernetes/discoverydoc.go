@@ -32,8 +32,6 @@ type DiscoveryDoc struct {
 	armrpc_controller.BaseController
 }
 
-// NewDiscoveryDoc creates a new DiscoveryDoc.
-//
 // # Function Explanation
 //
 // NewDiscoveryDoc creates a new DiscoveryDoc controller with the given options and returns it, or returns an error if the

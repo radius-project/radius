@@ -41,8 +41,6 @@ type DeleteAWSCredential struct {
 	secretClient secret.Client
 }
 
-// NewDeleteAWSCredential creates a new DeleteCredential.
-//
 // # Function Explanation
 //
 // NewDeleteAWSCredential creates a new DeleteAWSCredential controller which is used to delete AWS credentials from the
