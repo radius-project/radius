@@ -45,8 +45,8 @@ func NewDefaultSyncPut[P interface {
 //
 // # Function Explanation
 //
-// Run() retrieves the existing resource, prepares the new resource, runs update filters, sets the
-// provisioning state to succeeded, saves the new resource and returns a response.
+// Run executes synchronous create or update operation by validating new resource metadata, ensuring if it is new resource or updated resource, 
+// running custom update filters, and upserting resource metadata and returns an resource as a response.
 func (e *DefaultSyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)

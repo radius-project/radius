@@ -47,8 +47,9 @@ func NewDefaultSyncDelete[P interface {
 //
 // # Function Explanation
 //
-// Run() retrieves the resource from the store, runs any delete filters, and then deletes the resource from the store. If the
-// resource is not found, a No Content response is returned. If an error occurs during the delete, an error is returned.
+// Run executes synchronous deletion operation. It retrieves the resource from the store, runs custom delete filters, 
+// and then deletes the resource from the data store. If the resource is not found, a No Content response is returned. 
+// If an error occurs during the delete, an error is returned.
 func (e *DefaultSyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

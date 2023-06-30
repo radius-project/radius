@@ -62,52 +62,32 @@ type BaseController struct {
 //
 // # Function Explanation
 //
-// NewBaseAsyncController creates a new BaseController struct with the given Options and returns it.
+// NewBaseAsyncController creates a new BaseController instance with the given Options for Async Operation.
 func NewBaseAsyncController(options Options) BaseController {
 	return BaseController{options}
 }
 
 // StorageClient gets storage client for this controller.
-//
-// # Function Explanation
-//
-// StorageClient returns the StorageClient from the options struct in the BaseController struct.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
 
 // DataProvider gets data storage provider for this controller.
-//
-// # Function Explanation
-//
-// DataProvider is a function that returns the DataStorageProvider from the options struct of the BaseController.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
 }
 
 // KubeClient gets Kubernetes client for this controller.
-//
-// # Function Explanation
-//
-// KubeClient returns the KubeClient from the options struct of the BaseController struct.
 func (b *BaseController) KubeClient() runtimeclient.Client {
 	return b.options.KubeClient
 }
 
 // ResourceType gets the resource type for this controller.
-//
-// # Function Explanation
-//
-// ResourceType returns the resource type of the BaseController object, or an error if the resource type is not set.
 func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
 
 // DeploymentProcessor gets the core rp deployment processor for this controller.
-//
-// # Function Explanation
-//
-// DeploymentProcessor() returns the DeploymentProcessor from the options provided.
 func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
 	return b.options.GetDeploymentProcessor()
 }

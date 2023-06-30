@@ -45,7 +45,7 @@ func NewDefaultAsyncDelete[P interface {
 //
 // # Function Explanation
 //
-// Run() retrieves the resource, checks if it exists, runs filters, prepares an async operation, and returns an async response.
+// Run executes asynchronous delete operation by validating the request, executing custom delete filters, and starting async job, and returns an async response.
 func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)

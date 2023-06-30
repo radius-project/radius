@@ -84,7 +84,7 @@ type TestResourceProperties struct {
 
 // # Function Explanation
 //
-// ConvertTo() takes in a TestResource object and returns a TestResourceDataModel object and no error.
+// ConvertTo takes in a TestResource object and returns a TestResourceDataModel object and no error.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{

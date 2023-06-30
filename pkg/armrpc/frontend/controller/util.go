@@ -52,8 +52,8 @@ var (
 //
 // # Function Explanation
 //
-// ReadJSONBody checks the content type of the request and reads the body of the request if the content type is
-// "application/json", returning the body as a byte slice or an error if the content type is not supported or an error
+// ReadJSONBody reads the body of the request if the content type is "application/json".
+// It returns the body as a byte array or an error if the content type is not supported or an error
 // occurs while reading the body.
 func ReadJSONBody(r *http.Request) ([]byte, error) {
 	defer r.Body.Close()
