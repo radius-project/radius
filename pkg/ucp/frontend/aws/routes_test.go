@@ -35,8 +35,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const pathBase = "/some-path-base"
+
 func Test_Routes(t *testing.T) {
-	pathBase := "/some-path-base"
 	tests := []struct {
 		method       string
 		path         string
@@ -118,7 +119,9 @@ func Test_Routes(t *testing.T) {
 	handler, err := module.Initialize(context.Background())
 	require.NoError(t, err)
 
-	router := handler.(chi.Router)
+	router := chi.NewRouter()
+
+	router.Mount(pathBase+prefixPath, handler)
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s_%s", test.method, test.path), func(t *testing.T) {

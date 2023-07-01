@@ -103,7 +103,7 @@ func Test_Routes(t *testing.T) {
 			tctx.Reset()
 
 			result := router.Match(tctx, test.method, p)
-			require.Truef(t, result, "no route found for %s %s", test.method, p)
+			require.Truef(t, result, "no route found for %s %s - context: %v", test.method, p, tctx)
 		})
 	}
 

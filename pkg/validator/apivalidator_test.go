@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -54,16 +55,16 @@ const (
 )
 
 func Test_APIValidator_ARMID(t *testing.T) {
-	runTest(t, armResourceGroupScopedResourceURL)
+	runTest(t, armResourceGroupScopedResourceURL, "/subscriptions/{subscriptionID}/resourceGroups/{resourceGroupName}", []string{"/subscriptions/{subscriptionID}/resourceGroups/{resourceGroupName}", "/subscriptions/{subscriptionID}"})
 }
 
 func Test_APIValidator_UCPID(t *testing.T) {
-	runTest(t, ucpResourceGroupScopedResourceURL)
+	runTest(t, ucpResourceGroupScopedResourceURL, "/planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}", []string{"/planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}", "/planes/{planeType}/{planeName}"})
 }
 
-func runTest(t *testing.T, resourceIDUrl string) {
+func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []string) {
 	// Load OpenAPI Spec for applications.core provider.
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"/{rootScope:.*}"}, "rootScope")
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, prefixes, "rootScope")
 
 	require.NoError(t, err)
 
@@ -133,7 +134,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "valid environment resource",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -144,7 +145,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "valid environment resource for selfhost",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid-selfhost.json",
@@ -153,9 +154,9 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr:   nil,
 		},
 		{
-			desc:          "valid get-environment with azure resource id",
+			desc:          "valid get-environment",
 			method:        http.MethodGet,
-			rootScope:     "/{rootScope:.*}",
+			rootScope:     rootscope,
 			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
@@ -165,7 +166,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:          "valid list-environment with azure resource group",
 			method:        http.MethodGet,
-			rootScope:     "/{rootScope:.*}",
+			rootScope:     rootscope,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           armResourceGroupScopedCollectionURL,
@@ -175,7 +176,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:          "valid list-environment with azure subscription",
 			method:        http.MethodGet,
-			rootScope:     "/{rootScope:.*}",
+			rootScope:     rootscope,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           armSubscriptionScopedCollectionURL,
@@ -185,7 +186,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:          "valid list-environment with UCP resource group",
 			method:        http.MethodGet,
-			rootScope:     "/{rootScope:.*}",
+			rootScope:     rootscope,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           ucpResourceGroupScopeCollectionURL,
@@ -195,7 +196,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:          "valid list-environment with UCP plane",
 			method:        http.MethodGet,
-			rootScope:     "/{rootScope:.*}",
+			rootScope:     rootscope,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           ucpPlaneScopedCollectionURL,
@@ -205,7 +206,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:          "valid delete-environment with azure resource id",
 			method:        http.MethodDelete,
-			rootScope:     "/{rootScope:.*}",
+			rootScope:     rootscope,
 			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
@@ -215,7 +216,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with invalid api-version",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-06-20-privatepreview", // unsupported api version
 			contentFilePath: "put-environments-valid.json",
@@ -231,7 +232,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with missing location property bag",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-location.json",
@@ -254,7 +255,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with missing kind property",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-kind.json",
@@ -277,7 +278,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with multiple errors",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-locationandkind.json",
@@ -304,7 +305,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with invalid json doc",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-json.json",
@@ -327,7 +328,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "env name too long",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -350,7 +351,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "env name too long",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -373,7 +374,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -396,7 +397,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -419,7 +420,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -442,7 +443,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
+			rootScope:       rootscope,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -482,12 +483,15 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			})
 
 			if tc.rootScope != "" {
+				if !strings.Contains(tc.url, tc.rootScope) {
+					return
+				}
+
 				// Add API validator middleware
 				validator := APIValidator(l)
-				r.Route(tc.rootScope, func(r chi.Router) {
-					// Register validator at {rootScope} level
+				r.Route(tc.rootScope+tc.route, func(r chi.Router) {
 					r.Use(validator)
-					r.MethodFunc(tc.method, tc.route, func(w http.ResponseWriter, r *http.Request) {
+					r.MethodFunc(tc.method, "/", func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusAccepted)
 					})
 				})

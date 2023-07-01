@@ -171,7 +171,7 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 			return fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
 		}
 
-		router.Handle(options.PathBase+fmt.Sprintf(planePrefixPathFmt, module.PlaneType()), handler)
+		router.Mount(options.PathBase+fmt.Sprintf(planePrefixPathFmt, module.PlaneType()), handler)
 		logger.Info(fmt.Sprintf("Registered module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
 	}
 

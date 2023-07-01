@@ -79,7 +79,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		}
 	}
 
-	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+prefixPath)
+	baseRouter := m.router
 
 	handlerOptions := []server.HandlerOptions{
 		{
