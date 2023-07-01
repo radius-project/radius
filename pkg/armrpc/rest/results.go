@@ -496,18 +496,6 @@ func NewNotFoundMessageResponse(message string) Response {
 	}
 }
 
-func NewNoResourceMatchResponse(path string) Response {
-	return &NotFoundResponse{
-		Body: v1.ErrorResponse{
-			Error: v1.ErrorDetails{
-				Code:    v1.CodeNotFound,
-				Message: fmt.Sprintf("the specified path %q did not match any resource", path),
-				Target:  path,
-			},
-		},
-	}
-}
-
 func NewNotFoundResponse(id resources.ID) Response {
 	return &NotFoundResponse{
 		Body: v1.ErrorResponse{

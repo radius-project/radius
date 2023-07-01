@@ -44,14 +44,13 @@ const (
 )
 
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
-	basePath := m.options.PathBase + prefix
-	baseRouter := server.NewSubrouter(m.router, basePath)
+	baseRouter := m.router
 
 	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
 
 	// URLs for lifecycle of resource groups
-	resourceGroupCollectionRouter := server.NewSubrouter(baseRouter, basePath+resourceGroupCollectionPath)
-	resourceGroupResourceRouter := server.NewSubrouter(baseRouter, basePath+resourceGroupResourcePath, apiValidator)
+	resourceGroupCollectionRouter := server.NewSubrouter(baseRouter, resourceGroupCollectionPath)
+	resourceGroupResourceRouter := server.NewSubrouter(baseRouter, resourceGroupResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -100,10 +99,16 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 				)
 			},
 		},
-
 		// Proxy request should take the least priority in routing and should therefore be last
 		//
 		// Note that the API validation is not applied to the router used for proxying
+		{
+			// Method deliberately omitted. This is a catch-all route for proxying.
+			ParentRouter:      resourceGroupResourceRouter,
+			Path:              "/*",
+			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			ControllerFactory: planes_ctrl.NewProxyPlane,
+		},
 		{
 			// Method deliberately omitted. This is a catch-all route for proxying.
 			ParentRouter:      baseRouter,

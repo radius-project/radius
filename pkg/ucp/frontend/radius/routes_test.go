@@ -17,7 +17,6 @@ limitations under the License.
 package radius
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -31,11 +30,13 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
+const pathBase = "/some-path-base"
+
 func Test_Routes(t *testing.T) {
-	pathBase := "/some-path-base"
 	tests := []struct {
 		method       string
 		path         string
@@ -43,6 +44,14 @@ func Test_Routes(t *testing.T) {
 		skipPathBase bool
 	}{
 		{
+			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
+			method: http.MethodGet,
+			path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+		}, {
+			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
+			method: http.MethodPut,
+			path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+		}, {
 			name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationList}.String(),
 			method: http.MethodGet,
 			path:   "/planes/radius/local/resourcegroups",
@@ -62,14 +71,6 @@ func Test_Routes(t *testing.T) {
 			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
 			method: http.MethodGet,
 			path:   "/planes/radius/local/providers/applications.core/applications/test-app",
-		}, {
-			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			method: http.MethodGet,
-			path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
-		}, {
-			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			method: http.MethodPut,
-			path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
 		},
 	}
 
@@ -90,14 +91,15 @@ func Test_Routes(t *testing.T) {
 	}
 
 	module := NewModule(options, "radius")
-	handler, err := module.Initialize(context.Background())
+	handler, err := module.Initialize(testcontext.New(t))
 	require.NoError(t, err)
 
-	router := handler.(chi.Router)
+	router := chi.NewRouter()
+	router.Mount(pathBase+prefix, handler)
 
 	//namesMatched := map[string]bool{}
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s - %s", test.method, test.path), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s-%s", test.method, test.path), func(t *testing.T) {
 			p := pathBase + test.path
 			if test.skipPathBase {
 				p = test.path

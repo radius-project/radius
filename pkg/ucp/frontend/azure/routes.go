@@ -47,8 +47,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return nil, err
 	}
 
-	basePath := m.options.PathBase + prefix
-	baseRouter := server.NewSubrouter(m.router, basePath)
+	baseRouter := m.router
 
 	// URL for operations on System.Azure provider.
 
