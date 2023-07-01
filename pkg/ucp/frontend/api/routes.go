@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
@@ -65,6 +66,10 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	handlerOptions := []server.HandlerOptions{}
+	planeHandlers, err := initModules(ctx, modules)
+	if err != nil {
+		return err
+	}
 
 	// If we're in Kubernetes we have some required routes to implement.
 	if options.PathBase != "" {
@@ -89,11 +94,12 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 	}
 
 	// This router applies validation and will be used for CRUDL operations on planes
-	validator := validator.APIValidatorUCP(options.SpecLoader)
+	apiValidator := validator.APIValidatorUCP(options.SpecLoader)
 
-	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, validator)
-	planeCollectionByTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath, validator)
-	planeResourceRouter := server.NewSubrouter(router, options.PathBase+planeResourcePath, validator)
+	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, apiValidator)
+
+	planeCollectionByTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath)
+	planeResourceRouter := server.NewSubrouter(planeCollectionByTypeRouter, "/{planeName}", apiValidator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		// Planes resource handler registration.
@@ -110,6 +116,7 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanesByType,
+			Middlewares:       chi.Middlewares{apiValidator},
 		},
 		{
 			ParentRouter:  planeResourceRouter,
@@ -164,16 +171,34 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 		}
 	}
 
+	planeResourceRouter.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+		planeType := chi.URLParam(r, "planeType")
+		if planeType == "" {
+			w.WriteHeader(http.StatusNotFound)
+		}
+
+		chi.RouteContext(r.Context()).Reset()
+		if planeHandler, ok := planeHandlers[planeType]; ok {
+			planeHandler.ServeHTTP(w, r)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	return nil
+}
+
+func initModules(ctx context.Context, modules []modules.Initializer) (map[string]http.Handler, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	planeHandlers := map[string]http.Handler{}
 	for _, module := range modules {
 		logger.Info(fmt.Sprintf("Registering module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
 		handler, err := module.Initialize(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
+			return nil, fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
 		}
-
-		router.Mount(options.PathBase+fmt.Sprintf(planePrefixPathFmt, module.PlaneType()), handler)
+		planeHandlers[module.PlaneType()] = handler
 		logger.Info(fmt.Sprintf("Registered module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
 	}
-
-	return nil
+	return planeHandlers, nil
 }

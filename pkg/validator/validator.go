@@ -120,10 +120,15 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 		}
 	}
 
+	analyzer := v.specDoc.Analyzer
 	// Iterate loaded paths to find the matched route.
-	for k := range v.specDoc.Analyzer.AllPaths() {
+	for k := range analyzer.AllPaths() {
 		if strings.EqualFold(k, scopePath) {
-			v.paramCache[templateKey] = v.specDoc.Analyzer.ParamsFor(req.Method, k)
+			if _, ok := analyzer.OperationFor(req.Method, k); !ok {
+				return nil, ErrUndefinedRoute
+			}
+
+			v.paramCache[templateKey] = analyzer.ParamsFor(req.Method, k)
 			return v.paramCache[templateKey], nil
 		}
 	}
@@ -147,6 +152,9 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	}
 
 	for i := 0; i < len(rctx.URLParams.Keys); i++ {
+		if rctx.URLParams.Keys[i] == "*" {
+			continue
+		}
 		routeParams = append(routeParams, middleware.RouteParam{Name: rctx.URLParams.Keys[i], Value: rctx.URLParams.Values[i]})
 	}
 

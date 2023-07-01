@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -41,6 +42,12 @@ const (
 func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+
+			if IsCatchAll(r) {
+				h.ServeHTTP(w, r)
+				return
+			}
+
 			rID, err := resources.ParseByMethod(r.URL.Path, r.Method)
 			if err != nil {
 				resp := invalidResourceIDResponse(r.URL.Path)
@@ -75,10 +82,33 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	}
 }
 
+func IsCatchAll(r *http.Request) bool {
+	rctx := chi.RouteContext(r.Context())
+	if rctx == nil {
+		return false
+	}
+
+	patternLen := len(rctx.RoutePatterns)
+	if patternLen > 0 {
+		lastPattern := rctx.RoutePatterns[patternLen-1]
+		if strings.HasSuffix(lastPattern, "/*") {
+			return true
+		}
+	}
+
+	return false
+}
+
 // APIValidatorUCP is the middleware to validate incoming request for UCP with OpenAPI spec.
 func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+
+			if IsCatchAll(r) {
+				h.ServeHTTP(w, r)
+				return
+			}
+
 			endpointType := UCPEndpointType
 			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
 			v, ok := loader.GetValidator(endpointType, apiVersion)
@@ -89,7 +119,6 @@ func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 				}
 				return
 			}
-
 			errs := v.ValidateRequest(r)
 			if errs != nil {
 				resp := validationFailedResponse(endpointType, errs)

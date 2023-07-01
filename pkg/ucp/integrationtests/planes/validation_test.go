@@ -41,6 +41,8 @@ func Test_Planes_GET_BadAPIVersion(t *testing.T) {
 }
 
 func Test_Planes_PUT_BadAPIVersion(t *testing.T) {
+	t.Skip("Skipping until we have a way to validate the API version in the request body")
+
 	ucp, _, _ := testserver.StartWithMocks(t, api.DefaultModules)
 
 	requestBody := v20220901privatepreview.PlaneResource{

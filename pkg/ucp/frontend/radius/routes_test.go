@@ -94,8 +94,7 @@ func Test_Routes(t *testing.T) {
 	handler, err := module.Initialize(testcontext.New(t))
 	require.NoError(t, err)
 
-	router := chi.NewRouter()
-	router.Mount(pathBase+prefix, handler)
+	router := handler.(chi.Router)
 
 	//namesMatched := map[string]bool{}
 	for _, test := range tests {
