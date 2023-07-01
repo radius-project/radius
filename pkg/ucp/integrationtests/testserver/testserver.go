@@ -219,8 +219,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	router := chi.NewRouter()
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 
-	app := http.Handler(router)
-	app = middleware.NormalizePath(app)
+	app := middleware.NormalizePath(router)
 	server := httptest.NewUnstartedServer(app)
 	server.Config.BaseContext = func(l net.Listener) context.Context {
 		return ctx

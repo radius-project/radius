@@ -37,13 +37,13 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	aws_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/aws"
+	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/validator"
 )
 
 const (
-	prefixPath             = "/planes/aws/{planeName}"
 	resourcePath           = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}/{resourceName}"
 	resourceCollectionPath = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}"
 	operationResultsPath   = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationResults/{operationId}"
@@ -79,7 +79,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		}
 	}
 
-	baseRouter := m.router
+	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+modules.PlaneScope)
 
 	handlerOptions := []server.HandlerOptions{
 		{

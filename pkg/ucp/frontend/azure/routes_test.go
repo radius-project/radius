@@ -90,8 +90,7 @@ func Test_Routes(t *testing.T) {
 	module := NewModule(options)
 	handler, err := module.Initialize(context.Background())
 	require.NoError(t, err)
-	router := chi.NewRouter()
-	router.Mount(pathBase+prefix, handler)
+	router := handler.(chi.Router)
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s_%s", test.method, test.path), func(t *testing.T) {
