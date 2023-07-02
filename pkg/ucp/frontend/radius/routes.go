@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	planeScope                  = "/planes/radius/{planeName}"
+	planeScope                  = "/planes/{planeType}/{planeName}"
 	resourceGroupCollectionPath = "/resourcegroups"
 	resourceGroupResourcePath   = "/resourcegroups/{resourceGroupName}"
 
