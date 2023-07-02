@@ -55,37 +55,40 @@ const (
 	OperationTypePlanesByType = "PLANESBYTYPE"
 )
 
-func initModules(ctx context.Context, modules []modules.Initializer) (map[string]http.Handler, error) {
+func initModules(ctx context.Context, modules []modules.Initializer) (map[string]http.Handler, []string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	planeTypes := []string{}
 	planeHandlers := map[string]http.Handler{}
 	for _, module := range modules {
 		logger.Info(fmt.Sprintf("Registering module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
 		handler, err := module.Initialize(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
+			return nil, nil, fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
 		}
+		planeTypes = append(planeTypes, module.PlaneType())
 		planeHandlers[module.PlaneType()] = handler
 		logger.Info(fmt.Sprintf("Registered module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
 	}
 
-	return planeHandlers, nil
+	return planeHandlers, planeTypes, nil
 }
 
 // Register registers the routes for UCP including modules.
-func Register(ctx context.Context, router chi.Router, modules []modules.Initializer, options modules.Options) error {
+func Register(ctx context.Context, router chi.Router, planeModules []modules.Initializer, options modules.Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with path base: %s", options.PathBase))
 
 	router.NotFound(validator.APINotFoundHandler())
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
-	handlerOptions := []server.HandlerOptions{}
-	planeHandlers, err := initModules(ctx, modules)
+	logger.Info("Initializing module handlers for planes.")
+	planeHandlers, registeredPlaneTypes, err := initModules(ctx, planeModules)
 	if err != nil {
 		return err
 	}
 
+	handlerOptions := []server.HandlerOptions{}
 	// If we're in Kubernetes we have some required routes to implement.
 	if options.PathBase != "" {
 		// NOTE: the Kubernetes API Server does not include the gvr (base path) in
@@ -111,10 +114,10 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 	// This router applies validation and will be used for CRUDL operations on planes
 	apiValidator := validator.APIValidatorUCP(options.SpecLoader)
 
+	// Configures planes collection and resource routes.
 	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, apiValidator)
-
-	planeCollectionByTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath)
-	planeResourceRouter := server.NewSubrouter(planeCollectionByTypeRouter, "/{planeName}", apiValidator)
+	planeTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath)
+	planeNameRouter := server.NewSubrouter(planeTypeRouter, "/{planeName}", apiValidator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		// Planes resource handler registration.
@@ -127,14 +130,14 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 		},
 		{
 			// This is scope query unlike the default list handler.
-			ParentRouter:      planeCollectionByTypeRouter,
+			ParentRouter:      planeTypeRouter,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanesByType,
 			Middlewares:       chi.Middlewares{apiValidator},
 		},
 		{
-			ParentRouter:  planeResourceRouter,
+			ParentRouter:  planeNameRouter,
 			Method:        v1.OperationGet,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationGet},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -147,7 +150,7 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 			},
 		},
 		{
-			ParentRouter:  planeResourceRouter,
+			ParentRouter:  planeNameRouter,
 			Method:        v1.OperationPut,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationPut},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -160,7 +163,7 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 			},
 		},
 		{
-			ParentRouter:  planeResourceRouter,
+			ParentRouter:  planeNameRouter,
 			Method:        v1.OperationDelete,
 			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationDelete},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -186,19 +189,20 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 		}
 	}
 
-	// Catch all routes for planes.
-	planeResourceRouter.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+	// Catch all route paths and forward to the appropriate module handlers.
+	planeNameRouter.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
 		planeType := chi.URLParam(r, "planeType")
-		if planeType == "" {
-			w.WriteHeader(http.StatusNotFound)
+		if planeType != "" {
+			// Clear the route context in request context before forwarding the request to the module handler.
+			chi.RouteContext(r.Context()).Reset()
+			if planeHandler, ok := planeHandlers[planeType]; ok {
+				planeHandler.ServeHTTP(w, r)
+				return
+			}
 		}
-
-		chi.RouteContext(r.Context()).Reset()
-		if planeHandler, ok := planeHandlers[planeType]; ok {
-			planeHandler.ServeHTTP(w, r)
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-		}
+		// Handle invalid plane type error.
+		resp := modules.InvalidPlaneTypeErrorResponse(planeType, registeredPlaneTypes)
+		_ = resp.Apply(ctx, w, r)
 	})
 
 	return nil

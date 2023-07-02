@@ -79,12 +79,13 @@ type validator struct {
 // parameters from swagger file to find the matched route path defined in swagger file. Then it caches
 // spec.Parameter for the next lookup to improve the performance.
 func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, error) {
-	// Fetch route path from the current request.
+	// Fetch route context from the current request context.
 	rctx := chi.RouteContext(req.Context())
 	if rctx == nil {
 		return nil, errors.New("chi.RouteContext is nil")
 	}
 
+	// Parse matched route path pattern.
 	pathTemplate := rctx.RoutePattern()
 
 	templateKey := req.Method + "-" + pathTemplate
@@ -97,6 +98,7 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 
 	v.paramCacheMu.Lock()
 	defer v.paramCacheMu.Unlock()
+
 	// Return immediately if the previous call fills the cache.
 	p, ok = v.paramCache[templateKey]
 	if ok {
@@ -124,6 +126,7 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 	// Iterate loaded paths to find the matched route.
 	for k := range analyzer.AllPaths() {
 		if strings.EqualFold(k, scopePath) {
+			// Ensure that the current API path and method are defined in the spec.
 			if _, ok := analyzer.OperationFor(req.Method, k); !ok {
 				return nil, ErrUndefinedRoute
 			}
@@ -146,12 +149,15 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
 
+	// Extract chi route context from request context to get the routing paramaters.
 	rctx := chi.RouteContext(req.Context())
 	if rctx == nil {
 		return routeParams
 	}
 
 	for i := 0; i < len(rctx.URLParams.Keys); i++ {
+		// Skip the wildcard route param. When we mount multiple chi routers, the last key name of each router is "*" with the next path pattern value.
+		// So this wildcard route param is not unnecessary for validation.
 		if rctx.URLParams.Keys[i] == "*" {
 			continue
 		}

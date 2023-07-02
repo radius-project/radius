@@ -57,6 +57,7 @@ type HandlerOptions struct {
 	// ParentRouter is the router to register the handler with.
 	ParentRouter chi.Router
 
+	// Path is the matched pattern for ParentRouter handler. This is optional and the default value is "/".
 	Path string
 
 	// ResourceType is the resource type of the operation. May be blank if Operation is specified.
@@ -78,9 +79,11 @@ type HandlerOptions struct {
 	// ControllerFactory is a function invoked to create the controller. Will be invoked once during server startup.
 	ControllerFactory ControllerFunc
 
-	Middlewares chi.Middlewares
+	// Middlewares are the middlewares to apply to the handler.
+	Middlewares []func(http.Handler) http.Handler
 }
 
+// NewSubrouter creates a new subrouter and mounts it on the parent router with the given middlewares.
 func NewSubrouter(parent chi.Router, path string, middlewares ...func(http.Handler) http.Handler) chi.Router {
 	subrouter := chi.NewRouter()
 	parent.Mount(path, subrouter)

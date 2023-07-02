@@ -42,7 +42,7 @@ const (
 func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-
+			// Skip validation for catch-all requests.
 			if IsCatchAll(r) {
 				h.ServeHTTP(w, r)
 				return
@@ -82,6 +82,8 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	}
 }
 
+// IsCatchAll returns true if the request is a catch-all request. If the matched patterns are layered with the multiple routers,
+// the matched pattern which doesn't include "/*" suffix is the last pattern.
 func IsCatchAll(r *http.Request) bool {
 	rctx := chi.RouteContext(r.Context())
 	if rctx == nil {
@@ -103,7 +105,7 @@ func IsCatchAll(r *http.Request) bool {
 func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-
+			// Skip validation for catch-all requests.
 			if IsCatchAll(r) {
 				h.ServeHTTP(w, r)
 				return
