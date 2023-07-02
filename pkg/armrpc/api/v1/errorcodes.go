@@ -53,6 +53,9 @@ const (
 	// Used for invalid object properties.
 	CodeInvalidProperties = "InvalidProperties"
 
+	// Used for invalid plane type.
+	CodeInvalidPlaneType = "InvalidPlaneType"
+
 	// Used for failed invalid spec api validation.
 	CodeHTTPRequestPayloadAPISpecValidationFailed = "HttpRequestPayloadAPISpecValidationFailed"
 )
