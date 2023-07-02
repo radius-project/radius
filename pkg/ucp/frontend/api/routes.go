@@ -39,8 +39,6 @@ import (
 const (
 	planeCollectionPath       = "/planes"
 	planeCollectionByTypePath = "/planes/{planeType}"
-	planeResourcePath         = "/planes/{planeType}/{planeName}"
-	planePrefixPathFmt        = "/planes/%s/{planeName}"
 
 	// OperationTypeKubernetesOpenAPIV2Doc is the operation type for the required OpenAPI v2 discovery document.
 	//
@@ -56,6 +54,23 @@ const (
 	// OperationTypePlanes is the operation type for the planes (specific type) endpoints
 	OperationTypePlanesByType = "PLANESBYTYPE"
 )
+
+func initModules(ctx context.Context, modules []modules.Initializer) (map[string]http.Handler, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	planeHandlers := map[string]http.Handler{}
+	for _, module := range modules {
+		logger.Info(fmt.Sprintf("Registering module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
+		handler, err := module.Initialize(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
+		}
+		planeHandlers[module.PlaneType()] = handler
+		logger.Info(fmt.Sprintf("Registered module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
+	}
+
+	return planeHandlers, nil
+}
 
 // Register registers the routes for UCP including modules.
 func Register(ctx context.Context, router chi.Router, modules []modules.Initializer, options modules.Options) error {
@@ -171,6 +186,7 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 		}
 	}
 
+	// Catch all routes for planes.
 	planeResourceRouter.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
 		planeType := chi.URLParam(r, "planeType")
 		if planeType == "" {
@@ -186,19 +202,4 @@ func Register(ctx context.Context, router chi.Router, modules []modules.Initiali
 	})
 
 	return nil
-}
-
-func initModules(ctx context.Context, modules []modules.Initializer) (map[string]http.Handler, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	planeHandlers := map[string]http.Handler{}
-	for _, module := range modules {
-		logger.Info(fmt.Sprintf("Registering module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
-		handler, err := module.Initialize(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize module for plane type %s: %w", module.PlaneType(), err)
-		}
-		planeHandlers[module.PlaneType()] = handler
-		logger.Info(fmt.Sprintf("Registered module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
-	}
-	return planeHandlers, nil
 }

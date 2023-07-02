@@ -31,11 +31,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/validator"
 )
 
 const (
+	planeScope                  = "/planes/radius/{planeName}"
 	resourceGroupCollectionPath = "/resourcegroups"
 	resourceGroupResourcePath   = "/resourcegroups/{resourceGroupName}"
 
@@ -44,7 +44,7 @@ const (
 )
 
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
-	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+modules.PlaneScope)
+	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+planeScope)
 
 	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
 
