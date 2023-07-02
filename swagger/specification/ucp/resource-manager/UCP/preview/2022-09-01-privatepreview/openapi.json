@@ -264,7 +264,7 @@
         }
       }
     },
-    "/planes/radius/{planeName}/resourcegroups": {
+    "/planes/{planeType}/{planeName}/resourcegroups": {
       "get": {
         "tags": [
           "ResourceGroups"
@@ -274,6 +274,13 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
             "$ref": "#/parameters/PlaneNameParameter"
@@ -298,7 +305,7 @@
         }
       }
     },
-    "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}": {
+    "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}": {
       "get": {
         "tags": [
           "ResourceGroups"
@@ -308,6 +315,13 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
             "$ref": "#/parameters/PlaneNameParameter"
@@ -347,6 +361,13 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
             "$ref": "#/parameters/PlaneNameParameter"
@@ -408,6 +429,13 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
             "$ref": "#/parameters/PlaneNameParameter"
