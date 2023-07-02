@@ -28,10 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/validator"
 )
 
-const (
-	PlaneScope = "/planes/{planeType}/{planeName}"
-)
-
 // Initializer is an interface that can be implemented by modules that want to provide functionality for a plane.
 type Initializer interface {
 	// Initialize initializes and returns the http.Handler that will be registered with the router to handle requests for the plane.

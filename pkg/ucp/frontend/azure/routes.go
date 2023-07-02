@@ -29,11 +29,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	azure_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/azure"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/validator"
 )
 
 const (
+	planeScope               = "/planes/azure/{planeName}"
 	credentialResourcePath   = "/providers/System.Azure/credentials/{credentialName}"
 	credentialCollectionPath = "/providers/System.Azure/credentials"
 
@@ -47,7 +47,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return nil, err
 	}
 
-	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+modules.PlaneScope)
+	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+planeScope)
 
 	// URL for operations on System.Azure provider.
 	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
