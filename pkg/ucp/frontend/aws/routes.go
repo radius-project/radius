@@ -18,7 +18,6 @@ package aws
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,8 +42,8 @@ import (
 )
 
 const (
-	planeScope             = "/planes/aws/{planeName}"
-	resourcePath           = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}/{resourceName}"
+	planeScope = "/planes/aws/{planeName}"
+
 	resourceCollectionPath = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}"
 	operationResultsPath   = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationResults/{operationId}"
 	operationStatusesPath  = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationStatuses/{operationId}"
@@ -84,8 +83,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	handlerOptions := []server.HandlerOptions{
 		{
 			// URLS for standard UCP resource async status result.
-			ParentRouter:  baseRouter,
-			Path:          operationResultsPath,
+			ParentRouter:  server.NewSubrouter(baseRouter, operationResultsPath),
 			Method:        v1.OperationGetOperationResult,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationResult},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -94,8 +92,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			// URLS for standard UCP resource async status.
-			ParentRouter:  baseRouter,
-			Path:          operationStatusesPath,
+
+			ParentRouter:  server.NewSubrouter(baseRouter, operationStatusesPath),
 			Method:        v1.OperationGetOperationStatuses,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationStatuses},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
@@ -104,10 +102,20 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 	}
 
+	resourceCollectionRouter := server.NewSubrouter(baseRouter, resourceCollectionPath)
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter:  baseRouter,
-			Path:          resourcePath,
+			// URLs for standard UCP resource lifecycle operations.
+			ParentRouter:  resourceCollectionRouter,
+			Method:        v1.OperationList,
+			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationList},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return awsproxy_ctrl.NewListAWSResources(opts, m.AWSClients)
+			},
+		},
+		{
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/{resourceName}",
 			Method:        v1.OperationPut,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPut},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
@@ -115,8 +123,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  baseRouter,
-			Path:          resourcePath,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/{resourceName}",
 			Method:        v1.OperationDelete,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDelete},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
@@ -124,8 +132,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  baseRouter,
-			Path:          resourcePath,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/{resourceName}",
 			Method:        v1.OperationGet,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGet},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -141,18 +149,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	// operations are structured so that the resource name is not part of the URL.
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			// URLs for standard UCP resource lifecycle operations.
-			ParentRouter:  baseRouter,
-			Path:          resourceCollectionPath,
-			Method:        v1.OperationList,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationList},
-			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewListAWSResources(opts, m.AWSClients)
-			},
-		},
-		{
-			ParentRouter:  baseRouter,
-			Path:          fmt.Sprintf("%s/:%s", resourceCollectionPath, "put"),
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:put",
 			Method:        v1.OperationPutImperative,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPutImperative},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -160,8 +158,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  baseRouter,
-			Path:          fmt.Sprintf("%s/:%s", resourceCollectionPath, "get"),
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:get",
 			Method:        v1.OperationGetImperative,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetImperative},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -169,8 +167,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  baseRouter,
-			Path:          fmt.Sprintf("%s/:%s", resourceCollectionPath, "delete"),
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:delete",
 			Method:        v1.OperationDeleteImperative,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDeleteImperative},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
