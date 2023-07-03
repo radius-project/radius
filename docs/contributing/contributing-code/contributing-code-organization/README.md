@@ -31,7 +31,6 @@ In general you should ask for guidance before creating a new top-level folder in
 | `corerp/`         | Resource Provider implementation for `Applications.Core` resources                      |
 | `daprrp/`         | Resource Provider implementation for `Applications.Dapr` resources                      |
 | `datastoresrp/`   | Resource Provider implementation for `Applications.Datastores` resources                |
-| `health/`         | The health monitor service                                                              |
 | `kubernetes/`     | Utility code and library integrations for working with Kubernetes                       |
 | `kubeutil/`       | Utility code and working with Kubernetes on client side                                 |
 | `linkrp/`         | Resource Provider implementation for `Applications.Link` resources                      |
