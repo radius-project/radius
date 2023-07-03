@@ -270,11 +270,6 @@ var handlerTests = []struct {
 		method:     http.MethodGet,
 		isAzureAPI: true,
 	}, {
-		name:       v1.OperationType{Type: "Applications.Core/providers", Method: v1.OperationPut}.String(),
-		url:        "/subscriptions/00000000-0000-0000-0000-000000000000?api-version=2.0",
-		method:     http.MethodPut,
-		isAzureAPI: true,
-	}, {
 		name:       v1.OperationType{Type: "Applications.Core/operationStatuses", Method: v1.OperationGetOperationStatuses}.String(),
 		url:        "/providers/applications.core/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
 		method:     http.MethodGet,
