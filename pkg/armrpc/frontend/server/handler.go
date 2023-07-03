@@ -24,12 +24,12 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	chi_middleware "github.com/go-chi/chi/v5/middleware"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -147,7 +147,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 		opts.Path = "/"
 	}
 
-	middlewares := append(opts.Middlewares, chi_middleware.WithValue(v1.OperationTypeContextKey, opts.OperationType.String()))
+	middlewares := append(opts.Middlewares, servicecontext.WithOperationType(*opts.OperationType))
 	handler := HandlerForController(ctrl)
 	if opts.Path == "/*" {
 		opts.ParentRouter.HandleFunc(opts.Path, handler)
