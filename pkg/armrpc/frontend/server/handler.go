@@ -147,13 +147,15 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 		opts.Path = "/"
 	}
 
-	handler := HandlerForController(ctrl)
 	middlewares := append(opts.Middlewares, chi_middleware.WithValue(v1.OperationTypeContextKey, opts.OperationType.String()))
-	namedRouter := opts.ParentRouter.With(middlewares...)
-	if opts.Method == "" {
-		namedRouter.HandleFunc(opts.Path, handler)
+	handler := HandlerForController(ctrl)
+	if opts.Path == "/*" {
+		opts.ParentRouter.HandleFunc(opts.Path, handler)
 	} else {
-		namedRouter.Method(opts.Method.HTTPMethod(), opts.Path, handler)
+		if opts.Method == "" {
+			return errors.New("method must be specified if the path is not /*")
+		}
+		opts.ParentRouter.With(middlewares...).MethodFunc(opts.Method.HTTPMethod(), opts.Path, handler)
 	}
 
 	return nil
@@ -200,17 +202,8 @@ func ConfigureDefaultHandlers(
 		if err != nil {
 			return err
 		}
+		// Add the subscription lifecycle handler later when we build Azure resource provider.
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-		err = RegisterHandler(ctx, HandlerOptions{
-			ParentRouter:      rootRouter,
-			Path:              rootScopePath,
-			ResourceType:      rt,
-			Method:            v1.OperationPut,
-			ControllerFactory: defaultoperation.NewCreateOrUpdateSubscription,
-		}, ctrlOpts)
-		if err != nil {
-			return err
-		}
 	}
 
 	statusRT := providerNamespace + "/operationstatuses"
