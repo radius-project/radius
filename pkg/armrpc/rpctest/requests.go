@@ -26,6 +26,14 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
+func MustParseOperationType(operationType string) v1.OperationType {
+	opType, ok := v1.ParseOperationType(operationType)
+	if !ok {
+		panic("invalid operation type: " + operationType)
+	}
+	return opType
+}
+
 func GetARMTestHTTPRequestFromURL(ctx context.Context, method string, url string, body []byte) (*http.Request, error) {
 	headers := map[string]string{
 		"Accept":          "application/json",

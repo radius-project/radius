@@ -179,7 +179,7 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMR
 	msg := &ctrl.Request{
 		APIVersion:       sCtx.APIVersion,
 		OperationID:      sCtx.OperationID,
-		OperationType:    sCtx.OperationType,
+		OperationType:    sCtx.OperationType.String(),
 		ResourceID:       aos.LinkedResourceID,
 		CorrelationID:    sCtx.CorrelationID,
 		TraceparentID:    trace.ExtractTraceparent(ctx),

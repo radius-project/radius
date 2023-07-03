@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
@@ -83,7 +84,7 @@ func TestRequest_ARMRequestContext(t *testing.T) {
 				ResourceID:     parsedResourceID,
 				CorrelationID:  "test-correlation-id",
 				OperationID:    opID,
-				OperationType:  "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
+				OperationType:  rpctest.MustParseOperationType("APPLICATIONS.CORE/ENVIRONMENTS|PUT"),
 				Traceparent:    "test-traceparent-id",
 				HomeTenantID:   "test-home-tenant-id",
 				ClientObjectID: "test-client-object-id",
