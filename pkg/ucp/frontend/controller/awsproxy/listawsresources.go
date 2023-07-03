@@ -39,7 +39,9 @@ type ListAWSResources struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewListAWSResources creates a new ListAWSResources.
+// # Function Explanation
+//
+// NewListAWSResources creates a new ListAWSResources controller with the given options and AWS clients.
 func NewListAWSResources(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &ListAWSResources{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
@@ -47,6 +49,10 @@ func NewListAWSResources(opts armrpc_controller.Options, awsClients ucp_aws.Clie
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() reads the region from the request, uses the AWS resource type from the context, and lists the
+// resources in the region, returning a response with the list of resources.
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)

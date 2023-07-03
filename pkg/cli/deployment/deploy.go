@@ -56,6 +56,9 @@ type ResourceDeploymentClient struct {
 
 var _ clients.DeploymentClient = (*ResourceDeploymentClient)(nil)
 
+// # Function Explanation
+//
+// Deploy starts a deployment, monitors its progress, and returns the deployment summary when it is complete, or an error if one occurs.
 func (dc *ResourceDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	// Used for graceful shutdown of the polling listener.
 	wg := sync.WaitGroup{}
@@ -133,6 +136,9 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 	return poller, nil
 }
 
+// # Function Explanation
+//
+// GetProviderConfigs() creates a default provider config and then updates it with any provider scopes passed in the DeploymentOptions.
 func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.DeploymentOptions) sdkclients.ProviderConfig {
 	providerConfig := sdkclients.NewDefaultProviderConfig(dc.RadiusResourceGroup)
 	// if there are no providers, then return default provider config

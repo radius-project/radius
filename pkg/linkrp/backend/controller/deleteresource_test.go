@@ -44,6 +44,7 @@ var outputResource = rpv1.OutputResource{
 }
 
 func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
+	resourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0"
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
@@ -53,7 +54,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
 			OperationType:    "APPLICATIONS.LINK/MONGODATABASES|DELETE",
-			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0",
+			ResourceID:       resourceID,
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
@@ -72,7 +73,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 		scDelErr     error
 	}{
 		{"delete-existing-resource", nil, nil, nil},
-		{"delete-non-existing-resource", &store.ErrNotFound{}, nil, nil},
+		{"delete-non-existing-resource", &store.ErrNotFound{ID: resourceID}, nil, nil},
 		{"delete-resource-client-delete-error", nil, errors.New("resource client delete error"), nil},
 		{"delete-resource-delete-from-db-error", nil, nil, errors.New("delete from db error")},
 	}

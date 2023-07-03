@@ -41,7 +41,10 @@ type DeleteAWSCredential struct {
 	secretClient secret.Client
 }
 
-// NewDeleteAWSCredential creates a new DeleteCredential.
+// # Function Explanation
+//
+// NewDeleteAWSCredential creates a new DeleteAWSCredential controller which is used to delete AWS credentials from the
+// secret store, and returns it along with any errors that may have occurred.
 func NewDeleteAWSCredential(opts armrpc_controller.Options, secretClient secret.Client) (armrpc_controller.Controller, error) {
 	return &DeleteAWSCredential{
 		Operation: armrpc_controller.NewOperation(opts,
@@ -53,6 +56,10 @@ func NewDeleteAWSCredential(opts armrpc_controller.Options, secretClient secret.
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() checks if the AWS Credential exists, deletes the associated secret, and then deletes the AWS Credential from storage.
+// If the AWS Credential does not exist, it returns a No Content response. If an error occurs, it returns an error.
 func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
@@ -81,7 +88,7 @@ func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, re
 	}
 
 	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err

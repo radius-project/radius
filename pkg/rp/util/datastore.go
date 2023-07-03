@@ -44,7 +44,7 @@ func FetchScopeResource(ctx context.Context, sp dataprovider.DataStorageProvider
 	}
 
 	res, err := sc.Get(ctx, id.String())
-	if errors.Is(&store.ErrNotFound{}, err) {
+	if errors.Is(&store.ErrNotFound{ID: id.String()}, err) {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("linked resource %s does not exist", scopeID))
 	}
 	if err != nil {
