@@ -84,7 +84,7 @@ type TestResourceProperties struct {
 
 // # Function Explanation
 //
-// ConvertTo() takes in a TestResource object and returns a TestResourceDataModel object and no error.
+// ConvertTo converts a TestResource object into a TestResourceDataModel object.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
@@ -112,8 +112,8 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom function takes in a DataModelInterface and returns an error if the conversion is not
-// successful. It then assigns the values from the DataModelInterface to the TestResource struct.
+// ConvertFrom function populates the TestResource instance from a given DataModelInterface.
+// It returns an error if the conversion fails.
 func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {

@@ -79,8 +79,8 @@ type HandlerOptions struct {
 //
 // # Function Explanation
 //
-// HandlerForController is a function that takes in a controller and returns a http.HandlerFunc which adds request
-// attributes to the context, runs the controller, and handles any errors that occur.
+// HandlerForController creates a http.HandlerFunc function that runs resource provider frontend controller, renders a
+// http response from the returned rest.Response, and handles the error as a default internal error if this controller returns error.
 func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -105,11 +105,6 @@ func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 
 // RegisterHandler registers a handler for the given resource type and method. This function should only
 // be used for controllers that process a single resource type.
-//
-// # Function Explanation
-//
-// RegisterHandler creates a new route for the specified resource type and method, and assigns a handler for the
-// controller associated with the resource type. If an error occurs, it is returned.
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Options) error {
 	if opts.OperationType == nil && (opts.ResourceType == "" || opts.Method == "") {
 		return fmt.Errorf("the resource type and method must be specified if the operation type is not specified")
@@ -158,8 +153,8 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 
 // # Function Explanation
 //
-// ConfigureDefaultHandlers registers handlers for the default operations such as getting operation statuses and
-// results, and creating or updating a subscription. It returns an error if any of the handler registrations fail.
+// ConfigureDefaultHandlers registers handlers for the default operations such as getting operationStatuses and
+// operationResults, and updating a subscription lifecycle. It returns an error if any of the handler registrations fail.
 func ConfigureDefaultHandlers(
 	ctx context.Context,
 	rootRouter *mux.Router,
@@ -220,13 +215,7 @@ func ConfigureDefaultHandlers(
 	return nil
 }
 
-// HandleError creates the internal error respones with 500 code.
-//
-// # Function Explanation
-//
-// HandleError logs the error and then attempts to write an appropriate response to the http.ResponseWriter based on the
-// type of error. If an error occurs while writing the response, it logs the error and writes a generic internal server
-// error response.
+// HandleError handles unhandled errors from frontend controller and creates internal server error response based on the error type.
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")

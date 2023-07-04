@@ -88,8 +88,7 @@ func (s *Service) Init(ctx context.Context) error {
 //
 // # Function Explanation
 //
-// Start sets up a server to listen on a given address and handles shutdown based on the context, returning an
-// error if one occurs.
+// Start starts listening on a given address and shutdown the server gracefully when context is cancelled.
 func (s *Service) Start(ctx context.Context, opt Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)

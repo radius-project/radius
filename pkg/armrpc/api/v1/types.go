@@ -63,8 +63,8 @@ var operationMethodToHTTPMethod = map[OperationMethod]string{
 //
 // # Function Explanation
 //
-// HTTPMethod returns the corresponding HTTP method for the given OperationMethod, or POST if
-// no corresponding method is found. If an error occurs, the function will return POST.
+// HTTPMethod returns HTTP method corresponding to the given OperationMethod, or POST if
+// no corresponding method is found.
 func (o OperationMethod) HTTPMethod() string {
 	m, ok := operationMethodToHTTPMethod[o]
 	if !ok {
