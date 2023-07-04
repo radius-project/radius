@@ -181,7 +181,10 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	//
 	// These use the OpenAPI spec validator. General AWS operations DO NOT use the spec validator
 	// because we rely on CloudControl's validation.
-	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
+	apiValidator := validator.APIValidator(validator.Options{
+		SpecLoader:         m.options.SpecLoader,
+		ResourceTypeGetter: validator.UCPResourceTypeGetter,
+	})
 
 	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath, apiValidator)
 	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath, apiValidator)

@@ -74,7 +74,10 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 		return err
 	}
 
-	validator := validator.APIValidator(specLoader)
+	validator := validator.APIValidator(validator.Options{
+		SpecLoader:         specLoader,
+		ResourceTypeGetter: validator.RadiusResourceTypeGetter,
+	})
 
 	envPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/environments")
 	envCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/environments")

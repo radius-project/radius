@@ -156,7 +156,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app := http.Handler(r)
 	app = servicecontext.ARMRequestCtx(s.options.PathBase, "global")(app)
-	app = middleware.AppendLogValues("ucp")(app)
+	app = middleware.WithLogger("ucp")(app)
 
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),

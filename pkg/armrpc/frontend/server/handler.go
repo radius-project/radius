@@ -36,7 +36,15 @@ import (
 )
 
 const (
+	// APIVersion is a query-string for the API version of resource provider.
 	APIVersionParam = "api-version"
+
+	// CatchAllPath is the path for the catch-all route.
+	CatchAllPath = "/*"
+)
+
+var (
+	ErrInvalidOperationTypeOption = errors.New("the resource type and method must be specified if the operation type is not specified")
 )
 
 type ControllerFunc func(ctrl.Options) (ctrl.Controller, error)
@@ -123,7 +131,7 @@ func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 // be used for controllers that process a single resource type.
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Options) error {
 	if opts.OperationType == nil && (opts.ResourceType == "" || opts.Method == "") {
-		return fmt.Errorf("the resource type and method must be specified if the operation type is not specified")
+		return ErrInvalidOperationTypeOption
 	}
 
 	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
@@ -149,13 +157,11 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 	middlewares := append(opts.Middlewares, servicecontext.WithOperationType(*opts.OperationType))
 	handler := HandlerForController(ctrl)
-	if opts.Path == "/*" {
-		opts.ParentRouter.HandleFunc(opts.Path, handler)
+	namedRouter := opts.ParentRouter.With(middlewares...)
+	if opts.Path == CatchAllPath {
+		namedRouter.HandleFunc(opts.Path, handler)
 	} else {
-		if opts.Method == "" {
-			return errors.New("method must be specified if the path is not /*")
-		}
-		opts.ParentRouter.With(middlewares...).MethodFunc(opts.Method.HTTPMethod(), opts.Path, handler)
+		namedRouter.MethodFunc(opts.OperationType.Method.HTTPMethod(), opts.Path, handler)
 	}
 
 	return nil

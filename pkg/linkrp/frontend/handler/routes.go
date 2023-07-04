@@ -103,7 +103,10 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		return err
 	}
 
-	validator := validator.APIValidator(specLoader)
+	validator := validator.APIValidator(validator.Options{
+		SpecLoader:         specLoader,
+		ResourceTypeGetter: validator.RadiusResourceTypeGetter,
+	})
 
 	rmqPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.messaging/rabbitmqqueues")
 	rmqCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues")
@@ -229,7 +232,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		return err
 	}
 
-	validator := validator.APIValidator(specLoader)
+	validator := validator.APIValidator(validator.Options{
+		SpecLoader:         specLoader,
+		ResourceTypeGetter: validator.RadiusResourceTypeGetter,
+	})
 
 	pubsubPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprpubsubbrokers")
 	pubsubCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers")
@@ -535,7 +541,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		return err
 	}
 
-	validator := validator.APIValidator(specLoader)
+	validator := validator.APIValidator(validator.Options{
+		SpecLoader:         specLoader,
+		ResourceTypeGetter: validator.RadiusResourceTypeGetter,
+	})
 
 	mongoPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/mongodatabases")
 	mongoCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/mongodatabases")
@@ -856,7 +865,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		return err
 	}
 
-	validator := validator.APIValidator(specLoader)
+	validator := validator.APIValidator(validator.Options{
+		SpecLoader:         specLoader,
+		ResourceTypeGetter: validator.RadiusResourceTypeGetter,
+	})
 
 	mongoPlaneScopeRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/mongodatabases")
 	mongoCollectionRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/mongodatabases")
