@@ -53,7 +53,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.AppendLogValues(options.ProviderNamespace))
+	r.Use(middleware.WithLogger(options.ProviderNamespace))
 
 	r.NotFound(validator.APINotFoundHandler())
 	r.MethodNotAllowed(validator.APIMethodNotAllowedHandler())

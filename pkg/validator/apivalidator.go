@@ -38,17 +38,44 @@ const (
 	UCPApiVersion   = "2022-09-01-privatepreview"
 )
 
+// Options represents the options for APIValidator.
+type Options struct {
+	// SpecLoader is the loader to load the OpenAPI spec.
+	SpecLoader *Loader
+
+	// ResourceType is the function to get the resource type from the request.
+	ResourceTypeGetter func(*http.Request) (string, error)
+}
+
+// RadiusResourceTypeGetter is the function to get the resource type for Radius resource ID.
+func RadiusResourceTypeGetter(r *http.Request) (string, error) {
+	resourceID, err := resources.ParseByMethod(r.URL.Path, r.Method)
+	if err != nil {
+		return "", err
+	}
+	return resourceID.Type(), nil
+}
+
+// UCPEndpointTypeGetter is the function to get the resource type for UCP.
+func UCPResourceTypeGetter(r *http.Request) (string, error) {
+	return UCPEndpointType, nil
+}
+
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.
-func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
+func APIValidator(options Options) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			// Skip validation for catch-all requests.
-			if IsCatchAll(r) {
+			if isCatchAllRoute(r) {
 				h.ServeHTTP(w, r)
 				return
 			}
 
-			rID, err := resources.ParseByMethod(r.URL.Path, r.Method)
+			if options.ResourceTypeGetter == nil {
+				panic("options.ResourceType must be specified")
+			}
+
+			resourceType, err := options.ResourceTypeGetter(r)
 			if err != nil {
 				resp := invalidResourceIDResponse(r.URL.Path)
 				if err := resp.Apply(r.Context(), w, r); err != nil {
@@ -58,9 +85,9 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 			}
 
 			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
-			v, ok := loader.GetValidator(rID.Type(), apiVersion)
+			v, ok := options.SpecLoader.GetValidator(resourceType, apiVersion)
 			if !ok {
-				resp := unsupportedAPIVersionResponse(apiVersion, rID.Type(), loader.SupportedVersions(rID.Type()))
+				resp := unsupportedAPIVersionResponse(apiVersion, resourceType, options.SpecLoader.SupportedVersions(resourceType))
 				if err := resp.Apply(r.Context(), w, r); err != nil {
 					handleError(r.Context(), w, err)
 				}
@@ -69,7 +96,7 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 
 			errs := v.ValidateRequest(r)
 			if errs != nil {
-				resp := validationFailedResponse(rID.Type()+"/"+rID.Name(), errs)
+				resp := validationFailedResponse(resourceType, errs)
 				if err := resp.Apply(r.Context(), w, r); err != nil {
 					handleError(r.Context(), w, err)
 				}
@@ -82,9 +109,9 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	}
 }
 
-// IsCatchAll returns true if the request is a catch-all request. If the matched patterns are layered with the multiple routers,
+// isCatchAllRoute returns true if the request is a catch-all request. If the matched patterns are layered with the multiple routers,
 // the matched pattern which doesn't include "/*" suffix is the last pattern.
-func IsCatchAll(r *http.Request) bool {
+func isCatchAllRoute(r *http.Request) bool {
 	rctx := chi.RouteContext(r.Context())
 	if rctx == nil {
 		return false
@@ -99,41 +126,6 @@ func IsCatchAll(r *http.Request) bool {
 	}
 
 	return false
-}
-
-// APIValidatorUCP is the middleware to validate incoming request for UCP with OpenAPI spec.
-func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			// Skip validation for catch-all requests.
-			if IsCatchAll(r) {
-				h.ServeHTTP(w, r)
-				return
-			}
-
-			endpointType := UCPEndpointType
-			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
-			v, ok := loader.GetValidator(endpointType, apiVersion)
-			if !ok {
-				resp := unsupportedAPIVersionResponse(apiVersion, endpointType, loader.SupportedVersions(endpointType))
-				if err := resp.Apply(r.Context(), w, r); err != nil {
-					handleError(r.Context(), w, err)
-				}
-				return
-			}
-			errs := v.ValidateRequest(r)
-			if errs != nil {
-				resp := validationFailedResponse(endpointType, errs)
-				if err := resp.Apply(r.Context(), w, r); err != nil {
-					handleError(r.Context(), w, err)
-				}
-				return
-			}
-			h.ServeHTTP(w, r)
-		}
-
-		return http.HandlerFunc(fn)
-	}
 }
 
 func invalidResourceIDResponse(id string) rest.Response {

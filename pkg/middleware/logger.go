@@ -23,8 +23,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// Append logger values to the context based on the Resource ID (if present).
-func AppendLogValues(serviceName string) func(h http.Handler) http.Handler {
+// WithLogger adds logger to the context based on the Resource ID (if present).
+func WithLogger(serviceName string) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			id, err := resources.Parse(r.URL.Path)
@@ -35,9 +35,7 @@ func AppendLogValues(serviceName string) func(h http.Handler) http.Handler {
 			}
 
 			ctx := ucplog.WrapLogContext(r.Context(), ucplog.LogFieldResourceID, id.String())
-
-			r = r.WithContext(ctx)
-			h.ServeHTTP(w, r)
+			h.ServeHTTP(w, r.WithContext(ctx))
 		}
 
 		return http.HandlerFunc(fn)

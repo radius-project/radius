@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,9 +72,10 @@ func (r *Request) ARMRequestContext() (*v1.ARMRequestContext, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	opType, ok := v1.ParseOperationType(r.OperationType)
 	if !ok {
-		return nil, errors.New("failed to parse operation type")
+		return nil, v1.ErrInvalidOperationType
 	}
 
 	rpcCtx := &v1.ARMRequestContext{

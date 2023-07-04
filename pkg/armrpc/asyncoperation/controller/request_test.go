@@ -17,8 +17,8 @@ limitations under the License.
 package controller
 
 import (
+	"errors"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -48,28 +48,37 @@ func TestRequest_ARMRequestContext(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name    string
-		req     *Request
-		want    *v1.ARMRequestContext
-		wantErr bool
+		name string
+		in   *Request
+		out  *v1.ARMRequestContext
+		err  error
 	}{
 		{
-			name:    "empty request",
-			req:     &Request{},
-			want:    nil,
-			wantErr: true,
+			name: "empty request",
+			in:   &Request{},
+			out:  nil,
+			err:  errors.New("'' is not a valid resource id"),
 		},
 		{
 			name: "invalid id",
-			req: &Request{
+			in: &Request{
 				ResourceID: "invalid",
 			},
-			want:    nil,
-			wantErr: true,
+			out: nil,
+			err: errors.New("'invalid' is not a valid resource id"),
 		},
 		{
-			name: "happy path",
-			req: &Request{
+			name: "invalid operation type",
+			in: &Request{
+				ResourceID:    resourceID,
+				OperationType: "invalid operation type",
+			},
+			out: nil,
+			err: v1.ErrInvalidOperationType,
+		},
+		{
+			name: "valid request",
+			in: &Request{
 				ResourceID:     resourceID,
 				CorrelationID:  "test-correlation-id",
 				OperationID:    opID,
@@ -80,7 +89,7 @@ func TestRequest_ARMRequestContext(t *testing.T) {
 				APIVersion:     "2021-01-01",
 				AcceptLanguage: "en-US",
 			},
-			want: &v1.ARMRequestContext{
+			out: &v1.ARMRequestContext{
 				ResourceID:     parsedResourceID,
 				CorrelationID:  "test-correlation-id",
 				OperationID:    opID,
@@ -91,18 +100,17 @@ func TestRequest_ARMRequestContext(t *testing.T) {
 				APIVersion:     "2021-01-01",
 				AcceptLanguage: "en-US",
 			},
-			wantErr: false,
+			err: nil,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.req.ARMRequestContext()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Request.ARMRequestContext() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Request.ARMRequestContext() = %v, want %v", got, tt.want)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rpcContext, err := tc.in.ARMRequestContext()
+			if tc.err != nil {
+				require.ErrorContains(t, err, tc.err.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.out, rpcContext)
 			}
 		})
 	}

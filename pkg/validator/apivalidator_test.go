@@ -34,6 +34,7 @@ import (
 )
 
 const (
+	resourceGroupResource             = "/resourceGroups/{resourceGroupName}"
 	environmentCollectionRoute        = "/providers/applications.core/environments"
 	environmentResourceRoute          = "/providers/applications.core/environments/{environmentName}"
 	armResourceGroupScopedResourceURL = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
@@ -46,8 +47,8 @@ const (
 	digitUCPResourceURL               = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
 
 	armResourceGroupScopedCollectionURL = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments"
-	armSubscriptionScopedCollectionURL  = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments"
-	ucpResourceGroupScopeCollectionURL  = "http://localhost:8080/planes/radius/local/providers/applications.core/environments"
+	armSubscriptionScopedCollectionURL  = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/environments"
+	ucpResourceGroupScopeCollectionURL  = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments"
 	ucpPlaneScopedCollectionURL         = "http://localhost:8080/planes/radius/local/providers/applications.core/environments"
 
 	operationGetRoute    = "/providers/applications.core/operations"
@@ -55,14 +56,14 @@ const (
 )
 
 func Test_APIValidator_ARMID(t *testing.T) {
-	runTest(t, armResourceGroupScopedResourceURL, "/subscriptions/{subscriptionID}/resourceGroups/{resourceGroupName}", []string{"/subscriptions/{subscriptionID}/resourceGroups/{resourceGroupName}", "/subscriptions/{subscriptionID}"})
+	runTest(t, armResourceGroupScopedResourceURL, "/subscriptions/", "/subscriptions/{subscriptionID}", []string{"/subscriptions/{subscriptionID}/resourceGroups/{resourceGroupName}", "/subscriptions/{subscriptionID}"})
 }
 
 func Test_APIValidator_UCPID(t *testing.T) {
-	runTest(t, ucpResourceGroupScopedResourceURL, "/planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}", []string{"/planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}", "/planes/{planeType}/{planeName}"})
+	runTest(t, ucpResourceGroupScopedResourceURL, "/planes/", "/planes/{planeType}/{planeName}", []string{"/planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}", "/planes/{planeType}/{planeName}"})
 }
 
-func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []string) {
+func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, prefixes []string) {
 	// Load OpenAPI Spec for applications.core provider.
 	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, prefixes, "rootScope")
 
@@ -121,20 +122,9 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: nil,
 		},
 		{
-			desc:            "skip validation of /subscriptions/{subscriptionID}",
-			method:          http.MethodPut,
-			rootScope:       "",
-			route:           subscriptionPUTRoute,
-			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-valid.json",
-			url:             "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000",
-			responseCode:    http.StatusAccepted,
-			validationErr:   nil,
-		},
-		{
 			desc:            "valid environment resource",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -145,7 +135,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "valid environment resource for selfhost",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid-selfhost.json",
@@ -156,7 +146,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:          "valid get-environment",
 			method:        http.MethodGet,
-			rootScope:     rootscope,
+			rootScope:     planeRootScope + resourceGroupResource,
 			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
@@ -166,7 +156,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:          "valid list-environment with azure resource group",
 			method:        http.MethodGet,
-			rootScope:     rootscope,
+			rootScope:     planeRootScope + resourceGroupResource,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           armResourceGroupScopedCollectionURL,
@@ -176,7 +166,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:          "valid list-environment with azure subscription",
 			method:        http.MethodGet,
-			rootScope:     rootscope,
+			rootScope:     planeRootScope,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           armSubscriptionScopedCollectionURL,
@@ -186,7 +176,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:          "valid list-environment with UCP resource group",
 			method:        http.MethodGet,
-			rootScope:     rootscope,
+			rootScope:     planeRootScope + resourceGroupResource,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           ucpResourceGroupScopeCollectionURL,
@@ -196,7 +186,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:          "valid list-environment with UCP plane",
 			method:        http.MethodGet,
-			rootScope:     rootscope,
+			rootScope:     planeRootScope,
 			route:         environmentCollectionRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           ucpPlaneScopedCollectionURL,
@@ -206,7 +196,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:          "valid delete-environment with azure resource id",
 			method:        http.MethodDelete,
-			rootScope:     rootscope,
+			rootScope:     planeRootScope + resourceGroupResource,
 			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
@@ -216,7 +206,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "invalid put-environment with invalid api-version",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-06-20-privatepreview", // unsupported api version
 			contentFilePath: "put-environments-valid.json",
@@ -232,7 +222,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "invalid put-environment with missing location property bag",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-location.json",
@@ -241,7 +231,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -255,7 +245,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "invalid put-environment with missing kind property",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-kind.json",
@@ -264,7 +254,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -278,7 +268,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "invalid put-environment with multiple errors",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-locationandkind.json",
@@ -287,7 +277,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -305,7 +295,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "invalid put-environment with invalid json doc",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-json.json",
@@ -314,7 +304,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -328,7 +318,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "env name too long",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -337,7 +327,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -351,7 +341,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "env name too long",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -360,7 +350,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -374,7 +364,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -383,7 +373,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env_name0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -397,7 +387,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -406,7 +396,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env_name0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -420,7 +410,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -429,7 +419,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/0env",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -443,7 +433,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 		{
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
-			rootScope:       rootscope,
+			rootScope:       planeRootScope + resourceGroupResource,
 			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
@@ -452,7 +442,7 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/0env",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -483,13 +473,23 @@ func runTest(t *testing.T, resourceIDUrl string, rootscope string, prefixes []st
 			})
 
 			if tc.rootScope != "" {
-				if !strings.Contains(tc.url, tc.rootScope) {
+				if !strings.Contains(tc.url, targetScope) {
 					return
 				}
 
 				// Add API validator middleware
-				validator := APIValidator(l)
-				r.Route(tc.rootScope+tc.route, func(r chi.Router) {
+				validator := APIValidator(Options{
+					SpecLoader:         l,
+					ResourceTypeGetter: RadiusResourceTypeGetter,
+				})
+
+				subRouter := chi.NewRouter()
+				// chi.Mount will create catch-all route (/*) for subRouter.
+				r.Mount(tc.rootScope, subRouter)
+				// Add API validator middleware to subRouter to validate IsCatchAll.
+				subRouter.Use(validator)
+
+				subRouter.Route(tc.route, func(r chi.Router) {
 					r.Use(validator)
 					r.MethodFunc(tc.method, "/", func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusAccepted)

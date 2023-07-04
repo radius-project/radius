@@ -50,7 +50,10 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+planeScope)
 
 	// URL for operations on System.Azure provider.
-	apiValidator := validator.APIValidatorUCP(m.options.SpecLoader)
+	apiValidator := validator.APIValidator(validator.Options{
+		SpecLoader:         m.options.SpecLoader,
+		ResourceTypeGetter: validator.UCPResourceTypeGetter,
+	})
 
 	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath, apiValidator)
 	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath, apiValidator)
@@ -105,7 +108,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			// Method deliberately omitted. This is a catch-all route for proxying.
 			ParentRouter:      baseRouter,
-			Path:              "/*",
+			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy},
 			ControllerFactory: planes_ctrl.NewProxyPlane,
 		},

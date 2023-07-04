@@ -112,7 +112,10 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 	}
 
 	// This router applies validation and will be used for CRUDL operations on planes
-	apiValidator := validator.APIValidatorUCP(options.SpecLoader)
+	apiValidator := validator.APIValidator(validator.Options{
+		SpecLoader:         options.SpecLoader,
+		ResourceTypeGetter: validator.UCPResourceTypeGetter,
+	})
 
 	// Configures planes collection and resource routes.
 	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, apiValidator)
@@ -190,7 +193,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 	}
 
 	// Catch all route paths and forward to the appropriate module handlers.
-	planeNameRouter.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+	planeNameRouter.HandleFunc(server.CatchAllPath, func(w http.ResponseWriter, r *http.Request) {
 		planeType := chi.URLParam(r, "planeType")
 		if planeType != "" {
 			// Clear the route context in request context before forwarding the request to the module handler.

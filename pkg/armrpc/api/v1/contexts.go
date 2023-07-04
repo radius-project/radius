@@ -30,7 +30,4 @@ var (
 
 	// HostingConfigContextKey is the context key for hosting configuration.
 	HostingConfigContextKey = &contextKey{"hostingConfig"}
-
-	// OperationTypeContextKey is the context key for operation type.
-	OperationTypeContextKey = &contextKey{"operationType"}
 )
