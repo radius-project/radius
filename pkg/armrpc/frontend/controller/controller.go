@@ -111,10 +111,6 @@ type BaseController struct {
 }
 
 // NewBaseController creates BaseController instance.
-//
-// # Function Explanation
-//
-// NewBaseController creates a new BaseController struct with the given Options.
 func NewBaseController(options Options) BaseController {
 	return BaseController{
 		options,
@@ -122,46 +118,26 @@ func NewBaseController(options Options) BaseController {
 }
 
 // StorageClient gets storage client for this controller.
-//
-// # Function Explanation
-//
-// StorageClient() returns the StorageClient from the options struct of the BaseController struct.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
 
 // DataProvider gets data storage provider for this controller.
-//
-// # Function Explanation
-//
-// DataProvider() is a function that returns the DataStorageProvider from the options struct of the BaseController.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
 }
 
 // KubeClient gets Kubernetes client for this controller.
-//
-// # Function Explanation
-//
-// KubeClient() returns the KubeClient from the options struct of the BaseController struct.
 func (b *BaseController) KubeClient() runtimeclient.Client {
 	return b.options.KubeClient
 }
 
 // ResourceType gets the resource type for this controller.
-//
-// # Function Explanation
-//
-// ResourceType() returns the resource type of the BaseController object, or an error if the resource type is not set.
 func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
 
-// DeploymentProcessor gets the deployment processor for this controller.
-//
-// # Function Explanation
-//
-// StatusManager() returns the StatusManager from the options of the BaseController.
+// StatusManager gets the StatusManager of this controller.
 func (b *BaseController) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
 }
@@ -170,7 +146,8 @@ func (b *BaseController) StatusManager() sm.StatusManager {
 //
 // # Function Explanation
 //
-// GetResource() retrieves a resource from the storage client and returns the ETag of the resource and an error if one occurs.
+// GetResource gets a resource from data store for id, set the retrieved resource to out argument and returns 
+// the ETag of the resource and an error if one occurs.
 func (c *BaseController) GetResource(ctx context.Context, id string, out any) (etag string, err error) {
 	etag = ""
 	var res *store.Object
@@ -187,8 +164,7 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out any) (e
 //
 // # Function Explanation
 //
-// SaveResource() saves a resource to the store, taking in a context, an ID, an input and an ETag,
-// and returns a store object or an error if the save fails.
+// SaveResource saves a resource to the data store with an ETag and returns a store object or an error if the save fails.
 func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*store.Object, error) {
 	nr := &store.Object{
 		Metadata: store.Metadata{

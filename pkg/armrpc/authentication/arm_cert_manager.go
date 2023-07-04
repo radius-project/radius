@@ -39,11 +39,6 @@ type ArmCertManager struct {
 }
 
 // NewArmCertManager creates a new ArmCertManager
-//
-// # Function Explanation
-//
-// NewArmCertManager creates a new ArmCertManager struct with the given ARM metadata endpoint, log and a default period of
-// 1 hour, and returns a pointer to it.
 func NewArmCertManager(armMetaEndpoint string, log logr.Logger) *ArmCertManager {
 	certMgr := ArmCertManager{
 		armMetaEndpoint: armMetaEndpoint,
@@ -86,7 +81,7 @@ func IsValidThumbprint(thumbprint string) bool {
 	return false
 }
 
-// Start() fetching the client certificates from the arm metadata endpoint during service start up
+// Start fetches the client certificates from the arm metadata endpoint during service start up
 // and runs in the background the periodic certificate refresher.
 func (acm *ArmCertManager) Start(ctx context.Context) error {
 	certs, err := acm.refreshCert()

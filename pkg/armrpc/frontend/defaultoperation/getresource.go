@@ -43,12 +43,8 @@ func NewGetResource[P interface {
 	}, nil
 }
 
-// Run fetches the resource from the datastore.
-//
-// # Function Explanation
-//
-// Run() function retrieves a resource from the context, and if it exists, constructs a response with the resource and etag.
-// If the resource does not exist, a NotFoundResponse is returned. If an error occurs, an error is returned.
+// Run returns the requested resource from the datastore with etag. 
+// If the resource does not exist, a not found response is returned. If an error occurs, an error is returned as an internal error.
 func (e *GetResource[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

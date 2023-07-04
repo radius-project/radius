@@ -245,7 +245,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 //
 // # Function Explanation
 //
-// SystemData() parses the RawSystemMetadata field of the ARMRequestContext struct and returns a
+// SystemData parses the RawSystemMetadata field of the ARMRequestContext struct and returns a
 // SystemData struct, returning an empty SystemData struct if an error occurs during the parsing.
 func (rc ARMRequestContext) SystemData() *SystemData {
 	if rc.RawSystemMetadata == "" {
@@ -286,7 +286,7 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 //
 // # Function Explanation
 //
-// ARMRequestContextFromContext retrieves an ARMRequestContext from a given context, returning an error if the context does
+// ARMRequestContextFromContext retrieves an ARMRequestContext from a given context. Panic if the context does
 // not contain an ARMRequestContext.
 func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 	return ctx.Value(armContextKey).(*ARMRequestContext)

@@ -36,7 +36,7 @@ type Result struct {
 //
 // # Function Explanation
 //
-// NewCanceledResult creates a new Result object with a canceled status and the given message, and returns it.
+// NewCanceledResult creates a new Result object with a canceled status and the given message.
 func NewCanceledResult(message string) Result {
 	r := Result{}
 	r.SetCanceled(message)
@@ -72,7 +72,7 @@ func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 // # Function Explanation
 //
 // SetCanceled sets the Result's Requeue field to false, sets the ProvisioningState to Canceled and sets the Error field
-// to an ErrorDetails object with the given message, or creates a new Result if one is not provided.
+// to an ErrorDetails object with the given message.
 func (r *Result) SetCanceled(message string) {
 	if r == nil {
 		r = &Result{}

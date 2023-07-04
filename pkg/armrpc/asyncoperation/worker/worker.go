@@ -121,9 +121,8 @@ func New(
 //
 // # Function Explanation
 //
-// Start() starts a loop to process messages from a queue concurrently, and handles
-// deduplication, updating resource and operation status, and running the operation. It returns an error if it fails to
-// start the dequeuer.
+// Start starts a loop to process messages from a queue concurrently, and handles deduplication, updating
+// resource and operation status, and running the operation. It returns an error if it fails to start the dequeuer.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

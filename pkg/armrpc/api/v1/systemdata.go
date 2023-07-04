@@ -36,10 +36,10 @@ type SystemData struct {
 // UpdateSystemData creates or updates new systemdata from old and new resources.
 //
 // # Function Explanation
-// 
-//	UpdateSystemData updates the existing SystemData object with the new SystemData object, filling in any missing fields 
-//	from the old object and backfilling the CreatedAt, CreatedBy, and CreatedByType fields if they are not present in the 
-//	new object. If either the old or new objects are nil, they are replaced with empty SystemData objects.
+//
+// UpdateSystemData updates the existing SystemData object with the new SystemData object, filling in any missing fields
+// from the old object and backfilling the CreatedAt, CreatedBy, and CreatedByType fields if they are not present in the
+// new object. If either the old or new objects are nil, they are replaced with empty SystemData objects.
 func UpdateSystemData(old *SystemData, new *SystemData) SystemData {
 	if old == nil {
 		old = &SystemData{}

@@ -80,8 +80,8 @@ func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID
 
 // # Function Explanation
 //
-// QueueAsyncOperation creates a new status object with the given parameters, stores it using the storeClient, and queues
-// a request message. If an error occurs, the status object is deleted using the storeClient.
+// QueueAsyncOperation creates and saves a new status resource with the given parameters in datastore, and queues
+// a request message. If an error occurs, the status is deleted using the storeClient.
 func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, options QueueOperationOptions) error {
 	ctx, span := trace.StartProducerSpan(ctx, "statusmanager.QueueAsyncOperation publish", trace.FrontendTracerName)
 	defer span.End()
@@ -133,7 +133,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 
 // # Function Explanation
 //
-// Get() retrieves a Status object from the storeClient, and returns it or an error if the retrieval fails.
+// Get gets a status object from the datastore or an error if the retrieval fails.
 func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error) {
 	obj, err := aom.storeClient.Get(ctx, aom.operationStatusResourceID(id, operationID))
 	if err != nil {
@@ -150,7 +150,7 @@ func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID 
 
 // # Function Explanation
 //
-// Update() retrieves an existing operation status resource from the store, updates its fields with the
+// Update retrieves an existing operation status resource from the store, updates its fields with the
 // given parameters, and saves it back to the store.
 func (aom *statusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error {
 	opID := aom.operationStatusResourceID(id, operationID)
@@ -183,7 +183,7 @@ func (aom *statusManager) Update(ctx context.Context, id resources.ID, operation
 
 // # Function Explanation
 //
-// The Delete function uses the storeClient to delete the operation status resource associated with the given ID and
+// Delete deletes the operation status resource associated with the given ID and
 // operationID, and returns an error if unsuccessful.
 func (aom *statusManager) Delete(ctx context.Context, id resources.ID, operationID uuid.UUID) error {
 	return aom.storeClient.Delete(ctx, aom.operationStatusResourceID(id, operationID))
