@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/ucp/httpbaseline"
 
 	"github.com/stretchr/testify/assert"
@@ -53,8 +53,8 @@ func Test_ARM_Baselines(t *testing.T) {
 		t.Run(baseline.Name, func(t *testing.T) {
 			require.NoError(t, baseline.Error, "failed to read baseline")
 
-			ctx, cancel := testcontext.New(t)
-			defer cancel()
+			ctx, cancel := testcontext.NewWithCancel(t)
+			t.Cleanup(cancel)
 
 			// Create a "downstream" that will respond according to the test
 			// setup and will capture the downstream request for comparison.

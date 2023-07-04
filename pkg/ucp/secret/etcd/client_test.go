@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
@@ -38,8 +38,8 @@ func Test_ETCD(t *testing.T) {
 	config := hosting.NewAsyncValue[etcdclient.Client]()
 	service := data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: config})
 
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	go func() {
 		// We can't pass the test logger into the etcd service because it is forbidden to log

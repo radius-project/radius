@@ -21,11 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/project-radius/radius/pkg/ucp/util/etag"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
+	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	"github.com/project-radius/radius/pkg/ucp/util/etag"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/ucp/kubeenv"
 	shared "github.com/project-radius/radius/test/ucp/storetest"
 )
@@ -104,6 +104,9 @@ func Test_ResourceName_Normalize(t *testing.T) {
 }
 
 func Test_APIServer_Client(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
 	// The APIServer tests require installation of the Kubernetes test environment binaries.
 	// Our Makefile knows how to download the amd64 version of these on MacOS.
 	rc, env, err := kubeenv.StartEnvironment([]string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds", "ucpd")})
@@ -112,9 +115,6 @@ func Test_APIServer_Client(t *testing.T) {
 	defer func() {
 		_ = env.Stop()
 	}()
-
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
 
 	ns := "radius-test"
 	err = kubeenv.EnsureNamespace(ctx, rc, ns)

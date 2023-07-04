@@ -108,7 +108,7 @@ func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out
 	}
 
 	out = nil
-	if errors.Is(&store.ErrNotFound{}, err) {
+	if errors.Is(&store.ErrNotFound{ID: id.String()}, err) {
 		err = nil
 	}
 	return

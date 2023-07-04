@@ -74,10 +74,11 @@ func TestBuildConfigOptions(t *testing.T) {
 }
 
 func TestNewClientConfig(t *testing.T) {
-	configFile, _ := os.CreateTemp("", "")
+	configFile, err := os.CreateTemp("", "")
+	require.NoError(t, err)
 	defer os.Remove(configFile.Name())
 
-	err := os.WriteFile(configFile.Name(), []byte(`
+	err = os.WriteFile(configFile.Name(), []byte(`
 kind: Config
 apiVersion: v1
 clusters:
