@@ -44,13 +44,20 @@ type ProxyPlane struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewProxyPlane creates a new ProxyPlane.
+// # Function Explanation
+//
+// NewProxyPlane creates a new ProxyPlane controller with the given options and returns it, or returns an error if the
+// controller cannot be created.
 func NewProxyPlane(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ProxyPlane{
 		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.Plane]{}),
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() takes in a request object and context, looks up the plane and resource provider associated with the
+// request, and proxies the request to the appropriate resource provider.
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
