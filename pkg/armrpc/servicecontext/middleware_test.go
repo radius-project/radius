@@ -114,3 +114,18 @@ func Test_ARMRequestCtx_with_empty_location_causes_panic(t *testing.T) {
 		ARMRequestCtx("/some/base/path", "") // Empty location
 	})
 }
+
+func TestWithOperationType(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := chi.NewRouter()
+	r.MethodFunc(http.MethodGet, "/", func(w http.ResponseWriter, r *http.Request) {
+		rctx := v1.ARMRequestContextFromContext(r.Context())
+		require.Equal(t, "Applications.Test", rctx.OperationType.Type)
+		require.Equal(t, v1.OperationMethod("GET"), rctx.OperationType.Method)
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := WithOperationType(v1.OperationType{Type: "Applications.Test", Method: "GET"})(r)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req = req.WithContext(v1.WithARMRequestContext(req.Context(), &v1.ARMRequestContext{}))
+	handler.ServeHTTP(w, req)
+}

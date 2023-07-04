@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
@@ -60,16 +59,13 @@ func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler 
 	}
 }
 
+// WithOperationType is the middleware to inject operation type to the http request.
 func WithOperationType(operationType v1.OperationType) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
+			// Panic if the context doesn't include ARMRequestContext. This should never happen.
 			rpcContext := v1.ARMRequestContextFromContext(ctx)
-			if rpcContext == nil {
-				logger := ucplog.FromContextOrDiscard(ctx)
-				logger.V(ucplog.Debug).Info("failed to get ARMRequestContext from context.")
-				rpcContext = &v1.ARMRequestContext{}
-			}
 			rpcContext.OperationType = operationType
 			h.ServeHTTP(w, r)
 		}
