@@ -57,7 +57,7 @@ func TestListResourcesRun(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
@@ -115,7 +115,7 @@ func TestListResourcesRun(t *testing.T) {
 			q.Add("top", tt.top)
 			req.URL.RawQuery = q.Encode()
 
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 			paginationToken := ""

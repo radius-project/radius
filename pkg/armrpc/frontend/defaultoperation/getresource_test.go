@@ -104,7 +104,7 @@ func TestGetResourceRun(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
@@ -134,7 +134,7 @@ func TestGetResourceRun(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().

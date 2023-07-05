@@ -55,7 +55,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 					Data:     envDataModel,
 				}, nil
 			})
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -76,7 +76,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
@@ -113,7 +113,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, envInput)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().

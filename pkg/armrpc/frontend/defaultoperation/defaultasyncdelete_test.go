@@ -63,7 +63,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			require.NoError(t, err)
 			req.Header.Set("If-Match", tt.etag)
 
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			_, appDataModel, _ := loadTestResurce()
 
 			// These values don't affect the test since we're using mocks. Just choosing non-default values

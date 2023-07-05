@@ -53,7 +53,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			Return(nil, &store.ErrNotFound{})
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
@@ -80,7 +80,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     secretdm,
 				}, nil
 			})
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "letsencrypt-prod",
@@ -181,7 +181,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 						Data:     secretdm,
 					}, nil
 				})
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				KubeClient:    k8sutil.NewFakeKubeClient(nil, tc.in),

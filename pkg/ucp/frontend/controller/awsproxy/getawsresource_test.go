@@ -67,7 +67,7 @@ func Test_GetAWSResource(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
@@ -103,7 +103,7 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -130,7 +130,7 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -161,7 +161,7 @@ func Test_GetAWSResource_SmithyError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

@@ -49,7 +49,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 	deleteRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodDelete, ucp.BaseURL+testProxyRequestAWSPath, nil)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := rpctest.ARMTestContextFromRequest(deleteRequest)
+	ctx := rpctest.NewARMRequestContext(deleteRequest)
 	deleteRequest = deleteRequest.WithContext(ctx)
 
 	deleteResponse, err := ucp.Client().Do(deleteRequest)
