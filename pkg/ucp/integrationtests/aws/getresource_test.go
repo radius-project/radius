@@ -54,7 +54,7 @@ func Test_GetAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	getRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSPath, nil)
+	getRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSPath, nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.ARMTestContextFromRequest(getRequest)

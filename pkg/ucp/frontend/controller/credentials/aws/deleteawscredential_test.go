@@ -111,7 +111,7 @@ func Test_Credential_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fn(*mockStorageClient, *mockSecretClient)
-			request, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, tt.headerfile, nil)
+			request, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, tt.headerfile, nil)
 			require.NoError(t, err)
 			ctx := rpctest.ARMTestContextFromRequest(request)
 			response, err := credentialCtrl.Run(ctx, nil, request)

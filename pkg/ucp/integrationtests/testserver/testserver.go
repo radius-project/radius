@@ -302,7 +302,7 @@ func (ts *TestServer) MakeTypedRequest(method string, pathAndQuery string, body 
 // MakeRequest sends a request to the server.
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
 	client := ts.Server.Client()
-	request, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), method, ts.BaseURL+pathAndQuery, body)
+	request, err := rpctest.NewHTTPRequestWithContent(context.Background(), method, ts.BaseURL+pathAndQuery, body)
 	require.NoError(ts.t, err, "creating request failed")
 
 	ctx := rpctest.ARMTestContextFromRequest(request)
