@@ -60,6 +60,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		route.Properties.Port = renderers.DefaultPort
 	}
 
+	// TODO: tmrw, think about adding the DNS-SD version of this functionality to container render.go
 	computedValues := map[string]rpv1.ComputedValueReference{
 		"hostname": {
 			Value: kubernetes.NormalizeResourceName(route.Name),
@@ -96,6 +97,9 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 	typeParts := strings.Split(ResourceType, "/")
 	resourceTypeSuffix := typeParts[len(typeParts)-1]
 
+	// todo add the DNS-SD version of this if the resource has the origin string.
+	// parse the origin string in previous steps based on
+	// what is required to create this service object.
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",

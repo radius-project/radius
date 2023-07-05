@@ -363,7 +363,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		} else {
 			ports = append(ports, corev1.ContainerPort{
 				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP,
+				Protocol:      corev1.ProtocolTCP, //TODO: are we assuming that all ports are TCP?
 			})
 		}
 	}
