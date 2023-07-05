@@ -25,14 +25,7 @@ This is the list of core dependencies to install for the most common tasks. In g
 - [Node.js](https://nodejs.org/en/)
 - [Python](https://www.python.org/downloads/)
 - [Golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
-- [jq](https://jqlang.github.io/jq/download/)
-- [CADL](https://microsoft.github.io/typespec/)
-
-  Install CADL compiler:
-  ```bash
-  cd cadl && npm ci
-  ```
-  
+- [jq](https://jqlang.github.io/jq/download/)  
 - Make  
   
   **Linux**: Install the `build-essential` package:
@@ -118,6 +111,7 @@ If you were trying to run `make generate` and ran into an error, then one of the
 Enter the following commands to install all of the required tools.
 
 ```sh
+cd cadl && npm ci
 npm install -g autorest
 npm install -g oav
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
