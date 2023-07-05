@@ -18,46 +18,40 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_Routes(t *testing.T) {
 	pathBase := "/some-path-base"
-	tests := []struct {
-		method       string
-		path         string
-		name         string
-		skipPathBase bool
-	}{
+	tests := []rpctest.HandlerTestSpec{
 		{
-			name:         v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet}.String(),
-			method:       http.MethodGet,
-			path:         "/openapi/v2",
-			skipPathBase: true,
+			Name:         v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet}.String(),
+			Method:       http.MethodGet,
+			Path:         "/openapi/v2",
+			SkipPathBase: true,
 		},
 		{
-			name:   v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet}.String(),
-			method: http.MethodGet,
-			path:   "",
+			Name:   v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet}.String(),
+			Method: http.MethodGet,
+			Path:   "",
 		},
 		{
-			name:   v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList}.String(),
-			method: http.MethodGet,
-			path:   "/planes",
+			Name:   v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList}.String(),
+			Method: http.MethodGet,
+			Path:   "/planes",
 		},
 		{
-			name:   v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList}.String(),
-			method: http.MethodGet,
-			path:   "/planes/someType",
+			Name:   v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList}.String(),
+			Method: http.MethodGet,
+			Path:   "/planes/someType",
 		},
 	}
 
@@ -71,32 +65,8 @@ func Test_Routes(t *testing.T) {
 		DataProvider: dataProvider,
 	}
 
-	router := chi.NewRouter()
-	ctx := context.Background()
-	err := Register(ctx, router, nil, options)
-	require.NoError(t, err)
-
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s_%s", test.method, test.path), func(t *testing.T) {
-			p := pathBase + test.path
-
-			if test.skipPathBase {
-				p = test.path
-			}
-
-			tctx := chi.NewRouteContext()
-			tctx.Reset()
-
-			result := router.Match(tctx, test.method, p)
-			require.Truef(t, result, "no route found for %s %s - context: %v", test.method, p, tctx)
-		})
-	}
-
-	t.Run("all named routes are tested", func(t *testing.T) {
-		err := chi.Walk(router, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-			t.Logf("%s %s", method, route)
-			return nil
-		})
-		require.NoError(t, err)
+	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
+		r := chi.NewRouter()
+		return r, Register(ctx, r, nil, options)
 	})
 }
