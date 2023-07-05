@@ -69,6 +69,33 @@ func Test_NewSubrouter(t *testing.T) {
 	}
 }
 
+func Test_RegisterHandler_Duplciated(t *testing.T) {
+	mctrl := gomock.NewController(t)
+
+	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
+	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	ctrlOpts := ctrl.Options{
+		DataProvider: mockSP,
+	}
+
+	p := chi.NewRouter()
+	opts := HandlerOptions{
+		ParentRouter:      p,
+		ResourceType:      "Applications.Test",
+		Method:            http.MethodGet,
+		ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
+		Middlewares:       chi.Middlewares{middleware.NormalizePath},
+	}
+
+	ctx := testcontext.New(t)
+
+	err := RegisterHandler(ctx, opts, ctrlOpts)
+	require.NoError(t, err)
+
+	err = RegisterHandler(ctx, opts, ctrlOpts)
+	require.NoError(t, err)
+}
+
 func Test_RegisterHandler(t *testing.T) {
 	p := chi.NewRouter()
 	tests := []struct {
