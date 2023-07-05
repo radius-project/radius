@@ -245,14 +245,15 @@ func TestHandlers(t *testing.T) {
 	})
 
 	t.Run("Azure", func(t *testing.T) {
-		azureHandlerTests := append(handlerTests, rpctest.HandlerTestSpec{
-			OperationType:               v1.OperationType{Type: "Applications.Core/providers", Method: v1.OperationGet},
-			Path:                        "/providers/applications.core/operations",
-			Method:                      http.MethodGet,
-			WithoutRootScope:            true,
-			SkipOperationTypeValidation: true,
-		})
-
+		// Add azure specific handlers.
+		azureHandlerTests := append(handlerTests,
+			rpctest.HandlerTestSpec{
+				OperationType:               v1.OperationType{Type: "Applications.Core/providers", Method: v1.OperationGet},
+				Path:                        "/providers/applications.core/operations",
+				Method:                      http.MethodGet,
+				WithoutRootScope:            true,
+				SkipOperationTypeValidation: true,
+			})
 		// Test handlers for Azure resources
 		rpctest.AssertRouters(t, azureHandlerTests, "", "/subscriptions/00000000-0000-0000-0000-000000000000", func(ctx context.Context) (chi.Router, error) {
 			r := chi.NewRouter()

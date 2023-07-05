@@ -320,7 +320,7 @@ func TestHandlers(t *testing.T) {
 		// Add azure specific handlers.
 		azureHandlerTests := append(handlerTests, []rpctest.HandlerTestSpec{
 			{
-				OperationType:               v1.OperationType{Type: "Applications.Core/providers", Method: v1.OperationGet},
+				OperationType:               v1.OperationType{Type: "Applications.Link/providers", Method: v1.OperationGet},
 				Path:                        "/providers/applications.link/operations",
 				Method:                      http.MethodGet,
 				WithoutRootScope:            true,

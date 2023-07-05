@@ -130,6 +130,7 @@ func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 // RegisterHandler registers a handler for the given resource type and method. This function should only
 // be used for controllers that process a single resource type.
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Options) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	if opts.OperationType == nil && (opts.ResourceType == "" || opts.Method == "") {
 		return ErrInvalidOperationTypeOption
 	}
@@ -153,6 +154,13 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 	if opts.Path == "" {
 		opts.Path = "/"
+	}
+
+	// Ensure that the current route is not registered before. We logs the warning message if the route is registered before.
+	duplicated := opts.ParentRouter.Match(chi.NewRouteContext(), opts.Method.HTTPMethod(), opts.Path)
+	if duplicated {
+		logger.V(ucplog.Error).Info(fmt.Sprintf("Warning: skipping handler registration because '%s %s' has been registered before.", opts.Method, opts.Path))
+		return nil
 	}
 
 	middlewares := append(opts.Middlewares, servicecontext.WithOperationType(*opts.OperationType))
@@ -208,8 +216,18 @@ func ConfigureDefaultHandlers(
 		if err != nil {
 			return err
 		}
-		// Add the subscription lifecycle handler later when we build Azure resource provider.
+
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
+		err = RegisterHandler(ctx, HandlerOptions{
+			ParentRouter:      rootRouter,
+			Path:              rootScopePath,
+			ResourceType:      rt,
+			Method:            v1.OperationPut,
+			ControllerFactory: defaultoperation.NewCreateOrUpdateSubscription,
+		}, ctrlOpts)
+		if err != nil {
+			return err
+		}
 	}
 
 	statusRT := providerNamespace + "/operationstatuses"
