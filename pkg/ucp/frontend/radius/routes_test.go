@@ -17,60 +17,54 @@ limitations under the License.
 package radius
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/stretchr/testify/require"
 )
 
 const pathBase = "/some-path-base"
 
 func Test_Routes(t *testing.T) {
-	tests := []struct {
-		method       string
-		path         string
-		name         string
-		skipPathBase bool
-	}{
+	tests := []rpctest.HandlerTestSpec{
 		{
-			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			method: http.MethodGet,
-			path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+			Name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
+			Method: http.MethodGet,
+			Path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
 		}, {
-			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			method: http.MethodPut,
-			path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+			Name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
+			Method: http.MethodPut,
+			Path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
 		}, {
-			name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationList}.String(),
-			method: http.MethodGet,
-			path:   "/planes/radius/local/resourcegroups",
+			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationList}.String(),
+			Method: http.MethodGet,
+			Path:   "/planes/radius/local/resourcegroups",
 		}, {
-			name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationGet}.String(),
-			method: http.MethodGet,
-			path:   "/planes/radius/local/resourcegroups/test-rg",
+			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationGet}.String(),
+			Method: http.MethodGet,
+			Path:   "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationPut}.String(),
-			method: http.MethodPut,
-			path:   "/planes/radius/local/resourcegroups/test-rg",
+			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationPut}.String(),
+			Method: http.MethodPut,
+			Path:   "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationDelete}.String(),
-			method: http.MethodDelete,
-			path:   "/planes/radius/local/resourcegroups/test-rg",
+			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationDelete}.String(),
+			Method: http.MethodDelete,
+			Path:   "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			method: http.MethodGet,
-			path:   "/planes/radius/local/providers/applications.core/applications/test-app",
+			Name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
+			Method: http.MethodGet,
+			Path:   "/planes/radius/local/providers/applications.core/applications/test-app",
 		},
 	}
 
@@ -90,48 +84,9 @@ func Test_Routes(t *testing.T) {
 		SecretProvider: secretProvider,
 	}
 
-	module := NewModule(options, "radius")
-	handler, err := module.Initialize(testcontext.New(t))
-	require.NoError(t, err)
-
-	router := handler.(chi.Router)
-
-	//namesMatched := map[string]bool{}
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s-%s", test.method, test.path), func(t *testing.T) {
-			p := pathBase + test.path
-			if test.skipPathBase {
-				p = test.path
-			}
-
-			tctx := chi.NewRouteContext()
-			tctx.Reset()
-
-			result := router.Match(tctx, test.method, p)
-			require.Truef(t, result, "no route found for %s %s, context: %v", test.method, p, tctx)
-		})
-	}
-	t.Run("all named routes are tested", func(t *testing.T) {
-		err := chi.Walk(router, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-			t.Logf("%s %s", method, route)
-			return nil
-		})
-		require.NoError(t, err)
+	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
+		module := NewModule(options, "radius")
+		router, err := module.Initialize(ctx)
+		return router.(chi.Router), err
 	})
-	/*
-
-		t.Run("all named routes are tested", func(t *testing.T) {
-			err := router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-				if route.GetName() == "" || strings.Contains(route.GetName(), "subrouter") {
-					return nil
-				}
-
-				pathTemplate, err := route.GetPathTemplate()
-				require.NoError(t, err)
-
-				assert.Contains(t, namesMatched, route.GetName(), "route %s for %s is not tested", route.GetName(), pathTemplate)
-				return nil
-			})
-			require.NoError(t, err)
-		})*/
 }
