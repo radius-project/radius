@@ -118,12 +118,11 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
-
 	return &recipes.EnvironmentDefinition{
 		Name:         recipeName,
-		Driver:       *found.TemplateKind,
+		Driver:       *found.GetEnvironmentRecipeProperties().TemplateKind,
 		ResourceType: resource.Type(),
-		Parameters:   found.Parameters,
-		TemplatePath: *found.TemplatePath,
+		Parameters:   found.GetEnvironmentRecipeProperties().Parameters,
+		TemplatePath: *found.GetEnvironmentRecipeProperties().TemplatePath,
 	}, nil
 }

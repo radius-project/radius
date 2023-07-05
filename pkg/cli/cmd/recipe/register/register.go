@@ -158,7 +158,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	envRecipes := envResource.Properties.Recipes
 	if envRecipes == nil {
-		envRecipes = map[string]map[string]*corerp.EnvironmentRecipeProperties{}
+		envRecipes = map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
 	}
 
 	properties := &corerp.EnvironmentRecipeProperties{
@@ -169,7 +169,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
 	} else {
-		envRecipes[r.LinkType] = map[string]*corerp.EnvironmentRecipeProperties{
+		envRecipes[r.LinkType] = map[string]corerp.EnvironmentRecipePropertiesClassification{
 			r.RecipeName: properties,
 		}
 	}

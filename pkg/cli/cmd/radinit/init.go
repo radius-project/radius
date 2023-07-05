@@ -228,7 +228,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		var recipes map[string]map[string]*corerp.EnvironmentRecipeProperties
+		var recipes map[string]map[string]corerp.EnvironmentRecipePropertiesClassification
 		if r.Options.Recipes.DevRecipes {
 			recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
 			if err != nil {

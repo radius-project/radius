@@ -70,7 +70,17 @@ type EnvironmentsClientDeleteResponse struct {
 
 // EnvironmentsClientGetRecipeMetadataResponse contains the response from method EnvironmentsClient.GetRecipeMetadata.
 type EnvironmentsClientGetRecipeMetadataResponse struct {
-	EnvironmentRecipeProperties
+	EnvironmentRecipePropertiesClassification
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type EnvironmentsClientGetRecipeMetadataResponse.
+func (e *EnvironmentsClientGetRecipeMetadataResponse) UnmarshalJSON(data []byte) error {
+	res, err := unmarshalEnvironmentRecipePropertiesClassification(data)
+	if err != nil {
+		return err
+	}
+	e.EnvironmentRecipePropertiesClassification = res
+	return nil
 }
 
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.

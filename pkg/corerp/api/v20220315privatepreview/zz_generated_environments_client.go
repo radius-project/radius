@@ -235,7 +235,7 @@ func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Con
 // getRecipeMetadataHandleResponse handles the GetRecipeMetadata response.
 func (client *EnvironmentsClient) getRecipeMetadataHandleResponse(resp *http.Response) (EnvironmentsClientGetRecipeMetadataResponse, error) {
 	result := EnvironmentsClientGetRecipeMetadataResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentRecipeProperties); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result); err != nil {
 		return EnvironmentsClientGetRecipeMetadataResponse{}, err
 	}
 	return result, nil

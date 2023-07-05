@@ -36,7 +36,7 @@ const (
 
 //go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/project-radius/radius/pkg/cli/cmd/radinit github.com/project-radius/radius/pkg/cli/cmd/radinit DevRecipeClient
 type DevRecipeClient interface {
-	GetDevRecipes(ctx context.Context) (map[string]map[string]*corerp.EnvironmentRecipeProperties, error)
+	GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.EnvironmentRecipePropertiesClassification, error)
 }
 
 type devRecipeClient struct {
@@ -46,7 +46,7 @@ func NewDevRecipeClient() DevRecipeClient {
 	return &devRecipeClient{}
 }
 
-func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]*corerp.EnvironmentRecipeProperties, error) {
+func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.EnvironmentRecipePropertiesClassification, error) {
 	reg, err := remote.NewRegistry(DevRecipesRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesRegistry, err.Error())
@@ -58,7 +58,7 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 		tag = "latest"
 	}
 
-	recipes := map[string]map[string]*corerp.EnvironmentRecipeProperties{}
+	recipes := map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
 	// Ex: radius.azurecr.io/recipes/dev/rediscaches:0.20
@@ -101,8 +101,8 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 }
 
 // processRepositories processes the repositories and returns the recipes.
-func processRepositories(repos []string, tag string) map[string]map[string]*corerp.EnvironmentRecipeProperties {
-	recipes := map[string]map[string]*corerp.EnvironmentRecipeProperties{}
+func processRepositories(repos []string, tag string) map[string]map[string]corerp.EnvironmentRecipePropertiesClassification {
+	recipes := map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
 
 	// We are using the default recipe.
 	name := "default"
@@ -122,11 +122,9 @@ func processRepositories(repos []string, tag string) map[string]map[string]*core
 
 		repoPath := DevRecipesRegistry + "/" + repo
 
-		recipes[linkType] = map[string]*corerp.EnvironmentRecipeProperties{
-			name: {
-				TemplateKind: to.Ptr(types.TemplateKindBicep),
-				TemplatePath: to.Ptr(repoPath + ":" + tag),
-			},
+		recipes[linkType][name] = &corerp.BicepRecipeProperties{
+			TemplateKind: to.Ptr(types.TemplateKindBicep),
+			TemplatePath: to.Ptr(repoPath + ":" + tag),
 		}
 	}
 

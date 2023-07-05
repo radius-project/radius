@@ -70,14 +70,20 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 					// Allowed format hard coded to Bicep in the error until Terraform support is officially implemented.
 					// This check shouldn't be needed once we define an enum for templateKind in the schema.
 					// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7940
-					if recipeDetails.TemplateKind == nil || !isValidTemplateKind(*recipeDetails.TemplateKind) {
+					if recipeDetails.GetEnvironmentRecipeProperties().TemplateKind == nil || !isValidTemplateKind(*recipeDetails.GetEnvironmentRecipeProperties().TemplateKind) {
 						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("invalid template kind. Allowed formats: \"bicep\"")
 					}
 
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
-						TemplateKind: *recipeDetails.TemplateKind,
-						TemplatePath: to.String(recipeDetails.TemplatePath),
-						Parameters:   recipeDetails.Parameters,
+						TemplateKind: *recipeDetails.GetEnvironmentRecipeProperties().TemplateKind,
+						TemplatePath: to.String(recipeDetails.GetEnvironmentRecipeProperties().TemplatePath),
+						Parameters:   recipeDetails.GetEnvironmentRecipeProperties().Parameters,
+					}
+					switch v := recipeDetails.(type) {
+					case *TerraformRecipeProperties:
+						if terraformRecipe, ok := envRecipes[resourceType][recipeName]; ok {
+							terraformRecipe.TerraformVersion = to.String(v.TemplateVersion)
+						}
 					}
 				}
 			}
@@ -133,14 +139,23 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	if env.Properties.Recipes != nil {
-		recipes := make(map[string]map[string]*EnvironmentRecipeProperties)
+		recipes := make(map[string]map[string]EnvironmentRecipePropertiesClassification)
 		for resourceType, recipe := range env.Properties.Recipes {
-			recipes[resourceType] = map[string]*EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipe {
-				recipes[resourceType][recipeName] = &EnvironmentRecipeProperties{
-					TemplateKind: to.Ptr(recipeDetails.TemplateKind),
-					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
-					Parameters:   recipeDetails.Parameters,
+				switch recipeDetails.TemplateKind {
+				case "terraform":
+					recipes[resourceType][recipeName] = &TerraformRecipeProperties{
+						TemplateKind:    to.Ptr(recipeDetails.TemplateKind),
+						TemplatePath:    to.Ptr(recipeDetails.TemplatePath),
+						Parameters:      recipeDetails.Parameters,
+						TemplateVersion: to.Ptr(recipeDetails.TerraformVersion),
+					}
+				case "bicep":
+					recipes[resourceType][recipeName] = &BicepRecipeProperties{
+						TemplateKind: to.Ptr(recipeDetails.TemplateKind),
+						TemplatePath: to.Ptr(recipeDetails.TemplatePath),
+						Parameters:   recipeDetails.Parameters,
+					}
 				}
 			}
 		}

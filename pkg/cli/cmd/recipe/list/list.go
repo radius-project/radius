@@ -109,13 +109,13 @@ func (r *Runner) Run(ctx context.Context) error {
 			recipe := types.EnvironmentRecipe{
 				Name:         recipeName,
 				LinkType:     link,
-				TemplatePath: *recipeDetails.TemplatePath,
+				TemplatePath: *recipeDetails.GetEnvironmentRecipeProperties().TemplatePath,
 			}
 			// Check to ensure backwards compatibility with existing environments.
 			// Remove this in next release once users have migrated their existing environments.
 			// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
-			if recipeDetails.TemplateKind != nil {
-				recipe.TemplateKind = *recipeDetails.TemplateKind
+			if recipeDetails.GetEnvironmentRecipeProperties().TemplateKind != nil {
+				recipe.TemplateKind = *recipeDetails.GetEnvironmentRecipeProperties().TemplateKind
 			}
 
 			envRecipes = append(envRecipes, recipe)

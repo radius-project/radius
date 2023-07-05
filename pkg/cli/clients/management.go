@@ -663,5 +663,5 @@ func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, envi
 		return corerpv20220315.EnvironmentRecipeProperties{}, err
 	}
 
-	return corerpv20220315.EnvironmentRecipeProperties(resp.EnvironmentRecipeProperties), nil
+	return corerpv20220315.EnvironmentRecipeProperties(*resp.GetEnvironmentRecipeProperties()), nil
 }

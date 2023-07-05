@@ -473,8 +473,36 @@
         }
       }
     },
+    "TerraformRecipeProperties":{
+      "description": "Properties of a Recipe linked to an Environment.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentRecipeProperties"
+        }
+      ],
+      "properties": {
+        "templateVersion": {
+          "description": "Version of the terraform module used.",
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "x-ms-discriminator-value": "terraform"
+    },
+    "BicepRecipeProperties":{
+      "description": "Properties of a Recipe linked to an Environment.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentRecipeProperties"
+        }
+      ],
+      "properties": {},
+      "type": "object",
+      "x-ms-discriminator-value": "bicep"
+    },
     "EnvironmentRecipeProperties": {
       "description": "Properties of a Recipe linked to an Environment.",
+      "discriminator": "templateKind",
       "properties": {
         "templateKind": {
           "description": "Format of the template provided by the recipe. Allowed values: bicep",

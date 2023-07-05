@@ -145,6 +145,26 @@ func unmarshalEnvironmentExtensionClassificationArray(rawMsg json.RawMessage) ([
 	return fArray, nil
 }
 
+func unmarshalEnvironmentRecipePropertiesClassification(rawMsg json.RawMessage) (EnvironmentRecipePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b EnvironmentRecipePropertiesClassification
+	switch m["templateKind"] {
+	case "bicep":
+		b = &BicepRecipeProperties{}
+	case "terraform":
+		b = &TerraformRecipeProperties{}
+	default:
+		b = &EnvironmentRecipeProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
 func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (HealthProbePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

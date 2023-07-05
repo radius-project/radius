@@ -48,6 +48,12 @@ type EnvironmentRecipeProperties struct {
 	TemplateKind string         `json:"templateKind"`
 	TemplatePath string         `json:"templatePath"`
 	Parameters   map[string]any `json:"parameters,omitempty"`
+	TerraformRecipeProperties
+}
+
+type TerraformRecipeProperties struct {
+	// TerraformVersion represent the version of the terraform module used..
+	TerraformVersion string `json:"templateVersion,omitempty"`
 }
 
 // Recipe represents input properties for recipe getMetadata api.

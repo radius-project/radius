@@ -376,10 +376,20 @@
 * **Additional Properties Type**: [EnvironmentRecipeProperties](#environmentrecipeproperties)
 
 ## EnvironmentRecipeProperties
-### Properties
+* **Discriminator**: templateKind
+
+### Base Properties
 * **parameters**: any: Any object
-* **templateKind**: string (Required): Format of the template provided by the recipe. Allowed values: bicep
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+### BicepRecipeProperties
+#### Properties
+* **templateKind**: 'bicep' (Required): Format of the template provided by the recipe. Allowed values: bicep
+
+### TerraformRecipeProperties
+#### Properties
+* **templateKind**: 'terraform' (Required): Format of the template provided by the recipe. Allowed values: bicep
+* **templateVersion**: string: Version of the terraform module used.
+
 
 ## TrackedResourceTags
 ### Properties

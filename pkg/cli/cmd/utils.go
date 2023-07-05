@@ -70,7 +70,7 @@ func GetNamespace(envResource corerp.EnvironmentResource) string {
 	return ""
 }
 
-func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagementClient, environmentName string, recipeName string, resourceType string) (corerp.EnvironmentResource, map[string]map[string]*corerp.EnvironmentRecipeProperties, error) {
+func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagementClient, environmentName string, recipeName string, resourceType string) (corerp.EnvironmentResource, map[string]map[string]corerp.EnvironmentRecipePropertiesClassification, error) {
 	envResource, err := client.GetEnvDetails(ctx, environmentName)
 	if err != nil {
 		return corerp.EnvironmentResource{}, nil, err
