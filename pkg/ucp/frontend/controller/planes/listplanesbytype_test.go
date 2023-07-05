@@ -75,7 +75,7 @@ func Test_ListPlanesByType(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 

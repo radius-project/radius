@@ -75,7 +75,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	})
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 

@@ -115,7 +115,7 @@ func Test_Credential_Delete(t *testing.T) {
 			request, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, tt.headerfile, nil)
 			require.NoError(t, err)
 
-			ctx := rpctest.ARMTestContextFromRequest(request)
+			ctx := rpctest.NewARMRequestContext(request)
 
 			response, err := credentialCtrl.Run(ctx, nil, request)
 			if tt.err != nil {

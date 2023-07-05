@@ -51,7 +51,7 @@ func Test_GetOperationStatuses(t *testing.T) {
 	operationResultsRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSAsyncPath+"/operationStatuses/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := rpctest.ARMTestContextFromRequest(operationResultsRequest)
+	ctx := rpctest.NewARMRequestContext(operationResultsRequest)
 	operationResultsRequest = operationResultsRequest.WithContext(ctx)
 
 	operationResultsResponse, err := ucp.Client().Do(operationResultsRequest)

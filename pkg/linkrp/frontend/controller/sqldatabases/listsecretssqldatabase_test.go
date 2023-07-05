@@ -51,7 +51,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
@@ -77,7 +77,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			passwordStringValue:   "testPassword",
 			connectionStringValue: "Data Source=tcp:testAccount1.sql.cosmos.azure.com,1433;Initial Catalog=testDatabase;User Id=testUser;Password=testPassword;Encrypt=True;TrustServerCertificate=True",
@@ -116,7 +116,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			connectionStringValue: "Data Source=tcp:testAccount1.sql.cosmos.azure.com,1433;Initial Catalog=testDatabase;User Id=testUser;Password=testPassword;Encrypt=True;TrustServerCertificate=True",
 		}
@@ -152,7 +152,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		w := httptest.NewRecorder()
 
 		mStorageClient.

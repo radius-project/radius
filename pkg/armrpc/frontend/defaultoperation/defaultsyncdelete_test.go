@@ -58,7 +58,7 @@ func TestDefaultSyncDelete(t *testing.T) {
 			require.NoError(t, err)
 			req.Header.Set("If-Match", tt.etag)
 
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			_, appDataModel, _ := loadTestResurce()
 
 			mds.EXPECT().

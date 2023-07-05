@@ -305,7 +305,7 @@ func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byt
 	request, err := rpctest.NewHTTPRequestWithContent(context.Background(), method, ts.BaseURL+pathAndQuery, body)
 	require.NoError(ts.t, err, "creating request failed")
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	request = request.WithContext(ctx)
 
 	response, err := client.Do(request)

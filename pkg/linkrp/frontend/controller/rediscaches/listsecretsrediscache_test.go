@@ -47,7 +47,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
@@ -73,7 +73,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			renderers.PasswordStringHolder:  "testPassword",
 			renderers.ConnectionStringValue: "test-connection-string",
@@ -113,7 +113,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			renderers.PasswordStringHolder: "testPassword",
 		}
@@ -150,7 +150,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		w := httptest.NewRecorder()
 
 		mStorageClient.

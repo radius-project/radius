@@ -86,7 +86,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			// These values don't affect the test since we're using mocks. Just choosing non-default values
@@ -262,7 +262,7 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{

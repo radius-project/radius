@@ -35,6 +35,7 @@ func MustParseOperationType(operationType string) v1.OperationType {
 	return opType
 }
 
+// NewHTTPRequestWithContent returns a new HTTP request with the given body content.
 func NewHTTPRequestWithContent(ctx context.Context, method string, url string, body []byte) (*http.Request, error) {
 	headers := map[string]string{
 		"Accept":          "application/json",
@@ -55,6 +56,7 @@ func NewHTTPRequestWithContent(ctx context.Context, method string, url string, b
 	return req, nil
 }
 
+// NewHTTPRequestFromJSON returns a new HTTP request with the given JSON file as a body content.
 func NewHTTPRequestFromJSON(ctx context.Context, method string, headerFixtureJSONFile string, body any) (*http.Request, error) {
 	jsonData, err := os.ReadFile("./testdata/" + headerFixtureJSONFile)
 	if err != nil {
@@ -84,13 +86,12 @@ func NewHTTPRequestFromJSON(ctx context.Context, method string, headerFixtureJSO
 	return req, nil
 }
 
-// ARMTestContextFromRequest returns a context with the ARM request context set.
-func ARMTestContextFromRequest(req *http.Request) context.Context {
+// NewARMRequestContext extracts context from http request, adds ARMRequestContext to it, and return a new context.
+func NewARMRequestContext(req *http.Request) context.Context {
 	ctx := context.Background()
 	armctx, err := v1.FromARMRequest(req, "", "West US")
 	if err != nil {
 		panic(err)
 	}
-	ctx = v1.WithARMRequestContext(ctx, armctx)
-	return ctx
+	return v1.WithARMRequestContext(ctx, armctx)
 }

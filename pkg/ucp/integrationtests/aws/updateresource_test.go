@@ -97,7 +97,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	updateRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPut, ucp.BaseURL+testProxyRequestAWSPath, body)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := rpctest.ARMTestContextFromRequest(updateRequest)
+	ctx := rpctest.NewARMRequestContext(updateRequest)
 	updateRequest = updateRequest.WithContext(ctx)
 
 	updateResponse, err := ucp.Client().Do(updateRequest)

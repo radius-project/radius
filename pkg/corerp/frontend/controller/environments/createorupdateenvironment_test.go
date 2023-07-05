@@ -62,7 +62,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
@@ -140,7 +140,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
@@ -217,7 +217,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
@@ -271,7 +271,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
@@ -350,7 +350,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().

@@ -58,7 +58,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -99,7 +99,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
