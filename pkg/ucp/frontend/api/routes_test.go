@@ -53,6 +53,21 @@ func Test_Routes(t *testing.T) {
 			Method:        http.MethodGet,
 			Path:          "/planes/someType",
 		},
+		{
+			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "/planes/someType/someName",
+		},
+		{
+			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationPut},
+			Method:        http.MethodPut,
+			Path:          "/planes/someType/someName",
+		},
+		{
+			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationDelete},
+			Method:        http.MethodDelete,
+			Path:          "/planes/someType/someName",
+		},
 	}
 
 	ctrl := gomock.NewController(t)
