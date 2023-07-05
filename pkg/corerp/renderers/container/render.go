@@ -92,7 +92,31 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
-		resourceID, err := resources.ParseResource(connection.Source)
+		if connection.Source == "" && connection.Origin == "" {
+			// todo: Throw an error here.
+			// A user should not create a connection without either a source (httproute) or an origin (DNS-SD).
+			continue
+		}
+
+		// If source is not empty, then the container uses HTTProute for this connection.
+		if connection.Source != "" {
+			resourceID, err := resources.ParseResource(connection.Source)
+
+			if err != nil {
+				return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
+			}
+	
+			// Non-radius Azure connections that are accessible from Radius container resource.
+			if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
+				azureResourceIDs = append(azureResourceIDs, resourceID)
+				continue
+			}
+	
+			if resourceID.IsRadiusRPResource() {
+				radiusResourceIDs = append(radiusResourceIDs, resourceID)
+				continue
+			}
+		}
 
 		// example origin: 'http://containerY:3000'. Used for DNS-SD connections.
 		origin := connection.Origin
@@ -100,21 +124,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		// If origin is not empty, then the container uses DNS-SD connections.
 		if origin != "" {
 			usesDNSSD = true
-		}
-
-		if err != nil {
-			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
-		}
-
-		// Non-radius Azure connections that are accessible from Radius container resource.
-		if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
-			azureResourceIDs = append(azureResourceIDs, resourceID)
-			continue
-		}
-
-		if resourceID.IsRadiusRPResource() {
-			radiusResourceIDs = append(radiusResourceIDs, resourceID)
-			continue
 		}
 	}
 
@@ -213,6 +222,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
+
+// TODO: entire deployment function is DNS-SD/HTTProute agnostic.
 func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rpv1.ComputedValueReference, resource *datamodel.ContainerResource, roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
@@ -223,10 +234,10 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	identityRequired := len(roles) > 0
 
 	dependencies := options.Dependencies
-	cc := resource.Properties
+	properties := resource.Properties
 
 	ports := []corev1.ContainerPort{}
-	for _, port := range cc.Container.Ports {
+	for _, port := range properties.Container.Ports {
 		if provides := port.Provides; provides != "" {
 			resourceId, err := resources.ParseResource(provides)
 			if err != nil {
@@ -253,33 +264,33 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		} else {
 			ports = append(ports, corev1.ContainerPort{
 				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP,
+				Protocol:      corev1.ProtocolTCP, //TODO: are we assuming that all ports are TCP?
 			})
 		}
 	}
 
 	container := corev1.Container{
 		Name:  kubernetes.NormalizeResourceName(resource.Name),
-		Image: cc.Container.Image,
+		Image: properties.Container.Image,
 		// TODO: use better policies than this when we have a good versioning story
 		ImagePullPolicy: corev1.PullPolicy("Always"),
 		Ports:           ports,
 		Env:             []corev1.EnvVar{},
 		VolumeMounts:    []corev1.VolumeMount{},
-		Command:         cc.Container.Command,
-		Args:            cc.Container.Args,
-		WorkingDir:      cc.Container.WorkingDir,
+		Command:         properties.Container.Command,
+		Args:            properties.Container.Args,
+		WorkingDir:      properties.Container.WorkingDir,
 	}
 
 	var err error
-	if !cc.Container.ReadinessProbe.IsEmpty() {
-		container.ReadinessProbe, err = r.makeHealthProbe(cc.Container.ReadinessProbe)
+	if !properties.Container.ReadinessProbe.IsEmpty() {
+		container.ReadinessProbe, err = r.makeHealthProbe(properties.Container.ReadinessProbe)
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
 		}
 	}
-	if !cc.Container.LivenessProbe.IsEmpty() {
-		container.LivenessProbe, err = r.makeHealthProbe(cc.Container.LivenessProbe)
+	if !properties.Container.LivenessProbe.IsEmpty() {
+		container.LivenessProbe, err = r.makeHealthProbe(properties.Container.LivenessProbe)
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
 		}
@@ -290,7 +301,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// and return them.
 	env, secretData := getEnvVarsAndSecretData(resource, applicationName, dependencies)
 
-	for k, v := range cc.Container.Env {
+	for k, v := range properties.Container.Env {
 		env[k] = corev1.EnvVar{Name: k, Value: v}
 	}
 
@@ -319,7 +330,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// To avoid the naming conflicts, we add the application name prefix to resource name.
 	azIdentityName := azrenderer.MakeResourceName(applicationName, resource.Name, azrenderer.Separator)
 
-	for volumeName, volumeProperties := range cc.Container.Volumes {
+	for volumeName, volumeProperties := range properties.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
 		switch volumeProperties.Kind {
 		case datamodel.Ephemeral:
