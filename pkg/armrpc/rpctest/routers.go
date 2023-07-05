@@ -57,6 +57,7 @@ func AssertRouters(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope st
 		t.Logf("Method: %s, Path: %s", method, route)
 		return nil
 	})
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		pb := ""
@@ -88,6 +89,7 @@ func AssertRouters(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope st
 
 			err = chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 				if tctx.RoutePattern() == route && tt.Method == method {
+					found := false
 					for _, m := range middlewares {
 						w := httptest.NewRecorder()
 
@@ -101,14 +103,18 @@ func AssertRouters(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope st
 						// Pass empty router to validate operation type.
 						testr := chi.NewRouter()
 						m(testr).ServeHTTP(w, req)
-
-						require.Equal(t, tt.OperationType.String(), rCtx.OperationType.String())
+						if tt.OperationType.String() == rCtx.OperationType.String() {
+							t.Log("Found operation type")
+							found = true
+							break
+						}
 					}
+					require.True(t, found, "operation type not found")
 				}
 				return nil
 			})
+
+			require.NoError(t, err)
 		})
 	}
-
-	require.NoError(t, err)
 }
