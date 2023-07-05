@@ -26,6 +26,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
+// MustParseOperationType parses the operation type or panics if it fails.
 func MustParseOperationType(operationType string) v1.OperationType {
 	opType, ok := v1.ParseOperationType(operationType)
 	if !ok {
@@ -34,7 +35,7 @@ func MustParseOperationType(operationType string) v1.OperationType {
 	return opType
 }
 
-func GetARMTestHTTPRequestFromURL(ctx context.Context, method string, url string, body []byte) (*http.Request, error) {
+func NewHTTPRequestWithContent(ctx context.Context, method string, url string, body []byte) (*http.Request, error) {
 	headers := map[string]string{
 		"Accept":          "application/json",
 		"Accept-Encoding": "gzip, deflate",
@@ -54,7 +55,7 @@ func GetARMTestHTTPRequestFromURL(ctx context.Context, method string, url string
 	return req, nil
 }
 
-func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSONFile string, body any) (*http.Request, error) {
+func NewHTTPRequestFromJSON(ctx context.Context, method string, headerFixtureJSONFile string, body any) (*http.Request, error) {
 	jsonData, err := os.ReadFile("./testdata/" + headerFixtureJSONFile)
 	if err != nil {
 		return nil, err
@@ -83,6 +84,7 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 	return req, nil
 }
 
+// ARMTestContextFromRequest returns a context with the ARM request context set.
 func ARMTestContextFromRequest(req *http.Request) context.Context {
 	ctx := context.Background()
 	armctx, err := v1.FromARMRequest(req, "", "West US")

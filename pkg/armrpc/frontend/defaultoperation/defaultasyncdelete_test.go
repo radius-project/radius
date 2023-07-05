@@ -59,7 +59,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
+			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
 			require.NoError(t, err)
 			req.Header.Set("If-Match", tt.etag)
 

@@ -83,7 +83,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			reqModel, reqDataModel, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := rpctest.ARMTestContextFromRequest(req)
@@ -259,7 +259,7 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			reqDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := rpctest.ARMTestContextFromRequest(req)
