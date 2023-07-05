@@ -46,8 +46,7 @@ func TestInitAndApply_EmptyWorkingDirPath(t *testing.T) {
 
 	// Call initAndApply with the mock Terraform executable.
 	ctx := testcontext.New(t)
-	output, err := initAndApply(ctx, "", execPath)
+	err := initAndApply(ctx, "", execPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
-	require.Nil(t, output)
 }

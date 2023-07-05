@@ -77,7 +77,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	}
 
 	// Run TF Init and Apply in the working directory
-	_, err = initAndApply(ctx, workingDir, execPath)
+	err = initAndApply(ctx, workingDir, execPath)
 	if err != nil {
 		return nil, err
 	}
@@ -98,25 +98,25 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 }
 
 // Runs Terraform init and apply in the provided working directory.
-func initAndApply(ctx context.Context, workingDir, execPath string) (*recipes.RecipeOutput, error) {
+func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
 	if err := tf.Init(ctx); err != nil {
-		return nil, fmt.Errorf("terraform init failure: %w", err)
+		return fmt.Errorf("terraform init failure: %w", err)
 	}
 
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
 	if err := tf.Apply(ctx); err != nil {
-		return nil, fmt.Errorf("terraform apply failure: %w", err)
+		return fmt.Errorf("terraform apply failure: %w", err)
 	}
 
-	return nil, nil
+	return nil
 }
