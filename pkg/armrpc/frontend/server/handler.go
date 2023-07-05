@@ -200,7 +200,7 @@ func ConfigureDefaultHandlers(
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 		err := RegisterHandler(ctx, HandlerOptions{
 			ParentRouter:      rootRouter,
-			Path:              fmt.Sprintf("/providers/%s/operations", providerNamespace),
+			Path:              "/providers/" + providerNamespace + "/operations",
 			ResourceType:      rt,
 			Method:            v1.OperationGet,
 			ControllerFactory: operationCtrlFactory,
