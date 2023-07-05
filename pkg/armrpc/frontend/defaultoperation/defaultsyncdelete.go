@@ -67,7 +67,7 @@ func (e *DefaultSyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter
 	}
 
 	if err := e.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err

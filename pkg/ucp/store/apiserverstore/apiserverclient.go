@@ -174,7 +174,7 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 	resource := ucpv1alpha1.Resource{}
 	err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
 	if err != nil && apierrors.IsNotFound(err) {
-		return nil, &store.ErrNotFound{}
+		return nil, &store.ErrNotFound{ID: id}
 	} else if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 	if err != nil {
 		return nil, err
 	} else if obj == nil {
-		return nil, &store.ErrNotFound{}
+		return nil, &store.ErrNotFound{ID: id}
 	}
 
 	return obj, nil
@@ -214,14 +214,14 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
 			return false, &store.ErrConcurrency{}
 		} else if err != nil && apierrors.IsNotFound(err) {
-			return false, &store.ErrNotFound{}
+			return false, &store.ErrNotFound{ID: id}
 		} else if err != nil {
 			return false, err
 		}
 
 		index := findIndex(&resource, parsed)
 		if index == nil {
-			return false, &store.ErrNotFound{}
+			return false, &store.ErrNotFound{ID: id}
 		}
 
 		if config.ETag != "" && config.ETag != resource.Entries[*index].ETag {
@@ -240,7 +240,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 			}
 			err := c.client.Delete(ctx, &resource, &options)
 			if err != nil && apierrors.IsNotFound(err) {
-				return false, &store.ErrNotFound{}
+				return false, &store.ErrNotFound{ID: id}
 			} else if apierrors.IsConflict(err) {
 				return true, err // RETRY this!
 			} else if err != nil {
@@ -254,7 +254,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 
 			err := c.client.Update(ctx, &resource)
 			if err != nil && apierrors.IsNotFound(err) {
-				return false, &store.ErrNotFound{}
+				return false, &store.ErrNotFound{ID: id}
 			} else if apierrors.IsConflict(err) {
 				return true, err // RETRY this!
 			} else if err != nil {

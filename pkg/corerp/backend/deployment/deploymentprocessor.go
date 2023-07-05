@@ -445,7 +445,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 
 	resource, err := sc.Get(ctx, resourceID.String())
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: resourceID.String()}, err) {
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource %q does not exist", resourceID.String()))
 		}
 		return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)

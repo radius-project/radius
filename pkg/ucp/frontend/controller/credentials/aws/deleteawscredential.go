@@ -88,7 +88,7 @@ func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, re
 	}
 
 	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err
