@@ -69,7 +69,7 @@ func Test_NewSubrouter(t *testing.T) {
 	}
 }
 
-func Test_RegisterHandler_Duplciated(t *testing.T) {
+func Test_RegisterHandler_DeplicatedRoutes(t *testing.T) {
 	mctrl := gomock.NewController(t)
 
 	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
@@ -93,7 +93,7 @@ func Test_RegisterHandler_Duplciated(t *testing.T) {
 	require.NoError(t, err)
 
 	err = RegisterHandler(ctx, opts, ctrlOpts)
-	require.NoError(t, err)
+	require.NoError(t, err, "should not return error if the same route is registered twice")
 }
 
 func Test_RegisterHandler(t *testing.T) {
