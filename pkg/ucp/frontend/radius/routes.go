@@ -102,18 +102,19 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 				)
 			},
 		},
-		// Proxy request should take the least priority in routing and should therefore be last
+		// Chi router uses radix tree so that it doesn't linear search the matched one. So, to catch all requests,
+		// we need to use CatchAllPath(/*) at the above matched routes path in chi router.
 		//
-		// Note that the API validation is not applied to the router used for proxying
+		// Note that the API validation is not applied for CatchAllPath(/*).
 		{
-			// Method deliberately omitted. This is a catch-all route for proxying.
+			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/azure/{planeName}/resourcegroups/{resourceGroupName}.
 			ParentRouter:      resourceGroupResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
 			ControllerFactory: planes_ctrl.NewProxyPlane,
 		},
 		{
-			// Method deliberately omitted. This is a catch-all route for proxying.
+			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/azure/{planeName}/.
 			ParentRouter:      baseRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
