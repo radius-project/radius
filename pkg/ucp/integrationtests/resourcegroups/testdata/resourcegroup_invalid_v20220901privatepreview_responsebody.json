@@ -1,0 +1,13 @@
+{
+    "error": {
+      "code": "HttpRequestPayloadAPISpecValidationFailed",
+      "details": [
+        {
+          "code": "InvalidProperties",
+          "message": "$.location in body is required"
+        }
+      ],
+      "message": "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
+      "target": "ucp/openapi"
+    }
+  }

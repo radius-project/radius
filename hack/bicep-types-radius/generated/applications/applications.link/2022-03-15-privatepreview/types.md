@@ -278,12 +278,14 @@
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the Redis resource
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **tls**: bool: Specifies whether to enable SSL connections to the Redis cache
 * **username**: string: The username for Redis cache
 
 ## RedisCacheSecrets
 ### Properties
 * **connectionString**: string: The connection string used to connect to the Redis cache
 * **password**: string: The password for this Redis cache instance
+* **url**: string: The URL used to connect to the Redis cache
 
 ## TrackedResourceTags
 ### Properties
@@ -328,6 +330,7 @@
 ### Properties
 * **connectionString**: string (ReadOnly): The connection string used to connect to the Redis cache
 * **password**: string (ReadOnly): The password for this Redis cache instance
+* **url**: string (ReadOnly): The URL used to connect to the Redis cache
 
 ## SqlDatabaseListSecretsResult
 ### Properties

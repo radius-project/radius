@@ -1,0 +1,10 @@
+{
+  "stable": {
+    "version": "v0.22.0",
+    "description": "stable is the release that we want to be the default version for users"
+  },
+  "latest": {
+    "version": "v0.22.0-rc2",
+    "description": "latest is the most recent release, which may be a pre-release"
+  }
+}

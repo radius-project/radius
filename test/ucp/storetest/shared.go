@@ -24,7 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
-	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -160,14 +160,14 @@ func CompareObjectLists(t *testing.T, expected []store.Object, actual []store.Ob
 }
 
 func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T)) {
-	ctx, cancel := testcontext.New(t)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	t.Run("get_not_found", func(t *testing.T) {
 		clear(t)
 
 		obj, err := client.Get(ctx, Resource1ID.String())
-		require.ErrorIs(t, err, &store.ErrNotFound{})
+		require.ErrorIs(t, err, &store.ErrNotFound{ID: Resource1ID.String()})
 		require.Nil(t, obj)
 	})
 
@@ -175,7 +175,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		clear(t)
 
 		err := client.Delete(ctx, Resource1ID.String())
-		require.ErrorIs(t, err, &store.ErrNotFound{})
+		require.ErrorIs(t, err, &store.ErrNotFound{ID: Resource1ID.String()})
 	})
 
 	t.Run("save_and_get_arm", func(t *testing.T) {
@@ -278,7 +278,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 
 		obj1Get, err := client.Get(ctx, Resource1ID.String())
-		require.ErrorIs(t, err, &store.ErrNotFound{})
+		require.ErrorIs(t, err, &store.ErrNotFound{ID: Resource1ID.String()})
 		require.Nil(t, obj1Get)
 	})
 
@@ -305,7 +305,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		require.NoError(t, err)
 
 		obj1Get, err := client.Get(ctx, Resource1ID.String())
-		require.ErrorIs(t, err, &store.ErrNotFound{})
+		require.ErrorIs(t, err, &store.ErrNotFound{ID: Resource1ID.String()})
 		require.Nil(t, obj1Get)
 	})
 
@@ -320,7 +320,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		require.NoError(t, err)
 
 		obj1Get, err := client.Get(ctx, Resource1ID.String())
-		require.ErrorIs(t, err, &store.ErrNotFound{})
+		require.ErrorIs(t, err, &store.ErrNotFound{ID: Resource1ID.String()})
 		require.Nil(t, obj1Get)
 	})
 

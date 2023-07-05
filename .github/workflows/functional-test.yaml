@@ -58,8 +58,10 @@ env:
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
-  # The region for AWS resources.
+  # The region for AWS resources
   AWS_REGION: 'us-west-2'
+  # The AWS account ID
+  AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 

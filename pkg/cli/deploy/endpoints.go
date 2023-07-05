@@ -28,6 +28,10 @@ type PublicEndpoint struct {
 	Endpoint string
 }
 
+// # Function Explanation
+//
+// FindPublicEndpoints iterates through a list of resources and attempts to retrieve a public endpoint for each one,
+// returning a list of public endpoints and an error if one occurs.
 func FindPublicEndpoints(ctx context.Context, diag clients.DiagnosticsClient, result clients.DeploymentResult) ([]PublicEndpoint, error) {
 	endpoints := []PublicEndpoint{}
 	for _, resource := range result.Resources {

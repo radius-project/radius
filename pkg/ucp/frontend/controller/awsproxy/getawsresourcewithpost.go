@@ -46,7 +46,9 @@ type GetAWSResourceWithPost struct {
 	awsClients ucp_aws.Clients
 }
 
-// NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost.
+// # Function Explanation
+//
+// NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost controller with the given options and AWS clients.
 func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSResourceWithPost{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
@@ -54,6 +56,11 @@ func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aw
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() reads the region from the request, reads properties from the body, fetches the resource
+// from AWS, computes the resource ID and returns an OK response with the resource details. If the resource is not found,
+// it returns a NotFound response. If any other error occurs, it returns an error response.
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)

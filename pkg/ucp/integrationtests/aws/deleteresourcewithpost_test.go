@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -37,7 +37,7 @@ import (
 )
 
 func Test_DeleteAWSResourceWithPost(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient, cloudformationClient := initializeTest(t)
+	ucp, _, _, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
 
 	primaryIdentifiers := map[string]any{
 		"primaryIdentifier": []any{
@@ -73,13 +73,13 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	deleteRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:delete", body)
+	deleteRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPost, ucp.BaseURL+testProxyRequestAWSCollectionPath+"/:delete", body)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(deleteRequest)
+	ctx := rpctest.ARMTestContextFromRequest(deleteRequest)
 	deleteRequest = deleteRequest.WithContext(ctx)
 
-	deleteResponse, err := ucpClient.httpClient.Do(deleteRequest)
+	deleteResponse, err := ucp.Client().Do(deleteRequest)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)

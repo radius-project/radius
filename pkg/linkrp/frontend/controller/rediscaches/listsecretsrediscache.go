@@ -57,7 +57,7 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWrite
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	resource, _, err := ctrl.GetResource(ctx, parsedResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: parsedResourceID.String()}, err) {
 			return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 		}
 		return nil, err

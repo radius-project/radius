@@ -346,7 +346,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	opType, _ := v1.ParseOperationType(req.OperationType)
 
 	err = updateResourceState(ctx, sc, rID.String(), state)
-	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{}, err)) {
+	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{ID: rID.String()}, err)) {
 		logger.Error(err, "failed to update the provisioningState in resource.")
 		return err
 	}

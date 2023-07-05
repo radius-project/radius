@@ -32,6 +32,7 @@ type testDatamodel struct {
 	StringField            string
 	AnotherCoolStringField string
 	Int32Field             int32
+	BooleanField           bool
 }
 
 func Test_NewValidator(t *testing.T) {
@@ -531,6 +532,66 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"regular\" must be provided when not using a recipe. Set '.properties.regular' to provide a value manually", err.Error())
+	})
+}
+
+func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
+	// Code path for computed booleans is the same as optional, except when the value is missing.\
+	t.Run("computed value is computed with recipe", func(t *testing.T) {
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+
+		model := testDatamodel{
+			BooleanField: false,
+			Int32Field:   6380,
+		}
+		v.AddComputedBoolField("computed", &model.BooleanField, func() (bool, *ValidationError) {
+			// Computed values have access to non-computed values
+			return model.Int32Field == 6380, nil
+		})
+		v.AddOptionalInt32Field("regular", &model.Int32Field)
+
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		require.NoError(t, err)
+		require.Equal(t, true, model.BooleanField)
+		require.Equal(t, map[string]any{"regular": int32(6380), "computed": true}, v.ConnectionValues)
+	})
+
+	t.Run("computed value is computed without recipe", func(t *testing.T) {
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+
+		model := testDatamodel{
+			BooleanField: false,
+			Int32Field:   6379,
+		}
+		v.AddComputedBoolField("computed", &model.BooleanField, func() (bool, *ValidationError) {
+			// Computed values have access to non-computed values
+			return model.Int32Field == 6380, nil
+		})
+		v.AddOptionalInt32Field("regular", &model.Int32Field)
+
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		require.NoError(t, err)
+		require.Equal(t, false, model.BooleanField)
+		require.Equal(t, map[string]any{"regular": int32(6379), "computed": false}, v.ConnectionValues)
+	})
+
+	t.Run("computed value with recipe override", func(t *testing.T) {
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+
+		model := testDatamodel{
+			BooleanField: false,
+			Int32Field:   6380,
+		}
+		v.AddComputedBoolField("computed", &model.BooleanField, func() (bool, *ValidationError) {
+			// Computed values have access to non-computed values
+			return model.Int32Field == 6380, nil
+		})
+		v.AddOptionalInt32Field("regular", &model.Int32Field)
+
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		require.NoError(t, err)
+		require.Equal(t, true, model.BooleanField)
+		require.Equal(t, map[string]any{"regular": int32(6380), "computed": true}, v.ConnectionValues)
 	})
 }
 
