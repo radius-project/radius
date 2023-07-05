@@ -102,9 +102,10 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 
-		// Proxy request should take the least priority in routing and should therefore be last
+		// Chi router uses radix tree so that it doesn't linear search the matched one. So, to catch all requests,
+		// we need to use CatchAllPath(/*) at the above matched routes path in chi router.
 		//
-		// Note that the API validation is not applied to the router used for proxying
+		// Note that the API validation is not applied for CatchAllPath(/*).
 		{
 			// Method deliberately omitted. This is a catch-all route for proxying.
 			ParentRouter:      baseRouter,
