@@ -93,6 +93,15 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
 		resourceID, err := resources.ParseResource(connection.Source)
+
+		// example origin: 'http://containerY:3000'. Used for DNS-SD connections.
+		origin := connection.Origin
+
+		// If origin is not empty, then the container uses DNS-SD connections.
+		if origin != "" {
+			usesDNSSD = true
+		}
+
 		if err != nil {
 			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
@@ -154,7 +163,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
-	appId, err := resources.ParseResource(resource.Properties.Application)
+	properties := resource.Properties
+
+	appId, err := resources.ParseResource(properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
@@ -164,7 +175,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// Connections might require a role assignment to grant access.
 	roles := []rpv1.OutputResource{}
-	for _, connection := range resource.Properties.Connections {
+	for _, connection := range properties.Connections {
 		if !r.isIdentitySupported(connection.IAM.Kind) {
 			continue
 		}
