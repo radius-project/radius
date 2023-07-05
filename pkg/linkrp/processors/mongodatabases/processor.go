@@ -30,6 +30,10 @@ type Processor struct {
 }
 
 // Process implements the processors.Processor interface for MongoDB resources.
+//
+// # Function Explanation
+//
+// Process validates the fields of a MongoDatabase struct and sets the computed values in the RecipeOutput.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDatabase, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 

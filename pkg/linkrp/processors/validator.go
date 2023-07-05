@@ -56,6 +56,12 @@ type Validator struct {
 
 // NewValidator creates a new Validator. Use the parameters to pass in pointers to the corresponding fields on the resource
 // data model.
+//
+// # Function Explanation
+//
+// NewValidator initializes and returns a new Validator struct with empty data structures for connection values, connection
+//
+//	secrets and output resources.
 func NewValidator(connectionValues *map[string]any, connectionSecrets *map[string]rpv1.SecretValueReference, outputResources *[]rpv1.OutputResource) *Validator {
 	// Empty the computed data structures. This ensures that we don't accumulate data from previous validations.
 	*connectionValues = map[string]any{}

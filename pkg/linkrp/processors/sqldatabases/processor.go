@@ -19,6 +19,10 @@ type Processor struct {
 }
 
 // Process implements the processors.Processor interface for SqlDatabase resources.
+//
+// # Function Explanation
+//
+// Process validates the given resource and sets the computed values and secrets in the resource.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.SqlDatabase, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 

@@ -38,6 +38,9 @@ type Processor struct {
 	Client runtime_client.Client
 }
 
+// # Function Explanation
+//
+// Process validates and creates a Dapr component in Kubernetes if the resource is being provisioned manually.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprPubSubBroker, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 	validator.AddResourcesField(&resource.Properties.Resources)

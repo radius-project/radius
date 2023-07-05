@@ -51,6 +51,11 @@ func GetOutputResourcesFromResourcesField(field []*linkrp.ResourceReference) ([]
 }
 
 // GetOutputResourcesFromRecipe is a utility function that converts the resources in the recipe output into a list of OutputResources.
+//
+// # Function Explanation
+//
+// GetOutputResourcesFromRecipe parses the output resources from a recipe and returns a slice of OutputResource objects,
+// returning an error if any of the resources are invalid.
 func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputResource, error) {
 	results := []rpv1.OutputResource{}
 	for i, resource := range output.Resources {

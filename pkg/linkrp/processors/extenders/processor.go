@@ -14,6 +14,11 @@ type Processor struct {
 }
 
 // Process implements the processors.Processor interface for Extender resources.
+//
+// # Function Explanation
+//
+// Processor.Process validates and merges output values from the recipe output. It returns an error if the secret values
+// are not of type string or if any of the other validations fail.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.Extender, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 
