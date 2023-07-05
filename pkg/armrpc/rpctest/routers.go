@@ -17,19 +17,23 @@ limitations under the License.
 package rpctest
 
 import (
+	"bytes"
 	"context"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 // HandlerTestSpec is a specification for a single test case for a handler.
 type HandlerTestSpec struct {
-	// Name is the name of the test case.
-	Name string
+	// OperationType is the operation type of the request.
+	OperationType v1.OperationType
 	// Path is the sub path of the router matches.
 	Path string
 	// Method is the HTTP method of the request.
@@ -38,6 +42,8 @@ type HandlerTestSpec struct {
 	WithoutRootScope bool
 	// SkipPathBase indicates that the path base should not be prepended to the path.
 	SkipPathBase bool
+	// SkipOperationTypeValidation indicates that the operation type should not be validated.
+	SkipOperationTypeValidation bool
 }
 
 // AssertRouters asserts that the given router matches the given test cases.
@@ -46,13 +52,13 @@ func AssertRouters(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope st
 	r, err := configureRouter(ctx)
 	require.NoError(t, err)
 
-	namesMatched := make(map[string]bool)
-	for _, tt := range tests {
-		if tt.WithoutRootScope {
-			namesMatched[tt.Name] = true
-			continue
-		}
+	t.Log("Avaiable routes:")
+	err = chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		t.Logf("Method: %s, Path: %s", method, route)
+		return nil
+	})
 
+	for _, tt := range tests {
 		pb := ""
 		if !tt.SkipPathBase {
 			pb = pathBase
@@ -63,34 +69,46 @@ func AssertRouters(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope st
 			uri = pb + tt.Path
 		}
 
-		t.Run(tt.Name, func(t *testing.T) {
+		t.Run(tt.Method+"|"+tt.Path, func(t *testing.T) {
 			tctx := chi.NewRouteContext()
 			tctx.Reset()
 
-			result := r.Match(tctx, tt.Method, uri)
+			matched := r.Match(tctx, tt.Method, uri)
+			require.True(t, matched)
+			found := "Found"
+			if !matched {
+				found = "not found"
+			}
 
-			t.Logf("result: %v", tctx)
-			require.Truef(t, result, "no route found for %s %s, context: %v", tt.Method, uri, tctx)
+			t.Logf("%s for %s %s, matched routes: %v", found, tt.Method, uri, strings.Join(tctx.RoutePatterns, "|"))
+
+			if tt.SkipOperationTypeValidation {
+				return
+			}
+
+			err = chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+				if tctx.RoutePattern() == route && tt.Method == method {
+					for _, m := range middlewares {
+						w := httptest.NewRecorder()
+
+						// It will not validate body.
+						req, err := http.NewRequest(tt.Method, uri, bytes.NewBuffer([]byte{}))
+						require.NoError(t, err)
+
+						rCtx := &v1.ARMRequestContext{}
+						req = req.WithContext(v1.WithARMRequestContext(context.Background(), rCtx))
+
+						// Pass empty router to validate operation type.
+						testr := chi.NewRouter()
+						m(testr).ServeHTTP(w, req)
+
+						require.Equal(t, tt.OperationType.String(), rCtx.OperationType.String())
+					}
+				}
+				return nil
+			})
 		})
 	}
 
-	t.Run("all named routes are tested", func(t *testing.T) {
-		err := chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-			t.Logf("%s %s", method, route)
-			return nil
-		})
-		require.NoError(t, err)
-	})
-	/*
-		t.Run("all named routes are tested", func(t *testing.T) {
-			err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-				if route.GetName() == "" {
-					return nil
-				}
-
-				assert.Contains(t, namesMatched, route.GetName(), "route %s is not tested", route.GetName())
-				return nil
-			})
-			require.NoError(t, err)
-		})*/
+	require.NoError(t, err)
 }

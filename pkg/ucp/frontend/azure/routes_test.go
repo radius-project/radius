@@ -39,29 +39,31 @@ const pathBase = "/some-path-base"
 func Test_Routes(t *testing.T) {
 	tests := []rpctest.HandlerTestSpec{
 		{
-			Name:   v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationList}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/azure/azurecloud/providers/System.Azure/credentials",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationList},
+			Method:        http.MethodGet,
+			Path:          "/planes/azure/azurecloud/providers/System.Azure/credentials",
 		}, {
-			Name:   v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationGet}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
 		}, {
-			Name:   v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationPut}.String(),
-			Method: http.MethodPut,
-			Path:   "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationPut},
+			Method:        http.MethodPut,
+			Path:          "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
 		}, {
-			Name:   v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationDelete}.String(),
-			Method: http.MethodDelete,
-			Path:   "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.AzureCredentialType, Method: v1.OperationDelete},
+			Method:        http.MethodDelete,
+			Path:          "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
 		}, {
-			Name:   v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/azure/azurecloud/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/some-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			OperationType:               v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy},
+			Method:                      http.MethodGet,
+			Path:                        "/planes/azure/azurecloud/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/some-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			SkipOperationTypeValidation: true,
 		}, {
-			Name:   v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy}.String(),
-			Method: http.MethodPut,
-			Path:   "/planes/azure/azurecloud/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/some-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			OperationType:               v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy},
+			Method:                      http.MethodPut,
+			Path:                        "/planes/azure/azurecloud/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/some-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			SkipOperationTypeValidation: true,
 		},
 	}
 

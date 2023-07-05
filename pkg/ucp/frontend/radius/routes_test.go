@@ -38,33 +38,36 @@ const pathBase = "/some-path-base"
 func Test_Routes(t *testing.T) {
 	tests := []rpctest.HandlerTestSpec{
 		{
-			Name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+			OperationType:               v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			Method:                      http.MethodGet,
+			Path:                        "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+			SkipOperationTypeValidation: true,
 		}, {
-			Name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			Method: http.MethodPut,
-			Path:   "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+			OperationType:               v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			Method:                      http.MethodPut,
+			Path:                        "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
+			SkipOperationTypeValidation: true,
 		}, {
-			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationList}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/radius/local/resourcegroups",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationList},
+			Method:        http.MethodGet,
+			Path:          "/planes/radius/local/resourcegroups",
 		}, {
-			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationGet}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/radius/local/resourcegroups/test-rg",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationPut}.String(),
-			Method: http.MethodPut,
-			Path:   "/planes/radius/local/resourcegroups/test-rg",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationPut},
+			Method:        http.MethodPut,
+			Path:          "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			Name:   v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationDelete}.String(),
-			Method: http.MethodDelete,
-			Path:   "/planes/radius/local/resourcegroups/test-rg",
+			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationDelete},
+			Method:        http.MethodDelete,
+			Path:          "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			Name:   v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/radius/local/providers/applications.core/applications/test-app",
+			OperationType:               v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			Method:                      http.MethodGet,
+			Path:                        "/planes/radius/local/providers/applications.core/applications/test-app",
+			SkipOperationTypeValidation: true,
 		},
 	}
 
