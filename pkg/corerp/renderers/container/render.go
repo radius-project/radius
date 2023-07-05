@@ -105,6 +105,15 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		
 		// if the source is not a URL, it either a resourceID or invalid.
 		resourceID, err := resources.ParseResource(connection.Source)
+
+		// example origin: 'http://containerY:3000'. Used for DNS-SD connections.
+		origin := connection.Origin
+
+		// If origin is not empty, then the container uses DNS-SD connections.
+		if origin != "" {
+			usesDNSSD = true
+		}
+
 		if err != nil {
 			return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
 		}
