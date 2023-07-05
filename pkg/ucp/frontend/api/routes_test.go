@@ -33,25 +33,25 @@ func Test_Routes(t *testing.T) {
 	pathBase := "/some-path-base"
 	tests := []rpctest.HandlerTestSpec{
 		{
-			Name:         v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet}.String(),
-			Method:       http.MethodGet,
-			Path:         "/openapi/v2",
-			SkipPathBase: true,
+			OperationType: v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "/openapi/v2",
+			SkipPathBase:  true,
 		},
 		{
-			Name:   v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet}.String(),
-			Method: http.MethodGet,
-			Path:   "",
+			OperationType: v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "",
 		},
 		{
-			Name:   v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes",
+			OperationType: v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList},
+			Method:        http.MethodGet,
+			Path:          "/planes",
 		},
 		{
-			Name:   v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList}.String(),
-			Method: http.MethodGet,
-			Path:   "/planes/someType",
+			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
+			Method:        http.MethodGet,
+			Path:          "/planes/someType",
 		},
 	}
 
