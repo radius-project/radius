@@ -86,8 +86,8 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 	// 2. For resource scopes (xxxResourceRouter), register validator at Subrouter.
 
 	// Environments resource routers.
-	envPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/environments")
-	envResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/environments")
+	envPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/environments", validator)
+	envResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/environments", validator)
 	envResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/environments/{environmentName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
@@ -104,7 +104,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: envResourceGroupRouter,
@@ -117,7 +116,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: envResourceRouter,
@@ -166,8 +164,8 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 	}
 
 	// httpRoute resource handler registration.
-	httpRoutePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/httproutes")
-	httpRouteResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/httproutes")
+	httpRoutePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/httproutes", validator)
+	httpRouteResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/httproutes", validator)
 	httpRouteResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/httproutes/{httpRouteName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -183,7 +181,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: httpRouteResourceGroupRouter,
@@ -196,7 +193,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: httpRouteResourceRouter,
@@ -252,8 +248,8 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 	}...)
 
 	// Container resource handlers.
-	containerPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/containers")
-	containerResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/containers")
+	containerPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/containers", validator)
+	containerResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/containers", validator)
 	containerResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/containers/{containerName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -269,7 +265,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: containerResourceGroupRouter,
@@ -282,7 +277,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: containerResourceRouter,
@@ -346,8 +340,8 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 	}...)
 
 	// Container resource handlers.
-	appPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/applications")
-	appResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/applications")
+	appPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/applications", validator)
+	appResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/applications", validator)
 	appResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/applications/{applicationName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -364,7 +358,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: appResourceGroupRouter,
@@ -377,7 +370,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: appResourceRouter,
@@ -441,8 +433,8 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 	}...)
 
 	// Gateway resource handler registration.
-	gwPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/gateways")
-	gwResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/gateways")
+	gwPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/gateways", validator)
+	gwResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/gateways", validator)
 	gwResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/gateways/{gatewayName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -458,7 +450,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: gwResourceGroupRouter,
@@ -471,7 +462,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: gwResourceRouter,
@@ -535,8 +525,8 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 	}...)
 
 	// Volumes resource handler registration.
-	volPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/volumes")
-	volResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/volumes")
+	volPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/volumes", validator)
+	volResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/volumes", validator)
 	volRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/volumes/{volumeName}", validator)
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
@@ -552,7 +542,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: volResourceGroupRouter,
@@ -566,7 +555,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: volRouter,
@@ -631,8 +619,8 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 	}...)
 
 	// Secret Store resource handler.
-	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/secretstores")
-	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/secretstores")
+	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/secretstores", validator)
+	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/secretstores", validator)
 	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/secretstores/{secretStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -648,7 +636,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: secretStoreResourceGroupRouter,
@@ -661,7 +648,6 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 					},
 				)
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
