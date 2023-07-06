@@ -119,8 +119,8 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 
 	// Configures planes collection and resource routes.
 	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, apiValidator)
-	planeTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath)
-	planeNameRouter := server.NewSubrouter(planeTypeRouter, "/{planeName}", apiValidator)
+	planeTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath, apiValidator)
+	planeNameRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath+"/{planeName}", apiValidator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		// Planes resource handler registration.
@@ -137,7 +137,6 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanesByType,
-			Middlewares:       chi.Middlewares{apiValidator},
 		},
 		{
 			ParentRouter:  planeNameRouter,
