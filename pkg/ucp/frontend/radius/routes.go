@@ -20,8 +20,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
@@ -52,7 +50,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	})
 
 	// URLs for lifecycle of resource groups
-	resourceGroupCollectionRouter := server.NewSubrouter(baseRouter, resourceGroupCollectionPath)
+	resourceGroupCollectionRouter := server.NewSubrouter(baseRouter, resourceGroupCollectionPath, apiValidator)
 	resourceGroupResourceRouter := server.NewSubrouter(baseRouter, resourceGroupResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
@@ -61,7 +59,6 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ResourceType:      v20220901privatepreview.ResourceGroupType,
 			Method:            v1.OperationList,
 			ControllerFactory: resourcegroups_ctrl.NewListResourceGroups,
-			Middlewares:       chi.Middlewares{apiValidator},
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
