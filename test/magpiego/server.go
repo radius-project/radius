@@ -71,8 +71,8 @@ func startHTTPSServer(crt []byte, key []byte) error {
 
 func setupServeMux() chi.Router {
 	router := chi.NewRouter()
-	router.MethodFunc(http.MethodGet, backendURI, backendHandler)
-	router.MethodFunc(http.MethodGet, healthURI, statusHandler)
+	router.Get(backendURI, backendHandler)
+	router.Get(healthURI, statusHandler)
 	return router
 }
 
