@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	// APIVersion is a query-string for the API version of resource provider.
+	// APIVersion is a query string for the API version of Radius resource provider.
 	APIVersionParam = "api-version"
 
 	// CatchAllPath is the path for the catch-all route.
