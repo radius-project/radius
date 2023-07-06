@@ -82,7 +82,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 
 	handlerOptions := []server.HandlerOptions{
 		{
-			// URLS for standard UCP resource async status result.
+			// URLs for standard UCP resource async status result.
 			ParentRouter:  server.NewSubrouter(baseRouter, operationResultsPath),
 			Method:        v1.OperationGetOperationResult,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationResult},
@@ -91,8 +91,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			// URLS for standard UCP resource async status.
-
+			// URLs for standard UCP resource async status.
 			ParentRouter:  server.NewSubrouter(baseRouter, operationStatusesPath),
 			Method:        v1.OperationGetOperationStatuses,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationStatuses},
@@ -142,7 +141,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 	}...)
 
-	// URLS for "non-idempotent" resource lifecycle operations. These are extensions to the UCP spec that are needed when
+	// URLs for "non-idempotent" resource lifecycle operations. These are extensions to the UCP spec that are needed when
 	// a resource has a non-idempotent lifecyle and a computed name.
 	//
 	// The normal UCP lifecycle operations have a user-specified resource name which must be part of the URL. These
