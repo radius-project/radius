@@ -42,6 +42,12 @@ func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1
 }
 
 // ExtenderDataModelToVersioned converts versioned Extender model to datamodel.
+//
+// # Function Explanation
+//
+// ExtenderDataModelFromVersioned unmarshals a JSON byte slice into an ExtenderResource object, then converts it to a
+// datamodel.Extender object and returns it, or returns an error if the version is unsupported or an error occurs during
+// unmarshalling or conversion.
 func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.Extender, error) {
 	switch version {
 	case v20220315privatepreview.Version:

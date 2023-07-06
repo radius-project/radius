@@ -64,6 +64,9 @@ type MongoDatabaseSecrets struct {
 	ConnectionString string `json:"connectionString"`
 }
 
+// # Function Explanation
+//
+// IsEmpty checks if the MongoDatabaseSecrets instance is empty.
 func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 	return mongoSecrets == MongoDatabaseSecrets{}
 }
@@ -99,6 +102,11 @@ func (mongodb *MongoDatabase) VerifyInputs() error {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
+//
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the MongoDatabase instance's properties, computed values and secret values
+// with the given DeploymentOutput.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -120,6 +128,10 @@ func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// Recipe returns the LinkRecipe associated with the MongoDatabase instance, or nil if the
+// ResourceProvisioning is set to Manual.
 func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
 	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
@@ -127,10 +139,16 @@ func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
 	return &r.Properties.Recipe
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name for MongoDatabaseSecrets.
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
 	return linkrp.MongoDatabasesResourceType
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name for MongoDatabase.
 func (mongo *MongoDatabase) ResourceTypeName() string {
 	return linkrp.MongoDatabasesResourceType
 }

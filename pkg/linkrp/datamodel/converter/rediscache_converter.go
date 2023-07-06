@@ -60,6 +60,10 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 	}
 }
 
+// # Function Explanation
+//
+// RedisCacheSecretsDataModelToVersioned takes in a pointer to a RedisCacheSecrets datamodel and a version string, and
+// returns a VersionedModelInterface and an error if the version is not supported.
 func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:

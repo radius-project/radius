@@ -45,10 +45,17 @@ func (r *DaprSecretStore) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
+//
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the DaprSecretStore instance.
 func (r *DaprSecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name for the DaprSecretStore instance.
 func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
 	return linkrp.DaprSecretStoresResourceType
 }

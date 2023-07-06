@@ -51,6 +51,9 @@ func (r *RabbitMQMessageQueue) ResourceMetadata() *rpv1.BasicResourceProperties 
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name for RabbitMQMessageQueue.
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
 }
@@ -69,11 +72,19 @@ type RabbitMQSecrets struct {
 	ConnectionString string `json:"connectionString"`
 }
 
+// # Function Explanation
+//
+// MethodName returns the resource type name for RabbitMQ secrets.
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
 // Recipe returns the recipe for the RabbitMQMessageQueue
+//
+// # Function Explanation
+//
+// Recipe returns the LinkRecipe associated with the RabbitMQMessageQueue instance if the
+// ResourceProvisioning is not set to Manual, otherwise it returns nil.
 func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
 	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
@@ -81,6 +92,9 @@ func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
 	return &r.Properties.Recipe
 }
 
+// # Function Explanation
+//
+// VerifyInputs checks if the required fields are present in the RabbitMQMessageQueue instance and returns an error if not.
 func (rabbitmq *RabbitMQMessageQueue) VerifyInputs() error {
 	properties := rabbitmq.Properties
 	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {

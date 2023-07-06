@@ -158,6 +158,9 @@ type RedisCacheSecrets struct {
 	URL              string `json:"url"`
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name for the RedisCacheSecrets instance.
 func (redis RedisCacheSecrets) ResourceTypeName() string {
 	return linkrp.RedisCachesResourceType
 }

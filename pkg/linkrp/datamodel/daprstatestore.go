@@ -55,6 +55,9 @@ func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns a string representing the resource type name of the DaprStateStore instance.
 func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 	return linkrp.DaprStateStoresResourceType
 }

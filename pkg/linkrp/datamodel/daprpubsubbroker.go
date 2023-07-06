@@ -49,6 +49,9 @@ func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name of the DaprPubSubBroker instance.
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 	return linkrp.DaprPubSubBrokersResourceType
 }

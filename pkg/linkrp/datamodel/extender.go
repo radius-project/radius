@@ -49,11 +49,19 @@ func (r *Extender) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name of the extender.
 func (extender *Extender) ResourceTypeName() string {
 	return linkrp.ExtendersResourceType
 }
 
 // Recipe returns the recipe for the Extender resource
+//
+// # Function Explanation
+//
+// Extender.Recipe returns the LinkRecipe associated with the Extender if the ResourceProvisioning is not set to Manual,
+// otherwise it returns nil.
 func (extender *Extender) Recipe() *linkrp.LinkRecipe {
 	if extender.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
