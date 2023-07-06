@@ -32,8 +32,7 @@ Keep reading for some tips about how to get your pull requests accepted!
 ## How to get help with a pull request
 
 * Notify the Radius Core team by commenting with `@project-radius/radius-core-team ` on your pull-request. 
-* Post on discord in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814) to start a conversation.
-
+* Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
 
 ## Writing a good commit message
 

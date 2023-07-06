@@ -35,14 +35,14 @@ In general you should ask for guidance before creating a new top-level folder in
 | `kubeutil/`       | Utility code and working with Kubernetes on client side                                 |
 | `linkrp/`         | Resource Provider implementation for `Applications.Link` resources                      |
 | `logging/`        | Utility code for Radius logging                                                         |
-| `messagingrp/`    | Resource Provider implementation for messaging Resource Provider                        |
+| `messagingrp/`    | Resource Provider implementation for `Applications.Messaging` resources                 |
 | `middleware/`     | Implementation for all Radius middleware                                                |
 | `metrics/`        | Code generating Radius metrics                                                          |
 | `profiler/`       | Code and configs for Radius profiler                                                    |
 | `recipes/`        | Implementation for Radius Recipes                                                       |
 | `resourcekinds/`  | Definition of Radius resources                                                          |
 | `resourcemodels/` | Code for identifying Radius resources in underlying system                              |
-| `rp/`             | Code shared by Application.Core and Application.Link rps                                |
+| `rp/`             | Code shared by multiple rps                                |
 | `sdk/`            | Code for interfacing with Radius as a client                                            |
 | `to/`             | Code for pointer to value conversions                                                   |
 | `trace/`          | Utility code for generating Radius traces                                               |
