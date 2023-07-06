@@ -286,6 +286,8 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 	rpcContext, ok := ctx.Value(armContextKey).(*ARMRequestContext)
 	if !ok {
+		// ARMRequestContext must be set in the incoming request context.
+		// Otherwise, this is the critical code bug.
 		panic("ARMRequestContext is not set in the context")
 	}
 	return rpcContext
