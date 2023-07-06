@@ -30,6 +30,9 @@ type DaprGeneric struct {
 	Metadata map[string]any
 }
 
+// # Function Explanation
+//
+// Validate checks if the required fields of a DaprGeneric struct are set and returns an error if any of them are not.
 func (daprGeneric DaprGeneric) Validate() error {
 	if daprGeneric.Type == nil || *daprGeneric.Type == "" {
 		return v1.NewClientErrInvalidRequest("No type specified for generic Dapr component")
