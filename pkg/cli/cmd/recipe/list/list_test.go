@@ -77,16 +77,15 @@ func Test_Validate(t *testing.T) {
 func Test_Run(t *testing.T) {
 	t.Run("List recipes linked to the environment - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-
 		envResource := v20220315privatepreview.EnvironmentResource{
 			ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 			Name:     to.Ptr("kind-kind"),
 			Type:     to.Ptr("applications.core/environments"),
 			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 					linkrp.MongoDatabasesResourceType: {
-						"cosmosDB": {
+						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(types.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
@@ -139,9 +138,9 @@ func Test_Run(t *testing.T) {
 			Type:     to.Ptr("applications.core/environments"),
 			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 					linkrp.MongoDatabasesResourceType: {
-						"cosmosDB": {
+						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},

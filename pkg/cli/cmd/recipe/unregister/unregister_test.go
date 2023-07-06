@@ -100,9 +100,9 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 					linkrp.MongoDatabasesResourceType: {
-						"cosmosDB": {
+						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(types.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
@@ -158,9 +158,9 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 					linkrp.MongoDatabasesResourceType: {
-						"cosmosDB": {
+						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -214,9 +214,9 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 					linkrp.MongoDatabasesResourceType: {
-						"cosmosDB": {
+						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(types.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
@@ -274,9 +274,9 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
-					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 						linkrp.MongoDatabasesResourceType: {
-							"cosmosDB": {
+							"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(types.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 							},
@@ -312,9 +312,9 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
-					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+					Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 						linkrp.MongoDatabasesResourceType: {
-							"testResource": {
+							"testResource": &v20220315privatepreview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(types.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 							},
@@ -376,15 +376,15 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 					linkrp.MongoDatabasesResourceType: {
-						"testResource": {
+						"testResource": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(types.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
 					linkrp.RedisCachesResourceType: {
-						"testResource": {
+						"testResource": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(types.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1"),
 						},

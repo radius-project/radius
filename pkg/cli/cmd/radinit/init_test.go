@@ -581,7 +581,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 		dev            bool
 		azureProvider  *azure.Provider
 		awsProvider    *aws.Provider
-		recipes        map[string]map[string]*corerp.EnvironmentRecipeProperties
+		recipes        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification
 		expectedOutput []any
 	}{
 		{
@@ -589,9 +589,9 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			dev:           true,
 			azureProvider: nil,
 			awsProvider:   nil,
-			recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{
+			recipes: map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
 				"Applications.Link/redisCaches": {
-					"default": {
+					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),
 					},
@@ -603,7 +603,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			dev:            true,
 			azureProvider:  nil,
 			awsProvider:    nil,
-			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			recipes:        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
 		{
@@ -632,7 +632,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Region:          "us-west-2",
 				AccountID:       "test-account-id",
 			},
-			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			recipes:        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
 		{
@@ -661,7 +661,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			dev:            true,
 			azureProvider:  nil,
 			awsProvider:    nil,
-			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
+			recipes:        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
 	}

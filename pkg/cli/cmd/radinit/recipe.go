@@ -122,9 +122,11 @@ func processRepositories(repos []string, tag string) map[string]map[string]corer
 
 		repoPath := DevRecipesRegistry + "/" + repo
 
-		recipes[linkType][name] = &corerp.BicepRecipeProperties{
-			TemplateKind: to.Ptr(types.TemplateKindBicep),
-			TemplatePath: to.Ptr(repoPath + ":" + tag),
+		recipes[linkType] = map[string]corerp.EnvironmentRecipePropertiesClassification{
+			name: &corerp.BicepRecipeProperties{
+				TemplateKind: to.Ptr(types.TemplateKindBicep),
+				TemplatePath: to.Ptr(repoPath + ":" + tag),
+			},
 		}
 	}
 

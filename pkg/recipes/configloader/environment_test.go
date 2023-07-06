@@ -189,9 +189,9 @@ func TestGetRecipeDefinition(t *testing.T) {
 					Scope: to.Ptr(azureScope),
 				},
 			},
-			Recipes: map[string]map[string]*model.EnvironmentRecipeProperties{
+			Recipes: map[string]map[string]model.EnvironmentRecipePropertiesClassification{
 				"Applications.Link/mongoDatabases": {
-					recipeName: {
+					recipeName: &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"),
 						Parameters: map[string]any{

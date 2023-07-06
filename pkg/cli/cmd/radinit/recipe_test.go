@@ -134,7 +134,7 @@ func Test_processRepositories(t *testing.T) {
 		name  string
 		repos []string
 		tag   string
-		want  map[string]map[string]*corerp.EnvironmentRecipeProperties
+		want  map[string]map[string]corerp.EnvironmentRecipePropertiesClassification
 	}{
 		{
 			"Valid Repository with Redis Cache",
@@ -142,9 +142,9 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/dev/rediscaches",
 			},
 			"0.20",
-			map[string]map[string]*corerp.EnvironmentRecipeProperties{
+			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
 				"Applications.Link/redisCaches": {
-					"default": {
+					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:0.20", DevRecipesRegistry)),
 					},
@@ -158,15 +158,15 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/dev/mongodatabases",
 			},
 			"0.20",
-			map[string]map[string]*corerp.EnvironmentRecipeProperties{
+			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
 				"Applications.Link/redisCaches": {
-					"default": {
+					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:0.20", DevRecipesRegistry)),
 					},
 				},
 				"Applications.Link/mongoDatabases": {
-					"default": {
+					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/mongodatabases:0.20", DevRecipesRegistry)),
 					},
@@ -181,15 +181,15 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/dev/unsupported",
 			},
 			"latest",
-			map[string]map[string]*corerp.EnvironmentRecipeProperties{
+			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
 				"Applications.Link/redisCaches": {
-					"default": {
+					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:latest", DevRecipesRegistry)),
 					},
 				},
 				"Applications.Link/mongoDatabases": {
-					"default": {
+					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/mongodatabases:latest", DevRecipesRegistry)),
 					},

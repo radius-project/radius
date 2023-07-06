@@ -474,6 +474,7 @@
       }
     },
     "TerraformRecipeProperties":{
+      "additionalProperties": false,
       "description": "Properties of a Recipe linked to an Environment.",
       "allOf": [
         {
@@ -490,6 +491,7 @@
       "x-ms-discriminator-value": "terraform"
     },
     "BicepRecipeProperties":{
+      "additionalProperties": false,
       "description": "Properties of a Recipe linked to an Environment.",
       "allOf": [
         {
@@ -503,6 +505,7 @@
     "EnvironmentRecipeProperties": {
       "description": "Properties of a Recipe linked to an Environment.",
       "discriminator": "templateKind",
+      "type": "object",
       "properties": {
         "templateKind": {
           "description": "Format of the template provided by the recipe. Allowed values: bicep",

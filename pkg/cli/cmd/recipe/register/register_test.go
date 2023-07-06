@@ -125,9 +125,9 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testRecipes := map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+		testRecipes := map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 			linkrp.MongoDatabasesResourceType: {
-				"cosmosDB": {
+				"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 					TemplateKind: to.Ptr(types.TemplateKindBicep),
 					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				},
@@ -187,9 +187,9 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe Failure", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testRecipes := map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+		testRecipes := map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 			linkrp.MongoDatabasesResourceType: {
-				"cosmosDB": {
+				"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				},
 			},
@@ -274,9 +274,9 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+			Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 				linkrp.MongoDatabasesResourceType: {
-					"cosmosDB": {
+					"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						Parameters:   map[string]any{"throughput": 400},
@@ -337,9 +337,9 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe with no namespace", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+			Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
 				linkrp.MongoDatabasesResourceType: {
-					"cosmosDB": {
+					"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(types.TemplateKindBicep),
 						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 					},
