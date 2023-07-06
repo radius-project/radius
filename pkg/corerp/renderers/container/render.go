@@ -131,6 +131,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	}
 
 	for _, port := range properties.Container.Ports {
+		// if the container has an exposed port, note that down.
+		if port.ContainerPort != 0 {
+			hasExposedPort = true
+		}
+
 		provides := port.Provides
 
 		// if provides is empty, skip this port. A service for this port will be generated later on.
