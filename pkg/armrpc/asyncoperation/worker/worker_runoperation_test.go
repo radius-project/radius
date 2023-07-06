@@ -61,10 +61,6 @@ type testAsyncController struct {
 	fn func(ctx context.Context) (ctrl.Result, error)
 }
 
-// # Function Explanation
-//
-// Run executes the function stored in the controller if it is not nil, and returns the result of the
-// function or an empty result if the function is nil.
 func (c *testAsyncController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	if c.fn != nil {
 		return c.fn(ctx)

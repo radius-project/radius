@@ -84,7 +84,7 @@ type TestResourceProperties struct {
 
 // # Function Explanation
 //
-// ConvertTo converts a TestResource object into a TestResourceDataModel object.
+// ConvertTo converts a version specific TestResource into a version-agnostic resource, TestResourceDataModel.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
@@ -112,8 +112,7 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom function populates the TestResource instance from a given DataModelInterface.
-// It returns an error if the conversion fails.
+// ConvertFrom converts src version agnostic model to versioned model, TestResource.
 func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {
