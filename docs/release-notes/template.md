@@ -20,6 +20,8 @@ If you're new to Radius, check out our website, [radapp.dev](https://radapp.dev)
 
 ## New contributors
 
+Welcome to our new contributors who have merged their first PR in this release!
+
 <!-- PASTE THE OUTPUT OF THE GENERATED CONTRIBUTOR LIST HERE -->
 
 ## Upgrading to Radius vX.Y.Z
