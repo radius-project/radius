@@ -55,6 +55,10 @@ func NewCreateOrUpdateResource[P interface {
 	return &CreateOrUpdateResource[P, T]{ctrl.NewBaseAsyncController(opts), processor, eng, client, configurationLoader}, nil
 }
 
+// # Function Explanation
+//
+// Run retrieves an existing resource, executes a recipe if needed, loads runtime configuration,
+// processes the resource, cleans up any obsolete output resources, and saves the updated resource.
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
 	if errors.Is(&store.ErrNotFound{ID: req.ResourceID}, err) {

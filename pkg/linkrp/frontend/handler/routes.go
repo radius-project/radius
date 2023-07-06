@@ -91,6 +91,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts fro
 }
 
 // AddMessagingRoutes configures routes and handlers for Messaging Resource Provider..
+//
+// # Function Explanation
+//
+// AddMessagingRoutes configures the default ARM handlers and registers handlers for the RabbitMQQueue resource type for
+// the List, Get, Put, Patch and Delete operations.
 func AddMessagingRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Configure the default ARM handlers.
@@ -219,6 +224,11 @@ func AddMessagingRoutes(ctx context.Context, router *mux.Router, rootScopePath s
 }
 
 // AddDaprRoutes configures routes and handlers for Dapr Resource Provider.
+//
+// # Function Explanation
+//
+// AddDaprRoutes configures the default ARM handlers and adds handlers for Dapr resources such as Dapr PubSubBroker,
+// SecretStore and StateStore. It registers handlers for various operations on these resources.
 func AddDaprRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Dapr - Configure the default ARM handlers.
@@ -519,6 +529,11 @@ func AddDaprRoutes(ctx context.Context, router *mux.Router, rootScopePath string
 }
 
 // AddDatastoresRoutes configures the routes and handlers for  Datastores Resource Provider.
+//
+// # Function Explanation
+//
+// AddDatastoresRoutes registers handlers for List, Get, Put, Patch, and Delete operations for MongoDatabase, RedisCache, and
+// SqlDatabase resources.
 func AddDatastoresRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Datastores - Configure the default ARM handlers.
@@ -831,6 +846,12 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, rootScopePath 
 }
 
 // AddLinkRoutes configures routes and handlers for the Link Resource Provider.
+//
+// # Function Explanation
+//
+// AddLinkRoutes sets up routes and registers handlers for various operations (GET, PUT, PATCH, DELETE) on different
+// resources (MongoDatabases, DaprPubSubBrokers, DaprSecretStores, DaprStateStores, Extenders, RedisCaches,
+// RabbitMQMessageQueues and SQLDatabases). It also sets up the necessary options for each handler.
 func AddLinkRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Configure the default ARM handlers.
