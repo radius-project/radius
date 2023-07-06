@@ -222,13 +222,14 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	if hasExposedPort {
-		// if a container has an exposed port, then we need to create a service for it.
-		serviceResource, err := r.makeService()
+		// generate computed values for the service.
+		serviceComputedValues, containerPortValue, err := r.generateServiceComputedValues(resource)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
 
-		serviceComputedValues, err := r.generateServiceComputedValues(resource)
+		// if a container has an exposed port, then we need to create a service for it.
+		serviceResource, err := r.makeService(resource, options, ctx, containerPortValue)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -251,11 +252,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerResource) (map[string]rpv1.ComputedValueReference, error) {
+func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerResource) (map[string]rpv1.ComputedValueReference, int32, error) {
 	serviceComputedValues := map[string]rpv1.ComputedValueReference{}
+	var containerPortValue int32
 		
 		// Assumes container has 1 exposed port.
 		for _, port := range resource.Properties.Container.Ports {
+			containerPortValue = port.ContainerPort
 			serviceComputedValues = map[string]rpv1.ComputedValueReference{
 				"hostname": {
 					Value: kubernetes.NormalizeResourceName(resource.Name),
@@ -275,11 +278,47 @@ func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerRes
 			break
 		}
 	
-	return serviceComputedValues, nil
+	return serviceComputedValues, containerPortValue, nil
 }
 
-func (r Renderer) makeService() (rpv1.OutputResource, error) {
-	return rpv1.OutputResource{}, nil
+func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPortValue int32) (rpv1.OutputResource, error) {
+	appId, err := resources.ParseResource(resource.Properties.Application)
+	if err != nil {
+		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
+	}
+
+	typeParts := strings.Split(ResourceType, "/")
+	resourceTypeSuffix := typeParts[len(typeParts)-1]
+
+	// todo add the DNS-SD version of this if the resource has the origin string.
+	// parse the origin string in previous steps based on
+	// what is required to create this service object.
+	service := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        kubernetes.NormalizeResourceName(resource.Name),
+			Namespace:   options.Environment.Namespace,
+			Labels:      renderers.GetLabels(ctx, options, appId.Name(), resource.Name, resource.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(ctx, options),
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, resource.Name),
+			Type:     corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       resource.Name,
+					Port:       containerPortValue,
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resourceTypeSuffix + resource.Name)),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
 }
 
 // TODO: entire deployment function is DNS-SD/HTTProute agnostic.
