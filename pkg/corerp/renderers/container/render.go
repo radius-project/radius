@@ -128,6 +128,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	}
 
 	for _, port := range properties.Container.Ports {
+		// if the container has an exposed port, note that down.
+		if port.ContainerPort != 0 {
+			hasExposedPort = true
+		}
+
 		provides := port.Provides
 		if provides == "" {
 			continue
@@ -216,12 +221,66 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
 	}
 
+	if hasExposedPort {
+		// if a container has an exposed port, then we need to create a service for it.
+		serviceResource, err := r.makeService()
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		serviceComputedValues, err := r.generateServiceComputedValues(resource)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		outputResources = append(outputResources, serviceResource)
+
+		// merge serviceComputedValues into the ComputedValues map.
+		for k, v := range serviceComputedValues {
+			computedValues[k] = v
+		}
+	}
+
+	if usesDNSSD {
+		// TODO: handle case where container has origin field.
+	}
+
 	return renderers.RendererOutput{
 		Resources:      outputResources,
 		ComputedValues: computedValues,
 	}, nil
 }
 
+func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerResource) (map[string]rpv1.ComputedValueReference, error) {
+	serviceComputedValues := map[string]rpv1.ComputedValueReference{}
+		
+		// Assumes container has 1 exposed port.
+		for _, port := range resource.Properties.Container.Ports {
+			serviceComputedValues = map[string]rpv1.ComputedValueReference{
+				"hostname": {
+					Value: kubernetes.NormalizeResourceName(resource.Name),
+				},
+				"port": {
+					Value: port.ContainerPort,
+				},
+				"url": {
+					Value: fmt.Sprintf("http://%s:%d", kubernetes.NormalizeResourceName(resource.Name), port.ContainerPort),
+				},
+				"scheme": {
+					Value: "http",
+				},
+			}
+
+			// only capture one exposed port.
+			break
+		}
+	
+	return serviceComputedValues, nil
+}
+
+func (r Renderer) makeService() (rpv1.OutputResource, error) {
+	return rpv1.OutputResource{}, nil
+}
 
 // TODO: entire deployment function is DNS-SD/HTTProute agnostic.
 func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rpv1.ComputedValueReference, resource *datamodel.ContainerResource, roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
