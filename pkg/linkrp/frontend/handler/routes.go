@@ -115,8 +115,8 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 	// 2. For resource scopes (xxxResourceRouter), register validator at Subrouter.
 
 	// rabbitmqqueues router handlers:
-	rmqPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.messaging/rabbitmqqueues")
-	rmqResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues")
+	rmqPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.messaging/rabbitmqqueues", validator)
+	rmqResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues", validator)
 	rmqResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues/{rabbitMQQueueName}", validator)
 
 	// Messaging handlers:
@@ -133,7 +133,6 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: rmqResourceGroupRouter,
@@ -146,7 +145,6 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: rmqResourceRouter,
@@ -250,8 +248,8 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	// 1. For collection scope routers (xxxPlaneRouter and xxxResourceGroupRouter), register validator at HandlerOptions.Middlewares.
 	// 2. For resource scopes (xxxResourceRouter), register validator at Subrouter.
 
-	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprpubsubbrokers")
-	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers")
+	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprpubsubbrokers", validator)
+	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers", validator)
 	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers/{daprPubSubBrokerName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
@@ -267,7 +265,6 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: pubsubResourceGroupRouter,
@@ -280,7 +277,6 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
@@ -344,8 +340,8 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}
 
-	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprsecretstores")
-	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprsecretstores")
+	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprsecretstores", validator)
+	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprsecretstores", validator)
 	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprsecretstores/{daprSecretStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -361,7 +357,6 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: secretStoreResourceGroupRouter,
@@ -374,7 +369,6 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
@@ -438,8 +432,8 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprstatestores")
-	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprstatestores")
+	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprstatestores", validator)
+	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprstatestores", validator)
 	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprstatestores/{daprStateStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -455,7 +449,6 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: stateStoreResourceGroupRouter,
@@ -468,7 +461,6 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
@@ -565,8 +557,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 	// 1. For collection scope routers (xxxPlaneRouter and xxxResourceGroupRouter), register validator at HandlerOptions.Middlewares.
 	// 2. For resource scopes (xxxResourceRouter), register validator at Subrouter.
 
-	mongoPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/mongodatabases")
-	mongoResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/mongodatabases")
+	mongoPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/mongodatabases", validator)
+	mongoResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/mongodatabases", validator)
 	mongoResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/mongodatabases/{mongoDatabaseName}", validator)
 
 	// Datastores handlers:
@@ -583,7 +575,6 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: mongoResourceGroupRouter,
@@ -596,7 +587,6 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ResponseConverter: ds_conv.MongoDatabaseDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: mongoResourceRouter,
@@ -667,8 +657,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 	}
 
-	redisPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/rediscaches")
-	redisResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/rediscaches")
+	redisPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/rediscaches", validator)
+	redisResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/rediscaches", validator)
 	redisResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/rediscaches/{redisCacheName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -684,7 +674,6 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: redisResourceGroupRouter,
@@ -697,7 +686,6 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ResponseConverter: ds_conv.RedisCacheDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: redisResourceRouter,
@@ -768,8 +756,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 	}...)
 
-	sqlPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/sqldatabases")
-	sqlResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/sqldatabases")
+	sqlPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.datastores/sqldatabases", validator)
+	sqlResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/sqldatabases", validator)
 	sqlResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.datastores/sqldatabases/{sqlDatabaseName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -785,7 +773,6 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: sqlResourceGroupRouter,
@@ -798,7 +785,6 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						ResponseConverter: ds_conv.SqlDatabaseDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: sqlResourceRouter,
@@ -895,8 +881,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	// 1. For collection scope routers (xxxPlaneRouter and xxxResourceGroupRouter), register validator at HandlerOptions.Middlewares.
 	// 2. For resource scopes (xxxResourceRouter), register validator at Subrouter.
 
-	mongoPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/mongodatabases")
-	mongoResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/mongodatabases")
+	mongoPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/mongodatabases", validator)
+	mongoResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/mongodatabases", validator)
 	mongoResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/mongodatabases/{mongoDatabaseName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
@@ -912,7 +898,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: mongoResourceGroupRouter,
@@ -925,7 +910,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: mongoResourceRouter,
@@ -996,8 +980,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}
 
-	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprpubsubbrokers")
-	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprpubsubbrokers")
+	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprpubsubbrokers", validator)
+	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprpubsubbrokers", validator)
 	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprpubsubbrokers/{daprPubSubBrokerName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -1013,7 +997,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: pubsubResourceGroupRouter,
@@ -1026,7 +1009,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
@@ -1090,8 +1072,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprsecretstores")
-	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprsecretstores")
+	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprsecretstores", validator)
+	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprsecretstores", validator)
 	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprsecretstores/{daprSecretStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -1107,7 +1089,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: secretStoreResourceGroupRouter,
@@ -1120,7 +1101,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
@@ -1184,8 +1164,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprstatestores")
-	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprstatestores")
+	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/daprstatestores", validator)
+	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprstatestores", validator)
 	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/daprstatestores/{daprStateStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -1201,7 +1181,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: stateStoreResourceGroupRouter,
@@ -1214,7 +1193,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
@@ -1278,8 +1256,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	redisPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/rediscaches")
-	redisResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rediscaches")
+	redisPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/rediscaches", validator)
+	redisResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rediscaches", validator)
 	redisResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rediscaches/{redisCacheName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -1295,7 +1273,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: redisResourceGroupRouter,
@@ -1308,7 +1285,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.RedisCacheDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: redisResourceRouter,
@@ -1379,8 +1355,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	rmqPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/rabbitmqmessagequeues")
-	rmqResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rabbitmqmessagequeues")
+	rmqPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/rabbitmqmessagequeues", validator)
+	rmqResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rabbitmqmessagequeues", validator)
 	rmqResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/rabbitmqmessagequeues/{rabbitMQMessageQueueName}", validator)
 
 	// Messaging handlers:
@@ -1397,7 +1373,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: rmqResourceGroupRouter,
@@ -1410,7 +1385,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: rmqResourceRouter,
@@ -1481,8 +1455,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	sqlPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/sqldatabases")
-	sqlResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/sqldatabases")
+	sqlPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/sqldatabases", validator)
+	sqlResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/sqldatabases", validator)
 	sqlResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/sqldatabases/{sqlDatabaseName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -1498,7 +1472,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: sqlResourceGroupRouter,
@@ -1511,7 +1484,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: sqlResourceRouter,
@@ -1582,8 +1554,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	extPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/extenders")
-	extResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/extenders")
+	extPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.link/extenders", validator)
+	extResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/extenders", validator)
 	extResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.link/extenders/{extenderName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -1599,7 +1571,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ListRecursiveQuery: true,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: extResourceGroupRouter,
@@ -1612,7 +1583,6 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: converter.ExtenderDataModelToVersioned,
 					})
 			},
-			Middlewares: chi.Middlewares{validator},
 		},
 		{
 			ParentRouter: extResourceRouter,
