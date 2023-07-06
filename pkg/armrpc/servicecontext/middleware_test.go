@@ -91,7 +91,8 @@ func TestARMRequestCtx(t *testing.T) {
 
 			testUrl := testPathBase + tt.url
 
-			req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, testUrl, nil)
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, testUrl, nil)
+			require.NoError(t, err)
 			handler.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.code, w.Code)

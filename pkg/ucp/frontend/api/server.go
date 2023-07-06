@@ -28,33 +28,29 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/sdk"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	aws_frontend "github.com/project-radius/radius/pkg/ucp/frontend/aws"
+	azure_frontend "github.com/project-radius/radius/pkg/ucp/frontend/azure"
+	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
+	radius_frontend "github.com/project-radius/radius/pkg/ucp/frontend/radius"
 	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
+	queueprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/radius/pkg/validator"
+	"github.com/project-radius/radius/swagger"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/gorilla/mux"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 )
 
 const (
@@ -62,28 +58,43 @@ const (
 )
 
 type ServiceOptions struct {
+	// Config is the bootstrap configuration loaded from config file.
+	Config *hostoptions.UCPConfig
+
 	ProviderName            string
 	Address                 string
+	PathBase                string
 	Configure               func(*mux.Router)
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
-	UCPConfigFile           string
-	PathBase                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
-	SecretProviderOptions   provider.SecretProviderOptions
-	QueueProviderOptions    qprovider.QueueProviderOptions
+	SecretProviderOptions   secretprovider.SecretProviderOptions
+	QueueProviderOptions    queueprovider.QueueProviderOptions
 	InitialPlanes           []rest.Plane
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
 	Location                string
+
+	// Modules is a list of modules that will be registered with the router.
+	Modules []modules.Initializer
 }
 
+// Service implements the hosting.Service interface for the UCP frontend API.
 type Service struct {
-	options                ServiceOptions
-	storageProvider        dataprovider.DataStorageProvider
-	secretProvider         *provider.SecretProvider
-	secretClient           secret.Client
-	operationStatusManager manager.StatusManager
+	options         ServiceOptions
+	storageProvider dataprovider.DataStorageProvider
+	queueProvider   *queueprovider.QueueProvider
+	secretProvider  *secretprovider.SecretProvider
+}
+
+// DefaultModules returns a list of default modules that will be registered with the router.
+func DefaultModules(options modules.Options) []modules.Initializer {
+	return []modules.Initializer{
+		aws_frontend.NewModule(options),
+		azure_frontend.NewModule(options),
+		radius_frontend.NewModule(options, "radius"),
+		radius_frontend.NewModule(options, "deployments"),
+	}
 }
 
 var _ hosting.Service = (*Service)(nil)
@@ -95,79 +106,45 @@ func NewService(options ServiceOptions) *Service {
 	}
 }
 
+// # Function Explanation
+//
+// Returns the constant string "api" as the name.
 func (s *Service) Name() string {
 	return "api"
 }
 
-func (s *Service) newAWSConfig(ctx context.Context) (aws.Config, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	credProviders := []func(*config.LoadOptions) error{}
-
-	switch s.options.Identity.AuthMethod {
-	case hostoptions.AuthUCPCredential:
-		provider, err := sdk_cred.NewAWSCredentialProvider(s.secretProvider, s.options.UCPConnection, &aztoken.AnonymousCredential{})
-		if err != nil {
-			return aws.Config{}, err
-		}
-		p := ucp_aws.NewUCPCredentialProvider(provider, ucp_aws.DefaultExpireDuration)
-		credProviders = append(credProviders, config.WithCredentialsProvider(p))
-		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
-
-	default:
-		logger.Info("Configuring default authentication mode with environment variable.")
-	}
-
-	awscfg, err := config.LoadDefaultConfig(ctx, credProviders...)
-	if err != nil {
-		return aws.Config{}, err
-	}
-
-	return awscfg, nil
-}
-
+// # Function Explanation
+//
+// Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
+// registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
+// returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
+	var err error
 	r := mux.NewRouter()
+
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
-	// TODO: this is used EVERYWHERE right now. We'd like to pass
-	// around storage provider instead but will have to refactor
-	// tons of stuff.
-	db, err := s.storageProvider.GetStorageClient(ctx, "ucp")
+	s.queueProvider = queueprovider.New(s.options.ProviderName, s.options.QueueProviderOptions)
+	s.secretProvider = secretprovider.NewSecretProvider(s.options.SecretProviderOptions)
+
+	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{s.options.PathBase}, "")
 	if err != nil {
 		return nil, err
 	}
 
-	s.secretProvider = provider.NewSecretProvider(s.options.SecretProviderOptions)
-	s.secretClient, err = s.secretProvider.GetClient(ctx)
-	if err != nil {
-		return nil, err
+	moduleOptions := modules.Options{
+		Address:        s.options.Address,
+		PathBase:       s.options.PathBase,
+		Config:         s.options.Config,
+		Location:       s.options.Location,
+		DataProvider:   s.storageProvider,
+		QueueProvider:  s.queueProvider,
+		SecretProvider: s.secretProvider,
+		SpecLoader:     specLoader,
+		UCPConnection:  s.options.UCPConnection,
 	}
 
-	if err := s.initializeStatusManager(ctx); err != nil {
-		return nil, err
-	}
-
-	awscfg, err := s.newAWSConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	awsClients := ucp_aws.Clients{
-		CloudControl:   cloudcontrol.NewFromConfig(awscfg),
-		CloudFormation: cloudformation.NewFromConfig(awscfg),
-	}
-	ctrlOpts := armrpc_controller.Options{
-		Address:       s.options.Address,
-		PathBase:      s.options.PathBase,
-		DataProvider:  s.storageProvider,
-		StorageClient: db,
-		StatusManager: s.operationStatusManager,
-
-		// TODO: This field is not used in UCP. We'd like to unify these
-		// options types eventually, but that will take some time.
-		KubeClient: nil,
-	}
-
-	err = Register(ctx, r, ctrlOpts, s.secretClient, awsClients)
+	modules := DefaultModules(moduleOptions)
+	err = Register(ctx, r, modules, moduleOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +153,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.Configure(r)
 	}
 
-	err = s.configureDefaultPlanes(ctx, db)
+	err = s.configureDefaultPlanes(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -209,22 +186,13 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	return server, nil
 }
 
-func (s *Service) initializeStatusManager(ctx context.Context) error {
-	qp := qprovider.New(s.options.ProviderName, s.options.QueueProviderOptions)
-	opSC, err := s.storageProvider.GetStorageClient(ctx, s.options.ProviderName+"/operationstatuses")
-	if err != nil {
-		return err
-	}
-	reqQueueClient, err := qp.GetClient(ctx)
-	if err != nil {
-		return err
-	}
-	s.operationStatusManager = manager.New(opSC, reqQueueClient, s.options.ProviderName, s.options.Location)
-	return nil
-}
-
 // configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
-func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.StorageClient) error {
+func (s *Service) configureDefaultPlanes(ctx context.Context) error {
+	db, err := s.storageProvider.GetStorageClient(ctx, "ucp")
+	if err != nil {
+		return err
+	}
+
 	for _, plane := range s.options.InitialPlanes {
 		body, err := json.Marshal(plane)
 		if err != nil {
@@ -232,7 +200,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 		}
 
 		opts := armrpc_controller.Options{
-			StorageClient: dbClient,
+			StorageClient: db,
 		}
 		planesCtrl, err := defaultoperation.NewDefaultSyncPut(opts,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
@@ -268,6 +236,10 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 	return nil
 }
 
+// # Function Explanation
+//
+// Run() sets up a server to listen on a given address, and shuts it down when the context is done. It returns an
+// error if the server fails to start or stops unexpectedly.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	service, err := s.Initialize(ctx)

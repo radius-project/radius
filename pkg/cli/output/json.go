@@ -24,6 +24,10 @@ import (
 type JSONFormatter struct {
 }
 
+// # Function Explanation
+//
+// Format takes in an object, a writer and an options object and marshals the object into JSON, writing it to the writer,
+// and returns an error if any of the operations fail.
 func (f *JSONFormatter) Format(obj any, writer io.Writer, options FormatterOptions) error {
 	b, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {

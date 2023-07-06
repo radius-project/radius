@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,8 +37,8 @@ import (
 func Test_DeploymentWatcher_Run_CanShutDown(t *testing.T) {
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(Options{Client: client}, map[string]string{}, map[string]bool{}, cancel)
 
@@ -47,8 +48,8 @@ func Test_DeploymentWatcher_Run_CanShutDown(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_Updated_HandleNewDeployment(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
 	defer stopPodWatchers(dw)
@@ -59,8 +60,8 @@ func Test_DeploymentWatcher_Updated_HandleNewDeployment(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_Updated_HandleMultipleReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
 	defer stopPodWatchers(dw)
@@ -79,8 +80,8 @@ func Test_DeploymentWatcher_Updated_HandleMultipleReplicas(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_Updated_HandleStalePod(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	stale := map[string]bool{
 		"rs0": true,
@@ -102,8 +103,8 @@ func Test_DeploymentWatcher_Updated_HandleStalePod(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_NoOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
 	defer stopPodWatchers(dw)
@@ -123,8 +124,8 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_NoOtherRepli
 }
 
 func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_HasOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
 	defer stopPodWatchers(dw)
@@ -154,8 +155,8 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_HasOtherRepl
 }
 
 func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
 	defer stopPodWatchers(dw)
@@ -176,8 +177,8 @@ func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_Deleted_HasOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
 	defer stopPodWatchers(dw)
@@ -209,19 +210,19 @@ func Test_DeploymentWatcher_SelectBestPod(t *testing.T) {
 
 	// The best pod is chosen based on the newest creation date, with name as a tiebreaker
 	dw.pods = map[string]*corev1.Pod{
-		"a": &corev1.Pod{ // Oldest
+		"a": { // Oldest
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "a",
 				CreationTimestamp: v1.NewTime(time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)),
 			},
 		},
-		"b": &corev1.Pod{ // Newest - chosen based on name
+		"b": { // Newest - chosen based on name
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "b",
 				CreationTimestamp: v1.NewTime(time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)),
 			},
 		},
-		"c": &corev1.Pod{ // Newest - not chosen based on name
+		"c": { // Newest - not chosen based on name
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "c",
 				CreationTimestamp: v1.NewTime(time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)),

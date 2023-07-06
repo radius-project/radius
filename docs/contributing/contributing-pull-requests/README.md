@@ -25,7 +25,28 @@ A pull request will need to pass the following checkpoints to be accepted:
 - Testing: automated tests will run against your changes
 - Code review: you will get feedback from a maintainer or other contributors in the form of comments
 
-We expect that contributors have run basic validations (`make build test lint`) before sending a pull request. See [building the repo](../contributing-code/contributing-code-building/) for more information. If you get stuck during this step feel free to open the pull request anyway and ask for help.
+We expect that contributors have run basic validations (`make build test lint`) before sending a pull request. See [building the repo](../contributing-code/contributing-code-building/) for more information. If you get stuck during this step feel free to open the pull request anyway and ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
+
+## Filling out the pull request template
+
+Our pull request template will ask you to choose one of three options from a list when submitting the pull request. Telling us what type of change the pull request contains will help us author the release notes and informs reviewers about what to look for in your pull request.
+
+The following tips should help you decide which option to choose:
+
+- Does this change fix a bug in Radius? We define a bug as a case where Radius does not work as advertised, or where a crash or some other kind of internal failure occurs. If you said Yes, then choose the first option (Bugfix).
+- Does this change introduce new features or behaviors? Does this change modify an existing feature of Radius in a way that's visible to users? If you said Yes, choose the second option (Feature).
+- If neither of the two previous options sounds right, and there's no user-visible change in your pull request then choose the third option (Task).
+
+We use Task as a catch-all for changes that have no direct user-visible impact. In practice many changes are Tasks, and we don't include them in the release notes. This includes minor refactors, code/style cleanup, test improvements, correcting misspellings in comments, changes to build processes, etc.
+
+
+### Copilot summary
+
+Our pull-request template includes a summary from Github Copilot. This will generate a description of your changes as well as links to the most relevant files. 
+
+You can find an example [here](https://github.com/project-radius/radius/pull/5614).
+
+## Tips
 
 Keep reading for some tips about how to get your pull requests accepted!
 
@@ -67,11 +88,6 @@ We run [CodeQL](https://codeql.github.com/) as part of the pull-request process 
 
 If CodeQL fails due to your changes, please work with the maintainers to resolve the issue.
 
-## Copilot Summary
-
-Our pull-request template includes a summary from Github Copilot. This will generate a description of your changes as well as links to the most relevant files. 
-
-You can find an example [here](https://github.com/project-radius/radius/pull/5614).
 
 ## Code review
 

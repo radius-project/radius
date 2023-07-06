@@ -28,4 +28,4 @@ We welcome small pull request contributions from anyone (docs improvements, bug 
 ## Code of conduct
 
 This project has adopted the [Contributor Covenant](http://contributor-covenant.org/).
-For more information see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+For more information see [CODE_OF_CONDUCT.md](https://github.com/project-radius/community/blob/main/CODE-OF-CONDUCT.md)

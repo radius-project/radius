@@ -44,6 +44,12 @@ model OutputResource {}
 @doc("Fully qualified resource ID for the application that the link is consumed by")
 scalar Application extends string;
 
+@doc("Describes a reference to an existing resource")
+model ResourceReference {
+  @doc("Resource id of an existing resource")
+  id: string
+}
+
 @doc("Provisioning state of the link at the time the operation was called")
 enum ProvisioningState {
   Succeeded,
@@ -53,6 +59,12 @@ enum ProvisioningState {
   Updating,
   Deleting,
   Accepted,
+}
+
+@doc("Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.")
+enum ResourceProvisioning {
+    recipe,
+    manual,
 }
 
 @doc("The recipe used to automatically deploy underlying infrastructure for a link")

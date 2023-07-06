@@ -53,6 +53,10 @@ type ARMDiagnosticsClient struct {
 
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
+// # Function Explanation
+//
+// GetPublicEndpoint checks if the resource type is Applications.Core/gateways, then attempts to get the URL from the response
+// properties, and returns the URL as a string or an error if the URL is not found.
 func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
 	if !strings.EqualFold("Applications.Core/gateways", options.ResourceID.Type()) {
 		return nil, nil
@@ -76,6 +80,10 @@ func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 	return &url, nil
 }
 
+// # Function Explanation
+//
+// Expose function finds a running replica of the container, prints the replica name, sets up a signal notification,
+// creates channels for errors, readiness and stopping, and runs a portforwarding process.
 func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
 	namespace, err := dc.findNamespaceOfContainer(ctx, options.Resource)
 	if err != nil {
@@ -109,6 +117,10 @@ func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.Expo
 	return
 }
 
+// # Function Explanation
+//
+// Logs() retrieves the running replicas of the container, and creates log streams for the replicas. If an error occurs,
+// it will close all the created streams before returning the error.
 func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) ([]clients.LogStream, error) {
 	namespace, err := dc.findNamespaceOfContainer(ctx, options.Resource)
 	if err != nil {

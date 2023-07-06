@@ -245,16 +245,18 @@ func TestGetNotFound(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient(t)
 
-	_, err := client.Get(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
-	require.ErrorIs(t, &store.ErrNotFound{}, err)
+	resourceID := "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound"
+	_, err := client.Get(ctx, resourceID)
+	require.ErrorIs(t, &store.ErrNotFound{ID: resourceID}, err)
 }
 
 func TestDeleteNotFound(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient(t)
 
-	err := client.Delete(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
-	require.ErrorIs(t, &store.ErrNotFound{}, err)
+	resourceID := "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound"
+	err := client.Delete(ctx, resourceID)
+	require.ErrorIs(t, &store.ErrNotFound{ID: resourceID}, err)
 }
 
 func TestSave(t *testing.T) {

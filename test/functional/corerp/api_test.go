@@ -23,7 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
@@ -52,8 +52,8 @@ func Test_ResourceList(t *testing.T) {
 	resourceTypes = append(resourceTypes, clients.ResourceTypesList...)
 
 	listResources := func(t *testing.T, rootScope string, resourceType string) {
-		ctx, cancel := test.GetContext(t)
-		defer cancel()
+		ctx, cancel := testcontext.NewWithCancel(t)
+		t.Cleanup(cancel)
 		client, err := generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
 		require.NoError(t, err)
 

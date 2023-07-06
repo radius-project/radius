@@ -18,6 +18,10 @@ package tools
 
 import "runtime"
 
+// # Function Explanation
+// 
+// GetExecutableName returns the executable name of a given tool based on the operating system. It returns the tool name 
+// with a .exe extension if the operating system is Windows, otherwise it returns the tool name as is.
 func GetExecutableName(tool string) string {
 	switch runtime.GOOS {
 	case "windows":

@@ -64,6 +64,9 @@ model RedisCacheSecrets {
 
   @doc("The password for this Redis cache instance")
   password?: string;
+  
+  @doc("The URL used to connect to the Redis cache")
+  url?: string
 }
 
 @doc("RedisCache link properties")
@@ -83,6 +86,9 @@ model RedisCacheProperties extends BasicResourceProperties {
 
   @doc("The username for Redis cache")
   username?: string;
+
+  @doc("Specifies whether to enable SSL connections to the Redis cache")  
+  tls?: boolean;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the Redis caches link")
   recipe?: Recipe;

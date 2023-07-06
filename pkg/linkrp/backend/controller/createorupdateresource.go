@@ -57,7 +57,7 @@ func NewCreateOrUpdateResource[P interface {
 
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
-	if errors.Is(&store.ErrNotFound{}, err) {
+	if errors.Is(&store.ErrNotFound{ID: req.ResourceID}, err) {
 		return ctrl.Result{}, err
 	} else if err != nil {
 		return ctrl.Result{}, err

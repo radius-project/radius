@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resourceGroups
+package resourcegroups
 
 import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
 )
 
@@ -35,6 +36,8 @@ const (
 	resourceGroupListResponseFixture    = "testdata/resourcegroup_v20220901privatepreview_list_responsebody.json"
 	resourceGroupUpdatedRequestFixture  = "testdata/resourcegroup_updated_v20220901privatepreview_requestbody.json"
 	resourceGroupUpdatedResponseFixture = "testdata/resourcegroup_updated_v20220901privatepreview_responsebody.json"
+	resourceGroupInvalidRequestFixture  = "testdata/resourcegroup_invalid_v20220901privatepreview_requestbody.json"
+	resourceGroupInvalidResponseFixture = "testdata/resourcegroup_invalid_v20220901privatepreview_responsebody.json"
 )
 
 func createRadiusPlane(server *testserver.TestServer) {
@@ -43,7 +46,7 @@ func createRadiusPlane(server *testserver.TestServer) {
 }
 
 func Test_ResourceGroup_PUT_Create(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -53,7 +56,7 @@ func Test_ResourceGroup_PUT_Create(t *testing.T) {
 }
 
 func Test_ResourceGroup_PUT_Update(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -65,8 +68,18 @@ func Test_ResourceGroup_PUT_Update(t *testing.T) {
 	response.EqualsFixture(200, resourceGroupUpdatedResponseFixture)
 }
 
+func Test_ResourceGroup_PUT_APIValidation(t *testing.T) {
+	server := testserver.StartWithETCD(t, api.DefaultModules)
+	defer server.Close()
+
+	createRadiusPlane(server)
+
+	response := server.MakeFixtureRequest("PUT", resourceGroupResourceURL, resourceGroupInvalidRequestFixture)
+	response.EqualsFixture(400, resourceGroupInvalidResponseFixture)
+}
+
 func Test_ResourceGroup_GET_Empty(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -76,7 +89,7 @@ func Test_ResourceGroup_GET_Empty(t *testing.T) {
 }
 
 func Test_ResourceGroup_GET_Found(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -89,7 +102,7 @@ func Test_ResourceGroup_GET_Found(t *testing.T) {
 }
 
 func Test_ResourceGroup_LIST(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	createRadiusPlane(server)

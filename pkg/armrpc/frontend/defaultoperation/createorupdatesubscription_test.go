@@ -26,8 +26,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,10 +49,12 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		expected := &v1.Subscription{}
 		_ = json.Unmarshal(rawReq, expected)
 
-		req, _ := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
+		req, err := rpctest.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
+		require.NoError(t, err)
 
 		// arrange
-		op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})
+		op, err := NewCreateOrUpdateSubscription(ctrl.Options{})
+		require.NoError(t, err)
 		ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 			APIVersion: v1.SubscriptionAPIVersion,
 		})
@@ -71,14 +74,16 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 
 func TestSubscriptionsRunWithUnsupportedAPIVersion(t *testing.T) {
 	// arrange
-	op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})
+	op, err := NewCreateOrUpdateSubscription(ctrl.Options{})
+	require.NoError(t, err)
 	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 		APIVersion: "unknownversion",
 	})
 	w := httptest.NewRecorder()
 
 	// act
-	resp, _ := op.Run(ctx, w, nil)
+	resp, err := op.Run(ctx, w, nil)
+	require.NoError(t, err)
 
 	// assert
 	switch v := resp.(type) {

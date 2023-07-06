@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
 )
 
@@ -34,7 +35,7 @@ const (
 )
 
 func Test_RadiusPlane_PUT_Create(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
@@ -42,7 +43,7 @@ func Test_RadiusPlane_PUT_Create(t *testing.T) {
 }
 
 func Test_RadiusPlane_PUT_Update(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
@@ -53,7 +54,7 @@ func Test_RadiusPlane_PUT_Update(t *testing.T) {
 }
 
 func Test_RadiusPlane_GET_Empty(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeRequest("GET", radiusPlaneResourceURL, nil)
@@ -61,7 +62,7 @@ func Test_RadiusPlane_GET_Empty(t *testing.T) {
 }
 
 func Test_RadiusPlane_GET_Found(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
@@ -72,7 +73,7 @@ func Test_RadiusPlane_GET_Found(t *testing.T) {
 }
 
 func Test_RadiusPlane_LIST(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	// Add a radius plane
@@ -89,7 +90,7 @@ func Test_RadiusPlane_LIST(t *testing.T) {
 }
 
 func Test_RadiusPlane_DELETE_DoesNotExist(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeRequest("DELETE", radiusPlaneResourceURL, nil)
@@ -97,7 +98,7 @@ func Test_RadiusPlane_DELETE_DoesNotExist(t *testing.T) {
 }
 
 func Test_RadiusPlane_DELETE_Found(t *testing.T) {
-	server := testserver.Start(t)
+	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)

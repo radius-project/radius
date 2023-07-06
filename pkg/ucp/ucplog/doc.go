@@ -23,7 +23,7 @@ Package ucplog includes the logging helpers to generate log with the radius log 
   "name": "applications.core.Applications.Core async worker",
   "caller": "worker/worker.go:279",
   "message": "Hello, Radius.",
-  "hostName": "appcore-rp",
+  "hostName": "applications-rp",
   "serviceName": "applications.core",
   "version": "edge"
   "traceId": "d1ba9c7d2326ee1b44eb0b8177ef554f",

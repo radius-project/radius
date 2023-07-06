@@ -122,6 +122,17 @@ func (v *Validator) AddComputedStringField(name string, ref *string, compute fun
 	v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "string", convertToString, compute))
 }
 
+// AddComputedBoolField registers a field containing a computed boolean connection value. The false value will be treated as an "unset" value.
+//
+// The compute function will be called if the value is not already set or provided by the recipe. Inside the compute function
+// it is safe to assume that other non-computed fields have been populated already.
+//
+// The compute function will not be called if a validation error has previously occurred.
+func (v *Validator) AddComputedBoolField(name string, ref *bool, compute func() (bool, *ValidationError)) {
+	// Note: secrets are always strings
+	v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "bool", convertToBool, compute))
+}
+
 // AddComputedSecretField registers a field containing a computed string connection secret. The empty string will be treated as an "unset" value.
 //
 // The compute function will be called if the secret is not already set or provided by the recipe. Inside the compute function
@@ -263,6 +274,11 @@ func computeValue[T any](v *Validator, name string, ref *T, secret bool, compute
 
 func convertToString(value any) (string, bool) {
 	converted, ok := value.(string)
+	return converted, ok
+}
+
+func convertToBool(value any) (bool, bool) {
+	converted, ok := value.(bool)
 	return converted, ok
 }
 

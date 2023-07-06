@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -112,8 +113,8 @@ func (s *synchronizer) WaitForWorkersCompleted(ctx context.Context, t *testing.T
 }
 
 func Test_Get_NoBlockingWhenValueSet_Value(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	asyncValue := NewAsyncValue[testValue]()
 
@@ -126,8 +127,8 @@ func Test_Get_NoBlockingWhenValueSet_Value(t *testing.T) {
 }
 
 func Test_Get_NoBlockingWhenValueSet_Err(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	asyncValue := NewAsyncValue[testValue]()
 
@@ -140,8 +141,8 @@ func Test_Get_NoBlockingWhenValueSet_Err(t *testing.T) {
 }
 
 func Test_Get_BlocksUntil_ValueSet(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	s := NewSynchronizer(10)
 	s.Start(ctx, t)
@@ -161,8 +162,8 @@ func Test_Get_BlocksUntil_ValueSet(t *testing.T) {
 }
 
 func Test_Get_BlocksUntil_ErrSet(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	s := NewSynchronizer(10)
 	s.Start(ctx, t)
@@ -183,9 +184,9 @@ func Test_Get_BlocksUntil_ErrSet(t *testing.T) {
 
 func Test_Get_BlocksUntil_Canceled(t *testing.T) {
 	// We need two contexts. We want to cancel the work done by the workers.
-	workerContext, workerCancel := context.WithCancel(context.Background())
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	workerContext, workerCancel := testcontext.NewWithCancel(t)
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	s := NewSynchronizer(10)
 	s.Start(workerContext, t)

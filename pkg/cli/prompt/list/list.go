@@ -38,6 +38,9 @@ var (
 
 type item string
 
+// # Function Explanation
+//
+// FilterValue takes in an item and returns a string representation of it.
 func (i item) FilterValue() string { return string(i) }
 
 type itemHandler struct{}
@@ -58,6 +61,11 @@ func (d itemHandler) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 }
 
 // Render renders the prompt for user.
+//
+// # Function Explanation
+//
+// Render takes in a writer, a model, an index and a list item, and writes a formatted string to the writer
+// based on the index and list item. If the list item is not of the expected type, it returns without writing anything.
 func (d itemHandler) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(item)
 	if !ok {
@@ -77,6 +85,10 @@ func (d itemHandler) Render(w io.Writer, m list.Model, index int, listItem list.
 }
 
 // NewListModel returns a list model for bubble tea prompt.
+//
+// # Function Explanation
+//
+// NewListModel creates a ListModel struct with a list of items, a title, and styling for the list and help.
 func NewListModel(choices []string, promptMsg string) ListModel {
 	items := make([]list.Item, len(choices))
 	for i, choice := range choices {
@@ -116,6 +128,11 @@ func (m ListModel) Init() tea.Cmd {
 }
 
 // Update handles the updates from user input.
+//
+// # Function Explanation
+//
+// Update() handles user input and updates the list model accordingly, allowing the user to select an item from
+// the list and quit the application.
 func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 

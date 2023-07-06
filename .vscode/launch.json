@@ -6,17 +6,17 @@
     "configurations": [
 
         {
-            "name": "Launch Applications.Core/Applications.Link RP",
+            "name": "Launch Applications RP",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "preLaunchTask": "Build Radius (all)",
-            "program": "${workspaceFolder}/cmd/appcore-rp/main.go",
+            "program": "${workspaceFolder}/cmd/applications-rp/main.go",
             "args": [
                 "--config-file",
-                "${workspaceFolder}/cmd/appcore-rp/radius-self-hosted.yaml",
+                "${workspaceFolder}/cmd/applications-rp/radius-self-hosted.yaml",
                 "--link-config",
-                "${workspaceFolder}/cmd/appcore-rp/link-self-hosted.yaml",
+                "${workspaceFolder}/cmd/applications-rp/link-self-hosted.yaml",
             ],
             "env": {
                 "RADIUS_ENV": "self-hosted"
@@ -68,7 +68,7 @@
             "name": "Launch Control Plane (all)",
             "configurations": [
                 "Launch UCP", 
-                "Launch Applications.Core/Applications.Link RP", 
+                "Launch Applications RP", 
                 "Launch Deployment Engine"],
             "stopAll": true
           }

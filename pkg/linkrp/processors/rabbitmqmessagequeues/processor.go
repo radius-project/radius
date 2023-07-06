@@ -28,11 +28,11 @@ const (
 	Queue = "queue"
 )
 
-// Processor is a processor for RedisCache resources.
+// Processor is a processor for RabbitMQQueue resources.
 type Processor struct {
 }
 
-// Process implements the processors.Processor interface for RedisCache resources.
+// Process implements the processors.Processor interface for RabbitMQQueue resources.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMessageQueue, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
