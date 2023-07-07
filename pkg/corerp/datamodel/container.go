@@ -90,7 +90,6 @@ type ContainerProperties struct {
 // ConnectionProperties represents the properties of Connection.
 type ConnectionProperties struct {
 	Source                string        `json:"source,omitempty"`
-	Origin                string        `json:"origin,omitempty"`
 	DisableDefaultEnvVars *bool         `json:"disableDefaultEnvVars,omitempty"`
 	IAM                   IAMProperties `json:"iam,omitempty"`
 }

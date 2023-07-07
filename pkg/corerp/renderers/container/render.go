@@ -21,11 +21,11 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
-	"net"
-	"net/url"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -94,15 +94,19 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
-		if (connection.Source == "" && connection.Origin == "") || (connection.Source != "" && connection.Origin != "") {
+		if (connection.Source == "") {
 			// todo: Throw an error here.
-			// A user should not create a single connection without either a source (httproute) or an origin (DNS-SD).
-			// Also, a user should not create a single connection with both a source (httproute) and an origin (DNS-SD).
+			// A user should not create a connection without a source.
 			continue
 		}
 
-		// If source is not empty, then the container uses HTTProute for this connection.
-		if connection.Source != "" {
+		// if source is a URL (example: 'http://containerx:3000'), use DNS-SD.
+		if (isURL(connection.Source)) {
+			usesDNSSD = true
+		}
+
+		// If source is not a URL and not empty, it must be a resource ID (example: containerhttproute.id). So, we use httproutes.
+		if (!isURL(connection.Source) && connection.Source != "") {
 			resourceID, err := resources.ParseResource(connection.Source)
 
 			if err != nil {
@@ -120,20 +124,12 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 				continue
 			}
 		}
-
-		// example origin: 'http://containerY:3000'. Used for DNS-SD connections.
-		origin := connection.Origin
-
-		// If origin is not empty, then the container uses DNS-SD connections.
-		if origin != "" {
-			usesDNSSD = true
-		}
 	}
 
 	for _, port := range properties.Container.Ports {
 		// if the container has an exposed port, note that down.
-		if port.ContainerPort != 0 {
-			hasExposedPort = true
+		if port.ContainerPort != 0 && port.Provides == ""{
+			needsServiceGeneration = true
 		}
 
 		provides := port.Provides
@@ -224,7 +220,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
 	}
 
-	if hasExposedPort {
+	if needsServiceGeneration {
 		// generate computed values for the service.
 		serviceComputedValues, containerPortValue, err := r.generateServiceComputedValues(resource)
 		if err != nil {
@@ -246,26 +242,29 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	if usesDNSSD {
-		// TODO: (6/7) handle case where container has origin field.
-		// TODO: see if we can remove origin field, and check for different formatting with only the source field
+		// TODO: issue: once the usesDNSSD flag is triggered, it seems to stay true for other containers??
+		// handles case where container has source field structured as a URL.
 		for connectionName, connection := range properties.Connections {
-			origin := connection.Origin
-			if origin == "" {
+			source := connection.Source
+			if source == "" {
 				continue
 			}
 
-			// parse origin into scheme, hostname, and port.
-			scheme, hostname, port, err := parseURL("http://containerY:3000")
+			// parse source into scheme, hostname, and port.
+			scheme, hostname, port, err := parseURL(source)
 			if err != nil {
 				return renderers.RendererOutput{}, err
 			}
 
 			// add scheme, hostname, and port into environment.
-			// env is of type map[string]string
-			env := properties.Container.Env
-			env["CONNECTIONS_" + connectionName + "_SCHEME"] = scheme
-			env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
-			env["CONNECTIONS_" + connectionName + "_PORT"] = port
+			// if env is nil, initialize the env map.
+			if properties.Container.Env == nil {
+				properties.Container.Env = map[string]string{}
+			}
+
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_SCHEME"] = scheme
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_PORT"] = port
 		}
 	}
 
@@ -313,9 +312,6 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 	typeParts := strings.Split(ResourceType, "/")
 	resourceTypeSuffix := typeParts[len(typeParts)-1]
 
-	// todo add the DNS-SD version of this if the resource has the origin string.
-	// parse the origin string in previous steps based on
-	// what is required to create this service object.
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -951,8 +947,8 @@ func isURL(input string) bool {
 	return true
 }
 
-func parseURL(originURL string) (scheme, hostname, port string, err error) {
-	u, err := url.Parse(originURL)
+func parseURL(sourceURL string) (scheme, hostname, port string, err error) {
+	u, err := url.Parse(sourceURL)
 	if err != nil {
 		return "", "", "", err
 	}
