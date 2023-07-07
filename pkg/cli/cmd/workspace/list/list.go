@@ -59,11 +59,6 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad workspace list` runner.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with the ConfigHolder and Output fields set to the values returned by the
-// GetConfigHolder and GetOutput methods of the provided Factory.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),

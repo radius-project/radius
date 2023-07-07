@@ -86,10 +86,6 @@ type Runner struct {
 }
 
 // NewRunner creates an instance of the runner for the `rad app delete` command.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with the given factory's ConfigHolder, ConnectionFactory, InputPrompter, and Output.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),

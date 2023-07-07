@@ -68,11 +68,6 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad group switch` runner.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with the ConnectionFactory and ConfigHolder fields set to the values returned by
-// the GetConnectionFactory and GetConfigHolder methods of the Factory parameter.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),

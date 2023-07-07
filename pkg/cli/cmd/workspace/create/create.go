@@ -84,12 +84,6 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad workspace create` runner.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with the given factory's connection factory, config holder, config file interface,
-//
-//	output, helm interface, and kubernetes interface.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory:   factory.GetConnectionFactory(),

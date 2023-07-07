@@ -62,10 +62,6 @@ type Runner struct {
 }
 
 // NewRunner creates an instance of the runner for the `rad uninstall kubernetes` command.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with Helm and Output fields initialized using the Factory interface.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		Helm:   factory.GetHelmInterface(),

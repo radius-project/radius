@@ -72,10 +72,6 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad workspace delete` runner.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with the given factory's ConfigFileInterface, ConfigHolder, InputPrompter, and Output.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigFileInterface: factory.GetConfigFileInterface(),

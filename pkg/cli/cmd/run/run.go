@@ -89,10 +89,6 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad run` runner.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with the given factory, which is used to get the Logstream and Portforward objects.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		Runner:      *deploycmd.NewRunner(factory),

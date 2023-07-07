@@ -78,10 +78,6 @@ type Runner struct {
 }
 
 // NewRunner creates an instance of the runner for the `rad app show` command.
-//
-// # Function Explanation
-//
-// NewRunner creates a new Runner struct with the given factory's ConnectionFactory, ConfigHolder, and Output.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
