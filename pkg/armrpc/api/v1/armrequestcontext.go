@@ -237,6 +237,11 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 }
 
 // SystemData returns unmarshalled RawSystemMetaData.
+//
+// # Function Explanation
+//
+// SystemData parses the RawSystemMetadata field of the ARMRequestContext struct and returns a
+// SystemData struct, returning an empty SystemData struct if an error occurs during the parsing.
 func (rc ARMRequestContext) SystemData() *SystemData {
 	if rc.RawSystemMetadata == "" {
 		return &SystemData{}
@@ -273,6 +278,11 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 }
 
 // ARMRequestContextFromContext extracts ARMRPContext from http context.
+//
+// # Function Explanation
+//
+// ARMRequestContextFromContext retrieves an ARMRequestContext from a given context. Panic if the context does
+// not contain an ARMRequestContext.
 func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 	rpcContext, ok := ctx.Value(armContextKey).(*ARMRequestContext)
 	if !ok {
@@ -284,11 +294,20 @@ func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 }
 
 // WithARMRequestContext injects ARMRequestContext into the given http context.
+//
+// # Function Explanation
+//
+// WithARMRequestContext adds the ARMRequestContext to the context and returns the new context.
 func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) context.Context {
 	return context.WithValue(ctx, armContextKey, armctx)
 }
 
 // ParsePathBase gets the URL info before the plane types (i.e. host, base path, etc)
+//
+// # Function Explanation
+//
+// ParsePathBase takes in a string and returns a string representing the base path of the string if it contains either
+// "/planes/" or "/subscriptions/", otherwise it returns an empty string.
 func ParsePathBase(path string) string {
 	if path != "" {
 		normalized := strings.ToLower(path)
