@@ -76,6 +76,11 @@ type HandlerOptions struct {
 }
 
 // HandlerForController returns a http.HandlerFunc that will run the given controller.
+//
+// # Function Explanation
+//
+// HandlerForController creates a http.HandlerFunc function that runs resource provider frontend controller, renders a
+// http response from the returned rest.Response, and handles the error as a default internal error if this controller returns error.
 func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -146,6 +151,10 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 	}
 }
 
+// # Function Explanation
+//
+// ConfigureDefaultHandlers registers handlers for the default operations such as getting operationStatuses and
+// operationResults, and updating a subscription lifecycle. It returns an error if any of the handler registrations fail.
 func ConfigureDefaultHandlers(
 	ctx context.Context,
 	rootRouter *mux.Router,
@@ -206,7 +215,7 @@ func ConfigureDefaultHandlers(
 	return nil
 }
 
-// HandleError creates the internal error respones with 500 code.
+// HandleError handles unhandled errors from frontend controller and creates internal server error response based on the error type.
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Error(err, "unhandled error")
