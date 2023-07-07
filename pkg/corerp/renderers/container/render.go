@@ -26,8 +26,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"net"
-	"net/url"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -134,8 +132,8 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 
 	for _, port := range properties.Container.Ports {
 		// if the container has an exposed port, note that down.
-		if port.ContainerPort != 0 {
-			hasExposedPort = true
+		if port.ContainerPort != 0 && port.Provides == ""{
+			needsServiceGeneration = true
 		}
 
 		provides := port.Provides
