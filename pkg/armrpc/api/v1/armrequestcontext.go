@@ -241,7 +241,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	return rpcCtx, nil
 }
 
-// SystemData returns unmarshalled RawSystemMetaData.
+// Summary: SystemData returns unmarshalled RawSystemMetaData.
 //
 // # Function Explanation
 //
@@ -282,8 +282,6 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 	return topParam, err
 }
 
-// ARMRequestContextFromContext extracts ARMRPContext from http context.
-//
 // # Function Explanation
 //
 // ARMRequestContextFromContext retrieves an ARMRequestContext from a given context. Panic if the context does
@@ -292,8 +290,6 @@ func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
 	return ctx.Value(armContextKey).(*ARMRequestContext)
 }
 
-// WithARMRequestContext injects ARMRequestContext into the given http context.
-//
 // # Function Explanation
 //
 // WithARMRequestContext adds the ARMRequestContext to the context and returns the new context.
@@ -301,8 +297,6 @@ func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) conte
 	return context.WithValue(ctx, armContextKey, armctx)
 }
 
-// ParsePathBase gets the URL info before the plane types (i.e. host, base path, etc)
-//
 // # Function Explanation
 //
 // ParsePathBase takes in a string and returns a string representing the base path of the string if it contains either
