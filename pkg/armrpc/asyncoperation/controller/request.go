@@ -81,11 +81,16 @@ func (r *Request) ARMRequestContext() (*v1.ARMRequestContext, error) {
 		return nil, err
 	}
 
+	opType, ok := v1.ParseOperationType(r.OperationType)
+	if !ok {
+		return nil, v1.ErrInvalidOperationType
+	}
+
 	rpcCtx := &v1.ARMRequestContext{
 		ResourceID:    rID,
 		CorrelationID: r.CorrelationID,
 		OperationID:   r.OperationID,
-		OperationType: r.OperationType,
+		OperationType: opType,
 		Traceparent:   r.TraceparentID,
 
 		HomeTenantID:   r.HomeTenantID,

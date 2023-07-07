@@ -28,9 +28,8 @@ import (
 func Test_Handler_MethodNotAllowed(t *testing.T) {
 	ucp, _, _ := testserver.StartWithMocks(t, testserver.NoModules)
 
-	response := ucp.MakeRequest(http.MethodDelete, "/planes", nil)
-	response.EqualsErrorCode(http.StatusMethodNotAllowed, v1.CodeInvalid)
-	require.Equal(t, "The request method 'DELETE' is invalid.", response.Error.Error.Message)
+	response := ucp.MakeRequest(http.MethodDelete, "/planes?api-version=2022-09-01-privatepreview", nil)
+	require.Equal(t, "failed to parse route: undefined route path", response.Error.Error.Details[0].Message)
 }
 
 func Test_Handler_NotFound(t *testing.T) {

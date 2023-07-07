@@ -35,14 +35,19 @@ import (
 type Service struct {
 	// ProviderName is the name of provider namespace.
 	ProviderName string
+
 	// Options is the server hosting options.
 	Options hostoptions.HostOptions
+
 	// StorageProvider is the provider of storage client.
 	StorageProvider dataprovider.DataStorageProvider
+
 	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
+
 	// ARMCertManager is the certificate manager of client cert authentication.
 	ARMCertManager *authentication.ArmCertManager
+
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient controller_runtime.Client
 }

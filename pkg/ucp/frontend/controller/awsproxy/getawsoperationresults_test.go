@@ -55,7 +55,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewNoContentResponse()
@@ -86,7 +86,7 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
