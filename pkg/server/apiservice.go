@@ -1,7 +1,18 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package server
 
@@ -9,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
@@ -53,8 +64,8 @@ func (s *APIService) Run(ctx context.Context) error {
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
-		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
+		Configure: func(router chi.Router) error {
+			err := handler.AddRoutes(ctx, router, false, opts)
 			if err != nil {
 				return err
 			}

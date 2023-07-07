@@ -24,6 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
+func ContainerDataModelToVersioned_(model v1.ResourceDataModel, version string) (v1.VersionedModelInterface, error) {
+	return ContainerDataModelToVersioned(model.(*datamodel.ContainerResource), version)
+}
+
 // ContainerDataModelToVersioned converts version agnostic Container datamodel to versioned model.
 func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -35,6 +39,10 @@ func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version s
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
 	}
+}
+
+func ContainerDataModelFromVersioned_(content []byte, version string) (v1.ResourceDataModel, error) {
+	return ContainerDataModelFromVersioned(content, version)
 }
 
 // ContainerDataModelFromVersioned converts versioned Container model to datamodel.

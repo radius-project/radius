@@ -25,6 +25,11 @@ import (
 )
 
 // EnvironmentDataModelToVersioned converts version agnostic environment datamodel to versioned model.
+func EnvironmentDataModelToVersioned_(model v1.ResourceDataModel, version string) (v1.VersionedModelInterface, error) {
+	return EnvironmentDataModelToVersioned(model.(*datamodel.Environment), version)
+}
+
+// EnvironmentDataModelToVersioned converts version agnostic environment datamodel to versioned model.
 func EnvironmentDataModelToVersioned(model *datamodel.Environment, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -37,6 +42,11 @@ func EnvironmentDataModelToVersioned(model *datamodel.Environment, version strin
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
 	}
+}
+
+// EnvironmentDataModelFromVersioned converts versioned environment model to datamodel.
+func EnvironmentDataModelFromVersioned_(content []byte, version string) (v1.ResourceDataModel, error) {
+	return EnvironmentDataModelFromVersioned(content, version)
 }
 
 // EnvironmentDataModelFromVersioned converts versioned environment model to datamodel.

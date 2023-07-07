@@ -1,7 +1,18 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package server
 
@@ -13,7 +24,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 
 	backend_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
@@ -66,12 +76,11 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
-	secretClient := sv.NewSecretValueClient(w.Options.Arm)
 	opts := ctrl.Options{
 		DataProvider: w.StorageProvider,
 		KubeClient:   w.KubeClient,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, secretClient, w.KubeClient, w.KubeClientSet)
+			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.KubeClient, w.KubeClientSet)
 		},
 	}
 
