@@ -14,7 +14,9 @@ Refer to [template.md](./template.md) for the template to use when creating a ne
 
 ## Versions
 
-The template contains a few places where the placeholder version, `X.Y.Z`, needs to be updated. Check for the following comment, placed directly under any reference to the placeholder version. After updating the version make sure to delete the comment.
+The template contains a few places where the placeholder version, `X.Y.Z`, needs to be updated. This version is determined by the release process, documented in the [release contribution docs](../contributing/contributing-releases/README.md).
+
+ Check for the following comment, placed directly under any reference to the placeholder version. After updating the version make sure to delete the comment.
 
 ```markdown
 <!-- REMINDER TO UPDATE THE VERSION ABOVE AND DELETE THIS COMMENT -->
