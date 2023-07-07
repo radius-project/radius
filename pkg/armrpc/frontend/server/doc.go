@@ -25,7 +25,7 @@ to handle ARM RPC requests (https://github.com/Azure/azure-resource-manager-rpc/
 ## Defining a New Resource Type in the Radius Resource Provider
 
 To model a resource type, we need to define the REST API paths. For example,
-to model a resource type "foo," we need to define the following API routes:
+we need to define the following API routes to model a resource type "foo":
 
     GET    /planes/{planeType}/{planeName}/providers/Applications.Core/foo
     GET    /planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}/providers/Applications.Core/foo
@@ -53,7 +53,6 @@ Here's an example of creating subrouters:
 To register the handlers, we need to provide the necessary options and controller factories. Here's an example:
 
     handlerOptions := []server.HandlerOptions{
-        // Environments resource handler registration.
         {
             ParentRouter: fooPlaneRouter,
             ResourceType: "Applications.Core/foo",
@@ -63,7 +62,7 @@ To register the handlers, we need to provide the necessary options and controlle
             },
         },
         {
-            ParentRouter: envResourceGroupRouter,
+            ParentRouter: fooResourceGroupRouter,
             ResourceType: "Applications.Core/foo",
             Method:       v1.OperationList,
             ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -71,7 +70,7 @@ To register the handlers, we need to provide the necessary options and controlle
             }
         },
         {
-            ParentRouter: envResourceRouter,
+            ParentRouter: fooResourceRouter,
             ResourceType: "Applications.Core/foo",
             Method:       v1.OperationGet,
             ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
@@ -111,9 +110,9 @@ To register the handlers, we need to provide the necessary options and controlle
     }
 
 
-# Cascaded subrouters and middleware invocation
+# Muti-level subrouters and middleware invocation
 
-The following code demonstrates the use of cascaded subrouters to define
+The following code demonstrates the use of multi-level subrouters to define
 the "foo" resource API. Each router has its own middleware:
 
     planeScopeRouter := server.NewSubrouter(r, "/planes/{planeType}/{planeName}", middleware1)
@@ -124,15 +123,15 @@ When the router handles the request:
 
     GET /planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}/providers/Applications.Core/foo/{fooName}, the middleware will be called in the following order:
 
-the middleware will be called in the following order:
+The middleware will be called in the following order:
 
 /planes/{planeType}/{planeName}/*   <--- middleware1
                                /resourceGroups/{resourceGroupName}/providers/applications.core/foo/*   <--- middleware2
                                                                                                     /{fooName}/  <--- middleware3
 
-These three cascaded routers call their middleware in the order of middleware1,
+These three-level routers call their middleware in the order of middleware1,
 middleware2, and middleware3. Even if the entire request path is unmatched
-middleware1 can still be called if '/planes/{planeType}/{planeName}*' matches.
+middleware1 can still be called if '/planes/{planeType}/{planeName}/*' matches.
 Therefore, if you want to call middleware for the fully matched path, you need
 to add the middleware to the last router. Otherwise, the middleware should always
 skip processing the request if its path has a catch-all route pattern (/*).
