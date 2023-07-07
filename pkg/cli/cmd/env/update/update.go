@@ -195,7 +195,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 // # Function Explanation
 //
-// Run updates the environment with the given name with the given cloud provider scope and recipes. It returns an error
+// Run updates the environment with the given name with the given cloud provider scope. It returns an error
 // if the environment does not exist or if the update fails.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.noFlagsSet {

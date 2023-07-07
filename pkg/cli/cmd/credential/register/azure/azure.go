@@ -111,7 +111,7 @@ func NewRunner(factory framework.Factory) *Runner {
 //
 // # Function Explanation
 //
-// Validate() function checks for the presence of a workspace, output format, client ID, client secret and tenant ID, and
+// Validate checks for the presence of a workspace, output format, client ID, client secret and tenant ID, and
 // sets them in the Runner struct if they are present. If any of these are not present, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -156,13 +156,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 // # Function Explanation
 //
-// Run() registers a credential for the Azure cloud provider in the Radius installation, updates the server-side
-// to add/change credentials, and updates local config to remove the scope. It returns an error if any of the steps fail.
+// Run registers a credential for the Azure cloud provider in the Radius installation, updates the server-side
+// to add/change credentials. It returns an error if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {
-	// There are two steps to perform here:
-	// 1) Update server-side to add/change credentials
-	// 2) Update local config (all matching workspaces) to remove the scope
-
 	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "azure", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -184,7 +180,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		},
 	}
 
-	// 1) Update server-side to add/change credentials
+	// Update server-side to add/change credentials
 	err = client.PutAzure(ctx, credential)
 	if err != nil {
 		return err

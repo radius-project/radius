@@ -136,7 +136,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad env run` command.
+// Run runs the `rad env delete` command.
 //
 // # Function Explanation
 //

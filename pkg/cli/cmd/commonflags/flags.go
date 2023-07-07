@@ -56,7 +56,7 @@ func AddWorkspaceFlag(cmd *cobra.Command) {
 
 // # Function Explanation
 //
-// AddResourceGroupFlag adds a flag to the given command that allows the user to specify a resource group name.
+// AddResourceGroupFlag adds a flag to the given command that allows the user to specify a Radius resource group name.
 func AddResourceGroupFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("group", "g", "", "The resource group name")
 }
