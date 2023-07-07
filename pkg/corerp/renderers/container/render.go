@@ -24,6 +24,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"net"
+	"net/url"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -92,9 +94,10 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
-		if connection.Source == "" && connection.Origin == "" {
+		if (connection.Source == "" && connection.Origin == "") || (connection.Source != "" && connection.Origin != "") {
 			// todo: Throw an error here.
-			// A user should not create a connection without either a source (httproute) or an origin (DNS-SD).
+			// A user should not create a single connection without either a source (httproute) or an origin (DNS-SD).
+			// Also, a user should not create a single connection with both a source (httproute) and an origin (DNS-SD).
 			continue
 		}
 
@@ -243,7 +246,27 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	if usesDNSSD {
-		// TODO: handle case where container has origin field.
+		// TODO: (6/7) handle case where container has origin field.
+		// TODO: see if we can remove origin field, and check for different formatting with only the source field
+		for connectionName, connection := range properties.Connections {
+			origin := connection.Origin
+			if origin == "" {
+				continue
+			}
+
+			// parse origin into scheme, hostname, and port.
+			scheme, hostname, port, err := parseURL("http://containerY:3000")
+			if err != nil {
+				return renderers.RendererOutput{}, err
+			}
+
+			// add scheme, hostname, and port into environment.
+			// env is of type map[string]string
+			env := properties.Container.Env
+			env["CONNECTIONS_" + connectionName + "_SCHEME"] = scheme
+			env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
+			env["CONNECTIONS_" + connectionName + "_PORT"] = port
+		}
 	}
 
 	return renderers.RendererOutput{
@@ -918,4 +941,29 @@ func getSortedKeys(env map[string]corev1.EnvVar) []string {
 
 	sort.Strings(keys)
 	return keys
+}
+
+func isURL(input string) bool {
+	_, err := url.ParseRequestURI(input)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func parseURL(originURL string) (scheme, hostname, port string, err error) {
+	u, err := url.Parse(originURL)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	scheme = u.Scheme
+	host := u.Host
+
+	hostname, port, err = net.SplitHostPort(host)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return scheme, hostname, port, nil
 }
