@@ -75,8 +75,6 @@ type HandlerOptions struct {
 	ControllerFactory ControllerFunc
 }
 
-// HandlerForController returns a http.HandlerFunc that will run the given controller.
-//
 // # Function Explanation
 //
 // HandlerForController creates a http.HandlerFunc function that runs resource provider frontend controller, renders a

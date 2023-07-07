@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 )
 
-// ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
-//
 // # Function Explanation
 //
 // ARMRequestCtx is a middleware handler that adds an ARM request context to an incoming request. It takes in a pathBase

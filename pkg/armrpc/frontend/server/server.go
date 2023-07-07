@@ -51,12 +51,11 @@ type Options struct {
 	ArmCertMgr        *authentication.ArmCertManager
 }
 
-// New creates a frontend server that can listen on the provided address and serve requests.
-//
 // # Function Explanation
 //
-// New creates an HTTP server with a router, configures the router with the given options, adds the default middlewares for logging,
-// authentication, and service context, and returns the server.
+// New creates a frontend server that can listen on the provided address and serve requests - it creates an HTTP server with a router,
+// configures the router with the given options, adds the default middlewares for logging, authentication, and service context, and
+// then returns the server.
 func New(ctx context.Context, options Options) (*http.Server, error) {
 	r := mux.NewRouter()
 	if options.Configure != nil {

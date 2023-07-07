@@ -117,11 +117,9 @@ func New(
 	}
 }
 
-// Start starts worker's message loop.
-//
 // # Function Explanation
 //
-// Start starts a loop to process messages from a queue concurrently, and handles deduplication, updating
+// Start starts worker's message loop - it starts a loop to process messages from a queue concurrently, and handles deduplication, updating
 // resource and operation status, and running the operation. It returns an error if it fails to start the dequeuer.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)

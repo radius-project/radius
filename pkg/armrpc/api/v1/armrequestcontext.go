@@ -241,11 +241,9 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	return rpcCtx, nil
 }
 
-// Summary: SystemData returns unmarshalled RawSystemMetaData.
-//
 // # Function Explanation
 //
-// SystemData parses the RawSystemMetadata field of the ARMRequestContext struct and returns a
+// SystemData returns unmarshalled RawSystemMetaData. It parses the RawSystemMetadata field of the ARMRequestContext struct and returns a
 // SystemData struct, returning an empty SystemData struct if an error occurs during the parsing.
 func (rc ARMRequestContext) SystemData() *SystemData {
 	if rc.RawSystemMetadata == "" {
