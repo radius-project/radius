@@ -34,7 +34,7 @@ const (
 )
 
 // Install installs Terraform under /install in the provided Terraform root directory for the resource.
-// Returns the path to the installed Terraform binary and the installer.
+// Returns the path to the installed Terraform binary.
 func Install(ctx context.Context, installer *install.Installer, tfDir string) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

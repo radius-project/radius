@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
@@ -28,6 +29,8 @@ import (
 type Client interface {
 	// GetCallerIdentity gets information about the provided credentials.
 	GetCallerIdentity(ctx context.Context, region string, accessKeyID string, secretAccessKey string) (*sts.GetCallerIdentityOutput, error)
+	// ListRegions lists the AWS regions available (fetched from EC2.DescribeRegions API).
+	ListRegions(ctx context.Context, region string, accessKeyID string, secretAccessKey string) (*ec2.DescribeRegionsOutput, error)
 }
 
 // NewClient returns a new Client.
@@ -47,6 +50,21 @@ func (c *client) GetCallerIdentity(ctx context.Context, region string, accessKey
 		Credentials: credentialsProvider,
 	})
 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// ListRegions lists the AWS regions available (fetched from EC2.DescribeRegions API).
+func (c *client) ListRegions(ctx context.Context, region string, accessKeyID string, secretAccessKey string) (*ec2.DescribeRegionsOutput, error) {
+	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, "")
+	ec2Client := ec2.New(ec2.Options{
+		Region:      region,
+		Credentials: credentialsProvider,
+	})
+	result, err := ec2Client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
 	if err != nil {
 		return nil, err
 	}
