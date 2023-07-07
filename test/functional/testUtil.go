@@ -85,6 +85,16 @@ func GetRecipeVersion() string {
 	return "version=" + defaultVersion
 }
 
+func GetAWSAccountId() string {
+	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
+	return "awsAccountId=" + awsAccountId
+}
+
+func GetAWSRegion() string {
+	awsRegion := os.Getenv("AWS_REGION")
+	return "awsRegion=" + awsRegion
+}
+
 // GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status (e.g. "Valid", "Invalid")
 func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, namespace, application string) (*ProxyMetadata, error) {
 	httpproxies, err := GetHTTPProxyList(ctx, client, namespace, application)

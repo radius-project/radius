@@ -26,6 +26,7 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -61,7 +62,8 @@ func TestLowercaseURLPath(t *testing.T) {
 
 		handler := LowercaseURLPath(r)
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, testHostname+tt.armid, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testHostname+tt.armid, nil)
+		require.NoError(t, err)
 		if tt.refererHeader != "" {
 			req.Header.Add(v1.RefererHeader, tt.refererHeader)
 		}

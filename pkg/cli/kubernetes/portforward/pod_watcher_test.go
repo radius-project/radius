@@ -41,9 +41,9 @@ func Test_podWatcher_CanShutdownGracefully(t *testing.T) {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Ports: []corev1.ContainerPort{
-						corev1.ContainerPort{
+						{
 							ContainerPort: 3000,
 						},
 					},
@@ -67,14 +67,14 @@ func Test_podWatcher_CanShutdownGracefully(t *testing.T) {
 	messages = append(messages, <-statusChan)
 
 	expected := []StatusMessage{
-		StatusMessage{
+		{
 			Kind:          KindConnected,
 			ContainerName: "test-container",
 			ReplicaName:   "test-app-test-container-abcd-efghij",
 			LocalPort:     3000,
 			RemotePort:    3000,
 		},
-		StatusMessage{
+		{
 			Kind:          KindDisconnected,
 			ContainerName: "test-container",
 			ReplicaName:   "test-app-test-container-abcd-efghij",
@@ -101,9 +101,9 @@ func Test_podWatcher_CanStartWhenPodIsReady(t *testing.T) {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Ports: []corev1.ContainerPort{
-						corev1.ContainerPort{
+						{
 							ContainerPort: 3000,
 						},
 					},
@@ -130,14 +130,14 @@ func Test_podWatcher_CanStartWhenPodIsReady(t *testing.T) {
 	messages = append(messages, <-statusChan)
 
 	expected := []StatusMessage{
-		StatusMessage{
+		{
 			Kind:          KindConnected,
 			ContainerName: "test-container",
 			ReplicaName:   "test-app-test-container-abcd-efghij",
 			LocalPort:     3000,
 			RemotePort:    3000,
 		},
-		StatusMessage{
+		{
 			Kind:          KindDisconnected,
 			ContainerName: "test-container",
 			ReplicaName:   "test-app-test-container-abcd-efghij",

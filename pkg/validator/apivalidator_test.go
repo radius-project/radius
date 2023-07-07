@@ -502,7 +502,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 				tc.url += "?api-version=" + tc.apiVersion
 			}
 
-			req, _ := http.NewRequestWithContext(context.Background(), tc.method, tc.url, bytes.NewBuffer(body))
+			req, err := http.NewRequestWithContext(context.Background(), tc.method, tc.url, bytes.NewBuffer(body))
+			require.NoError(t, err)
 			r.ServeHTTP(w, req)
 
 			require.Equal(t, tc.responseCode, w.Result().StatusCode, "%s", w.Body.String())

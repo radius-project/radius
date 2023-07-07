@@ -53,7 +53,10 @@ func loadResources(dir string, suffix string) []unstructured.Unstructured {
 			return nil
 		}
 		var r unstructured.Unstructured
-		b, _ := os.ReadFile(path)
+		b, err := os.ReadFile(path)
+		if err != nil {
+			panic(err)
+		}
 		_ = yaml.Unmarshal(b, &r.Object)
 		objects = append(objects, r)
 		return nil

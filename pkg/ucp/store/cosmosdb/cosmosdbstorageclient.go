@@ -327,7 +327,7 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 	_, err = c.client.GetDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops, entity)
 
 	if err != nil && strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
-		return nil, &store.ErrNotFound{}
+		return nil, &store.ErrNotFound{ID: id}
 	}
 
 	obj := &store.Object{
@@ -364,7 +364,7 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 
 	_, err = c.client.DeleteDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops)
 	if err != nil && strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
-		return &store.ErrNotFound{}
+		return &store.ErrNotFound{ID: id}
 	}
 
 	return err

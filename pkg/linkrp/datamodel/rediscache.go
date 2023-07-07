@@ -135,6 +135,9 @@ type RedisCacheProperties struct {
 	// The username for Redis cache
 	Username string `json:"username,omitempty"`
 
+	// Specifies whether to enable non-SSL or SSL connections
+	TLS bool `json:"tls,omitempty"`
+
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
 	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
 
@@ -152,6 +155,7 @@ type RedisCacheProperties struct {
 type RedisCacheSecrets struct {
 	ConnectionString string `json:"connectionString"`
 	Password         string `json:"password"`
+	URL              string `json:"url"`
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {

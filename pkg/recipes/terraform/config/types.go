@@ -14,21 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package test
+package config
 
-import (
-	"context"
-	"testing"
+const (
+	moduleSourceKey  = "source"
+	moduleVersionKey = "version"
+
+	mainConfigFileName = "main.tf.json"
 )
 
-func GetContext(t *testing.T) (context.Context, context.CancelFunc) {
-	var ctx context.Context
-	var cancel context.CancelFunc
-	deadline, ok := t.Deadline()
-	if ok {
-		ctx, cancel = context.WithDeadline(context.Background(), deadline)
-	} else {
-		ctx, cancel = context.WithCancel(context.Background())
-	}
-	return ctx, cancel
+// TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
+type TerraformConfig struct {
+	// Module is the Terraform module configuration.
+	Module map[string]any `json:"module"`
 }

@@ -55,7 +55,10 @@ const (
 	OperationTypePlanesByType = "PLANESBYTYPE"
 )
 
-// Register registers the routes for UCP including modules.
+// # Function Explanation
+//
+// This function registers handlers for various operations on Azure and AWS, such as Get, Put, Delete, and List,
+// as well as a catch-all route for proxying.
 func Register(ctx context.Context, router *mux.Router, modules []modules.Initializer, options modules.Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Registering routes with path base: %s", options.PathBase))
