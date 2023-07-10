@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // NewEngine creates a new Engine to deploy recipe.
@@ -61,4 +63,19 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (
 	}
 
 	return driver.Execute(ctx, *configuration, recipe, *definition)
+}
+
+func (e *engine) Delete(ctx context.Context, deploymentDataModel rpv1.DeploymentDataModel, client processors.ResourceClient, recipe recipes.ResourceMetadata) error {
+	// Load Recipe Definition from the environment.
+	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
+	if err != nil {
+		return err
+	}
+
+	driver, ok := e.options.Drivers[definition.Driver]
+	if !ok {
+		return fmt.Errorf("could not find driver %s", definition.Driver)
+	}
+
+	return driver.Delete(ctx, deploymentDataModel, client)
 }

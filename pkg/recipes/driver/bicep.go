@@ -31,10 +31,14 @@ import (
 	"github.com/go-logr/logr"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/util"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
@@ -123,6 +127,38 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	}
 
 	return &recipeResponse, nil
+}
+
+// Delete handles output resource deletion and returns an error on failure to delete.
+func (d *bicepDriver) Delete(ctx context.Context, deploymentDataModel rpv1.DeploymentDataModel, client processors.ResourceClient) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	orderedOutputResources, err := rpv1.OrderOutputResources(deploymentDataModel.OutputResources())
+	if err != nil {
+		return err
+	}
+
+	// Loop over each output resource and delete in reverse dependency order
+	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
+		outputResource := orderedOutputResources[i]
+		id := outputResource.Identity.GetID()
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
+			continue
+		}
+
+		err = client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+
+	}
+
+	return nil
 }
 
 // createRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info

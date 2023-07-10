@@ -195,7 +195,7 @@ func (s *Service) Run(ctx context.Context) error {
 	for _, rt := range resourceTypes {
 		// Register controllers
 		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, func(options ctrl.Options) (ctrl.Controller, error) {
-			return backend_ctrl.NewDeleteResource(options, client)
+			return backend_ctrl.NewDeleteResource(options, client, engine)
 		}, opts)
 		if err != nil {
 			return err

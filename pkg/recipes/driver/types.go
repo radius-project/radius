@@ -19,13 +19,17 @@ package driver
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // Driver is an interface to implement recipe deployment.
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
 	Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error)
+	// Delete handles deletion of output resources for the recipe deployment.
+	Delete(ctx context.Context, deploymentDataModel rpv1.DeploymentDataModel, client processors.ResourceClient) error
 }
 
 // RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
