@@ -78,6 +78,10 @@ func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConf
 	return arm, nil
 }
 
+// # Function Explanation
+//
+// NewHostOptionsFromEnvironment loads configuration from a given path, retrieves Kubernetes and ARM configurations, and
+// returns a HostOptions object containing the configurations, or an error if any of the operations fail.
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 	conf, err := loadConfig(configPath)
 	if err != nil {

@@ -42,6 +42,11 @@ func NewDefaultAsyncPut[P interface {
 }
 
 // Run executes DefaultAsyncPut operation.
+//
+// # Function Explanation
+//
+// Run executes asynchronous create or update operation by validating new resource metadata, ensuring if it is new resource 
+// or updated resource, running custom update filters, and queuing async operation and returns an async response.
 func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)

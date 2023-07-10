@@ -25,6 +25,14 @@ import (
 )
 
 // ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
+//
+// # Function Explanation
+//
+// ARMRequestCtx is a middleware handler that adds an ARM request context to an incoming request. It takes in a pathBase
+// and location string and returns a function that takes in an http.Handler. If the location string is empty, it will
+// panic. Otherwise, it will attempt to create an ARM request context from the request and location strings. If it fails,
+// it will return a bad request response. If successful, it will add the ARM request context to the request and pass it to
+// the http.Handler.
 func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler {
 	// We normally don't like to use panics like this, but this issue is NASTY to diagnose when it happens
 	// and it can regress based on changes to our configuration file format.
@@ -52,6 +60,21 @@ func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler 
 			}
 
 			r = r.WithContext(v1.WithARMRequestContext(r.Context(), rpcContext))
+			h.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
+
+// WithOperationType is the middleware to inject operation type to the http request.
+func WithOperationType(operationType v1.OperationType) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			// Panic if the context doesn't include ARMRequestContext. This should never happen.
+			rpcContext := v1.ARMRequestContextFromContext(ctx)
+			rpcContext.OperationType = operationType
 			h.ServeHTTP(w, r)
 		}
 

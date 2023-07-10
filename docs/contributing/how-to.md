@@ -6,6 +6,8 @@ We welcome and encourage users to contribute to the Radius open-source project i
 
 * Tackle small tasks: Start by addressing small issues or tasks labeled as ["good first issues"](https://github.com/project-radius/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) This allows you to familiarize yourself with the project and make valuable contributions without a steep learning curve.
 
+* Take on bigger projects: Issues that are groomed and ready to be picked up are labeled as ["triaged"](https://github.com/project-radius/radius/issues?q=is%3Aissue+is%3Aopen+label%3Atriaged).
+
 * Fork the project: Create a personal copy (fork) of the Radius repository on GitHub. This enables you to make changes and experiment as well as submit pull requests.
 
 * Submit pull requests: Once you've made changes or improvements to your forked repository, [submit a pull request](./contributing-pull-requests/) to the main project. Provide clear descriptions of the purpose and benefits of your changes.

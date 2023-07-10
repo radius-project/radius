@@ -17,18 +17,19 @@ limitations under the License.
 package azure
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/validator"
 )
 
 // NewModule creates a new Azure module.
 func NewModule(options modules.Options) *Module {
-	router := mux.NewRouter()
-	router.NotFoundHandler = validator.APINotFoundHandler()
-	router.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
+	m := Module{options: options}
+	m.router = chi.NewRouter()
+	m.router.NotFound(validator.APINotFoundHandler())
+	m.router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
-	return &Module{options: options, router: router}
+	return &Module{options: options, router: m.router}
 }
 
 var _ modules.Initializer = &Module{}
@@ -36,7 +37,7 @@ var _ modules.Initializer = &Module{}
 // Module defines the module for Azure functionality.
 type Module struct {
 	options modules.Options
-	router  *mux.Router
+	router  chi.Router
 }
 
 // PlaneType returns the type of plane this module is for.

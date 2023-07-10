@@ -42,7 +42,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	req, err := rpctest.GetARMTestHTTPRequestFromURL(
+	req, err := rpctest.NewHTTPRequestWithContent(
 		context.Background(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2022-03-15-privatepreview", nil)
@@ -53,7 +53,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			Return(nil, &store.ErrNotFound{})
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
@@ -80,7 +80,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     secretdm,
 				}, nil
 			})
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		ksecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "letsencrypt-prod",
@@ -116,7 +116,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	req, err := rpctest.GetARMTestHTTPRequestFromURL(
+	req, err := rpctest.NewHTTPRequestWithContent(
 		context.Background(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2022-03-15-privatepreview", nil)
@@ -181,7 +181,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 						Data:     secretdm,
 					}, nil
 				})
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				KubeClient:    k8sutil.NewFakeKubeClient(nil, tc.in),
