@@ -53,8 +53,6 @@ func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Con
 	}, nil
 }
 
-// Fetch gets the AWS IAM credentials from secret storage.
-//
 // # Function Explanation
 //
 // Fetch fetches the AWS IAM access keys from UCP and then from an internal storage (e.g.

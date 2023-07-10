@@ -98,8 +98,6 @@ func initCosmosDBClient(ctx context.Context, opt StorageProviderOptions, collect
 	return dbclient, nil
 }
 
-// InitETCDClient initializes a new etcd client.
-//
 // # Function Explanation
 //
 // InitETCDClient checks if the ETCD client is in memory and if the client is not nil, then it initializes the storage

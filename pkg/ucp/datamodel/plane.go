@@ -47,7 +47,7 @@ func (p Plane) ResourceTypeName() string {
 
 // # Function Explanation
 //
-// LookupResourceProvider searches through a map of strings and returns the value associated with the given key.
+// LookupResourceProvider checks if the input provider is in the list of configured providers.
 func (plane *Plane) LookupResourceProvider(key string) string {
 	var value string
 	for k, v := range plane.Properties.ResourceProviders {

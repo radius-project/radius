@@ -49,8 +49,6 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 	}
 }
 
-// GetStorageClient creates or gets storage client.
-//
 // # Function Explanation
 //
 // GetStorageClient checks if a StorageClient for the given resourceType already exists in the map, and

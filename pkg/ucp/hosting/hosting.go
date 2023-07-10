@@ -73,8 +73,6 @@ func (host *Host) RunAsync(ctx context.Context) (<-chan error, <-chan LifecycleM
 	return stopped, serviceErrors
 }
 
-// Run launches and runs as a blocking call all services until graceful shutdown or timeout occurs.
-//
 // # Function Explanation
 //
 // Run starts all services in the host, waits for them to finish, and returns an error if any of them fail or if a

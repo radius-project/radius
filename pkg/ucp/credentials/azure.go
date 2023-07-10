@@ -53,8 +53,6 @@ func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.C
 	}, nil
 }
 
-// Fetch gets the Azure credentials from secret storage.
-//
 // # Function Explanation
 //
 // Fetch fetches the Azure service principal credentials from UCP and the internal storage (e.g.

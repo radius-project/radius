@@ -24,12 +24,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
-// PlaneDataModelToVersioned converts version agnostic plane datamodel to versioned model.
-//
 // # Function Explanation
 //
-// This function, PlaneDataModelToVersioned, takes in a pointer to a Plane data model and a version string, and returns
-// an interface of the versioned model and an error if the conversion fails.
+// PlaneDataModelToVersioned converts version agnostic plane datamodel to versioned model.
 func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
@@ -44,12 +41,9 @@ func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.Versi
 	}
 }
 
-// PlaneDataModelFromVersioned converts versioned plane model to datamodel.
-//
 // # Function Explanation
 //
-// PlaneDataModelFromVersioned takes in a slice of bytes and a version string and returns a Plane object and an error if
-// the version is not supported.
+// PlaneDataModelFromVersioned converts versioned plane model to datamodel.
 func PlaneDataModelFromVersioned(content []byte, version string) (*datamodel.Plane, error) {
 	switch version {
 	case v20220901privatepreview.Version:
