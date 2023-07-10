@@ -79,12 +79,17 @@ type queryOptions struct {
 	fn func(StoreConfig) StoreConfig
 }
 
+// # Function Explanation
+//
+// ApplyQueryOption applies a function to the StoreConfig to modify it.
 func (q *queryOptions) ApplyQueryOption(cfg StoreConfig) StoreConfig {
 	return q.fn(cfg)
 }
 
 func (q queryOptions) private() {}
 
+// # Function Explanation
+//
 // WithPaginationToken sets pagination token for Query().
 func WithPaginationToken(token string) QueryOptions {
 	return &queryOptions{
@@ -95,7 +100,9 @@ func WithPaginationToken(token string) QueryOptions {
 	}
 }
 
-// WithMaxQueryItemCount sets max items in query result.
+// # Function Explanation
+//
+// WithMaxQueryItemCount creates a QueryOptions instance that sets the maximum number of items in query result.
 func WithMaxQueryItemCount(maxcnt int) QueryOptions {
 	return &queryOptions{
 		fn: func(cfg StoreConfig) StoreConfig {
@@ -113,10 +120,16 @@ type mutatingOptions struct {
 var _ DeleteOptions = (*mutatingOptions)(nil)
 var _ SaveOptions = (*mutatingOptions)(nil)
 
+// # Function Explanation
+//
+// ApplyDeleteOption applies the delete option to the given StoreConfig and returns the modified StoreConfig.
 func (s *mutatingOptions) ApplyDeleteOption(cfg StoreConfig) StoreConfig {
 	return s.fn(cfg)
 }
 
+// # Function Explanation
+//
+// ApplySaveOption applies the save option to the given StoreConfig and returns the modified StoreConfig.
 func (s *mutatingOptions) ApplySaveOption(cfg StoreConfig) StoreConfig {
 	return s.fn(cfg)
 }
@@ -130,13 +143,18 @@ type saveOptions struct {
 
 var _ SaveOptions = (*saveOptions)(nil)
 
+// # Function Explanation
+//
+// ApplySaveOption applies a save option to a StoreConfig.
 func (s *saveOptions) ApplySaveOption(cfg StoreConfig) StoreConfig {
 	return s.fn(cfg)
 }
 
 func (s saveOptions) private() {}
 
-// WithETag sets the etag for Save().
+// # Function Explanation
+//
+// WithETag sets the ETag field in the StoreConfig struct.
 func WithETag(etag ETag) MutatingOptions {
 	return &mutatingOptions{
 		fn: func(cfg StoreConfig) StoreConfig {
@@ -146,7 +164,9 @@ func WithETag(etag ETag) MutatingOptions {
 	}
 }
 
-// NewQueryConfig returns new store config for Query().
+// # Function Explanation
+//
+// NewQueryConfig applies a set of QueryOptions to a StoreConfig and returns the modified StoreConfig for Query().
 func NewQueryConfig(opts ...QueryOptions) StoreConfig {
 	cfg := StoreConfig{}
 	for _, opt := range opts {
@@ -155,7 +175,9 @@ func NewQueryConfig(opts ...QueryOptions) StoreConfig {
 	return cfg
 }
 
-// NewDeleteConfig returns new store config for Delete().
+// # Function Explanation
+//
+// NewDeleteConfig applies the given DeleteOptions to a StoreConfig and returns the resulting StoreConfig for Delete().
 func NewDeleteConfig(opts ...DeleteOptions) StoreConfig {
 	cfg := StoreConfig{}
 	for _, opt := range opts {
@@ -164,7 +186,9 @@ func NewDeleteConfig(opts ...DeleteOptions) StoreConfig {
 	return cfg
 }
 
-// NewSaveConfig returns new store config for Save().
+// # Function Explanation
+//
+// NewSaveConfig applies a set of SaveOptions to a StoreConfig and returns the modified StoreConfig for Save().
 func NewSaveConfig(opts ...SaveOptions) StoreConfig {
 	cfg := StoreConfig{}
 	for _, opt := range opts {

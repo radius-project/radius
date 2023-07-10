@@ -28,6 +28,8 @@ const (
 	ResourcePrefix = "resource"
 )
 
+// # Function Explanation
+//
 // ExtractStorageParts extracts the main components of the resource id in a way that easily
 // supports our storage abstraction. Returns a tuple of the (prefix, rootScope, routingScope, resourceType)
 func ExtractStorageParts(id resources.ID) (string, string, string, string) {
@@ -57,6 +59,9 @@ func ExtractStorageParts(id resources.ID) (string, string, string, string) {
 	}
 }
 
+// # Function Explanation
+//
+// IDMatchesQuery checks if the given ID matches the given query.
 func IDMatchesQuery(id resources.ID, query store.Query) bool {
 	prefix, rootScope, routingScope, resourceType := ExtractStorageParts(id)
 	if query.IsScopeQuery && !strings.EqualFold(prefix, ScopePrefix) {
@@ -82,6 +87,9 @@ func IDMatchesQuery(id resources.ID, query store.Query) bool {
 	return true
 }
 
+// # Function Explanation
+//
+// NormalizePart takes in a string and returns a normalized version of it with a prefix and suffix segment separator.
 func NormalizePart(part string) string {
 	if len(part) == 0 {
 		return ""

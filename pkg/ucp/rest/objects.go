@@ -56,6 +56,9 @@ type ResourceList struct {
 	Value []Resource `json:"value" yaml:"value"`
 }
 
+// # Function Explanation
+//
+// LookupResourceProvider searches through the ResourceProviders map of the Plane struct for the given key.
 func (plane *Plane) LookupResourceProvider(key string) string {
 	var value string
 	for k, v := range plane.Properties.ResourceProviders {
