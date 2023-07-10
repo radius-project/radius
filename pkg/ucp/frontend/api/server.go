@@ -46,11 +46,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
+
+	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
-
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -64,7 +64,7 @@ type ServiceOptions struct {
 	ProviderName            string
 	Address                 string
 	PathBase                string
-	Configure               func(*mux.Router)
+	Configure               func(chi.Router)
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
@@ -99,28 +99,24 @@ func DefaultModules(options modules.Options) []modules.Initializer {
 
 var _ hosting.Service = (*Service)(nil)
 
-// NewService will create a server that can listen on the provided address and serve requests.
+// NewService creates a server to serve UCP API requests.
 func NewService(options ServiceOptions) *Service {
 	return &Service{
 		options: options,
 	}
 }
 
-// # Function Explanation
-//
-// Returns the constant string "api" as the name.
+// Name gets this service name.
 func (s *Service) Name() string {
 	return "api"
 }
 
-// # Function Explanation
-//
 // Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	var err error
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
 	s.queueProvider = queueprovider.New(s.options.ProviderName, s.options.QueueProviderOptions)
@@ -160,7 +156,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app := http.Handler(r)
 	app = servicecontext.ARMRequestCtx(s.options.PathBase, "global")(app)
-	app = middleware.AppendLogValues("ucp")(app)
+	app = middleware.WithLogger("ucp")(app)
 
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),
@@ -236,9 +232,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context) error {
 	return nil
 }
 
-// # Function Explanation
-//
-// Run() sets up a server to listen on a given address, and shuts it down when the context is done. It returns an
+// Run sets up a server to listen on a given address, and shuts it down when the context is done. It returns an
 // error if the server fails to start or stops unexpectedly.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)

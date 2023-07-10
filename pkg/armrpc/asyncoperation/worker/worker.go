@@ -163,15 +163,9 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
 
-			opType, ok := v1.ParseOperationType(armReqCtx.OperationType)
-			if !ok {
-				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
-				return
-			}
-
-			asyncCtrl := w.registry.Get(opType)
+			asyncCtrl := w.registry.Get(armReqCtx.OperationType)
 			if asyncCtrl == nil {
-				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
+				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + armReqCtx.OperationType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}

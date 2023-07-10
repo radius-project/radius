@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -32,6 +33,11 @@ const (
 	// to determine the polling frequency of the client for long-running operations. Consider setting
 	// a smaller value like 5 seconds if your operations are expected to be fast.
 	DefaultRetryAfterDuration = 60 * time.Second
+)
+
+var (
+	// ErrInvalidOperationType represents the error for invalid operation type string.
+	ErrInvalidOperationType = errors.New("failed to parse operation type")
 )
 
 // OperationMethod is the ARM operation of resource.

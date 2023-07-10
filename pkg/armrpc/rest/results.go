@@ -540,21 +540,6 @@ func NewNotFoundMessageResponse(message string) Response {
 	}
 }
 
-// TODO: dead code: remove function.
-func NewNoResourceMatchResponse(path string) Response {
-	return &NotFoundResponse{
-		Body: v1.ErrorResponse{
-			Error: v1.ErrorDetails{
-				Code:    v1.CodeNotFound,
-				Message: fmt.Sprintf("the specified path %q did not match any resource", path),
-				Target:  path,
-			},
-		},
-	}
-}
-
-// # Function Explanation
-//
 // NewNotFoundResponse creates a NotFoundResponse with resource id.
 func NewNotFoundResponse(id resources.ID) Response {
 	return &NotFoundResponse{

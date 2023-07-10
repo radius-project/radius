@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
@@ -66,7 +66,7 @@ func (s *Service) Run(ctx context.Context) error {
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
-		Configure: func(router *mux.Router) error {
+		Configure: func(router chi.Router) error {
 			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {
 				return err
