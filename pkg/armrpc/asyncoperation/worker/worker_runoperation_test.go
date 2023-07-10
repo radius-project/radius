@@ -39,6 +39,11 @@ import (
 	"go.uber.org/atomic"
 )
 
+const (
+	// defaultTestDequeueInterval is the default duration for the dequeue interval for inmemory test queue
+	defaultTestDequeueInterval = time.Duration(5) * time.Millisecond
+)
+
 var (
 	testResourceType    = "Applications.Core/environments"
 	testOperationStatus = &manager.Status{
@@ -143,7 +148,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	defer mctrl.Finish()
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(Options{}, nil, tCtx.testQueue, registry)
+	worker := New(Options{DequeueIntervalDuration: defaultTestDequeueInterval}, nil, tCtx.testQueue, registry)
 
 	tCtx.mockSP.EXPECT().
 		GetStorageClient(gomock.Any(), gomock.Any()).
@@ -215,7 +220,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	expectedDequeueCount := 2
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(Options{MaxOperationRetryCount: expectedDequeueCount}, tCtx.mockSM, tCtx.testQueue, registry)
+	worker := New(Options{MaxOperationRetryCount: expectedDequeueCount, DequeueIntervalDuration: defaultTestDequeueInterval}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
@@ -277,7 +282,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
+	worker := New(Options{DequeueIntervalDuration: defaultTestDequeueInterval}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
@@ -444,7 +449,7 @@ func TestRunOperation_Successfully(t *testing.T) {
 
 	require.Equal(t, 1, tCtx.internalQ.Len())
 
-	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx)
+	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
 	worker.runOperation(context.Background(), msg, testCtrl)
 
@@ -489,7 +494,7 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 
 	require.Equal(t, 1, tCtx.internalQ.Len())
 
-	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx)
+	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	old := msg.NextVisibleAt
 	require.NoError(t, err)
 
@@ -529,7 +534,7 @@ func TestRunOperation_CancelContext(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(10 * time.Millisecond)
 	require.Equal(t, 1, tCtx.internalQ.Len())
 
-	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx)
+	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
 
 	worker.runOperation(ctx, msg, testCtrl)
@@ -582,7 +587,7 @@ func TestRunOperation_Timeout(t *testing.T) {
 		},
 	}
 
-	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx)
+	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
 	worker.runOperation(context.Background(), msg, testCtrl)
 	<-done
@@ -614,7 +619,7 @@ func TestRunOperation_PanicController(t *testing.T) {
 		},
 	}
 
-	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx)
+	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
 
 	require.NotPanics(t, func() {

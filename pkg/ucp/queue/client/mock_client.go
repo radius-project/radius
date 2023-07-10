@@ -35,23 +35,18 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Dequeue mocks base method.
-func (m *MockClient) Dequeue(arg0 context.Context, arg1 ...DequeueOptions) (*Message, error) {
+func (m *MockClient) Dequeue(arg0 context.Context, arg1 QueueClientConfig) (*Message, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "Dequeue", varargs...)
+	ret := m.ctrl.Call(m, "Dequeue", arg0, arg1)
 	ret0, _ := ret[0].(*Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Dequeue indicates an expected call of Dequeue.
-func (mr *MockClientMockRecorder) Dequeue(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) Dequeue(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dequeue", reflect.TypeOf((*MockClient)(nil).Dequeue), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dequeue", reflect.TypeOf((*MockClient)(nil).Dequeue), arg0, arg1)
 }
 
 // Enqueue mocks base method.

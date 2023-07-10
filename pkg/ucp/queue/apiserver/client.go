@@ -284,7 +284,7 @@ func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount
 	return result, nil
 }
 
-func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*client.Message, error) {
+func (c *Client) Dequeue(ctx context.Context, opts client.QueueClientConfig) (*client.Message, error) {
 	var result *v1alpha1.QueueMessage
 
 	DequeuedMessageError := func(err error) bool {
