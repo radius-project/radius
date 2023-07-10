@@ -73,7 +73,6 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
 
 resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
   name: 'rmq-rte'
-  location: location
   properties: {
     application: app.id
     port: rabbitmqPort
@@ -82,7 +81,6 @@ resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 
 resource rabbitmq 'Applications.Messaging/rabbitMQQueues@2022-03-15-privatepreview' = {
   name: 'msg-rmq-rmq'
-  location: location
   properties: {
     application: app.id
     environment: environment
