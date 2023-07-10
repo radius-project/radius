@@ -11,7 +11,7 @@ In order to update or create a new schema follow these steps:
     make generate
     ```
     This will generate the OpenAPI spec and API client for all namespaces and run mockgen to generate mocks.
-        <details>
+    <details>
     <summary>Alternately, if you would like to manually generate the OpenAPI spec and API client, follow these steps:</summary>
 
     1. Run the following command to generate the OpenAPI spec with the newly added changes
