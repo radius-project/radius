@@ -239,33 +239,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		for k, v := range serviceComputedValues {
 			computedValues[k] = v
 		}
-	}
 
-	if usesDNSSD {
-		// TODO: issue: once the usesDNSSD flag is triggered, it seems to stay true for other containers??
-		// handles case where container has source field structured as a URL.
-		for connectionName, connection := range properties.Connections {
-			source := connection.Source
-			if source == "" {
-				continue
-			}
-
-			// parse source into scheme, hostname, and port.
-			scheme, hostname, port, err := parseURL(source)
-			if err != nil {
-				return renderers.RendererOutput{}, err
-			}
-
-			// add scheme, hostname, and port into environment.
-			// if env is nil, initialize the env map.
-			if properties.Container.Env == nil {
-				properties.Container.Env = map[string]string{}
-			}
-
-			properties.Container.Env["CONNECTIONS_" + connectionName + "_SCHEME"] = scheme
-			properties.Container.Env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
-			properties.Container.Env["CONNECTIONS_" + connectionName + "_PORT"] = port
-		}
+		needsServiceGeneration = false
 	}
 
 	return renderers.RendererOutput{
@@ -340,7 +315,6 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
 }
 
-// TODO: entire deployment function is DNS-SD/HTTProute agnostic.
 func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rpv1.ComputedValueReference, resource *datamodel.ContainerResource, roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
@@ -381,7 +355,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		} else {
 			ports = append(ports, corev1.ContainerPort{
 				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP, //TODO: are we assuming that all ports are TCP?
+				Protocol:      corev1.ProtocolTCP,
 			})
 		}
 	}
@@ -411,6 +385,34 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
 		}
+	}
+
+	if usesDNSSD {
+		// handles case where container has source field structured as a URL.
+		for connectionName, connection := range properties.Connections {
+			source := connection.Source
+			if source == "" {
+				continue
+			}
+
+			// parse source into scheme, hostname, and port.
+			scheme, hostname, port, err := parseURL(source)
+			if err != nil {
+				return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to parse source URL: %w", err)
+			}
+
+			// add scheme, hostname, and port into environment.
+			// if env is nil, initialize the env map.
+			if properties.Container.Env == nil {
+				properties.Container.Env = map[string]string{}
+			}
+
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_SCHEME"] = scheme
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_PORT"] = port
+		}
+
+		usesDNSSD = false
 	}
 
 	// We build the environment variable list in a stable order for testability
