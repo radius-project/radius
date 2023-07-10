@@ -368,7 +368,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		} else {
 			ports = append(ports, corev1.ContainerPort{
 				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP, //TODO: are we assuming that all ports are TCP?
+				Protocol:      corev1.ProtocolTCP,
 			})
 		}
 	}
@@ -398,6 +398,34 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
 		}
+	}
+
+	if usesDNSSD {
+		// handles case where container has source field structured as a URL.
+		for connectionName, connection := range properties.Connections {
+			source := connection.Source
+			if source == "" {
+				continue
+			}
+
+			// parse source into scheme, hostname, and port.
+			scheme, hostname, port, err := parseURL(source)
+			if err != nil {
+				return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to parse source URL: %w", err)
+			}
+
+			// add scheme, hostname, and port into environment.
+			// if env is nil, initialize the env map.
+			if properties.Container.Env == nil {
+				properties.Container.Env = map[string]string{}
+			}
+
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_SCHEME"] = scheme
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
+			properties.Container.Env["CONNECTIONS_" + connectionName + "_PORT"] = port
+		}
+
+		usesDNSSD = false
 	}
 
 	// We build the environment variable list in a stable order for testability
