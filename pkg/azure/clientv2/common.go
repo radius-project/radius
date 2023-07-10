@@ -21,7 +21,10 @@ import (
 	"fmt"
 )
 
-// GetResourceGroupLocation returns the location of the resource group.
+// # Function Explanation
+//
+// GetResourceGroupLocation retrieves the location of a given resource group from an Azure subscription. It returns an
+// error if the resource group or the subscription cannot be found.
 func GetResourceGroupLocation(ctx context.Context, subscriptionID string, resourceGroupName string, options *Options) (*string, error) {
 	client, err := NewResourceGroupsClient(subscriptionID, options)
 	if err != nil {
