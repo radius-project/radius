@@ -484,6 +484,10 @@
           "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
           "type": "string"
         },
+        "templateVersion": {
+          "description": "Terraform module version.",
+          "type": "string"
+        },
         "parameters": {
           "description": "Key/value parameters to pass to the recipe template at deployment",
           "type": "object",

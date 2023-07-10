@@ -380,6 +380,7 @@
 * **parameters**: any: Any object
 * **templateKind**: string (Required): Format of the template provided by the recipe. Allowed values: bicep
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+* **templateVersion**: string: Terraform module version.
 
 ## TrackedResourceTags
 ### Properties

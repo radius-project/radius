@@ -554,6 +554,9 @@ type EnvironmentRecipeProperties struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Terraform module version.
+	TemplateVersion *string `json:"templateVersion,omitempty"`
 }
 
 // EnvironmentResource - Application environment.

@@ -18,6 +18,7 @@ package recipe
 
 const (
 	TemplateKindBicep = "bicep"
+	TemplateKindTerraform
 )
 
 type EnvironmentRecipe struct {

@@ -125,8 +125,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								},
 							},
 							"terraform-recipe": datamodel.EnvironmentRecipeProperties{
-								TemplateKind: recipes.TemplateKindTerraform,
-								TemplatePath: "Azure/cosmosdb/azurerm",
+								TemplateKind:    recipes.TemplateKindTerraform,
+								TemplatePath:    "Azure/cosmosdb/azurerm",
+								TemplateVersion: "1.1.0",
 							},
 						},
 						linkrp.RedisCachesResourceType: {
@@ -137,8 +138,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						},
 						linkrp.DaprStateStoresResourceType: {
 							"statestore-recipe": datamodel.EnvironmentRecipeProperties{
-								TemplateKind: recipes.TemplateKindTerraform,
-								TemplatePath: "Azure/storage/azurerm",
+								TemplateKind:    recipes.TemplateKindTerraform,
+								TemplatePath:    "Azure/storage/azurerm",
+								TemplateVersion: "1.1.0",
 							},
 						},
 					},
@@ -250,6 +252,14 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-missing-templatekind.json",
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
+		},
+		{
+			filename: "environmentresource-invalid-property-templateversion.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion property is not allowed for template kind bicep"},
+		},
+		{
+			filename: "environmentresource-missing-templateversion.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion property is a required property for template kind terraform"},
 		},
 	}
 

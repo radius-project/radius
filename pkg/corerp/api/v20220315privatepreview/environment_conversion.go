@@ -22,6 +22,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	types "github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -74,10 +75,22 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("invalid template kind. Allowed formats: \"bicep\"")
 					}
 
+					if *recipeDetails.TemplateKind == types.TemplateKindBicep && recipeDetails.TemplateVersion != nil {
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion property is not allowed for template kind bicep")
+					}
+
+					if *recipeDetails.TemplateKind == types.TemplateKindTerraform && recipeDetails.TemplateVersion == nil {
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion property is a required property for template kind terraform")
+					}
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
-						TemplateKind: *recipeDetails.TemplateKind,
-						TemplatePath: to.String(recipeDetails.TemplatePath),
-						Parameters:   recipeDetails.Parameters,
+						TemplateKind:    *recipeDetails.TemplateKind,
+						TemplatePath:    to.String(recipeDetails.TemplatePath),
+						TemplateVersion: to.String(recipeDetails.TemplateVersion),
+						Parameters:      recipeDetails.Parameters,
+					}
+
+					if entry, ok := envRecipes[resourceType][recipeName]; ok {
+						entry.TemplateVersion = to.String(recipeDetails.TemplateVersion)
 					}
 				}
 			}
@@ -141,6 +154,9 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 					TemplateKind: to.Ptr(recipeDetails.TemplateKind),
 					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
 					Parameters:   recipeDetails.Parameters,
+				}
+				if recipeDetails.TemplateKind == types.TemplateKindTerraform {
+					recipes[resourceType][recipeName].TemplateVersion = to.Ptr(recipeDetails.TemplateVersion)
 				}
 			}
 		}
