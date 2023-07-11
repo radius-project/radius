@@ -18,6 +18,7 @@ package rabbitmqmessagequeues
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
@@ -35,9 +36,13 @@ type Processor struct {
 // Process implements the processors.Processor interface for RabbitMQQueue resources.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMessageQueue, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
+	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
-
-	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
+	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
+	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
+	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
+	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
+	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.URI, func() (string, *processors.ValidationError) {
 		return p.computeConnectionString(resource), nil
 	})
 
@@ -50,5 +55,5 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 }
 
 func (p *Processor) computeConnectionString(resource *datamodel.RabbitMQMessageQueue) string {
-	return resource.Properties.Secrets.ConnectionString
+	return fmt.Sprintf("amqp://%s:%s@%s:%v/%s", resource.Properties.Username, resource.Properties.Secrets.Password, resource.Properties.Host, resource.Properties.Port, resource.Properties.VHost)
 }

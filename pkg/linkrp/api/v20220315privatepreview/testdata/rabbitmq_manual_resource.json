@@ -11,8 +11,13 @@
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
         "resourceProvisioning":"manual",
         "queue": "testQueue",
+        "host": "test-host",
+        "vHost": "test-vhost",
+        "port": 5672,
+        "username": "test-user",
         "secrets": {
-            "connectionString": "connection://string"
+            "uri": "connection://string",
+            "password":"password"
         }
     }
 }

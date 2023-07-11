@@ -62,8 +62,13 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					ResourceProvisioning: linkrp.ResourceProvisioningManual,
 					Queue:                "testQueue",
+					Host:                 "test-host",
+					VHost:                "test-vhost",
+					Port:                 5672,
+					Username:             "test-user",
 					Secrets: datamodel.RabbitMQSecrets{
-						ConnectionString: "connection://string",
+						URI:      "connection://string",
+						Password: "password",
 					},
 				},
 			},
@@ -143,6 +148,10 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Queue:                to.Ptr("testQueue"),
+					Host:                 to.Ptr("test-host"),
+					VHost:                to.Ptr("test-vhost"),
+					Port:                 to.Ptr(int32(5672)),
+					Username:             to.Ptr("test-user"),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
 							{
@@ -172,6 +181,10 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Queue:                to.Ptr("testQueue"),
+					Host:                 to.Ptr("test-host"),
+					VHost:                to.Ptr("test-vhost"),
+					Port:                 to.Ptr(int32(5672)),
+					Username:             to.Ptr("test-user"),
 					Recipe: &Recipe{
 						Name: to.Ptr("rabbitmq"),
 						Parameters: map[string]any{
@@ -282,7 +295,7 @@ func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	converted := dm.(*datamodel.RabbitMQSecrets)
-	require.Equal(t, "test-connection-string", converted.ConnectionString)
+	require.Equal(t, "test-connection-string", converted.URI)
 }
 
 func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
@@ -299,7 +312,7 @@ func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+	require.Equal(t, "test-connection-string", secrets.URI)
 }
 
 func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {

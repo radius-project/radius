@@ -1112,7 +1112,8 @@ func (o *OperationListResult) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQListSecretsResult.
 func (r RabbitMQListSecretsResult) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "connectionString", r.ConnectionString)
+	populate(objectMap, "password", r.Password)
+	populate(objectMap, "uri", r.URI)
 	return json.Marshal(objectMap)
 }
 
@@ -1125,8 +1126,11 @@ func (r *RabbitMQListSecretsResult) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "connectionString":
-				err = unpopulate(val, "ConnectionString", &r.ConnectionString)
+		case "password":
+				err = unpopulate(val, "Password", &r.Password)
+				delete(rawMsg, key)
+		case "uri":
+				err = unpopulate(val, "URI", &r.URI)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1141,12 +1145,17 @@ func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
+	populate(objectMap, "host", r.Host)
+	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "queue", r.Queue)
 	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "resourceProvisioning", r.ResourceProvisioning)
+	populate(objectMap, "resources", r.Resources)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
+	populate(objectMap, "username", r.Username)
+	populate(objectMap, "vHost", r.VHost)
 	return json.Marshal(objectMap)
 }
 
@@ -1165,6 +1174,12 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 		case "environment":
 				err = unpopulate(val, "Environment", &r.Environment)
 				delete(rawMsg, key)
+		case "host":
+				err = unpopulate(val, "Host", &r.Host)
+				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, "Port", &r.Port)
+				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
 				delete(rawMsg, key)
@@ -1177,11 +1192,20 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 		case "resourceProvisioning":
 				err = unpopulate(val, "ResourceProvisioning", &r.ResourceProvisioning)
 				delete(rawMsg, key)
+		case "resources":
+				err = unpopulate(val, "Resources", &r.Resources)
+				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, "Secrets", &r.Secrets)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		case "username":
+				err = unpopulate(val, "Username", &r.Username)
+				delete(rawMsg, key)
+		case "vHost":
+				err = unpopulate(val, "VHost", &r.VHost)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1276,7 +1300,8 @@ func (r *RabbitMQMessageQueueResourceListResult) UnmarshalJSON(data []byte) erro
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQSecrets.
 func (r RabbitMQSecrets) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "connectionString", r.ConnectionString)
+	populate(objectMap, "password", r.Password)
+	populate(objectMap, "uri", r.URI)
 	return json.Marshal(objectMap)
 }
 
@@ -1289,8 +1314,11 @@ func (r *RabbitMQSecrets) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "connectionString":
-				err = unpopulate(val, "ConnectionString", &r.ConnectionString)
+		case "password":
+				err = unpopulate(val, "Password", &r.Password)
+				delete(rawMsg, key)
+		case "uri":
+				err = unpopulate(val, "URI", &r.URI)
 				delete(rawMsg, key)
 		}
 		if err != nil {

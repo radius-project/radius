@@ -59,6 +59,11 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 type RabbitMQMessageQueueProperties struct {
 	rpv1.BasicResourceProperties
 	Queue                string                      `json:"queue,omitempty"`
+	Host                 string                      `json:"host,omitempty"`
+	Port                 int32                       `json:"port,omitempty"`
+	VHost                string                      `json:"vHost,omitempty"`
+	Username             string                      `json:"username,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
 	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
 	Secrets              RabbitMQSecrets             `json:"secrets,omitempty"`
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
@@ -66,7 +71,8 @@ type RabbitMQMessageQueueProperties struct {
 
 // Secrets values consisting of secrets provided for the resource
 type RabbitMQSecrets struct {
-	ConnectionString string `json:"connectionString"`
+	URI      string `json:"uri,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
