@@ -62,11 +62,11 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.Res
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	redisSecrets := datamodel.RabbitMQSecrets{}
+	rabbitMQSecrets := datamodel.RabbitMQSecrets{}
 	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
-		redisSecrets.ConnectionString = connectionString.Value
+		rabbitMQSecrets.URI = connectionString.Value
 	}
 
-	versioned, _ := converter.RabbitMQSecretsDataModelToVersioned(&redisSecrets, sCtx.APIVersion)
+	versioned, _ := converter.RabbitMQSecretsDataModelToVersioned(&rabbitMQSecrets, sCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }

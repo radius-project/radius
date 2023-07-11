@@ -29,7 +29,11 @@ func Test_Process(t *testing.T) {
 	processor := Processor{}
 
 	const queue = "test-queue"
-	const connectionString = "connection://string"
+	const uri = "connection://string"
+	const host = "test-host"
+	const port int32 = 5672
+	const username = "test-user"
+	const password = "test-password"
 	rabbitMQOutputResources := []string{
 		"/planes/kubernetes/local/namespaces/rabbitmq/providers/core/Service/rabbitmq-svc",
 		"/planes/kubernetes/local/namespaces/rabbitmq/providers/apps/Deployment/rabbitmq-deployment",
@@ -41,10 +45,14 @@ func Test_Process(t *testing.T) {
 			RecipeOutput: &recipes.RecipeOutput{
 				Resources: rabbitMQOutputResources,
 				Values: map[string]any{
-					"queue": queue,
+					"queue":    queue,
+					"host":     host,
+					"port":     port,
+					"username": username,
 				},
 				Secrets: map[string]any{
-					"connectionString": connectionString,
+					"uri":      uri,
+					"password": password,
 				},
 			},
 		}
@@ -54,7 +62,10 @@ func Test_Process(t *testing.T) {
 
 		require.Equal(t, queue, resource.Properties.Queue)
 		expectedValues := map[string]any{
-			"queue": queue,
+			"queue":    queue,
+			"host":     host,
+			"port":     port,
+			"username": username,
 		}
 
 		expectedOutputResources, err := processors.GetOutputResourcesFromRecipe(options.RecipeOutput)
@@ -67,7 +78,10 @@ func Test_Process(t *testing.T) {
 	t.Run("success - manual", func(t *testing.T) {
 		resource := &datamodel.RabbitMQMessageQueue{
 			Properties: datamodel.RabbitMQMessageQueueProperties{
-				Queue: queue,
+				Queue:    queue,
+				Host:     host,
+				Port:     port,
+				Username: username,
 			},
 		}
 		err := processor.Process(context.Background(), resource, processors.Options{})
@@ -76,7 +90,10 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, queue, resource.Properties.Queue)
 
 		expectedValues := map[string]any{
-			"queue": queue,
+			"queue":    queue,
+			"host":     host,
+			"port":     port,
+			"username": username,
 		}
 		require.NoError(t, err)
 		require.Equal(t, expectedValues, resource.ComputedValues)
@@ -93,10 +110,14 @@ func Test_Process(t *testing.T) {
 				Resources: rabbitMQOutputResources,
 				// Values and secrets will be overridden by the resource.
 				Values: map[string]any{
-					"queue": queue,
+					"queue":    queue,
+					"host":     host,
+					"port":     port,
+					"username": username,
 				},
 				Secrets: map[string]any{
-					"connectionString": connectionString,
+					"uri":      uri,
+					"password": password,
 				},
 			},
 		}
@@ -107,7 +128,10 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, queue, resource.Properties.Queue)
 
 		expectedValues := map[string]any{
-			"queue": queue,
+			"queue":    queue,
+			"host":     host,
+			"port":     port,
+			"username": username,
 		}
 		expectedOutputResources := []rpv1.OutputResource{}
 
@@ -126,6 +150,11 @@ func Test_Process(t *testing.T) {
 		err := processor.Process(context.Background(), resource, options)
 		require.Error(t, err)
 		require.IsType(t, &processors.ValidationError{}, err)
-		require.Equal(t, `the connection value "queue" should be provided by the recipe, set '.properties.queue' to provide a value manually`, err.Error())
+		require.Equal(t, `validation returned multiple errors:
+
+the connection value "queue" should be provided by the recipe, set '.properties.queue' to provide a value manually
+the connection value "host" should be provided by the recipe, set '.properties.host' to provide a value manually
+the connection value "port" should be provided by the recipe, set '.properties.port' to provide a value manually`, err.Error())
+
 	})
 }
