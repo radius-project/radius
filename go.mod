@@ -27,6 +27,7 @@ require (
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20230512181611-ed361b11954a
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.13.0
+	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.3
 	github.com/go-openapi/errors v0.20.2
@@ -42,7 +43,6 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
-	github.com/gorilla/mux v1.8.0
 	github.com/gosuri/uilive v0.0.4
 	github.com/hashicorp/hc-install v0.5.2
 	github.com/hashicorp/terraform-exec v0.18.1
@@ -149,6 +149,7 @@ require (
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect

@@ -81,7 +81,7 @@ func Test_ListAWSResources(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, firstTestResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -127,7 +127,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -154,7 +154,7 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -185,7 +185,7 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := rpctest.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

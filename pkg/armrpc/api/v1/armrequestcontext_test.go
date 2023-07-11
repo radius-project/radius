@@ -97,16 +97,24 @@ func TestSystemData(t *testing.T) {
 }
 
 func TestFromContext(t *testing.T) {
-	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
-	require.NoError(t, err)
-	serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
-	require.NoError(t, err)
-	ctx := context.Background()
-	newCtx := WithARMRequestContext(ctx, serviceCtx)
+	t.Run("ARMRequestContext is injected", func(t *testing.T) {
+		req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+		require.NoError(t, err)
+		serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
+		require.NoError(t, err)
+		ctx := context.Background()
+		newCtx := WithARMRequestContext(ctx, serviceCtx)
 
-	sCtx := ARMRequestContextFromContext(newCtx)
-	require.NotNil(t, sCtx)
-	require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
+		sCtx := ARMRequestContextFromContext(newCtx)
+		require.NotNil(t, sCtx)
+		require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
+	})
+
+	t.Run("ARMRequestContext is not injected", func(t *testing.T) {
+		require.Panics(t, func() {
+			ARMRequestContextFromContext(context.Background())
+		})
+	})
 }
 
 func TestTopQueryParam(t *testing.T) {

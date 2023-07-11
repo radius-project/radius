@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -134,7 +133,7 @@ type ARMRequestContext struct {
 	// OperationID represents the unique id per operation, which will be used as async operation id later.
 	OperationID uuid.UUID
 	// OperationType represents the type of the operation.
-	OperationType string
+	OperationType OperationType
 	// Traceparent represents W3C trace prarent header for distributed tracing.
 	Traceparent string
 
@@ -234,10 +233,6 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		OrignalURL: *r.URL,
 	}
 
-	if route := mux.CurrentRoute(r); route != nil {
-		rpcCtx.OperationType = route.GetName()
-	}
-
 	return rpcCtx, nil
 }
 
@@ -289,7 +284,13 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 // ARMRequestContextFromContext retrieves an ARMRequestContext from a given context. Panic if the context does
 // not contain an ARMRequestContext.
 func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
-	return ctx.Value(armContextKey).(*ARMRequestContext)
+	rpcContext, ok := ctx.Value(armContextKey).(*ARMRequestContext)
+	if !ok {
+		// ARMRequestContext must be set in the incoming request context.
+		// Otherwise, this is the critical code bug.
+		panic("ARMRequestContext is not set in the context")
+	}
+	return rpcContext
 }
 
 // WithARMRequestContext injects ARMRequestContext into the given http context.
