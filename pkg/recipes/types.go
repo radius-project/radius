@@ -55,7 +55,7 @@ type EnvironmentDefinition struct {
 	Parameters map[string]any
 	// TemplatePath represents path to the template provided by the recipe.
 	TemplatePath string
-	// TemplateVersion represents the version of the terraform template provided by the recipe.
+	// TemplateVersion represents the version of the terraform module provided by the recipe.
 	TemplateVersion string
 }
 

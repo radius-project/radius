@@ -88,10 +88,6 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 						TemplateVersion: to.String(recipeDetails.TemplateVersion),
 						Parameters:      recipeDetails.Parameters,
 					}
-
-					if entry, ok := envRecipes[resourceType][recipeName]; ok {
-						entry.TemplateVersion = to.String(recipeDetails.TemplateVersion)
-					}
 				}
 			}
 
