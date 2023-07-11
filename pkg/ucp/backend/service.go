@@ -50,12 +50,10 @@ func (w *Service) Name() string {
 	return fmt.Sprintf("%s async worker", UCPProviderName)
 }
 
-// Run starts the service and worker.
-//
 // # Function Explanation
 //
-// Run initializes the service and sets the worker options based on the configuration, then starts the service
-// with the given worker options. It returns an error if the initialization fails.
+// Run starts the service and worker. It initializes the service and sets the worker options based on the configuration,
+// then starts the service with the given worker options. It returns an error if the initialization fails.
 func (w *Service) Run(ctx context.Context) error {
 	if err := w.Init(ctx); err != nil {
 		return err
