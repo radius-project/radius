@@ -31,17 +31,15 @@ import (
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*DeleteResource)(nil)
 
 // DeleteResource is the async operation controller to delete Applications.Link resource.
 type DeleteResource struct {
-	ctrl   ctrl.BaseController
+	ctrl.BaseController
 	client processors.ResourceClient
 	engine engine.Engine
 }
@@ -78,18 +76,18 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
+	deploymentDataModel, ok := dataModel.(rpv1.RadiusResourceModel)
 	if !ok {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
 
-	request := recipes.ResourceMetadata{
-		EnvironmentID: dataModel.ResourceMetadata().Environment,
-		ApplicationID: dataModel.ResourceMetadata().Application,
-		ResourceID:    dataModel.GetBaseResource().ID,
+	recipeData := recipes.ResourceMetadata{
+		EnvironmentID: deploymentDataModel.ResourceMetadata().Environment,
+		ApplicationID: deploymentDataModel.ResourceMetadata().Application,
+		ResourceID:    id.String(),
 	}
 
-	err = c.engine.Delete(ctx, deploymentDataModel, c.client, request)
+	err = c.engine.Delete(ctx, deploymentDataModel, c.client, recipeData)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -140,33 +138,33 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 	}
 }
 
-func (d *DeleteResource) deleteResources(ctx context.Context, id string, outputResources []rpv1.OutputResource) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
+// func (d *DeleteResource) deleteResources(ctx context.Context, id string, outputResources []rpv1.OutputResource) error {
+// 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
-	if err != nil {
-		return err
-	}
+// 	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// Loop over each output resource and delete in reverse dependency order
-	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
-		outputResource := orderedOutputResources[i]
-		id := outputResource.Identity.GetID()
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-			continue
-		}
+// 	// Loop over each output resource and delete in reverse dependency order
+// 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
+// 		outputResource := orderedOutputResources[i]
+// 		id := outputResource.Identity.GetID()
+// 		if err != nil {
+// 			return err
+// 		}
+// 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+// 		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
+// 			continue
+// 		}
 
-		err = d.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+// 		err = d.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
 
-	}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }

@@ -9,7 +9,9 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	processors "github.com/project-radius/radius/pkg/linkrp/processors"
 	recipes "github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // MockEngine is a mock of Engine interface.
@@ -33,6 +35,20 @@ func NewMockEngine(ctrl *gomock.Controller) *MockEngine {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockEngine) EXPECT() *MockEngineMockRecorder {
 	return m.recorder
+}
+
+// Delete mocks base method.
+func (m *MockEngine) Delete(arg0 context.Context, arg1 v1.DeploymentDataModel, arg2 processors.ResourceClient, arg3 recipes.ResourceMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockEngineMockRecorder) Delete(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockEngine)(nil).Delete), arg0, arg1, arg2, arg3)
 }
 
 // Execute mocks base method.
