@@ -88,7 +88,7 @@ type AWSMissingPropertyError struct {
 
 // # Function Explanation
 //
-// Is() checks if the target error is of type AWSMissingPropertyError and returns a boolean value indicating the result.
+// Is checks if the target error is of type AWSMissingPropertyError and returns a boolean value indicating the result.
 func (e *AWSMissingPropertyError) Is(target error) bool {
 	_, ok := target.(*AWSMissingPropertyError)
 	return ok
@@ -96,7 +96,7 @@ func (e *AWSMissingPropertyError) Is(target error) bool {
 
 // # Function Explanation
 //
-// Error() returns a string containing the name of the missing property for an AWSMissingPropertyError.
+// Error returns a string containing the name of the missing property for an AWSMissingPropertyError.
 func (e *AWSMissingPropertyError) Error() string {
 	return fmt.Sprintf("mandatory property %s is missing", e.PropertyName)
 }
