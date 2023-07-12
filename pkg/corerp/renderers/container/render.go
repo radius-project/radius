@@ -260,23 +260,41 @@ func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerRes
 			// store portNames and portValues for use in service generation.
 			containerPortNames = append(containerPortNames, portName)
 			containerPortValues = append(containerPortValues, port.ContainerPort)
+			
+			// if the optional port value is set, use that instead of the containerPort.
+			portVal := port.ContainerPort
+			if port.Port != 0 {
+				portVal = port.Port
+			}
+
+			schemeVal := "http"
+
+			// if the port is 443, use https as the default scheme.
+			if portVal == 443 {
+				schemeVal = "https"
+			}
+
+			// if the optional scheme value is set, use that instead of the default scheme.
+			if port.Scheme != "" {
+				schemeVal = port.Scheme
+			}
 
 			serviceComputedValues = map[string]rpv1.ComputedValueReference{
 				"hostname": {
 					Value: kubernetes.NormalizeResourceName(resource.Name),
 				},
 				"port": {
-					Value: port.ContainerPort,
+					Value: portVal,
 				},
 				"url": {
-					Value: fmt.Sprintf("http://%s:%d", kubernetes.NormalizeResourceName(resource.Name), port.ContainerPort),
+					Value: fmt.Sprintf("%s://%s:%d", schemeVal, kubernetes.NormalizeResourceName(resource.Name), portVal),
 				},
 				"scheme": {
-					Value: "http",
+					Value: schemeVal,
 				},
 			}
 		}
-	
+
 	return serviceComputedValues, containerPortValues, containerPortNames, nil
 }
 
