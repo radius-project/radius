@@ -45,9 +45,10 @@ type CreateOrUpdateResource[P interface {
 	configurationLoader configloader.ConfigurationLoader
 }
 
-// NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
+// # Function Explanation
 //
-// The processor function will be called to process updates to the resource.
+// NewCreateOrUpdateResource creates a new controller for creating or updating a resource with the given processor, engine,
+// client, configurationLoader and options. The processor function will be called to process updates to the resource.
 func NewCreateOrUpdateResource[P interface {
 	*T
 	rpv1.RadiusResourceModel

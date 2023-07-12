@@ -54,6 +54,8 @@ const (
 	resourceGroupPath           = "/resourcegroups/{resourceGroupName}"
 )
 
+// # Function Explanation
+//
 // AddRoutes configures routes and handlers for Datastores, Messaging, Dapr Resource Providers.
 func AddRoutes(ctx context.Context, router *mux.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 	rootScopePath := ctrlOpts.PathBase
@@ -223,8 +225,6 @@ func AddMessagingRoutes(ctx context.Context, router *mux.Router, rootScopePath s
 	return nil
 }
 
-// AddDaprRoutes configures routes and handlers for Dapr Resource Provider.
-//
 // # Function Explanation
 //
 // AddDaprRoutes configures the default ARM handlers and adds handlers for Dapr resources such as Dapr PubSubBroker,
@@ -528,12 +528,10 @@ func AddDaprRoutes(ctx context.Context, router *mux.Router, rootScopePath string
 	return nil
 }
 
-// AddDatastoresRoutes configures the routes and handlers for  Datastores Resource Provider.
-//
 // # Function Explanation
 //
-// AddDatastoresRoutes registers handlers for List, Get, Put, Patch, and Delete operations for MongoDatabase, RedisCache, and
-// SqlDatabase resources.
+// AddDatastoresRoutes configures the routes and handlers for  Datastores Resource Provider. It registers handlers for List, Get, Put,
+// Patch, and Delete operations for MongoDatabase, RedisCache, and SqlDatabase resources.
 func AddDatastoresRoutes(ctx context.Context, router *mux.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 
 	// Datastores - Configure the default ARM handlers.
@@ -845,8 +843,6 @@ func AddDatastoresRoutes(ctx context.Context, router *mux.Router, rootScopePath 
 	return nil
 }
 
-// AddLinkRoutes configures routes and handlers for the Link Resource Provider.
-//
 // # Function Explanation
 //
 // AddLinkRoutes sets up routes and registers handlers for various operations (GET, PUT, PATCH, DELETE) on different

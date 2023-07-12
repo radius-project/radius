@@ -49,6 +49,8 @@ func (daprGeneric DaprGeneric) Validate() error {
 	return nil
 }
 
+// # Function Explanation
+//
 // ConstructDaprGeneric constructs a Dapr component.
 //
 // The component name and resource name may be different. The component name is the name of the Dapr
