@@ -71,8 +71,17 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	}
 
 	// Generate Terraform json config in the working directory
-	err = config.GenerateMainConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir)
+	// Use recipe name as a local reference to the module.
+	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the configuration is used as subdirectory name under .terraform/modules directory.
+	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
+	localModuleName := options.EnvRecipe.Name
+	err = config.GenerateMainConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
 	if err != nil {
+		return nil, err
+	}
+
+	// Get the required providers from the module
+	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return nil, err
 	}
 

@@ -29,12 +29,17 @@ import (
 // to a file in the specified working directory. This JSON configuration is needed to initialize
 // and apply Terraform modules. See https://www.terraform.io/docs/language/syntax/json.html
 // for more information on the JSON syntax for Terraform configuration.
-func GenerateMainConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir string) error {
+// <<<<<<< HEAD
+// func GenerateMainConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir string) error {
+func GenerateMainConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string) error {
 	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
+	// =======
+	// moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.Parameters, resourceRecipe.Parameters)
+	// >>>>>>> 205cd5439 (Use TF Get command to download module)
 
 	tfConfig := TerraformConfig{
 		Module: map[string]any{
-			envRecipe.Name: moduleData,
+			localModuleName: moduleData,
 		},
 	}
 

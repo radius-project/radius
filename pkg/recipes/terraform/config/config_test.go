@@ -63,7 +63,7 @@ func TestGenerateMainConfigFile(t *testing.T) {
 		Parameters: resourceParams,
 	}
 
-	err := GenerateMainConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir)
+	err := GenerateMainConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	// Assert that the main.tf.json file was created.
@@ -107,7 +107,7 @@ func TestGenerateMainConfig_EmptyParameters(t *testing.T) {
 		Name: testRecipeName,
 	}
 
-	err := GenerateMainConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir)
+	err := GenerateMainConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	// Assert that the main.tf.json file was created.
@@ -150,7 +150,7 @@ func TestGenerateMainConfig_Error(t *testing.T) {
 
 	// Call GenerateMainConfig with a working directory that doesn't exist.
 	invalidPath := filepath.Join("invalid", uuid.New().String())
-	err := GenerateMainConfigFile(context.Background(), &envRecipe, &resourceRecipe, invalidPath)
+	err := GenerateMainConfigFile(context.Background(), &envRecipe, &resourceRecipe, invalidPath, testRecipeName)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file")
 }
