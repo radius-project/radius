@@ -36,7 +36,7 @@ type ResourceTypeSchema struct {
 
 // # Function Explanation
 //
-// FlattenProperties recursively flattens a map of strings and any type into a single level map.
+// FlattenProperties takes a string-keyed map, which may contain nested objects, and recursively flattens it into a single-level map.
 // For example:
 //
 //	"NumShards": 1
@@ -72,7 +72,7 @@ func FlattenProperties(state map[string]any) map[string]any {
 
 // # Function Explanation
 //
-// UnflattenProperties takes in a map of strings to any type and returns a map of strings to any type with the nested
+// UnflattenProperties takes in a map of strings to any type and returns an object with the nested
 // properties unflattened.
 // For example:
 //
@@ -122,7 +122,7 @@ func UnflattenProperties(state map[string]any) map[string]any {
 
 // # Function Explanation
 //
-// GeneratePatch takes in the current state, desired state and schema of a resource and returns a JSON patch to update the
+// GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
 // current state to the desired state, taking into account read-only, create-only and conditional-create-only properties.
 func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
 	// See: https://github.com/project-radius/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
