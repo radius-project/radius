@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "azureMonitorWorkspaceResourceId": {
+      "value": "/subscriptions/{sub_id}/resourceGroups/{rg_name}/providers/microsoft.monitor/accounts/{amw_name}"
+    },
+    "azureMonitorWorkspaceLocation": {
+      "value": "{amwLocation}"
+    },
+    "clusterResourceId": {
+      "value": "/subscriptions/{sub_id}/resourcegroups/{rg_name}/providers/Microsoft.ContainerService/managedClusters/{cluster_name}"
+    },
+    "clusterLocation": {
+      "value": "{clusterLocation}"
+    },
+    "metricLabelsAllowlist": {
+      "value": ""
+    },
+    "metricAnnotationsAllowList": {
+      "value": ""
+    },
+    "enableWindowsRecordingRules": {
+      "value": false
+    },
+    "grafanaResourceId": {
+      "value": "/subscriptions/{sub_id}/resourceGroups/{rg_name}/providers/Microsoft.Dashboard/grafana/{cluster_name}"
+    },
+    "grafanaLocation": {
+      "value": "{grafanaLocation}"
+    },
+    "grafanaSku": {
+      "value": "Standard"
+    },
+    "grafanaAdminObjectId": {
+      "value": "{grafanaAdminObjectId}"
+    }
+  }
+}
