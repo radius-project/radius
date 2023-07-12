@@ -137,12 +137,15 @@ func (b *BaseController) ResourceType() string {
 	return b.options.ResourceType
 }
 
-// DeploymentProcessor gets the deployment processor for this controller.
+// StatusManager gets the StatusManager of this controller.
 func (b *BaseController) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
 }
 
-// GetResource is the helper to get the resource via storage client.
+// # Function Explanation
+//
+// GetResource gets a resource from data store for id, set the retrieved resource to out argument and returns
+// the ETag of the resource and an error if one occurs.
 func (c *BaseController) GetResource(ctx context.Context, id string, out any) (etag string, err error) {
 	etag = ""
 	var res *store.Object
@@ -155,7 +158,9 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out any) (e
 	return
 }
 
-// SaveResource is the helper to save the resource via storage client.
+// # Function Explanation
+//
+// SaveResource saves a resource to the data store with an ETag and returns a store object or an error if the save fails.
 func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*store.Object, error) {
 	nr := &store.Object{
 		Metadata: store.Metadata{
@@ -170,7 +175,10 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in any, et
 	return nr, nil
 }
 
-// UpdateSystemData creates or updates new systemdata from old and new resources.
+// # Function Explanation
+//
+// UpdateSystemData updates the system data fields in the old object with the new object's fields, backfilling the created
+// fields if necessary.
 func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 	newSystemData := old
 
@@ -196,7 +204,10 @@ func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 	return newSystemData
 }
 
-// BuildTrackedResource create TrackedResource instance from request context
+// # Function Explanation
+//
+// BuildTrackedResource takes in a context and returns a v1.TrackedResource object with the ID, Name, Type and Location
+// fields populated from the context.
 func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
 	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	serviceOpt := hostoptions.FromContext(ctx)

@@ -11,8 +11,8 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v0.8.1
 	github.com/dapr/go-sdk v1.6.0
 	github.com/denisenkom/go-mssqldb v0.12.3
+	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/gorilla/mux v1.8.0
 	github.com/rabbitmq/amqp091-go v1.6.0
 	go.mongodb.org/mongo-driver v1.11.1
 )

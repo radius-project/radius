@@ -51,7 +51,10 @@ type Service struct {
 	KubeClientSet kubernetes.Interface
 }
 
-// Init initializes worker service.
+// # Function Explanation
+//
+// Init initializes worker service - it initializes the StorageProvider, RequestQueue, OperationStatusManager, Controllers, KubeClient and
+// returns an error if any of these operations fail.
 func (s *Service) Init(ctx context.Context) error {
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
@@ -80,7 +83,9 @@ func (s *Service) Init(ctx context.Context) error {
 	return nil
 }
 
-// Start starts the worker.
+// # Function Explanation
+//
+// Start creates and starts a worker, and logs any errors that occur while starting the worker.
 func (s *Service) Start(ctx context.Context, opt Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
