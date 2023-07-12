@@ -66,7 +66,7 @@ type UCPCredential struct {
 // # Function Explanation
 //
 // NewUCPCredential creates a new UCPCredential with the given options and returns it, or returns an error if the
-// provider is not defined or the duration is 0. Pass nil to accept default options.
+// provider is not defined. If Duration is 0, it is set to DefaultDuration. Pass nil to accept default options.
 func NewUCPCredential(options UCPCredentialOptions) (*UCPCredential, error) {
 	if options.Provider == nil {
 		return nil, errors.New("undefined provider")
