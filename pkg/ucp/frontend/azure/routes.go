@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	prefix                   = "/planes/azure/{planeName}"
+	planeScope               = "/planes/azure/{planeName}"
 	credentialResourcePath   = "/providers/System.Azure/credentials/{credentialName}"
 	credentialCollectionPath = "/providers/System.Azure/credentials"
 
@@ -47,13 +47,16 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return nil, err
 	}
 
-	baseRouter := m.router.PathPrefix(m.options.PathBase + prefix).Name("subrouter: Azure module").Subrouter()
+	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+planeScope)
 
-	// URLS for operations on Azure credential resources.
-	credentialResourceRouter := baseRouter.Path(credentialResourcePath).Subrouter()
-	credentialResourceRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
-	credentialCollectionRouter := baseRouter.Path(credentialCollectionPath).Subrouter()
-	credentialCollectionRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
+	// URL for operations on System.Azure provider.
+	apiValidator := validator.APIValidator(validator.Options{
+		SpecLoader:         m.options.SpecLoader,
+		ResourceTypeGetter: validator.UCPResourceTypeGetter,
+	})
+
+	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath, apiValidator)
+	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -99,12 +102,14 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 
-		// Proxy request should take the least priority in routing and should therefore be last
+		// Chi router uses radix tree so that it doesn't linear search the matched one. So, to catch all requests,
+		// we need to use CatchAllPath(/*) at the above matched routes path in chi router.
 		//
-		// Note that the API validation is not applied to the router used for proxying
+		// Note that the API validation is not applied for CatchAllPath(/*).
 		{
 			// Method deliberately omitted. This is a catch-all route for proxying.
 			ParentRouter:      baseRouter,
+			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy},
 			ControllerFactory: planes_ctrl.NewProxyPlane,
 		},

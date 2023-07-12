@@ -45,9 +45,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
@@ -71,9 +71,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			renderers.UsernameStringValue:   "testUser",
 			renderers.PasswordStringHolder:  "testPassword",
@@ -112,9 +112,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource partial secrets", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			renderers.UsernameStringValue:   "testUser",
 			renderers.ConnectionStringValue: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
@@ -150,9 +150,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 		w := httptest.NewRecorder()
 
 		mStorageClient.

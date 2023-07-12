@@ -48,6 +48,10 @@ type synchronizer struct {
 	results chan testResult
 }
 
+// # Function Explanation
+//
+// NewSynchronizer creates a new synchronizer struct with a given worker count, initializes the waitgroups and results
+// channel, and returns the synchronizer.
 func NewSynchronizer(workerCount int) *synchronizer {
 	s := &synchronizer{
 		Value:            NewAsyncValue[testValue](),
@@ -63,6 +67,10 @@ func NewSynchronizer(workerCount int) *synchronizer {
 	return s
 }
 
+// # Function Explanation
+//
+// Start launches a number of workers to get a value from a context and returns a test result with the value retrieved
+// and any errors that occurred. If the test times out before the workers complete, an error is returned.
 func (s *synchronizer) Start(ctx context.Context, t *testing.T) {
 	for i := 0; i < s.WorkerCount; i++ {
 		go func() {
@@ -91,6 +99,10 @@ func (s *synchronizer) Start(ctx context.Context, t *testing.T) {
 	}
 }
 
+// # Function Explanation
+//
+// WaitForWorkersCompleted creates a channel to wait for workers to complete and returns a channel of test
+// results or an error if the test times out.
 func (s *synchronizer) WaitForWorkersCompleted(ctx context.Context, t *testing.T) <-chan testResult {
 	completed := make(chan struct{})
 

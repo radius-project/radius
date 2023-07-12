@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 )
 
-// ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
-//
 // # Function Explanation
 //
 // ARMRequestCtx is a middleware handler that adds an ARM request context to an incoming request. It takes in a pathBase
@@ -60,6 +58,21 @@ func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler 
 			}
 
 			r = r.WithContext(v1.WithARMRequestContext(r.Context(), rpcContext))
+			h.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
+
+// WithOperationType is the middleware to inject operation type to the http request.
+func WithOperationType(operationType v1.OperationType) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			// Panic if the context doesn't include ARMRequestContext. This should never happen.
+			rpcContext := v1.ARMRequestContextFromContext(ctx)
+			rpcContext.OperationType = operationType
 			h.ServeHTTP(w, r)
 		}
 
