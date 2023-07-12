@@ -46,10 +46,10 @@ func Test_GetOperationResults(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := rpctest.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
+	operationResultsRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := rpctest.ARMTestContextFromRequest(operationResultsRequest)
+	ctx := rpctest.NewARMRequestContext(operationResultsRequest)
 	operationResultsRequest = operationResultsRequest.WithContext(ctx)
 
 	operationResultsResponse, err := ucp.Client().Do(operationResultsRequest)

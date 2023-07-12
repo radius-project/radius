@@ -22,15 +22,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRecoverer(t *testing.T) {
 	const testPathBase = "/base"
 	w := httptest.NewRecorder()
-	r := mux.NewRouter()
-	r.Path(testPathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}").Methods(http.MethodPut).HandlerFunc(
+	r := chi.NewRouter()
+	r.MethodFunc(
+		http.MethodPut,
+		testPathBase+"/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}",
 		func(w http.ResponseWriter, r *http.Request) {
 			// panic !!!
 			panic("panic test")

@@ -99,13 +99,10 @@ func (a *asyncOperationMetrics) Init() error {
 func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) {
 	if a.counters[QueuedAsyncOperationCount] != nil {
 		serviceCtx := v1.ARMRequestContextFromContext(ctx)
-		opType, ok := v1.ParseOperationType(serviceCtx.OperationType)
-		if ok {
-			a.counters[QueuedAsyncOperationCount].Add(ctx, 1,
-				metric.WithAttributes(attribute.String(ResourceTypeAttrKey, normalizeAttrValue(serviceCtx.ResourceID.Type())),
-					attribute.String(OperationTypeAttrKey, normalizeAttrValue(opType.Method.HTTPMethod()))),
-			)
-		}
+		a.counters[QueuedAsyncOperationCount].Add(ctx, 1,
+			metric.WithAttributes(attribute.String(ResourceTypeAttrKey, normalizeAttrValue(serviceCtx.ResourceID.Type())),
+				attribute.String(OperationTypeAttrKey, normalizeAttrValue(serviceCtx.OperationType.Method.HTTPMethod()))),
+		)
 	}
 }
 

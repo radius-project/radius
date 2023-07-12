@@ -54,6 +54,7 @@ func (a *CreateOrUpdateSubscription) Run(ctx context.Context, w http.ResponseWri
 	return rest.NewNotFoundAPIVersionResponse("Subscriptions", "Applications.Core", sCtx.APIVersion), nil
 }
 
+// Validate validates subscription request and returns the Subscription object if successful, or nil if an error occurs.
 func (a *CreateOrUpdateSubscription) Validate(req *http.Request) *v1.Subscription {
 	content, _ := ctrl.ReadJSONBody(req)
 	am := v1.Subscription{}

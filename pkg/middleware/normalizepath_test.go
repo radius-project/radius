@@ -22,8 +22,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,20 +52,28 @@ func TestNormalizePath(t *testing.T) {
 
 	for _, tt := range tests {
 		w := httptest.NewRecorder()
-		r := mux.NewRouter()
-		r.Path("/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/Applications.Core/{resourceType}/{resourceName}").Methods(http.MethodPost).HandlerFunc(
+		r := chi.NewRouter()
+		r.MethodFunc(
+			http.MethodPost,
+			"/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/Applications.Core/{resourceType}/{resourceName}",
 			func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.URL.Path))
 			})
-		r.Path("/planes").Methods(http.MethodPost).HandlerFunc(
+		r.MethodFunc(
+			http.MethodPost,
+			"/planes",
 			func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.URL.Path))
 			})
-		r.Path("/planes/{planeType}/{planeName}/resourcegroups").Methods(http.MethodPost).HandlerFunc(
+		r.MethodFunc(
+			http.MethodPost,
+			"/planes/{planeType}/{planeName}/resourcegroups",
 			func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.URL.Path))
 			})
-		r.Path("/apis/api.ucp.dev/v1alpha3/planes/{planeType}/{planeName}").Methods(http.MethodPost).HandlerFunc(
+		r.MethodFunc(
+			http.MethodPost,
+			"/apis/api.ucp.dev/v1alpha3/planes/{planeType}/{planeName}",
 			func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.URL.Path))
 			})
@@ -78,6 +85,6 @@ func TestNormalizePath(t *testing.T) {
 		handler.ServeHTTP(w, req)
 
 		parsed := w.Body.String()
-		assert.Equal(t, tt.expected, parsed)
+		require.Equal(t, tt.expected, parsed)
 	}
 }
