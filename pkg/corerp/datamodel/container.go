@@ -97,6 +97,8 @@ type Container struct {
 // ContainerPort - Specifies a listening port for the container
 type ContainerPort struct {
 	ContainerPort int32    `json:"containerPort,omitempty"`
+	Port 		  int32    `json:"port,omitempty"`
+	Scheme		  string   `json:"scheme,omitempty"`
 	Protocol      Protocol `json:"protocol,omitempty"`
 	Provides      string   `json:"provides,omitempty"`
 }

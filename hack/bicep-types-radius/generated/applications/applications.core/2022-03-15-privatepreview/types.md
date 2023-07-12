@@ -259,8 +259,10 @@
 ## ContainerPort
 ### Properties
 * **containerPort**: int (Required): The listening port number
+* **port**: int: optional. only needs to be set when a value different from containerPort is desired
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
 * **provides**: string: Specifies a route provided by this port
+* **scheme**: string: optional. used to build URLs, defaults to http or https based on port
 
 ## ContainerVolumes
 ### Properties
