@@ -28,6 +28,7 @@ import (
 func TestGetRequiredProviders(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
+
 	// Create a test module directory.
 	moduleDir := filepath.Join(testDir, moduleRootDir, "test-module")
 	err := os.MkdirAll(moduleDir, 0755)
