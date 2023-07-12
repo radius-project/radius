@@ -33,8 +33,6 @@ type SystemData struct {
 	LastModifiedAt string `json:"lastModifiedAt,omitempty"`
 }
 
-// UpdateSystemData creates or updates new systemdata from old and new resources.
-//
 // # Function Explanation
 //
 // UpdateSystemData updates the existing SystemData object with the new SystemData object, filling in any missing fields

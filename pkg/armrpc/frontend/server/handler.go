@@ -99,8 +99,6 @@ func NewSubrouter(parent chi.Router, path string, middlewares ...func(http.Handl
 	return subrouter
 }
 
-// HandlerForController returns a http.HandlerFunc that will run the given controller.
-//
 // # Function Explanation
 //
 // HandlerForController creates a http.HandlerFunc function that runs resource provider frontend controller, renders a

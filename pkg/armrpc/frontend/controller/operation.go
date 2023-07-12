@@ -207,12 +207,10 @@ func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, eta
 	return rest.NewOKResponseWithHeaders(versioned, headers), nil
 }
 
-// ConstructAsyncResponse constructs asynchronous API response.
-//
 // # Function Explanation
 //
-// ConstructAsyncResponse creates an asynchronous response for a given resource, method and etag. It converts the resource 
-// to the appropriate version and sets the response code to either Accepted or Created depending on the method. It also sets 
+// ConstructAsyncResponse creates an asynchronous response for a given resource, method and etag. It converts the resource
+// to the appropriate version and sets the response code to either Accepted or Created depending on the method. It also sets
 // the RetryAfter value if it is specified in the resourceOptions. If an error occurs, it is returned to the caller.
 func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
