@@ -26,6 +26,8 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
+const defaultRecipeName = "default"
+
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
 	if state == nil {
 		return v1.ProvisioningStateAccepted
@@ -112,13 +114,16 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 
 func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
 	if r == nil {
-		return linkrp.LinkRecipe{}
+		return linkrp.LinkRecipe{
+			Name: defaultRecipeName,
+		}
 	}
-
-	recipe := linkrp.LinkRecipe{
-		Name: to.String(r.Name),
+	recipe := linkrp.LinkRecipe{}
+	if r.Name == nil {
+		recipe.Name = defaultRecipeName
+	} else {
+		recipe.Name = to.String(r.Name)
 	}
-
 	if r.Parameters != nil {
 		recipe.Parameters = r.Parameters
 	}
