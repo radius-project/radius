@@ -101,8 +101,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // # Function Explanation
 //
 // Run checks if a Radius installation exists, and if it does, it either skips the installation or reinstalls it
-// depending on the "Reinstall" flag. If no installation is found, it installs the latest version of Radius to the
-// specified namespace.
+// depending on the "Reinstall" flag. If no installation is found, it installs the version of Radius corresponding
+// to the cli version. It then returns any errors that occur during the installation.
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{

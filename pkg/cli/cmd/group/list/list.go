@@ -84,7 +84,8 @@ func NewRunner(factory framework.Factory) *Runner {
 //
 // # Function Explanation
 //
-// Validate checks if a workspace is required and sets the output format, returning an error if either of these checks fail.
+// Validate makes sure the default workspace or the one specified using command flags is valid, and sets the workspace to this value.
+// It also sets the output format to table by default or to the one specified using command flags.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -108,7 +109,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 // # Function Explanation
 //
-// Run creates an ApplicationsManagementClient, retrieves a list of UCPGroup resources, and writes the results to
+// Run creates an ApplicationsManagementClient, retrieves a list of radius resource groups, and writes the results to
 // an output in a formatted way, returning an error if one occurs.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)

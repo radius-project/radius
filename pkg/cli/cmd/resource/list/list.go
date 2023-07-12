@@ -138,8 +138,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 // Run checks if an application name is provided and if so, checks if the application exists in the workspace, then
 // lists all resources of the specified type in the application, and finally writes the resources to the output in the
-// specified format. If no application name is provided, it lists all resources of the specified type in the workspace. An
-// error is returned if the application does not exist in the workspace.
+// specified format. If no application name is provided, it lists all resources of the specified type. An error is
+// returned if the application does not exist in the workspace.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
