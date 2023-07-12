@@ -385,6 +385,14 @@
         "provides": {
           "description": "Specifies a route provided by this port",
           "type": "string"
+        },
+        "scheme": {
+          "description": "optional. used to build URLs, defaults to http or https based on port",
+          "type": "string"
+        },
+        "port": {
+          "description": "optional. only needs to be set when a value different from containerPort is desired",
+          "type": "number"
         }
       }
     },

@@ -326,11 +326,17 @@ type ContainerPort struct {
 	// REQUIRED; The listening port number
 	ContainerPort *int32 `json:"containerPort,omitempty"`
 
+	// optional. only needs to be set when a value different from containerPort is desired
+	Port *int32 `json:"port,omitempty"`
+
 	// Protocol in use by the port
 	Protocol *Protocol `json:"protocol,omitempty"`
 
 	// Specifies a route provided by this port
 	Provides *string `json:"provides,omitempty"`
+
+	// optional. used to build URLs, defaults to http or https based on port
+	Scheme *string `json:"scheme,omitempty"`
 }
 
 // ContainerProperties - Container properties
