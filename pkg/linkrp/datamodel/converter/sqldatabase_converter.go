@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
-// SqlDatabaseDataModelFromVersioned converts version agnostic SqlDatabase datamodel to versioned model.
+// # Function Explanation
+//
+// SqlDatabaseDataModelToVersioned converts a SqlDatabase data model to a VersionedModelInterface based on the specified
+// version, returning an error if the version is unsupported.
 func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -37,7 +40,10 @@ func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version strin
 	}
 }
 
-// SqlDatabaseDataModelToVersioned converts versioned SqlDatabase model to datamodel.
+// # Function Explanation
+//
+// SqlDatabaseDataModelFromVersioned takes in a byte slice and a version string and returns a SqlDatabase object and an
+// error if one occurs.
 func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.SqlDatabase, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -56,7 +62,10 @@ func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamod
 	}
 }
 
-// SqlDatabaseSecretsDataModelFromVersioned converts version agnostic SqlDatabaseSecrets datamodel to versioned model.
+// # Function Explanation
+//
+// This function converts a SqlDatabaseSecretsDataModel to a VersionedModelInterface based on the version provided, and
+// returns an error if the version is unsupported.
 func SqlDatabaseSecretsDataModelToVersioned(model *datamodel.SqlDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:

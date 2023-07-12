@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
-// DaprSecretStoreDataModelFromVersioned converts version agnostic DaprSecretStore datamodel to versioned model.
+// # Function Explanation
+//
+// DaprSecretStoreDataModelToVersioned converts a DaprSecretStore data model to a versioned model interface based on the version provided,
+// and returns an error if the version is unsupported.
 func DaprSecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -37,7 +40,10 @@ func DaprSecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, versi
 	}
 }
 
-// DaprSecretStoreDataModelToVersioned converts versioned DaprSecretStore model to datamodel.
+// # Function Explanation
+//
+// DaprSecretStoreDataModelFromVersioned unmarshals a JSON content into a DaprSecretStoreResource object and then converts
+// it to a DaprSecretStore object, returning an error if either of these steps fail.
 func DaprSecretStoreDataModelFromVersioned(content []byte, version string) (*datamodel.DaprSecretStore, error) {
 	switch version {
 	case v20220315privatepreview.Version:

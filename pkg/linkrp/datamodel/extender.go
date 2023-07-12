@@ -33,18 +33,24 @@ type Extender struct {
 	LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the Status of Properties of the Extender resource with the DeployedOutputResources and returns no error.
 func (r *Extender) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns the OutputResources of the Extender resource.
 func (r *Extender) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the Extender resource.
 func (r *Extender) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
@@ -56,11 +62,9 @@ func (extender *Extender) ResourceTypeName() string {
 	return linkrp.ExtendersResourceType
 }
 
-// Recipe returns the recipe for the Extender resource
-//
 // # Function Explanation
 //
-// Extender.Recipe returns the LinkRecipe associated with the Extender if the ResourceProvisioning is not set to Manual,
+// Recipe returns the LinkRecipe associated with the Extender if the ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
 func (extender *Extender) Recipe() *linkrp.LinkRecipe {
 	if extender.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {

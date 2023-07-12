@@ -34,7 +34,9 @@ type DaprStateStore struct {
 	LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the DaprStateStore resource with the DeploymentOutput values.
 func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -45,24 +47,30 @@ func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns the OutputResources from the Properties of the DaprStateStore resource.
 func (r *DaprStateStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the DaprStateStore resource i.e. application resources metadata.
 func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
 // # Function Explanation
 //
-// ResourceTypeName returns a string representing the resource type name of the DaprStateStore instance.
+// ResourceTypeName returns the resource type of the DaprStateStore resource.
 func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 	return linkrp.DaprStateStoresResourceType
 }
 
-// Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
+// # Function Explanation
+//
+// Recipe returns the recipe information of the resource. It returns nil if the ResourceProvisioning is set to manual.
 func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
 	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil

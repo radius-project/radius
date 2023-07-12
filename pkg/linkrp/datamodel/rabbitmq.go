@@ -35,25 +35,32 @@ type RabbitMQMessageQueue struct {
 	LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the output resources of the RabbitMQMessageQueue resource with
+// the DeployedOutputResources.
 func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns the OutputResources of the RabbitMQMessageQueue resource.
 func (r *RabbitMQMessageQueue) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the RabbitMQMessageQueue resource.
 func (r *RabbitMQMessageQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
 // # Function Explanation
 //
-// ResourceTypeName returns the resource type name for RabbitMQMessageQueue.
+// ResourceTypeName returns the resource type for RabbitMQMessageQueue resource.
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
 }
@@ -74,17 +81,15 @@ type RabbitMQSecrets struct {
 
 // # Function Explanation
 //
-// MethodName returns the resource type name for RabbitMQ secrets.
+// ResourceTypeName returns the resource type for RabbitMQMessageQueue resource.
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
-// Recipe returns the recipe for the RabbitMQMessageQueue
-//
 // # Function Explanation
 //
-// Recipe returns the LinkRecipe associated with the RabbitMQMessageQueue instance if the
-// ResourceProvisioning is not set to Manual, otherwise it returns nil.
+// Recipe returns the LinkRecipe associated with the RabbitMQMessageQueue resource, or nil if the
+// ResourceProvisioning is set to Manual.
 func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
 	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
