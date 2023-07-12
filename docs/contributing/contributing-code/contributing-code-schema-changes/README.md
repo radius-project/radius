@@ -6,23 +6,30 @@ This page will explain the process to make a change to Radius' REST API (eg: add
 
 In order to update or create a new schema follow these steps:
 1. Create or update the applicable CADL files (named after resource type) within the `cadl` directory in the root of the radius repo
-2. Run the following command to generate the OpenAPI spec with the newly added changes:
-    ```bash  
-    npx cadl compile .
-    ```
-3. Generate the client code by running autorest. For example, to generate the LinkRP resources run:
-    ```bash 
-    autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
-    ```    
-    autotrest cnfiguration file i.e README.md is generally found in pkg/\<namespace\>/api/ directory, and it file has the details on the what tag-link to be used.
-4. You can alternatively run the below command instead of steps 2 and 3 to generate OpenAPI spec and the API client.
-    ```bash  
+2. Run `make generate` to generate the OpenAPI spec and API clients:
+    ```bash
     make generate
     ```
-    which is used to generate OpenAPi Specs and API client for all namespace and runs mockgen to generate mocks.
-5. Add any necessary changes to the Radius resource provider to support the newly added types
-6. Add any necessary tests, as needed
-7. Open a pull request in the radius repo
+    This will generate the OpenAPI spec and API client for all namespaces and run mockgen to generate mocks.
+    <details>
+    <summary>Alternately, if you would like to manually generate the OpenAPI spec and API client, follow these steps:</summary>
+
+    1. Run the following command to generate the OpenAPI spec with the newly added changes
+
+        ```bash
+        npx cadl compile .
+        ```
+    2. Generate the client code by running autorest
+
+        For example, to generate the LinkRP resources run:
+        ```bash
+        autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
+        ```
+        The autotrest configuration file (_i.e README.md_) is generally found in `pkg/<NAMESPACE>/api/` directory and has details on which tag to use.
+    </details>
+3. Add any necessary changes to the Radius resource provider to support the newly added types
+4. Add any necessary tests, as needed
+5. Open a pull request in the radius repo
 
 Creating a pull request in the radius repo that contains application model changes triggers an automated pull request in bicep repo with the bicep type changes. You will merge this in step 3.
 

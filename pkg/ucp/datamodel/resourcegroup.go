@@ -23,6 +23,9 @@ type ResourceGroup struct {
 	v1.BaseResource
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns a string representing the resource type name of the ResourceGroup object.
 func (p ResourceGroup) ResourceTypeName() string {
 	return "System.Resources/resourceGroups"
 }

@@ -41,8 +41,6 @@ func NewDefaultAsyncDelete[P interface {
 	return &DefaultAsyncDelete[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
 }
 
-// Run executes DefaultAsyncDelete operation
-//
 // # Function Explanation
 //
 // Run executes asynchronous delete operation by validating the request, executing custom delete filters, and starting async job, and returns an async response.

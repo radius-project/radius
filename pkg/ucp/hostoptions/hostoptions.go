@@ -34,6 +34,10 @@ type HostOptions struct {
 	Config *UCPConfig
 }
 
+// # Function Explanation
+//
+// NewHostOptionsFromEnvironment reads the configuration from the given path and returns a HostOptions object, or an
+// error if the configuration could not be loaded.
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 	conf, err := loadConfig(configPath)
 	if err != nil {

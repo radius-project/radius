@@ -32,8 +32,6 @@ type Result struct {
 	state *v1.ProvisioningState
 }
 
-// NewCanceledResult creates the canceled asynchronous operation result.
-//
 // # Function Explanation
 //
 // NewCanceledResult creates a new Result object with a canceled status and the given message.
@@ -43,8 +41,6 @@ func NewCanceledResult(message string) Result {
 	return r
 }
 
-// NewFailedResult creates the failed asynchronous operation result.
-//
 // # Function Explanation
 //
 // NewFailedResult creates a new Result object with the given error details and sets the failed flag to true.
@@ -67,8 +63,6 @@ func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 	}
 }
 
-// SetCanceled sets the response status to Canceled.
-//
 // # Function Explanation
 //
 // SetCanceled sets the Result's Requeue field to false, sets the ProvisioningState to Canceled and sets the Error field
@@ -85,8 +79,6 @@ func (r *Result) SetCanceled(message string) {
 	}
 }
 
-// SetProvisioningState sets provisioning state.
-//
 // # Function Explanation
 //
 // SetProvisioningState sets the state of a Result object to the given ProvisioningState.
@@ -94,8 +86,6 @@ func (r *Result) SetProvisioningState(s v1.ProvisioningState) {
 	r.state = &s
 }
 
-// ProvisioningState gets the provisioning state of the result.
-//
 // # Function Explanation
 //
 // ProvisioningState returns the provisioning state of the request object, which is either v1.ProvisioningStateSucceeded
