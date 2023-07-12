@@ -75,6 +75,11 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
+	// Get the required providers from the module
+	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+		return nil, err
+	}
+
 	// Run TF Init and Apply in the working directory
 	err = initAndApply(ctx, workingDir, execPath)
 	if err != nil {
