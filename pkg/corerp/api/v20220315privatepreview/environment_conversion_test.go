@@ -255,11 +255,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-property-templateversion.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion property is not allowed for template kind bicep"},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath."},
 		},
 		{
 			filename: "environmentresource-missing-templateversion.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion property is a required property for template kind terraform"},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is a required property for templateKind: 'terraform'"},
 		},
 	}
 

@@ -76,11 +76,11 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 					}
 
 					if *recipeDetails.TemplateKind == types.TemplateKindBicep && recipeDetails.TemplateVersion != nil {
-						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion property is not allowed for template kind bicep")
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath.")
 					}
 
 					if *recipeDetails.TemplateKind == types.TemplateKindTerraform && recipeDetails.TemplateVersion == nil {
-						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion property is a required property for template kind terraform")
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion is a required property for templateKind: 'terraform'")
 					}
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
 						TemplateKind:    *recipeDetails.TemplateKind,
