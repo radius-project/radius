@@ -38,12 +38,17 @@ type GetOperationResult struct {
 	ctrl.BaseController
 }
 
-// NewGetOperationResult creates a new GetOperationResult.
+// NewGetOperationResult creates a new GetOperationResult controller.
 func NewGetOperationResult(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetOperationResult{ctrl.NewBaseController(opts)}, nil
 }
 
-// Run returns the response with necessary headers about the async operation.
+// # Function Explanation
+//
+// Run returns the response with necessary headers about the async operation - it checks if the operation is in a terminal state,
+// and if not, returns an AsyncOperationResultResponse with the Location and Retry-After headers set. If the operation is in a
+// terminal state, it returns a NoContentResponse. If the operation is not found, it returns a NotFoundResponse. If an error occurs,
+// it returns a BadRequestResponse.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationResult) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)

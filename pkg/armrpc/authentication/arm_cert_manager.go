@@ -81,9 +81,8 @@ func IsValidThumbprint(thumbprint string) bool {
 	return false
 }
 
-// Start fetching the client certificates from the arm metadata endpoint during service start up
-//
-//	and runs in the background the periodic certificate refresher.
+// Start fetches the client certificates from the arm metadata endpoint during service start up
+// and runs in the background the periodic certificate refresher.
 func (acm *ArmCertManager) Start(ctx context.Context) error {
 	certs, err := acm.refreshCert()
 	if err != nil {

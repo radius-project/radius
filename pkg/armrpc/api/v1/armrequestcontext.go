@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -134,7 +133,7 @@ type ARMRequestContext struct {
 	// OperationID represents the unique id per operation, which will be used as async operation id later.
 	OperationID uuid.UUID
 	// OperationType represents the type of the operation.
-	OperationType string
+	OperationType OperationType
 	// Traceparent represents W3C trace prarent header for distributed tracing.
 	Traceparent string
 
@@ -234,14 +233,13 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		OrignalURL: *r.URL,
 	}
 
-	if route := mux.CurrentRoute(r); route != nil {
-		rpcCtx.OperationType = route.GetName()
-	}
-
 	return rpcCtx, nil
 }
 
-// SystemData returns unmarshalled RawSystemMetaData.
+// # Function Explanation
+//
+// SystemData returns unmarshalled RawSystemMetaData. It parses the RawSystemMetadata field of the ARMRequestContext struct and returns a
+// SystemData struct, returning an empty SystemData struct if an error occurs during the parsing.
 func (rc ARMRequestContext) SystemData() *SystemData {
 	if rc.RawSystemMetadata == "" {
 		return &SystemData{}
@@ -277,17 +275,31 @@ func getQueryItemCount(topQueryParam string) (int, error) {
 	return topParam, err
 }
 
-// ARMRequestContextFromContext extracts ARMRPContext from http context.
+// # Function Explanation
+//
+// ARMRequestContextFromContext retrieves an ARMRequestContext from a given context. Panic if the context does
+// not contain an ARMRequestContext.
 func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
-	return ctx.Value(armContextKey).(*ARMRequestContext)
+	rpcContext, ok := ctx.Value(armContextKey).(*ARMRequestContext)
+	if !ok {
+		// ARMRequestContext must be set in the incoming request context.
+		// Otherwise, this is the critical code bug.
+		panic("ARMRequestContext is not set in the context")
+	}
+	return rpcContext
 }
 
-// WithARMRequestContext injects ARMRequestContext into the given http context.
+// # Function Explanation
+//
+// WithARMRequestContext adds the ARMRequestContext to the context and returns the new context.
 func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) context.Context {
 	return context.WithValue(ctx, armContextKey, armctx)
 }
 
-// ParsePathBase gets the URL info before the plane types (i.e. host, base path, etc)
+// # Function Explanation
+//
+// ParsePathBase takes in a string and returns a string representing the base path of the string if it contains either
+// "/planes/" or "/subscriptions/", otherwise it returns an empty string.
 func ParsePathBase(path string) string {
 	if path != "" {
 		normalized := strings.ToLower(path)

@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/project-radius/radius/test/magpiego/bindings"
 )
 
@@ -69,19 +69,19 @@ func startHTTPSServer(crt []byte, key []byte) error {
 	return nil
 }
 
-func setupServeMux() *mux.Router {
-	router := mux.NewRouter()
-	router.Handle(backendURI, http.HandlerFunc(backendHandler)).Methods("GET")
-	router.Handle(healthURI, http.HandlerFunc(statusHandler)).Methods("GET")
+func setupServeMux() chi.Router {
+	router := chi.NewRouter()
+	router.Get(backendURI, backendHandler)
+	router.Get(healthURI, statusHandler)
 	return router
 }
 
 func statusHandler(res http.ResponseWriter, req *http.Request) {
 	log.Println("Starting Status Check...")
-	if req.Method != "GET" {
+	if req.Method != http.MethodGet {
 		log.Print("Method not supported")
 		writeResponse(res, http.StatusMethodNotAllowed, nil)
-		res.Header().Set("Allow", "GET")
+		res.Header().Set("Allow", http.MethodGet)
 		return
 	}
 	var b []byte

@@ -25,9 +25,174 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_NewSubrouter(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        string
+		middlewares []func(http.Handler) http.Handler
+	}{
+		{
+			name:        "without middleware",
+			path:        "/some-path-base",
+			middlewares: chi.Middlewares{},
+		},
+		{
+			name:        "with middleware",
+			path:        "/some-path-base",
+			middlewares: chi.Middlewares{middleware.NormalizePath},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			p := chi.NewRouter()
+			r := NewSubrouter(p, tc.path, tc.middlewares...)
+			r.Get(tc.path, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			require.Equal(t, len(tc.middlewares), len(r.Middlewares()))
+			rctx := chi.NewRouteContext()
+			rctx.Reset()
+			ok := r.Match(rctx, "GET", tc.path)
+			require.True(t, ok)
+		})
+	}
+}
+
+func Test_RegisterHandler_DeplicatedRoutes(t *testing.T) {
+	mctrl := gomock.NewController(t)
+
+	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
+	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	ctrlOpts := ctrl.Options{
+		DataProvider: mockSP,
+	}
+
+	p := chi.NewRouter()
+	opts := HandlerOptions{
+		ParentRouter:      p,
+		ResourceType:      "Applications.Test",
+		Method:            http.MethodGet,
+		ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
+		Middlewares:       chi.Middlewares{middleware.NormalizePath},
+	}
+
+	ctx := testcontext.New(t)
+
+	err := RegisterHandler(ctx, opts, ctrlOpts)
+	require.NoError(t, err)
+
+	err = RegisterHandler(ctx, opts, ctrlOpts)
+	require.NoError(t, err, "should not return error if the same route is registered twice")
+}
+
+func Test_RegisterHandler(t *testing.T) {
+	p := chi.NewRouter()
+	tests := []struct {
+		name        string
+		opts        HandlerOptions
+		validMethod []string
+		validRoute  []string
+		err         error
+	}{
+		{
+			name: "valid route with resource type and method",
+			opts: HandlerOptions{
+				ParentRouter:      p,
+				ResourceType:      "Applications.Test",
+				Method:            http.MethodGet,
+				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
+				Middlewares:       chi.Middlewares{middleware.NormalizePath},
+			},
+			validMethod: []string{http.MethodGet},
+			validRoute:  []string{"/"},
+		}, {
+			name: "valid route with with path",
+			opts: HandlerOptions{
+				ParentRouter:      p,
+				Path:              "/test",
+				ResourceType:      "Applications.Test",
+				Method:            http.MethodGet,
+				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
+				Middlewares:       chi.Middlewares{middleware.NormalizePath},
+			},
+			validMethod: []string{http.MethodGet},
+			validRoute:  []string{"/test"},
+		},
+		{
+			name: "valid route with operation type",
+			opts: HandlerOptions{
+				ParentRouter:      p,
+				OperationType:     &v1.OperationType{Type: "Applications.Test", Method: "GET"},
+				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
+				Middlewares:       chi.Middlewares{middleware.NormalizePath},
+			},
+			validMethod: []string{http.MethodGet},
+			validRoute:  []string{"/"},
+		},
+		{
+			name: "catch-call routes with opertion type",
+			opts: HandlerOptions{
+				ParentRouter:      p,
+				Path:              "/*",
+				OperationType:     &v1.OperationType{Type: "Applications.Test", Method: "PROXY"},
+				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
+			},
+			validMethod: []string{http.MethodGet, http.MethodPost},
+			validRoute:  []string{"/any", "/"},
+		},
+		{
+			name: "invalid operation type by neither setting operationtype nor setting resource type and method",
+			opts: HandlerOptions{
+				ParentRouter:      p,
+				Path:              "/",
+				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
+				Middlewares:       chi.Middlewares{middleware.NormalizePath},
+			},
+			err: ErrInvalidOperationTypeOption,
+		},
+	}
+
+	mctrl := gomock.NewController(t)
+
+	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
+	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	ctrlOpts := ctrl.Options{
+		DataProvider: mockSP,
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+
+			err := RegisterHandler(ctx, tc.opts, ctrlOpts)
+			if tc.err != nil {
+				require.ErrorContains(t, err, tc.err.Error())
+				return
+			}
+
+			require.NoError(t, err)
+
+			rctx := chi.NewRouteContext()
+			rctx.Reset()
+
+			for i, method := range tc.validMethod {
+				ok := p.Match(rctx, method, tc.validRoute[i])
+				require.True(t, ok)
+			}
+		})
+	}
+}
 
 func Test_HandlerErrModelConversion(t *testing.T) {
 	var handlerTest = struct {

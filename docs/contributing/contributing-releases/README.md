@@ -258,3 +258,6 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    git push --tags
    ```
 
+## Cadence
+
+We follow a monthly release cadence. Any contributions that have been merged through the pull-request process will be present in the next scheduled release.
