@@ -34,7 +34,9 @@ type ResourceTypeSchema struct {
 	WriteOnlyProperties             []string       `json:"writeOnlyProperties,omitempty"`
 }
 
-// FlattenProperties flattens a state object.
+// # Function Explanation
+//
+// FlattenProperties takes a string-keyed map, which may contain nested objects, and recursively flattens it into a single-level map.
 // For example:
 //
 //	"NumShards": 1
@@ -68,7 +70,10 @@ func FlattenProperties(state map[string]any) map[string]any {
 	return flattenedState
 }
 
-// UnflattenProperties unflattens a flattened state object.
+// # Function Explanation
+//
+// UnflattenProperties takes in a map of strings to any type and returns an object with the nested
+// properties unflattened.
 // For example:
 //
 //	"NumShards": 1
@@ -115,7 +120,10 @@ func UnflattenProperties(state map[string]any) map[string]any {
 	return unflattenedState
 }
 
-// GeneratePatch generates a JSON patch based on a given current state, desired state, and resource type schema
+// # Function Explanation
+//
+// GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
+// current state to the desired state, taking into account read-only, create-only and conditional-create-only properties.
 func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
 	// See: https://github.com/project-radius/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
 
@@ -179,7 +187,10 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
 }
 
-// ParsePropertyName transforms a propertyIdentifer of the form /properties/<propertyName> to <propertyName>
+// # Function Explanation
+//
+// ParsePropertyName transforms a propertyIdentifer of the form /properties/<propertyName> to <propertyName>.
+// It returns an error if the property identifier is not in the expected format.
 func ParsePropertyName(propertyIdentifier string) (string, error) {
 	prefix := "/properties/"
 	if strings.HasPrefix(propertyIdentifier, prefix) {
