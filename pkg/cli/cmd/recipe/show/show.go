@@ -30,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 
@@ -155,6 +156,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
 	if recipeDetails.TemplateKind != nil {
 		recipe.TemplateKind = *recipeDetails.TemplateKind
+	}
+	if recipeDetails.TemplateKind != nil && *recipeDetails.TemplateKind == recipes.TemplateKindTerraform {
+		recipe.TemplateVersion = *recipeDetails.TemplateVersion
 	}
 
 	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetEnvironmentRecipesTableFormat())

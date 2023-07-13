@@ -31,6 +31,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -87,8 +88,13 @@ func Test_Run(t *testing.T) {
 				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 					linkrp.MongoDatabasesResourceType: {
 						"cosmosDB": {
-							TemplateKind: to.Ptr(types.TemplateKindBicep),
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
+						"cosmosDB-terraform": {
+							TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
+							TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
+							TemplateVersion: to.Ptr("1.1.0"),
 						},
 					},
 				},
@@ -98,8 +104,15 @@ func Test_Run(t *testing.T) {
 			{
 				Name:         "cosmosDB",
 				LinkType:     linkrp.MongoDatabasesResourceType,
-				TemplateKind: types.TemplateKindBicep,
+				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			},
+			{
+				Name:            "cosmosDB-terraform",
+				LinkType:        linkrp.MongoDatabasesResourceType,
+				TemplateKind:    recipes.TemplateKindTerraform,
+				TemplatePath:    "Azure/cosmosdb/azurerm",
+				TemplateVersion: "1.1.0",
 			},
 		}
 

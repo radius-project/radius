@@ -18,6 +18,7 @@ package register
 
 import (
 	"context"
+	"errors"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
@@ -29,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 
@@ -65,6 +67,7 @@ rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --te
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().String("template-kind", "", "specify the kind for the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-kind")
+	cmd.Flags().String("template-version", "", "specify the version for the terraform module.")
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-path")
 	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
@@ -82,6 +85,7 @@ type Runner struct {
 	Workspace         *workspaces.Workspace
 	TemplateKind      string
 	TemplatePath      string
+	TemplateVersion   string
 	LinkType          string
 	RecipeName        string
 	Parameters        map[string]map[string]any
@@ -111,12 +115,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environment
 
-	templateKind, templatePath, err := requireRecipeProperties(cmd)
+	templateKind, templatePath, templateVersion, err := requireRecipeProperties(cmd)
 	if err != nil {
 		return err
 	}
 	r.TemplateKind = templateKind
 	r.TemplatePath = templatePath
+	r.TemplateVersion = templateVersion
 
 	linkType, err := cli.RequireLinkType(cmd)
 	if err != nil {
@@ -162,9 +167,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	properties := &corerp.EnvironmentRecipeProperties{
-		TemplateKind: &r.TemplateKind,
-		TemplatePath: &r.TemplatePath,
-		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
+		TemplateKind:    &r.TemplateKind,
+		TemplatePath:    &r.TemplatePath,
+		TemplateVersion: &r.TemplateVersion,
+		Parameters:      bicep.ConvertToMapStringInterface(r.Parameters),
 	}
 	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
@@ -184,16 +190,26 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func requireRecipeProperties(cmd *cobra.Command) (templateKind, templatePath string, err error) {
+func requireRecipeProperties(cmd *cobra.Command) (templateKind, templatePath, templateVersion string, err error) {
 	templateKind, err = cmd.Flags().GetString("template-kind")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	templatePath, err = cmd.Flags().GetString("template-path")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
+	}
+	templateVersion, err = cmd.Flags().GetString("template-version")
+	if err != nil {
+		return "", "", "", err
+	}
+	if templateKind == recipes.TemplateKindTerraform && len(templateVersion) == 0 {
+		return "", "", "", errors.New("template-version is a required for template-kind: 'terraform'")
+	}
+	if templateKind == recipes.TemplateKindBicep && len(templateVersion) > 0 {
+		return "", "", "", errors.New("template-version is not allowed for template-kind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in template-path")
 	}
 
-	return templateKind, templatePath, nil
+	return templateKind, templatePath, templateVersion, nil
 }

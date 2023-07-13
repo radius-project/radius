@@ -18,6 +18,11 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
           templateKind: 'bicep'
           templatePath: 'testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1' 
         }
+        recipe2: {
+          templateKind: 'bicep'
+          templatePath: 'Azure/cosmosdb/azurerm' 
+          templateVersion: '1.1.0'
+        }
       }
     }
   }
