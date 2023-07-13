@@ -117,7 +117,10 @@ func New(
 	}
 }
 
-// Start starts worker's message loop.
+// # Function Explanation
+//
+// Start starts worker's message loop - it starts a loop to process messages from a queue concurrently, and handles deduplication, updating
+// resource and operation status, and running the operation. It returns an error if it fails to start the dequeuer.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -160,15 +163,9 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
 
-			opType, ok := v1.ParseOperationType(armReqCtx.OperationType)
-			if !ok {
-				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
-				return
-			}
-
-			asyncCtrl := w.registry.Get(opType)
+			asyncCtrl := w.registry.Get(armReqCtx.OperationType)
 			if asyncCtrl == nil {
-				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
+				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + armReqCtx.OperationType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}
@@ -346,7 +343,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	opType, _ := v1.ParseOperationType(req.OperationType)
 
 	err = updateResourceState(ctx, sc, rID.String(), state)
-	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{}, err)) {
+	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{ID: rID.String()}, err)) {
 		logger.Error(err, "failed to update the provisioningState in resource.")
 		return err
 	}

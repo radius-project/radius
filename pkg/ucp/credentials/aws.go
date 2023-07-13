@@ -37,7 +37,10 @@ type AWSCredentialProvider struct {
 	client         *ucpapi.AwsCredentialClient
 }
 
-// NewAWSCredentialProvider creates new AWSCredentialProvider.
+// # Function Explanation
+//
+// NewAWSCredentialProvider creates a new AWSCredentialProvider struct using the given SecretProvider, UCP connection and
+// TokenCredential, and returns it or an error if one occurs.
 func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AWSCredentialProvider, error) {
 	cli, err := ucpapi.NewAwsCredentialClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
@@ -50,7 +53,10 @@ func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Con
 	}, nil
 }
 
-// Fetch gets the AWS IAM credentials from secret storage.
+// # Function Explanation
+//
+// Fetch fetches the AWS IAM access keys from UCP and then from an internal storage (e.g.
+// Kubernetes secret store). It returns an AWSCredential struct or an error if the fetch fails.
 func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AWSCredential, error) {
 	// 1. Fetch the secret name of AWS IAM access keys from UCP.
 	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AwsCredentialClientGetOptions{})

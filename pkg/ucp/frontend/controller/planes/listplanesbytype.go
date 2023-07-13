@@ -40,7 +40,10 @@ type ListPlanesByType struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewListPlanesByType creates a new ListPlanesByType.
+// # Function Explanation
+//
+// NewListPlanesByType creates a new controller for listing planes by type and returns it, or an error if the controller
+// cannot be created.
 func NewListPlanesByType(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanesByType{
 		Operation: armrpc_controller.NewOperation(opts,
@@ -52,6 +55,10 @@ func NewListPlanesByType(opts armrpc_controller.Options) (armrpc_controller.Cont
 	}, nil
 }
 
+// # Function Explanation
+//
+// ListPlanesByType takes in a request object and returns a list of planes of a given type from the storage client. If
+// an error occurs, it returns an error.
 func (e *ListPlanesByType) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.Options().PathBase, req.URL.Path)
 	// The path is /planes/{planeType}

@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
@@ -32,6 +32,9 @@ type Service struct {
 	server.Service
 }
 
+// # Function Explanation
+//
+// NewService creates a new Service instance with the given options.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		server.Service{
@@ -41,10 +44,16 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
+// # Function Explanation
+//
+// Name returns the namespace of the link provider.
 func (s *Service) Name() string {
 	return handler.LinkProviderNamespace
 }
 
+// # Function Explanation
+//
+// Run sets up the server and starts it, returning an error if any.
 func (s *Service) Run(ctx context.Context) error {
 	if err := s.Init(ctx); err != nil {
 		return err
@@ -66,7 +75,7 @@ func (s *Service) Run(ctx context.Context) error {
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
-		Configure: func(router *mux.Router) error {
+		Configure: func(router chi.Router) error {
 			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {
 				return err

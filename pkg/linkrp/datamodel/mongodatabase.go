@@ -64,11 +64,16 @@ type MongoDatabaseSecrets struct {
 	ConnectionString string `json:"connectionString"`
 }
 
+// # Function Explanation
+//
+// IsEmpty checks if the MongoDatabaseSecrets instance is empty.
 func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 	return mongoSecrets == MongoDatabaseSecrets{}
 }
 
-// VerifyInputs checks that the inputs for manual resource provisioning are all provided
+// # Function Explanation
+//
+// VerifyInputs checks if the manual resource provisioning fields are set and returns an error if any of them are missing.
 func (mongodb *MongoDatabase) VerifyInputs() error {
 	msgs := []string{}
 	if mongodb.Properties.ResourceProvisioning != "" && mongodb.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
@@ -98,7 +103,10 @@ func (mongodb *MongoDatabase) VerifyInputs() error {
 	return nil
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the MongoDatabase instance's database property, output resources, computed values
+// and secret values with the given DeploymentOutput.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -110,16 +118,24 @@ func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns the OutputResources of the MongoDatabase instance.
 func (r *MongoDatabase) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the MongoDatabase instance i.e. application resource metadata.
 func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// Recipe returns the LinkRecipe associated with the MongoDatabase instance, or nil if the
+// ResourceProvisioning is set to Manual.
 func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
 	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
@@ -127,10 +143,16 @@ func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
 	return &r.Properties.Recipe
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type for MongoDatabase resource.
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
 	return linkrp.MongoDatabasesResourceType
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type for MongoDatabase resource.
 func (mongo *MongoDatabase) ResourceTypeName() string {
 	return linkrp.MongoDatabasesResourceType
 }

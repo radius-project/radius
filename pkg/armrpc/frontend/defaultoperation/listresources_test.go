@@ -55,9 +55,9 @@ func TestListResourcesRun(t *testing.T) {
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
@@ -108,14 +108,14 @@ func TestListResourcesRun(t *testing.T) {
 	for _, tt := range listEnvsCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 			require.NoError(t, err)
 
 			q := req.URL.Query()
 			q.Add("top", tt.top)
 			req.URL.RawQuery = q.Encode()
 
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 			paginationToken := ""

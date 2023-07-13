@@ -27,6 +27,10 @@ var _ Interface = (*Impl)(nil)
 type Impl struct {
 }
 
+// # Function Explanation
+//
+// Run sets up a watcher to monitor deployments in an application, and if a pod shuts down, it will pick the newest
+// replica and forward to that. It returns an error if there is an issue with initializing the clientset.
 func (i *Impl) Run(ctx context.Context, options Options) error {
 	if options.StatusChan != nil {
 		defer close(options.StatusChan)

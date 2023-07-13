@@ -43,7 +43,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe metadata run", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
 
 		mStorageClient.
@@ -55,7 +55,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 					Data:     envDataModel,
 				}, nil
 			})
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -74,15 +74,15 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("get recipe metadata run non existing environment", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{}
+				return nil, &store.ErrNotFound{ID: id}
 			})
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -111,9 +111,9 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	t.Run("get recipe metadata non existing recipe", func(t *testing.T) {
 		envInput, envDataModel := getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview()
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, envInput)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadatanotexisting, envInput)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().

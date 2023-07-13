@@ -17,16 +17,16 @@ limitations under the License.
 package radius
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/validator"
 )
 
 // NewModule creates a new Radius module.
 func NewModule(options modules.Options, planeType string) *Module {
-	router := mux.NewRouter()
-	router.NotFoundHandler = validator.APINotFoundHandler()
-	router.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
+	router := chi.NewRouter()
+	router.NotFound(validator.APINotFoundHandler())
+	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	return &Module{options: options, router: router, planeType: planeType}
 }
@@ -36,7 +36,7 @@ var _ modules.Initializer = &Module{}
 // Module defines the module for Radius functionality.
 type Module struct {
 	options modules.Options
-	router  *mux.Router
+	router  chi.Router
 
 	// TODO: https://github.com/project-radius/radius/issues/5064 remove this field.
 	//

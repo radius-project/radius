@@ -17,7 +17,7 @@ limitations under the License.
 package aws
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
 	"github.com/project-radius/radius/pkg/validator"
@@ -26,9 +26,9 @@ import (
 // NewModule creates a new AWS module.
 func NewModule(options modules.Options) *Module {
 	m := Module{options: options}
-	m.router = mux.NewRouter()
-	m.router.NotFoundHandler = validator.APINotFoundHandler()
-	m.router.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
+	m.router = chi.NewRouter()
+	m.router.NotFound(validator.APINotFoundHandler())
+	m.router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	return &m
 }
@@ -38,7 +38,7 @@ var _ modules.Initializer = &Module{}
 // Module defines the module for AWS functionality.
 type Module struct {
 	options modules.Options
-	router  *mux.Router
+	router  chi.Router
 
 	// AWSClients provides access to AWS services. This field can be overridden by tests.
 	AWSClients ucp_aws.Clients

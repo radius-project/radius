@@ -37,7 +37,10 @@ const (
 type Processor struct {
 }
 
-// Process implements the processors.Processor interface for RedisCache resources.
+// # Function Explanation
+//
+// Process implements the processors.Processor interface for RedisCache resources. It validates the input parameters and computes
+// the connection string and connection URI for the RedisCache resource, and applies the values from the RecipeOutput.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 
@@ -45,7 +48,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
-	validator.AddComputedBoolField(renderers.SSL, &resource.Properties.TLS, func() (bool, *processors.ValidationError) {
+	validator.AddComputedBoolField(renderers.TLS, &resource.Properties.TLS, func() (bool, *processors.ValidationError) {
 		return p.computeSSL(resource), nil
 	})
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)

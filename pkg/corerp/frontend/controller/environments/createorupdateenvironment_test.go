@@ -59,16 +59,16 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{}
+					return nil, &store.ErrNotFound{ID: id}
 				})
 
 			if !tt.shouldFail {
@@ -137,10 +137,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
@@ -214,16 +214,16 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			envInput, _, _ := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{}
+					return nil, &store.ErrNotFound{ID: id}
 				})
 
 			if !tt.shouldFail {
@@ -268,10 +268,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().
@@ -347,10 +347,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			conflictDataModel.Name = "existing"
 			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/" + tt.existingResourceName
 			w := httptest.NewRecorder()
-			req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := rpctest.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mStorageClient.
 				EXPECT().

@@ -18,7 +18,6 @@ package aws
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,11 +42,12 @@ import (
 )
 
 const (
-	prefixPath               = "/planes/aws/{planeName}"
-	resourcePath             = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}/{resourceName}"
-	resourceCollectionPath   = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}"
-	operationResultsPath     = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationResults/{operationId}"
-	operationStatusesPath    = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationStatuses/{operationId}"
+	planeScope = "/planes/aws/{planeName}"
+
+	resourceCollectionPath = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/{resourceType}"
+	operationResultsPath   = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationResults/{operationId}"
+	operationStatusesPath  = "/accounts/{accountId}/regions/{region}/providers/{providerNamespace}/locations/{location}/operationStatuses/{operationId}"
+
 	credentialResourcePath   = "/providers/System.AWS/credentials/{credentialName}"
 	credentialCollectionPath = "/providers/System.AWS/credentials"
 
@@ -78,37 +78,12 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		}
 	}
 
-	baseRouter := m.router.PathPrefix(m.options.PathBase + prefixPath).Name("subrouter: AWS module").Subrouter()
-
-	// URLs for standard UCP resource lifecycle operations.
-	resourceRouter := baseRouter.Path(resourcePath).Subrouter()
-	resourceCollectionRouter := baseRouter.Path(resourceCollectionPath).Subrouter()
-
-	// URLS for standard UCP resource async status.
-	operationResultsRouter := baseRouter.Path(operationResultsPath).Subrouter()
-	operationStatusesRouter := baseRouter.Path(operationStatusesPath).Subrouter()
-
-	// URLS for "non-idempotent" resource lifecycle operations. These are extensions to the UCP spec that are needed when
-	// a resource has a non-idempotent lifecyle and a computed name.
-	//
-	// The normal UCP lifecycle operations have a user-specified resource name which must be part of the URL. These
-	// operations are structured so that the resource name is not part of the URL.
-	resourceGetRouter := baseRouter.Path(fmt.Sprintf("%s/:%s", resourceCollectionPath, "get")).Subrouter()
-	resourcePutRouter := baseRouter.Path(fmt.Sprintf("%s/:%s", resourceCollectionPath, "put")).Subrouter()
-	resourceDeleteRouter := baseRouter.Path(fmt.Sprintf("%s/:%s", resourceCollectionPath, "delete")).Subrouter()
-
-	// URLS for operations on AWS credential resources.
-	//
-	// These use the OpenAPI spec validator. General AWS operations DO NOT use the spec validator
-	// because we rely on CloudControl's validation.
-	credentialResourceRouter := baseRouter.Path(credentialResourcePath).Subrouter()
-	credentialResourceRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
-	credentialCollectionRouter := baseRouter.Path(credentialCollectionPath).Subrouter()
-	credentialCollectionRouter.Use(validator.APIValidatorUCP(m.options.SpecLoader))
+	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+planeScope)
 
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter:  operationResultsRouter,
+			// URLs for standard UCP resource async status result.
+			ParentRouter:  server.NewSubrouter(baseRouter, operationResultsPath),
 			Method:        v1.OperationGetOperationResult,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationResult},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -116,14 +91,20 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  operationStatusesRouter,
+			// URLs for standard UCP resource async status.
+			ParentRouter:  server.NewSubrouter(baseRouter, operationStatusesPath),
 			Method:        v1.OperationGetOperationStatuses,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationStatuses},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts, m.AWSClients)
 			},
 		},
+	}
+
+	resourceCollectionRouter := server.NewSubrouter(baseRouter, resourceCollectionPath)
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
+			// URLs for standard UCP resource lifecycle operations.
 			ParentRouter:  resourceCollectionRouter,
 			Method:        v1.OperationList,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationList},
@@ -132,7 +113,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  resourceRouter,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/{resourceName}",
 			Method:        v1.OperationPut,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPut},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
@@ -140,7 +122,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  resourceRouter,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/{resourceName}",
 			Method:        v1.OperationDelete,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDelete},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
@@ -148,15 +131,25 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  resourceRouter,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/{resourceName}",
 			Method:        v1.OperationGet,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGet},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return awsproxy_ctrl.NewGetAWSResource(opt, m.AWSClients)
 			},
 		},
+	}...)
+
+	// URLs for "non-idempotent" resource lifecycle operations. These are extensions to the UCP spec that are needed when
+	// a resource has a non-idempotent lifecyle and a computed name.
+	//
+	// The normal UCP lifecycle operations have a user-specified resource name which must be part of the URL. These
+	// operations are structured so that the resource name is not part of the URL.
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
-			ParentRouter:  resourcePutRouter,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:put",
 			Method:        v1.OperationPutImperative,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPutImperative},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -164,7 +157,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  resourceGetRouter,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:get",
 			Method:        v1.OperationGetImperative,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetImperative},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -172,15 +166,29 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
-			ParentRouter:  resourceDeleteRouter,
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:delete",
 			Method:        v1.OperationDeleteImperative,
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDeleteImperative},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return awsproxy_ctrl.NewDeleteAWSResourceWithPost(opts, m.AWSClients)
 			},
 		},
+	}...)
 
-		// Credential operations
+	// URLs for operations on AWS credential resources.
+	//
+	// These use the OpenAPI spec validator. General AWS operations DO NOT use the spec validator
+	// because we rely on CloudControl's validation.
+	apiValidator := validator.APIValidator(validator.Options{
+		SpecLoader:         m.options.SpecLoader,
+		ResourceTypeGetter: validator.UCPResourceTypeGetter,
+	})
+
+	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath, apiValidator)
+	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath, apiValidator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: credentialCollectionRouter,
 			ResourceType: v20220901privatepreview.AWSCredentialType,
@@ -223,7 +231,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 				return aws_credential_ctrl.NewDeleteAWSCredential(o, secretClient)
 			},
 		},
-	}
+	}...)
 
 	ctrlOpts := controller.Options{
 		Address:      m.options.Address,

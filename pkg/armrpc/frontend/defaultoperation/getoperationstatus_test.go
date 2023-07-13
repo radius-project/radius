@@ -51,15 +51,15 @@ func TestGetOperationStatusRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{}
+				return nil, &store.ErrNotFound{ID: id}
 			})
 
 		ctl, err := NewGetOperationStatus(ctrl.Options{
@@ -75,9 +75,9 @@ func TestGetOperationStatusRun(t *testing.T) {
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, err := rpctest.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
 		require.NoError(t, err)
-		ctx := rpctest.ARMTestContextFromRequest(req)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().

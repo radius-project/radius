@@ -35,19 +35,27 @@ import (
 type Service struct {
 	// ProviderName is the name of provider namespace.
 	ProviderName string
+
 	// Options is the server hosting options.
 	Options hostoptions.HostOptions
+
 	// StorageProvider is the provider of storage client.
 	StorageProvider dataprovider.DataStorageProvider
+
 	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
+
 	// ARMCertManager is the certificate manager of client cert authentication.
 	ARMCertManager *authentication.ArmCertManager
+
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient controller_runtime.Client
 }
 
-// Init initializes web service.
+// # Function Explanation
+//
+// Init initializes web service - it initializes the StorageProvider, QueueProvider, OperationStatusManager, KubeClient and ARMCertManager
+// with the given context and returns an error if any of the initialization fails.
 func (s *Service) Init(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -79,7 +87,9 @@ func (s *Service) Init(ctx context.Context) error {
 	return nil
 }
 
-// Start starts HTTP server.
+// # Function Explanation
+//
+// Start starts HTTP server, listening on a given address and shutdown the server gracefully when context is cancelled.
 func (s *Service) Start(ctx context.Context, opt Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)

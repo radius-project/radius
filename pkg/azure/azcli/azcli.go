@@ -23,7 +23,10 @@ import (
 	"runtime"
 )
 
-// RunCLICommand runs an az CLI command with stdout and stderr forwarded to this process's output.
+// # Function Explanation
+//
+// RunCLICommand runs the Azure CLI command based on the OS type and returns an error if the command fails.
+// It forwards the stdout and stderr to this process's output.
 func RunCLICommand(args ...string) error {
 	var executableName string
 	var executableArgs []string

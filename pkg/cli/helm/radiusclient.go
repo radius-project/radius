@@ -54,6 +54,11 @@ type RadiusOptions struct {
 }
 
 // Apply the radius helm chart.
+//
+// # Function Explanation
+//
+// ApplyRadiusHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the
+// "Reinstall" option is set. It returns a boolean indicating if the chart was already installed and an error if one occurred.
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
@@ -117,6 +122,11 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 // AddRadiusValues adds values to the helm chart. It overrides the default values in following order:
 // 1. lowest priority: Values from the helm chart default values.yaml
 // 2. highest priority: Values by the --set flag potentially overwriting values from step 1 and 2
+//
+// # Function Explanation
+//
+// AddRadiusValues parses the --set arguments in order and adds them to the helm chart values, returning an error if any of
+// the arguments are invalid.
 func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
@@ -150,6 +160,10 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	return runUpgrade(installClient, releaseName, helmChart)
 }
 
+// # Function Explanation
+//
+// RunRadiusHelmUninstall attempts to uninstall Radius from the Radius system namespace
+// using a helm configuration, and returns an error if the uninstall fails.
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
