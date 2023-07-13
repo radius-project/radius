@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 )
 
-// RedisCacheDataModelFromVersioned converts version agnostic RedisCache datamodel to versioned model.
+// # Function Explanation
+//
+// RedisCacheDataModelToVersioned converts version agnostic RedisCache datamodel to versioned model,
+// returning an error if the conversion fails.
 func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -41,7 +44,10 @@ func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string)
 	}
 }
 
-// RedisCacheDataModelToVersioned converts versioned RedisCache model to datamodel.
+// # Function Explanation
+//
+// RedisCacheDataModelFromVersioned converts versioned RedisCache model to datamodel and returns an error
+// if the conversion fails.
 func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamodel.RedisCache, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -57,6 +63,10 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 	}
 }
 
+// # Function Explanation
+//
+// RedisCacheSecretsDataModelToVersioned converts a RedisCacheSecrets data model to a versioned model interface based on
+// the given version, returning an error if the version is not supported.
 func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
