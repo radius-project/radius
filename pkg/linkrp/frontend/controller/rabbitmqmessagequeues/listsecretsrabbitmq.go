@@ -35,6 +35,8 @@ type ListSecretsRabbitMQMessageQueue struct {
 	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
 }
 
+// # Function Explanation
+//
 // NewListSecretsRabbitMQMessageQueue creates a new instance of ListSecretsRabbitMQMessageQueue.
 func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRabbitMQMessageQueue{
@@ -46,6 +48,8 @@ func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, err
 	}, nil
 }
 
+// # Function Explanation
+//
 // Run returns secrets values for the specified RabbitMQMessageQueue resource
 func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)

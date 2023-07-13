@@ -12,7 +12,10 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel and returns an error
+// if the resourceProvisioning is set to manual and the required fields are not specified.
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
@@ -95,7 +98,10 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned DaprStateStore resource.
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned DaprStateStore resource and returns an error if the
+// conversion fails.
 func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprStateStore, ok := src.(*datamodel.DaprStateStore)
 	if !ok {

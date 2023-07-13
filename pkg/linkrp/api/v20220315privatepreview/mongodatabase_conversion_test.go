@@ -30,6 +30,9 @@ import (
 
 type fakeResource struct{}
 
+// # Function Explanation
+//
+// Always returns "FakeResource" as the name.
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
 }
