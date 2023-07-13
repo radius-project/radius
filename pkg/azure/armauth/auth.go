@@ -46,7 +46,10 @@ type Options struct {
 	CredentialProvider sdk_cred.CredentialProvider[sdk_cred.AzureCredential]
 }
 
-// NewArmConfig gets the configuration we use for managing ARM resources
+// # Function Explanation
+//
+// NewArmConfig creates a new ArmConfig instance with the given options, or default options if none are provided, and
+// returns it or an error if one occurs.
 func NewArmConfig(opt *Options) (*ArmConfig, error) {
 	if opt == nil {
 		opt = &Options{}
@@ -62,7 +65,9 @@ func NewArmConfig(opt *Options) (*ArmConfig, error) {
 	}, nil
 }
 
-// NewARMCredential returns new azure client credential
+// # Function Explanation
+//
+// NewARMCredential evaluates the authentication method and returns the appropriate credential.
 func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	authMethod := GetAuthMethod()
 
@@ -80,7 +85,9 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	}
 }
 
-// GetAuthMethod returns the authentication method used by the RP
+// # Function Explanation
+//
+// GetAuthMethod returns the authentication method to use based on environment variables.
 func GetAuthMethod() string {
 	// Allow explicit configuration of the auth method, and fall back
 	// to auto-detection if unspecified
@@ -101,7 +108,9 @@ func GetAuthMethod() string {
 	}
 }
 
-// IsServicePrincipalConfigured determines whether a service principal is specifed
+// # Function Explanation
+//
+// IsServicePrincipalConfigured checks if ServicePrincipalAuth is the authentication method configured.
 func IsServicePrincipalConfigured() (bool, error) {
 	return GetAuthMethod() == ServicePrincipalAuth, nil
 }
