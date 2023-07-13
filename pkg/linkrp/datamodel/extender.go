@@ -57,7 +57,7 @@ func (r *Extender) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // # Function Explanation
 //
-// ResourceTypeName returns the resource type name of the extender.
+// ResourceTypeName returns the resource type of the extender resource.
 func (extender *Extender) ResourceTypeName() string {
 	return linkrp.ExtendersResourceType
 }
