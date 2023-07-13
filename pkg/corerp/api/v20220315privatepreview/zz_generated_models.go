@@ -327,7 +327,7 @@ type ContainerPort struct {
 	ContainerPort *int32 `json:"containerPort,omitempty"`
 
 	// optional. only needs to be set when a value different from containerPort is desired
-	Port *float32 `json:"port,omitempty"`
+	Port *int32 `json:"port,omitempty"`
 
 	// Protocol in use by the port
 	Protocol *Protocol `json:"protocol,omitempty"`
