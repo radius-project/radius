@@ -260,7 +260,7 @@
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **username**: string: Username to use when connecting to the target rabbitMQ
-* **vHost**: string: The vhost of the RabbitMQ instance
+* **vHost**: string: The vHost of the RabbitMQ instance
 
 ## RabbitMQSecrets
 ### Properties

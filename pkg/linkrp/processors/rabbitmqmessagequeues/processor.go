@@ -39,10 +39,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
+	validator.AddOptionalStringField(renderers.VHost, &resource.Properties.VHost)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
-	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.URI, func() (string, *processors.ValidationError) {
+	validator.AddComputedSecretField(renderers.URI, &resource.Properties.Secrets.URI, func() (string, *processors.ValidationError) {
 		return p.computeConnectionString(resource), nil
 	})
 

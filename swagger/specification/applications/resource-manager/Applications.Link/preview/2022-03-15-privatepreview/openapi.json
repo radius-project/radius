@@ -2038,7 +2038,7 @@
         },
         "vHost": {
           "type": "string",
-          "description": "The vhost of the RabbitMQ instance"
+          "description": "The vHost of the RabbitMQ instance"
         },
         "username": {
           "type": "string",

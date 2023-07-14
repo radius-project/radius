@@ -31,6 +31,7 @@ func Test_Process(t *testing.T) {
 	const queue = "test-queue"
 	const uri = "connection://string"
 	const host = "test-host"
+	const vHost = "test-vHost"
 	const port int32 = 5672
 	const username = "test-user"
 	const password = "test-password"
@@ -49,9 +50,9 @@ func Test_Process(t *testing.T) {
 					"host":     host,
 					"port":     port,
 					"username": username,
+					"vHost":    vHost,
 				},
 				Secrets: map[string]any{
-					"uri":      uri,
 					"password": password,
 				},
 			},
@@ -66,12 +67,22 @@ func Test_Process(t *testing.T) {
 			"host":     host,
 			"port":     port,
 			"username": username,
+			"vHost":    vHost,
+		}
+		expectedSecrets := map[string]rpv1.SecretValueReference{
+			"password": {
+				Value: password,
+			},
+			"uri": {
+				Value: "amqp://test-user:test-password@test-host:5672/test-vHost",
+			},
 		}
 
 		expectedOutputResources, err := processors.GetOutputResourcesFromRecipe(options.RecipeOutput)
 		require.NoError(t, err)
 
 		require.Equal(t, expectedValues, resource.ComputedValues)
+		require.Equal(t, expectedSecrets, resource.SecretValues)
 		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
 	})
 
@@ -102,7 +113,14 @@ func Test_Process(t *testing.T) {
 	t.Run("success - recipe with value overrides", func(t *testing.T) {
 		resource := &datamodel.RabbitMQMessageQueue{
 			Properties: datamodel.RabbitMQMessageQueueProperties{
-				Queue: queue,
+				Queue:    "new-queue",
+				Host:     "new-host",
+				Port:     int32(5671),
+				Username: "new-user",
+				Secrets: datamodel.RabbitMQSecrets{
+					Password: "new-passoword",
+					URI:      uri,
+				},
 			},
 		}
 		options := processors.Options{
@@ -116,7 +134,6 @@ func Test_Process(t *testing.T) {
 					"username": username,
 				},
 				Secrets: map[string]any{
-					"uri":      uri,
 					"password": password,
 				},
 			},
@@ -125,13 +142,21 @@ func Test_Process(t *testing.T) {
 		err := processor.Process(context.Background(), resource, options)
 		require.NoError(t, err)
 
-		require.Equal(t, queue, resource.Properties.Queue)
+		require.Equal(t, "new-queue", resource.Properties.Queue)
 
 		expectedValues := map[string]any{
-			"queue":    queue,
-			"host":     host,
-			"port":     port,
-			"username": username,
+			"queue":    "new-queue",
+			"host":     "new-host",
+			"port":     int32(5671),
+			"username": "new-user",
+		}
+		expectedSecrets := map[string]rpv1.SecretValueReference{
+			"password": {
+				Value: "new-passoword",
+			},
+			"uri": {
+				Value: uri,
+			},
 		}
 		expectedOutputResources := []rpv1.OutputResource{}
 
@@ -140,6 +165,7 @@ func Test_Process(t *testing.T) {
 		expectedOutputResources = append(expectedOutputResources, recipeOutputResources...)
 
 		require.Equal(t, expectedValues, resource.ComputedValues)
+		require.Equal(t, expectedSecrets, resource.SecretValues)
 		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
 	})
 

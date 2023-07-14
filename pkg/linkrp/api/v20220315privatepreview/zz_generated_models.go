@@ -645,7 +645,7 @@ type RabbitMQMessageQueueProperties struct {
 	// Username to use when connecting to the target rabbitMQ
 	Username *string `json:"username,omitempty"`
 
-	// The vhost of the RabbitMQ instance
+	// The vHost of the RabbitMQ instance
 	VHost *string `json:"vHost,omitempty"`
 
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue link at the time the operation was called

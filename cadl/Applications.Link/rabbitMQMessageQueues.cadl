@@ -87,7 +87,7 @@ model RabbitMQMessageQueueProperties extends BasicResourceProperties {
   @doc("The port of the RabbitMQ instance. Defaults to 5672")
   port?: int32;
 
-  @doc("The vhost of the RabbitMQ instance")
+  @doc("The vHost of the RabbitMQ instance")
   vHost?: string;
 
   @doc("Username to use when connecting to the target rabbitMQ")
