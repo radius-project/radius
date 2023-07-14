@@ -238,6 +238,10 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 				JSONPath: "{ .TemplateKind }",
 			},
 			{
+				Heading:  "TEMPLATE VERSION",
+				JSONPath: "{ .TemplateVersion }",
+			},
+			{
 				Heading:  "TEMPLATE",
 				JSONPath: "{ .TemplatePath }",
 			},
