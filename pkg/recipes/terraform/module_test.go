@@ -28,7 +28,6 @@ import (
 func TestGetRequiredProviders(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
-
 	// Create a test module directory.
 	moduleDir := filepath.Join(testDir, moduleRootDir, "test-module")
 	err := os.MkdirAll(moduleDir, 0755)
@@ -70,7 +69,7 @@ func TestGetRequiredProviders_Error(t *testing.T) {
 }
 
 func TestDownloadModule_EmptyWorkingDirPath_Error(t *testing.T) {
-	// Create a temporary directory for testing.
+	// Create a temporary test directory.
 	testDir := t.TempDir()
 	execPath := filepath.Join(testDir, "terraform")
 

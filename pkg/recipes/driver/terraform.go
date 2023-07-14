@@ -27,6 +27,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
+	tf_providers "github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -92,6 +93,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		EnvConfig:      &configuration,
 		ResourceRecipe: &recipe,
 		EnvRecipe:      &definition,
+		Providers:      tf_providers.GetSupportedTerraformProviders(),
 	})
 	if err != nil {
 		return nil, err
