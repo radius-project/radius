@@ -967,7 +967,9 @@ func getSortedKeys(env map[string]corev1.EnvVar) []string {
 
 func isURL(input string) bool {
 	_, err := url.ParseRequestURI(input)
-	if err != nil {
+	
+	// if first character is a slash, it's not a URL. It's a path.
+	if (err != nil || input[0] == '/') {
 		return false
 	}
 	return true
