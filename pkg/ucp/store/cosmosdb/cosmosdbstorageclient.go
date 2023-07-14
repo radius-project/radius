@@ -457,7 +457,7 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 
 // # Function Explanation
 //
-// GetPartitionKey returns a partition key based on the given ID, normalizing the subscription ID and upper-casing the
+// GetPartitionKey returns a partition key based on the given ID, normalizing the subscription ID and normalizing the
 // plane namespace if the ID is UCP-qualified.
 // Examples:
 // /planes/radius/local/... - Partition Key: radius/local

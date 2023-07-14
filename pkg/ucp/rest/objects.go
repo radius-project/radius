@@ -58,7 +58,7 @@ type ResourceList struct {
 
 // # Function Explanation
 //
-// LookupResourceProvider searches through the ResourceProviders map of the Plane struct for the given key.
+// LookupResourceProvider searches through the ResourceProviders configured in UCP.
 func (plane *Plane) LookupResourceProvider(key string) string {
 	var value string
 	for k, v := range plane.Properties.ResourceProviders {

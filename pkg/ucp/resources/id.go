@@ -173,7 +173,7 @@ func (ri ID) TypeSegments() []TypeSegment {
 
 // # Function Explanation
 //
-// This function returns the "id" feild of the given ID instance.
+// This function returns the "id" field of the given ID instance.
 func (ri ID) String() string {
 	return ri.id
 }
