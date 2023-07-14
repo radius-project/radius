@@ -130,10 +130,10 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 }
 
 // Delete handles output resource deletion and returns an error on failure to delete.
-func (d *bicepDriver) Delete(ctx context.Context, deploymentDataModel rpv1.DeploymentDataModel, client processors.ResourceClient) error {
+func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	orderedOutputResources, err := rpv1.OrderOutputResources(deploymentDataModel.OutputResources())
+	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
 	if err != nil {
 		return err
 	}

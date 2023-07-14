@@ -65,8 +65,7 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (
 	return driver.Execute(ctx, *configuration, recipe, *definition)
 }
 
-func (e *engine) Delete(ctx context.Context, deploymentDataModel rpv1.DeploymentDataModel, client processors.ResourceClient, recipe recipes.ResourceMetadata) error {
-	// Load Recipe Definition from the environment.
+func (e *engine) Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient, recipe recipes.ResourceMetadata) error {
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
 		return err
@@ -77,5 +76,5 @@ func (e *engine) Delete(ctx context.Context, deploymentDataModel rpv1.Deployment
 		return fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
-	return driver.Delete(ctx, deploymentDataModel, client)
+	return driver.Delete(ctx, outputResources, client)
 }

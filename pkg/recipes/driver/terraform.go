@@ -25,8 +25,10 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
@@ -97,4 +99,9 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	}
 
 	return recipeOutputs, errors.New("terraform support is not implemented yet")
+}
+
+func (d *terraformDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient) error {
+	// TODO: to be implemented in follow up PR
+	return errors.New("terraform delete support is not implemented yet")
 }

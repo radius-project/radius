@@ -38,7 +38,7 @@ func (m *MockDriver) EXPECT() *MockDriverMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockDriver) Delete(arg0 context.Context, arg1 v1.DeploymentDataModel, arg2 processors.ResourceClient) error {
+func (m *MockDriver) Delete(arg0 context.Context, arg1 []v1.OutputResource, arg2 processors.ResourceClient) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

@@ -29,7 +29,7 @@ type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
 	Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
-	Delete(ctx context.Context, deploymentDataModel rpv1.DeploymentDataModel, client processors.ResourceClient) error
+	Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient) error
 }
 
 // RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to

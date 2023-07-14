@@ -30,5 +30,5 @@ type Engine interface {
 	// Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
 	Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
-	Delete(ctx context.Context, deploymentDataModel rpv1.DeploymentDataModel, client processors.ResourceClient, recipe recipes.ResourceMetadata) error
+	Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient, recipe recipes.ResourceMetadata) error
 }

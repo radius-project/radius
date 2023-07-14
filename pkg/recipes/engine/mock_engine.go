@@ -38,7 +38,7 @@ func (m *MockEngine) EXPECT() *MockEngineMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockEngine) Delete(arg0 context.Context, arg1 v1.DeploymentDataModel, arg2 processors.ResourceClient, arg3 recipes.ResourceMetadata) error {
+func (m *MockEngine) Delete(arg0 context.Context, arg1 []v1.OutputResource, arg2 processors.ResourceClient, arg3 recipes.ResourceMetadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

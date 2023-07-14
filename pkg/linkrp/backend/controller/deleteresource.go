@@ -81,15 +81,20 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
 
-	recipeData := recipes.ResourceMetadata{
-		EnvironmentID: deploymentDataModel.ResourceMetadata().Environment,
-		ApplicationID: deploymentDataModel.ResourceMetadata().Application,
-		ResourceID:    id.String(),
-	}
+	recipeDataModel, supportsRecipes := dataModel.(datamodel.RecipeDataModel)
+	if supportsRecipes && recipeDataModel.Recipe() != nil {
+		recipeData := recipes.ResourceMetadata{
+			Name:          recipeDataModel.Recipe().Name,
+			EnvironmentID: deploymentDataModel.ResourceMetadata().Environment,
+			ApplicationID: deploymentDataModel.ResourceMetadata().Application,
+			Parameters:    recipeDataModel.Recipe().Parameters,
+			ResourceID:    id.String(),
+		}
 
-	err = c.engine.Delete(ctx, deploymentDataModel, c.client, recipeData)
-	if err != nil {
-		return ctrl.Result{}, err
+		err = c.engine.Delete(ctx, deploymentDataModel.OutputResources(), c.client, recipeData)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	err = c.StorageClient().Delete(ctx, request.ResourceID)
@@ -137,34 +142,3 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}
 }
-
-// func (d *DeleteResource) deleteResources(ctx context.Context, id string, outputResources []rpv1.OutputResource) error {
-// 	logger := ucplog.FromContextOrDiscard(ctx)
-
-// 	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Loop over each output resource and delete in reverse dependency order
-// 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
-// 		outputResource := orderedOutputResources[i]
-// 		id := outputResource.Identity.GetID()
-// 		if err != nil {
-// 			return err
-// 		}
-// 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-// 		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-// 			continue
-// 		}
-
-// 		err = d.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
-
-// 	}
-
-// 	return nil
-// }
