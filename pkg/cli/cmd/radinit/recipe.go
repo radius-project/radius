@@ -61,7 +61,7 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 	recipes := map[string]map[string]*corerp.EnvironmentRecipeProperties{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
-	// Ex: radius.azurecr.io/recipes/dev/rediscaches:0.20
+	// Ex: radius.azurecr.io/recipes/local-dev/rediscaches:0.20
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		// validRepos will contain the repositories that have the requested tag.
 		validRepos := []string{}
@@ -135,9 +135,9 @@ func processRepositories(repos []string, tag string) map[string]map[string]*core
 
 // getResourceTypeFromPath parses the repository path to extract the resource type.
 //
-// Should be of the form: recipes/dev/<resourceType>
+// Should be of the form: recipes/local-dev/<resourceType>
 func getResourceTypeFromPath(repo string) (resourceType string) {
-	_, after, found := strings.Cut(repo, "recipes/dev/")
+	_, after, found := strings.Cut(repo, "recipes/local-dev/")
 	if !found || after == "" {
 		return ""
 	}
