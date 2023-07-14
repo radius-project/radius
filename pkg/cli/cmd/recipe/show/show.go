@@ -30,7 +30,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 
@@ -152,7 +151,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		TemplatePath: *recipeDetails.TemplatePath,
 		TemplateKind: *recipeDetails.TemplateKind,
 	}
-	if *recipeDetails.TemplateKind == recipes.TemplateKindTerraform {
+	if recipeDetails.TemplateVersion != nil {
 		recipe.TemplateVersion = *recipeDetails.TemplateVersion
 	}
 
