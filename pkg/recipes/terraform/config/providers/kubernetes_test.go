@@ -14,20 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package providers
 
-const (
-	moduleSourceKey  = "source"
-	moduleVersionKey = "version"
+import (
+	"context"
+	"testing"
 
-	mainConfigFileName = "main.tf.json"
+	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-// TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
-type TerraformConfig struct {
-	// Provider is the Terraform provider configuration.
-	Provider map[string]any `json:"provider,omitempty"`
+func TestKubernetesProvider_BuildConfig(t *testing.T) {
+	expectedConfig := map[string]any{
+		"config_path": clientcmd.RecommendedHomeFile,
+	}
 
-	// Module is the Terraform module configuration.
-	Module map[string]any `json:"module"`
+	p := &kubernetesProvider{}
+	config, err := p.BuildConfig(context.Background(), nil)
+	require.NoError(t, err)
+	require.Equal(t, expectedConfig, config)
 }

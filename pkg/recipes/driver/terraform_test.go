@@ -30,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -86,6 +87,7 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 		EnvConfig:      &envConfig,
 		ResourceRecipe: &recipeMetadata,
 		EnvRecipe:      &envRecipe,
+		Providers:      providers.GetSupportedTerraformProviders(),
 	}
 	expectedOutput := &recipes.RecipeOutput{
 		Values: map[string]any{
@@ -120,6 +122,7 @@ func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 		EnvConfig:      &envConfig,
 		ResourceRecipe: &recipeMetadata,
 		EnvRecipe:      &envRecipe,
+		Providers:      providers.GetSupportedTerraformProviders(),
 	}
 
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))

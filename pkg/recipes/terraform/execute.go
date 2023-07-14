@@ -70,22 +70,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
-	// Generate Terraform json config in the working directory
-	// Use recipe name as a local reference to the module.
-	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the configuration is used as subdirectory name under .terraform/modules directory.
-	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
-	localModuleName := options.EnvRecipe.Name
-	err = config.GenerateMainConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get the required providers from the module
-	if err := downloadModule(ctx, workingDir, execPath); err != nil {
-		return nil, err
-	}
-
-	_, err = getRequiredProviders(workingDir, localModuleName)
+	err = generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +96,40 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	return workingDir, nil
 }
 
-// Runs Terraform init and apply in the provided working directory.
+// generateConfig generates Terraform configuration with required inputs for the module to be initialized and applied.
+func generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
+	// Generate Terraform json config in the working directory
+	// Use recipe name as a local reference to the module.
+	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the configuration is used as subdirectory name under .terraform/modules directory.
+	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
+	localModuleName := options.EnvRecipe.Name
+	if localModuleName == "" {
+		return fmt.Errorf("recipe name cannot be empty")
+	}
+
+	configFilePath, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
+	if err != nil {
+		return err
+	}
+
+	// Get the required providers from the module
+	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+		return err
+	}
+	requiredProviders, err := getRequiredProviders(workingDir, localModuleName)
+	if err != nil {
+		return err
+	}
+
+	// Add the required providers to the terraform configuration
+	if err := config.AddProviders(ctx, configFilePath, requiredProviders, options.Providers, options.EnvConfig); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// initAndApply runs Terraform init and apply in the provided working directory.
 func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
