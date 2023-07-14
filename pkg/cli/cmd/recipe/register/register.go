@@ -204,10 +204,10 @@ func requireRecipeProperties(cmd *cobra.Command) (templateKind, templatePath, te
 	if err != nil {
 		return "", "", "", err
 	}
-	if templateKind == recipes.TemplateKindTerraform && len(templateVersion) == 0 {
-		return "", "", "", errors.New("template-version is a required for template-kind: 'terraform'")
+	if templateKind == recipes.TemplateKindTerraform && templateVersion == "" {
+		return "", "", "", errors.New("template-version is required for template-kind: 'terraform'")
 	}
-	if templateKind == recipes.TemplateKindBicep && len(templateVersion) > 0 {
+	if templateKind == recipes.TemplateKindBicep && templateVersion != "" {
 		return "", "", "", errors.New("template-version is not allowed for template-kind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in template-path")
 	}
 

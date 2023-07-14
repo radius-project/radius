@@ -380,7 +380,7 @@
 * **parameters**: any: Any object
 * **templateKind**: string (Required): Format of the template provided by the recipe. Allowed values: bicep
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
-* **templateVersion**: string: Terraform module version.
+* **templateVersion**: string: Version of the template to deploy. For Terraform recipes this is the module version in the module registry. For Bicep this is not applicable, as the Bicep version is part of the templatePath.
 
 ## TrackedResourceTags
 ### Properties

@@ -291,11 +291,11 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 		err      error
 		emptyExt bool
 	}{
-		// {
-		// 	filename: "environmentresourcedatamodel.json",
-		// 	err:      nil,
-		// 	emptyExt: false,
-		// },
+		{
+			filename: "environmentresourcedatamodel.json",
+			err:      nil,
+			emptyExt: false,
+		},
 		{
 			filename: "environmentresourcedatamodelemptyext.json",
 			err:      nil,

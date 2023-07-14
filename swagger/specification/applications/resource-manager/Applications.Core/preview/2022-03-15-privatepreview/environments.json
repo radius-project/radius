@@ -485,7 +485,7 @@
           "type": "string"
         },
         "templateVersion": {
-          "description": "Terraform module version.",
+          "description": "Version of the template to deploy. For Terraform recipes this is the module version in the module registry. For Bicep this is not applicable, as the Bicep version is part of the templatePath.",
           "type": "string"
         },
         "parameters": {
