@@ -58,7 +58,7 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 
 When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`. The executeCoreRPFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
  ```sh
-    make test-functional-corerp
+    make test-functional-shared
  ```
 
 You can also run/debug individual tests from VSCode.
