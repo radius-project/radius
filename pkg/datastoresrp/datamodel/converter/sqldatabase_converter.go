@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 )
 
-// SqlDatabaseDataModelFromVersioned converts version agnostic SqlDatabase datamodel to versioned model.
+// # Function Explanation
+//
+// SqlDatabaseDataModelToVersioned converts version agnostic SqlDatabase datamodel to versioned model
+// and returns an error if the version is not supported.
 func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -37,7 +40,10 @@ func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version strin
 	}
 }
 
-// SqlDatabaseDataModelToVersioned converts versioned SqlDatabase model to datamodel.
+// # Function Explanation
+//
+// SqlDatabaseDataModelFromVersioned converts versioned SqlDatabase model to datamodel
+// or returns an error if the JSON unmarshalling or conversion fails.
 func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.SqlDatabase, error) {
 	switch version {
 	case v20220315privatepreview.Version:
