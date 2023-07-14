@@ -34,22 +34,31 @@ type SqlDatabase struct {
 	linkrpdm.LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput applies the properties changes based on the deployment output and returns no error.
 func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
+// # Function Explanation
+//
 // OutputResources returns the output resources array.
 func (r *SqlDatabase) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
+// # Function Explanation
+//
 // ResourceMetadata returns the application resource metadata.
 func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type for SqlDatabase.
 func (sql *SqlDatabase) ResourceTypeName() string {
 	return linkrp.N_SqlDatabasesResourceType
 }
