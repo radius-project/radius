@@ -18,7 +18,6 @@ package register
 
 import (
 	"context"
-	"errors"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
@@ -30,7 +29,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 
@@ -204,12 +202,5 @@ func requireRecipeProperties(cmd *cobra.Command) (templateKind, templatePath, te
 	if err != nil {
 		return "", "", "", err
 	}
-	if templateKind == recipes.TemplateKindTerraform && templateVersion == "" {
-		return "", "", "", errors.New("template-version is required for template-kind: 'terraform'")
-	}
-	if templateKind == recipes.TemplateKindBicep && templateVersion != "" {
-		return "", "", "", errors.New("template-version is not allowed for template-kind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in template-path")
-	}
-
 	return templateKind, templatePath, templateVersion, nil
 }

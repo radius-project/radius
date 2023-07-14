@@ -64,24 +64,6 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Register Command for terraform recipe without template version",
-			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindTerraform, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
-		{
-			Name:          "Register Command for bicep recipe with template version",
-			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--template-version", "1.1.0"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
-		{
 			Name:          "Valid Register Command with parameters passed as file",
 			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json"},
 			ExpectedValid: true,
