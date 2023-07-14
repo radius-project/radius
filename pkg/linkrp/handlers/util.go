@@ -31,6 +31,8 @@ import (
 
 const daprConflictFmt = "the Dapr component name '%q' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again"
 
+// # Function Explanation
+//
 // CheckDaprResourceNameUniqueness checks if the resource name is unique in the namespace. If the resource name is not unique, it returns an error.
 //
 // This protects against some of the following scenarios:

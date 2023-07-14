@@ -35,7 +35,9 @@ type ListSecretsMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
 }
 
-// NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase.
+// # Function Explanation
+//
+// NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase, or an error if the controller could not be created.
 func NewListSecretsMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsMongoDatabase{
 		Operation: ctrl.NewOperation(opts,
@@ -46,6 +48,8 @@ func NewListSecretsMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
 // Run returns secrets values for the specified MongoDatabase resource
 func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
