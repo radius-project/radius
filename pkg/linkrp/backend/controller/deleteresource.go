@@ -43,11 +43,17 @@ type DeleteResource struct {
 	client processors.ResourceClient
 }
 
-// NewDeleteResource creates the DeleteResource controller instance.
+// # Function Explanation
+//
+// NewDeleteResource creates a new DeleteResource controller which is used to delete resources asynchronously.
 func NewDeleteResource(opts ctrl.Options, client processors.ResourceClient) (ctrl.Controller, error) {
 	return &DeleteResource{ctrl.NewBaseAsyncController(opts), client}, nil
 }
 
+// # Function Explanation
+//
+// Run retrieves a resource from storage, parses the resource ID, gets the data model, deletes the output
+// resources, and deletes the resource from storage. It returns an error if any of these steps fail.
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil {

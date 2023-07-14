@@ -114,6 +114,9 @@ func TestPlaneConvertDataModelToVersioned(t *testing.T) {
 
 type fakeResource struct{}
 
+// # Function Explanation
+// 
+// FakeResource's ResourceTypeName function returns a string "FakeResource" when called.
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
 }
