@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel
+// and returns an error if the inputs are invalid.
 func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SqlDatabase{
 		BaseResource: v1.BaseResource{
@@ -77,6 +80,8 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
+// # Function Explanation
+//
 // ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabase resource.
 func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	sql, ok := src.(*datamodel.SqlDatabase)
@@ -110,7 +115,10 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabaseSecrets instance.
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabaseSecrets instance
+// and returns an error if the conversion fails.
 func (dst *SQLDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	sqlSecrets, ok := src.(*datamodel.SqlDatabaseSecrets)
 	if !ok {
@@ -123,7 +131,10 @@ func (dst *SQLDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// ConvertTo converts from the versioned SqlDatabaseSecrets instance to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts from the versioned SqlDatabaseSecrets instance to version-agnostic datamodel
+// and returns an error if the conversion fails.
 func (src *SQLDatabaseSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SqlDatabaseSecrets{
 		ConnectionString: to.String(src.ConnectionString),

@@ -25,7 +25,10 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// Recipe returns the recipe for the SqlDatabase
+// # Function Explanation
+//
+// Recipe returns the LinkRecipe associated with the SqlDatabase instance if the ResourceProvisioning is not
+// set to Manual, otherwise it returns nil.
 func (sql *SqlDatabase) Recipe() *linkrp.LinkRecipe {
 	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
@@ -44,22 +47,32 @@ type SqlDatabase struct {
 	LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the output resources of a SqlDatabase resource with the output resources of a DeploymentOutput
+// object and returns no error.
 func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns the OutputResources of the SqlDatabase resource.
 func (r *SqlDatabase) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the SqlDatabase resource.
 func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type of the SqlDatabase resource.
 func (sql *SqlDatabase) ResourceTypeName() string {
 	return linkrp.SqlDatabasesResourceType
 }
@@ -92,6 +105,11 @@ type SqlDatabaseSecrets struct {
 }
 
 // VerifyInputs checks that the inputs for manual resource provisioning are all provided
+//
+// # Function Explanation
+//
+// VerifyInputs checks if the required fields are set when the resourceProvisioning is set to manual and returns an error
+// if any of the required fields are not set.
 func (sql *SqlDatabase) VerifyInputs() error {
 	msgs := []string{}
 	if sql.Properties.ResourceProvisioning != "" && sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
@@ -121,10 +139,16 @@ func (sql *SqlDatabase) VerifyInputs() error {
 	return nil
 }
 
+// # Function Explanation
+//
+// IsEmpty checks if the SqlDatabaseSecrets struct is empty.
 func (sqlSecrets SqlDatabaseSecrets) IsEmpty() bool {
 	return sqlSecrets == SqlDatabaseSecrets{}
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type of the SqlDatabase resource.
 func (sqlSecrets *SqlDatabaseSecrets) ResourceTypeName() string {
 	return linkrp.SqlDatabasesResourceType
 }

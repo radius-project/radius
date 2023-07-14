@@ -42,6 +42,9 @@ type VersionInfo struct {
 	ChartVersion string `json:"chartVersion"`
 }
 
+// # Function Explanation
+//
+// NewVersionInfo creates a new VersionInfo object with the current version information.
 func NewVersionInfo() VersionInfo {
 	return VersionInfo{
 		Channel:      Channel(),
@@ -52,10 +55,15 @@ func NewVersionInfo() VersionInfo {
 	}
 }
 
+// # Function Explanation
+//
+// IsEdgeChannel returns true if the channel is equal to "edge" and false otherwise.
 func IsEdgeChannel() bool {
 	return channel == "edge"
 }
 
+// # Function Explanation
+//
 // Channel returns the designated channel for downloads of assets.
 //
 // For a real release this will be the major.minor - for any other build it's the same
@@ -64,6 +72,8 @@ func Channel() string {
 	return channel
 }
 
+// # Function Explanation
+//
 // Commit returns the full git SHA of the build.
 //
 // This should only be used for informational purposes.
@@ -71,6 +81,8 @@ func Commit() string {
 	return commit
 }
 
+// # Function Explanation
+//
 // Release returns the semver release version of the build.
 //
 // This should only be used for informational purposes.
@@ -78,6 +90,8 @@ func Release() string {
 	return release
 }
 
+// # Function Explanation
+//
 // Version returns the 'git describe' output of the build.
 //
 // This should only be used for informational purposes.
@@ -85,13 +99,17 @@ func Version() string {
 	return version
 }
 
+// # Function Explanation
+//
 // ChartVersion returns the version of the Helm Chart to be used by
 // Kubernetes, Dev, and potentially Azure environments
 func ChartVersion() string {
 	return chartVersion
 }
 
-// VersionString returns a formatted string representation of the version from a list of supported
+// # Function Explanation
+//
+// VersionString formats and returns a string containing version information in either JSON or plain text format.
 func VersionString(format string, v VersionInfo, bicepVersion string) string {
 	var displayVersion = struct {
 		Release string `json:"release"`

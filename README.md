@@ -51,7 +51,7 @@ Every month we host a community call to showcase new features, review upcoming m
 
 ## Contributing to Radius
 
-Visit [Contributing](https://docs.radapp.dev/contributing/) for more information on how to contribute to Radius.
+Visit [Contributing](./CONTRIBUTING.md) for more information on how to contribute to Radius.
 To author Radius Recipes visit [Author Custom Radius Recipes](https://docs.radapp.dev/operations/custom-recipes/).
 To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.dev/contributing/docs/)
 
