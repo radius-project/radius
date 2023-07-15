@@ -1,123 +1,44 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+
+@description('Specifies the azure monitor workspace resource id.')
 param azureMonitorWorkspaceResourceId string
 
-@allowed([
-  'eastus2euap'
-  'centraluseuap'
-  'centralus'
-  'eastus'
-  'eastus2'
-  'northeurope'
-  'southcentralus'
-  'southeastasia'
-  'uksouth'
-  'westeurope'
-  'westus'
-  'westus2'
-])
+@description('Specifies the azure monitor workspace resource location.')
 param azureMonitorWorkspaceLocation string
+
+@description('Specifies the AKS cluster resource id.')
 param clusterResourceId string
-param clusterLocation string
-param metricLabelsAllowlist string
-param metricAnnotationsAllowList string
-param grafanaResourceId string
-param grafanaLocation string
-param grafanaSku string
-param grafanaAdminObjectId string
 
-@description('A new GUID used to identify the role assignment')
-param roleNameGuid string = newGuid()
+@description('Specifies the resource tags.')
+param tags object
 
-var azureMonitorWorkspaceSubscriptionId = split(azureMonitorWorkspaceResourceId, '/')[2]
-var clusterSubscriptionId = split(clusterResourceId, '/')[2]
-var clusterResourceGroup = split(clusterResourceId, '/')[4]
+// Variables
 var clusterName = split(clusterResourceId, '/')[8]
-var dceName = 'MSProm-${azureMonitorWorkspaceLocation}-${clusterName}'
-var dcrName = 'MSProm-${azureMonitorWorkspaceLocation}-${clusterName}'
-var dcraName = 'MSProm-${clusterLocation}-${clusterName}'
+
 var nodeRecordingRuleGroupPrefix = 'NodeRecordingRulesRuleGroup-'
 var nodeRecordingRuleGroupName = '${nodeRecordingRuleGroupPrefix}${clusterName}'
 var nodeRecordingRuleGroupDescription = 'Node Recording Rules RuleGroup'
+var version = ' - 0.1'
+
 var kubernetesRecordingRuleGrouPrefix = 'KubernetesReccordingRulesRuleGroup-'
 var kubernetesRecordingRuleGroupName = '${kubernetesRecordingRuleGrouPrefix}${clusterName}'
 var kubernetesRecordingRuleGroupDescription = 'Kubernetes Recording Rules RuleGroup'
-var version = ' - 0.1'
 
-resource dce 'Microsoft.Insights/dataCollectionEndpoints@2022-06-01' = {
-  name: dceName
-  location: azureMonitorWorkspaceLocation
-  kind: 'Linux'
-  properties: {
-  }
-}
-
-resource dcr 'Microsoft.Insights/dataCollectionRules@2022-06-01' = {
-  name: dcrName
-  location: azureMonitorWorkspaceLocation
-  kind: 'Linux'
-  properties: {
-    dataCollectionEndpointId: dce.id
-    dataFlows: [
-      {
-        destinations: [
-          'MonitoringAccount1'
-        ]
-        streams: [
-          'Microsoft-PrometheusMetrics'
-        ]
-      }
-    ]
-    dataSources: {
-      prometheusForwarder: [
-        {
-          name: 'PrometheusDataSource'
-          streams: [
-            'Microsoft-PrometheusMetrics'
-          ]
-          labelIncludeFilter: {
-          }
-        }
-      ]
-    }
-    description: 'DCR for Azure Monitor Metrics Profile (Managed Prometheus)'
-    destinations: {
-      monitoringAccounts: [
-        {
-          accountResourceId: azureMonitorWorkspaceResourceId
-          name: 'MonitoringAccount1'
-        }
-      ]
-    }
-  }
-}
-
-module azuremonitormetrics_dcra_clusterResourceId './nested_azuremonitormetrics_dcra_clusterResourceId.bicep' = {
-  name: 'azuremonitormetrics-dcra-${uniqueString(clusterResourceId)}'
-  scope: resourceGroup(clusterSubscriptionId, clusterResourceGroup)
-  params: {
-    resourceId_Microsoft_Insights_dataCollectionRules_variables_dcrName: dcr.id
-    variables_clusterName: clusterName
-    variables_dcraName: dcraName
-    clusterLocation: clusterLocation
-  }
-  dependsOn: [
-    dce
-
-  ]
-}
-
-module azuremonitormetrics_profile_clusterResourceId './nested_azuremonitormetrics_profile_clusterResourceId.bicep' = {
-  name: 'azuremonitormetrics-profile--${uniqueString(clusterResourceId)}'
-  scope: resourceGroup(clusterSubscriptionId, clusterResourceGroup)
-  params: {
-    variables_clusterName: clusterName
-    clusterLocation: clusterLocation
-    metricLabelsAllowlist: metricLabelsAllowlist
-    metricAnnotationsAllowList: metricAnnotationsAllowList
-  }
-  dependsOn: [
-    azuremonitormetrics_dcra_clusterResourceId
-  ]
-}
 
 resource nodeRecordingRuleGroup 'Microsoft.AlertsManagement/prometheusRuleGroups@2023-03-01' = {
   name: nodeRecordingRuleGroupName
@@ -177,6 +98,7 @@ resource nodeRecordingRuleGroup 'Microsoft.AlertsManagement/prometheusRuleGroups
       }
     ]
   }
+  tags: tags
 }
 
 resource kubernetesRecordingRuleGroup 'Microsoft.AlertsManagement/prometheusRuleGroups@2023-03-01' = {
@@ -281,44 +203,5 @@ resource kubernetesRecordingRuleGroup 'Microsoft.AlertsManagement/prometheusRule
       }
     ]
   }
-}
-
-resource grafanaResourceId_8 'Microsoft.Dashboard/grafana@2022-08-01' = {
-  name: split(grafanaResourceId, '/')[8]
-  sku: {
-    name: grafanaSku
-  }
-  identity: {
-    type: 'SystemAssigned'
-  }
-  location: grafanaLocation
-  properties: {
-    grafanaIntegrations: {
-      azureMonitorWorkspaceIntegrations: [
-        {
-          azureMonitorWorkspaceResourceId: azureMonitorWorkspaceResourceId
-        }
-      ]
-    }
-  }
-}
-
-// Add user's as Grafana Admin for the Grafana instance
-resource selfRoleAssignmentGrafana 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: roleNameGuid
-  scope: grafanaResourceId_8
-  properties: {
-    roleDefinitionId: '/subscriptions/${azureMonitorWorkspaceSubscriptionId}/providers/Microsoft.Authorization/roleDefinitions/22926164-76b3-42b3-bc55-97df8dab3e41'
-    principalId: grafanaAdminObjectId
-  }
-}
-
-// Provide Grafana access to the AMW instance
-module roleAssignmentGrafanaAMW './nested_grafana_amw_role_assignment.bicep' = {
-  name: roleNameGuid
-  scope: resourceGroup(split(azureMonitorWorkspaceResourceId, '/')[2], split(azureMonitorWorkspaceResourceId, '/')[4])
-  params: {
-    azureMonitorWorkspaceSubscriptionId: azureMonitorWorkspaceSubscriptionId
-    grafanaPrincipalId: reference(grafanaResourceId_8.id, '2022-08-01', 'Full').identity.principalId
-  }
+  tags: tags
 }

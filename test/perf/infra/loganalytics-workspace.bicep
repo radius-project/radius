@@ -19,7 +19,9 @@ param retentionInDays int = 30
 param location string = resourceGroup().location
 
 @description('Specifies the resource tags.')
-param tags object
+param tags object = {
+  'radapp.io': 'radius-infra'
+}
 
 // Resources
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' = {
@@ -37,4 +39,5 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12
 //Outputs
 output id string = logAnalyticsWorkspace.id
 output name string = logAnalyticsWorkspace.name
+output location string = logAnalyticsWorkspace.location
 output customerId string = logAnalyticsWorkspace.properties.customerId
