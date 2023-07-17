@@ -39,8 +39,6 @@ var (
 
 	// ErrEmptyMessage represents nil or empty Message.
 	ErrEmptyMessage = errors.New("message must not be nil or message is empty")
-
-	dequeueInterval = time.Duration(5) * time.Millisecond
 )
 
 //go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/ucp/queue/client github.com/project-radius/radius/pkg/ucp/queue/client Client
@@ -51,7 +49,7 @@ type Client interface {
 	Enqueue(ctx context.Context, msg *Message, opts ...EnqueueOptions) error
 
 	// Dequeue dequeues message from queue.
-	Dequeue(ctx context.Context, opts ...DequeueOptions) (*Message, error)
+	Dequeue(ctx context.Context, cfg QueueClientConfig) (*Message, error)
 
 	// FinishMessage finishes or deletes the message in the queue.
 	FinishMessage(ctx context.Context, msg *Message) error
@@ -67,7 +65,11 @@ func StartDequeuer(ctx context.Context, cli Client, opts ...DequeueOptions) (<-c
 
 	go func() {
 		for {
-			msg, err := cli.Dequeue(ctx, opts...)
+			var queueconfig QueueClientConfig
+			if opts != nil {
+				queueconfig = NewDequeueConfig(opts...)
+			}
+			msg, err := cli.Dequeue(ctx, queueconfig)
 			if err == nil {
 				out <- msg
 			} else if !errors.Is(err, ErrMessageNotFound) {
@@ -78,8 +80,9 @@ func StartDequeuer(ctx context.Context, cli Client, opts ...DequeueOptions) (<-c
 			case <-ctx.Done():
 				close(out)
 				return
-			case <-time.After(dequeueInterval):
+			case <-time.After(queueconfig.DequeueIntervalDuration):
 			}
+
 		}
 	}()
 
