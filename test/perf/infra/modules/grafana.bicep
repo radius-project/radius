@@ -108,12 +108,12 @@ resource readerRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-0
 }
 
 // Assign MonitoringDataReader role to Grafana identity for resourcegroup of azuremonitor workspace resource group.
-module grafanaIdenityToAzureMonitor './grafana-role.bicep' = {
+module grafanaIdenityToAzureMonitor './assign-role.bicep' = {
   name: guid(grafana.id, roleDefinitionId.MonitoringDataReader.id)
   scope: resourceGroup(azureMonitorWorkspaceSubscriptionId, azureMonitorWorkspaceResourceGroupName)
   params: {
     roleNameGuid: guid(grafana.id, adminObjectId, roleDefinitionId.MonitoringDataReader.id)
-    roleDefinition: roleDefinitionId.MonitoringDataReader.id
+    roleDefinitionId: roleDefinitionId.MonitoringDataReader.id
     principalId: grafana.identity.principalId
   }
 }

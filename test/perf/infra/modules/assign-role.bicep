@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-@description('Specifies the Grafana resource principal id.')
+@description('Specifies the principal id.')
 param principalId string
 
-@description('Specifies the role definition.')
-param roleDefinition string
+@description('Specifies the role definition id.')
+param roleDefinitionId string
 
-@description('A new GUID used to identify the role assignment for Grafana')
+@description('A new GUID used to identify the role assignment.')
 param roleNameGuid string
 
 resource roleAssignmentLocal 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: roleNameGuid
   properties: {
-    roleDefinitionId: roleDefinition
+    roleDefinitionId: roleDefinitionId
     principalId: principalId
   }
 }

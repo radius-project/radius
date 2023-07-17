@@ -28,6 +28,7 @@ param logAnalyticsWorkspaceLocation string = resourceGroup().location
 
 @description('Specifies the location of azure monitor workspace. Default is {prefix}-azm-workspace.')
 param azureMonitorWorkspaceName string = '${prefix}-azm-workspace'
+
 @allowed([
   'eastus2euap'
   'centraluseuap'
@@ -42,7 +43,6 @@ param azureMonitorWorkspaceName string = '${prefix}-azm-workspace'
   'westus'
   'westus2'
 ])
-
 @description('Specifies the location of azure monitor workspace. Default is westus2')
 param azureMonitorWorkspaceLocation string = 'westus2'
 
@@ -59,7 +59,7 @@ param defaultTags object = {
   'radapp.io': 'infra'
 }
 
-module logAnalyticsWorkspace 'loganalytics-workspace.bicep' = {
+module logAnalyticsWorkspace './modules/loganalytics-workspace.bicep' = {
   name: logAnalyticsWorkspaceName
   params: {
     name: logAnalyticsWorkspaceName
@@ -76,7 +76,7 @@ resource azureMonitorWorkspace 'microsoft.monitor/accounts@2023-04-03' = {
   properties: {}
 }
 
-module aksCluster 'akscluster.bicep' = {
+module aksCluster './modules/akscluster.bicep' = {
   name: aksClusterName
   params:{
     name: aksClusterName
@@ -98,7 +98,7 @@ module aksCluster 'akscluster.bicep' = {
   }
 }
 
-module grafanaDashboard 'grafana.bicep' = {
+module grafanaDashboard './modules/grafana.bicep' = {
   name: grafanaDashboardName
   params:{
     name: grafanaDashboardName
@@ -111,7 +111,7 @@ module grafanaDashboard 'grafana.bicep' = {
   }
 }
 
-module dataCollection 'datacollection.bicep' = {
+module dataCollection './modules/datacollection.bicep' = {
   name: 'dataCollection'
   params:{
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
@@ -125,7 +125,7 @@ module dataCollection 'datacollection.bicep' = {
   ]
 }
 
-module alertManagement 'alert-management.bicep' = {
+module alertManagement './modules/alert-management.bicep' = {
   name: 'alertManagement'
   params:{
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
@@ -143,7 +143,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-05-01' existing = 
   name: aksCluster.name
 }
 
-module promConfigMap './ama-metrics-setting-configmap.bicep' = {
+module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
   name: 'metrics-configmap'
   params: {
     kubeConfig: aks.listClusterAdminCredential().kubeconfigs[0].value
