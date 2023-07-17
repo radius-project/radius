@@ -34,67 +34,32 @@ using OpenAPI;
 
 namespace Applications.Dapr;
 
-@doc("Dapr PubSubBroker Properties for Mode Resource")
-model ResourceDaprPubSubProperties extends DaprPubSubBrokerProperties{
-  @doc("How to build the Dapr PubSubBroker portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "resource";
-
-  @doc("Metadata for the pub sub resource. This should match the values specified in Dapr component spec")
-  metadata?: object;
-
-  @doc("Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type?: string;
-
-  @doc("Dapr component version")
-  version?: string;
-
-  @doc("PubSub resource")
-  resource: string;
-}
-
-@doc("Dapr PubSubBroker Properties for Mode Values")
-model ValuesDaprPubSubProperties extends DaprPubSubBrokerProperties{
-  @doc("How to build the Dapr PubSubBroker resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
-
-  @doc("Metadata for the pubsub resource. This should match the values specified in Dapr component spec")
-  metadata: object;
-
-  @doc("Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type: string;
-
-  @doc("Dapr component version")
-  version: string;
-}
-
-@doc("Dapr PubSubBroker Properties for Mode Recipe")
-model RecipeDaprPubSubProperties extends DaprPubSubBrokerProperties{
-  @doc("How to build the Dapr PubSubBroker portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "recipe";
-
-  @doc("Metadata for the pub sub resource. This should match the values specified in Dapr component spec")
-  metadata?: object;
-
-  @doc("Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type?: string;
-
-  @doc("Dapr component version")
-  version?: string;
-
-  @doc("The recipe used to automatically deploy underlying infrastructure for the Dapr PubSubBroker portable resource")
-  recipe: Recipe;
-}
-@doc("Dapr PubSubBroker portable resource properties")
-@discriminator("mode")
-model DaprPubSubBrokerProperties extends BasicDaprResourceProperties {
-  @doc("Provisioning state of the Dapr PubSubBroker portable resource at the time the operation was called")
+@doc("Dapr PubSubBroker Properties")
+model Dapr PubSubBrokerProperties extends BasicDaprResourceProperties {
+  @doc("Provisioning state of the Dapr PubSubBroker resource at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("Topic name of the Azure ServiceBus resource")
-  topic?: string;
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
+
+  @doc("Metadata for the Dapr PubSubBroker resource. This should match the values specified in Dapr component spec")
+  metadata?: object;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Dapr PubSubBroker portable resource")
+  recipe?: Recipe;
+
+  @doc("A collection of references to resources associated with the Dapr PubSubBroker")
+  resources?: ResourceReference[];
+
+  @doc("Dapr PubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.")
+  type?: string;
+
+  @doc("Dapr component version")
+  version?: string;
 }
-@doc("Dapr PubSubBroker portable resource")
+
+@doc("Dapr PubSubBroker link")
 model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
   @doc("Dapr PubSubBroker name")
   @maxLength(63)
@@ -108,7 +73,7 @@ model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
 
 @armResourceOperations
 interface DaprPubSubBroker
-  extends Radius.ResourceOperationWithSyncDelete<
+  extends Radius.ResourceOperationWithAsyncDelete<
       DaprPubSubBrokerResource,
       DaprPubSubBrokerProperties,
       RootScopeParam
