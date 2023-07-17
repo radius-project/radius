@@ -219,6 +219,7 @@ func TestAddProviders_Success(t *testing.T) {
 		Module: map[string]any{
 			testRecipeName: map[string]any{
 				moduleSourceKey:       testTemplatePath,
+				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],
