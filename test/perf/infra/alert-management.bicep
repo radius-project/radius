@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 @description('Specifies the azure monitor workspace resource id.')
 param azureMonitorWorkspaceResourceId string
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// https://github.com/Azure-Samples/aks-istio-addon-bicep/blob/main/bicep/aksCluster.bicep
+// Reference: https://github.com/Azure-Samples/aks-istio-addon-bicep/blob/main/bicep/aksCluster.bicep
 
 // Parameters
 @description('Specifies the name of the AKS cluster.')

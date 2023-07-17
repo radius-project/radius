@@ -14,12 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+@description('Specifies the prefix of deploying resource name. Default is radius.')
 param prefix string = 'radius'
+
+@description('Specifies the location of AKS cluster related resources. Default is the resource group location.')
 param location string = resourceGroup().location
 
+@description('Specifies the name of log anlaytics workspace. Default is {prefix}-workspace.')
 param logAnalyticsWorkspaceName string = '${prefix}-workspace'
+
+@description('Specifies the location of log anlaytics workspace. Default is the resource group location.')
 param logAnalyticsWorkspaceLocation string = resourceGroup().location
 
+@description('Specifies the location of azure monitor workspace. Default is {prefix}-azm-workspace.')
 param azureMonitorWorkspaceName string = '${prefix}-azm-workspace'
 @allowed([
   'eastus2euap'
@@ -35,9 +42,17 @@ param azureMonitorWorkspaceName string = '${prefix}-azm-workspace'
   'westus'
   'westus2'
 ])
+
+@description('Specifies the location of azure monitor workspace. Default is westus2')
 param azureMonitorWorkspaceLocation string = 'westus2'
+
+@description('Specifies the name of aks cluster. Default is {prefix}-perf.')
 param aksClusterName string = '${prefix}-perf'
-param grafanaAdminObjectId string = '4eb4c3ea-1672-485d-bf7d-9673d14542ce'
+
+@description('Specifies the object id of Grafana admin identity.')
+param grafanaAdminObjectId string
+
+@description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
 param grafanaDashboardName string = '${prefix}-gboard'
 
 param defaultTags object = {
