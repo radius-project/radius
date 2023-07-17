@@ -887,6 +887,7 @@ func (e EnvironmentRecipeProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "parameters", e.Parameters)
 	populate(objectMap, "templateKind", e.TemplateKind)
 	populate(objectMap, "templatePath", e.TemplatePath)
+	populate(objectMap, "templateVersion", e.TemplateVersion)
 	return json.Marshal(objectMap)
 }
 
@@ -907,6 +908,9 @@ func (e *EnvironmentRecipeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "templatePath":
 				err = unpopulate(val, "TemplatePath", &e.TemplatePath)
+				delete(rawMsg, key)
+		case "templateVersion":
+				err = unpopulate(val, "TemplateVersion", &e.TemplateVersion)
 				delete(rawMsg, key)
 		}
 		if err != nil {

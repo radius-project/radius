@@ -554,6 +554,10 @@ type EnvironmentRecipeProperties struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Version of the template to deploy. For Terraform recipes this is the module version in the module registry. For Bicep this
+// is not applicable, as the Bicep version is part of the templatePath.
+	TemplateVersion *string `json:"templateVersion,omitempty"`
 }
 
 // EnvironmentResource - Application environment.

@@ -27,13 +27,13 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 )
@@ -103,7 +103,7 @@ func Test_Run(t *testing.T) {
 				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 					linkrp.MongoDatabasesResourceType: {
 						"cosmosDB": {
-							TemplateKind: to.Ptr(types.TemplateKindBicep),
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -217,7 +217,7 @@ func Test_Run(t *testing.T) {
 				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 					linkrp.MongoDatabasesResourceType: {
 						"cosmosDB": {
-							TemplateKind: to.Ptr(types.TemplateKindBicep),
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -277,7 +277,7 @@ func Test_Run(t *testing.T) {
 					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						linkrp.MongoDatabasesResourceType: {
 							"cosmosDB": {
-								TemplateKind: to.Ptr(types.TemplateKindBicep),
+								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 							},
 						},
@@ -315,7 +315,7 @@ func Test_Run(t *testing.T) {
 					Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						linkrp.MongoDatabasesResourceType: {
 							"testResource": {
-								TemplateKind: to.Ptr(types.TemplateKindBicep),
+								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 							},
 						},
@@ -379,13 +379,13 @@ func Test_Run(t *testing.T) {
 				Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 					linkrp.MongoDatabasesResourceType: {
 						"testResource": {
-							TemplateKind: to.Ptr(types.TemplateKindBicep),
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
 					linkrp.RedisCachesResourceType: {
 						"testResource": {
-							TemplateKind: to.Ptr(types.TemplateKindBicep),
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1"),
 						},
 					},

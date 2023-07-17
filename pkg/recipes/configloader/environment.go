@@ -119,11 +119,16 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
 
-	return &recipes.EnvironmentDefinition{
+	definition := &recipes.EnvironmentDefinition{
 		Name:         recipeName,
 		Driver:       *found.TemplateKind,
 		ResourceType: resource.Type(),
 		Parameters:   found.Parameters,
 		TemplatePath: *found.TemplatePath,
-	}, nil
+	}
+	if *found.TemplateKind == recipes.TemplateKindTerraform {
+		definition.TemplateVersion = *found.TemplateVersion
+	}
+
+	return definition, nil
 }

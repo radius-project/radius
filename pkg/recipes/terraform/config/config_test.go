@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	testTemplatePath = "Azure/redis/azurerm"
-	testRecipeName   = "redis-azure"
+	testTemplatePath    = "Azure/redis/azurerm"
+	testRecipeName      = "redis-azure"
+	testTemplateVersion = "1.1.0"
 )
 
 var (
@@ -51,9 +52,10 @@ func TestGenerateMainConfigFile(t *testing.T) {
 	testDir := t.TempDir()
 
 	envRecipe := recipes.EnvironmentDefinition{
-		Name:         testRecipeName,
-		TemplatePath: testTemplatePath,
-		Parameters:   envParams,
+		Name:            testRecipeName,
+		TemplatePath:    testTemplatePath,
+		TemplateVersion: testTemplateVersion,
+		Parameters:      envParams,
 	}
 
 	resourceRecipe := recipes.ResourceMetadata{
@@ -83,6 +85,7 @@ func TestGenerateMainConfigFile(t *testing.T) {
 		Module: map[string]any{
 			testRecipeName: map[string]any{
 				moduleSourceKey:       testTemplatePath,
+				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],
@@ -95,8 +98,9 @@ func TestGenerateMainConfigFile(t *testing.T) {
 func TestGenerateMainConfig_EmptyParameters(t *testing.T) {
 	testDir := t.TempDir()
 	envRecipe := recipes.EnvironmentDefinition{
-		Name:         testRecipeName,
-		TemplatePath: testTemplatePath,
+		Name:            testRecipeName,
+		TemplatePath:    testTemplatePath,
+		TemplateVersion: testTemplateVersion,
 	}
 
 	resourceRecipe := recipes.ResourceMetadata{
@@ -124,7 +128,8 @@ func TestGenerateMainConfig_EmptyParameters(t *testing.T) {
 	expectedTfConfig := TerraformConfig{
 		Module: map[string]any{
 			testRecipeName: map[string]any{
-				moduleSourceKey: testTemplatePath,
+				moduleSourceKey:  testTemplatePath,
+				moduleVersionKey: testTemplateVersion,
 			},
 		},
 	}
@@ -133,8 +138,9 @@ func TestGenerateMainConfig_EmptyParameters(t *testing.T) {
 
 func TestGenerateMainConfig_Error(t *testing.T) {
 	envRecipe := recipes.EnvironmentDefinition{
-		TemplatePath: testTemplatePath,
-		Parameters:   envParams,
+		TemplatePath:    testTemplatePath,
+		TemplateVersion: testTemplateVersion,
+		Parameters:      envParams,
 	}
 
 	resourceRecipe := recipes.ResourceMetadata{
@@ -150,11 +156,12 @@ func TestGenerateMainConfig_Error(t *testing.T) {
 }
 
 func TestGenerateModuleData(t *testing.T) {
-	moduleData := generateModuleData(testcontext.New(t), testTemplatePath, envParams, resourceParams)
+	moduleData := generateModuleData(testcontext.New(t), testTemplatePath, testTemplateVersion, envParams, resourceParams)
 
 	// Assert that the module data contains the expected data.
 	expectedModuleData := map[string]any{
 		moduleSourceKey:       testTemplatePath,
+		moduleVersionKey:      testTemplateVersion,
 		"resource_group_name": envParams["resource_group_name"],
 		"redis_cache_name":    resourceParams["redis_cache_name"],
 		"sku":                 resourceParams["sku"],
