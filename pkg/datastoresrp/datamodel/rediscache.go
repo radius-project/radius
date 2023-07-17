@@ -38,7 +38,10 @@ type RedisCache struct {
 	linkrpdm.LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues, Host, Port and Username properties of the
+// RedisCache instance based on the DeploymentOutput object.
 func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -70,20 +73,30 @@ func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
+// # Function Explanation
+//
 // OutputResources returns the output resources array.
 func (r *RedisCache) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
+// # Function Explanation
+//
 // ResourceMetadata returns the application resource metadata.
 func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type for RedisCache.
 func (redis *RedisCache) ResourceTypeName() string {
 	return linkrp.N_RedisCachesResourceType
 }
 
+// # Function Explanation
+//
+// Method IsEmpty checks if the RedisCacheSecrets instance is nil or empty.
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
 }
@@ -116,6 +129,9 @@ type RedisCacheSecrets struct {
 	Password         string `json:"password"`
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type for RedisCache.
 func (redis RedisCacheSecrets) ResourceTypeName() string {
 	return linkrp.N_RedisCachesResourceType
 }

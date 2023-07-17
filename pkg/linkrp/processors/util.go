@@ -27,8 +27,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// GetOutputResourcesFromResourcesField is a utility function that converts a resource ID provided by a user into an
-// OutputResource. This should be used for processing the '.properties.resources' field of a resource.
+// # Function Explanation
+//
+// GetOutputResourcesFromResourcesField parses a slice of resource references and converts each resource into an OutputResource.
+// It returns a slice of output resources and an error if any of the resource references are invalid. This should be used for
+// processing the '.properties.resources' field of a resource.
 func GetOutputResourcesFromResourcesField(field []*linkrp.ResourceReference) ([]rpv1.OutputResource, error) {
 	results := []rpv1.OutputResource{}
 	for i, resource := range field {
@@ -50,7 +53,10 @@ func GetOutputResourcesFromResourcesField(field []*linkrp.ResourceReference) ([]
 	return results, nil
 }
 
-// GetOutputResourcesFromRecipe is a utility function that converts the resources in the recipe output into a list of OutputResources.
+// # Function Explanation
+//
+// GetOutputResourcesFromRecipe parses the output resources from a recipe and returns a slice of OutputResource objects,
+// returning an error if any of the resources are invalid.
 func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputResource, error) {
 	results := []rpv1.OutputResource{}
 	for i, resource := range output.Resources {
