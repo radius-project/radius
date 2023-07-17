@@ -56,7 +56,7 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 					},
 					{
 						Name: "rmq-rmq-old",
-						Type: validation.RabbitMQMessageQueuesResource,
+						Type: validation.O_RabbitMQMessageQueuesResource,
 						App:  name,
 					},
 				},
