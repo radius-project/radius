@@ -19,7 +19,6 @@ package engine
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
@@ -30,5 +29,5 @@ type Engine interface {
 	// Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
 	Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
-	Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient, recipe recipes.ResourceMetadata) error
+	Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error
 }

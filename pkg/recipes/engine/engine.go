@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
@@ -65,16 +64,19 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (
 	return driver.Execute(ctx, *configuration, recipe, *definition)
 }
 
-func (e *engine) Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient, recipe recipes.ResourceMetadata) error {
+// Delete handles deletion of output resources for the recipe deployment.
+func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error {
+	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
 		return err
 	}
 
+	// Determine Recipe driver type
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
 		return fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
-	return driver.Delete(ctx, outputResources, client)
+	return driver.Delete(ctx, outputResources)
 }

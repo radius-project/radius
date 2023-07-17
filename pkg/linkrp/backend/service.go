@@ -109,7 +109,7 @@ func (s *Service) Run(ctx context.Context) error {
 	engine := engine.NewEngine(engine.Options{
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
-			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient),
+			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, driver.TerraformOptions{
 				Path: s.Options.Config.Terraform.Path,
 			}),
@@ -195,7 +195,7 @@ func (s *Service) Run(ctx context.Context) error {
 	for _, rt := range resourceTypes {
 		// Register controllers
 		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, func(options ctrl.Options) (ctrl.Controller, error) {
-			return backend_ctrl.NewDeleteResource(options, client, engine)
+			return backend_ctrl.NewDeleteResource(options, engine)
 		}, opts)
 		if err != nil {
 			return err

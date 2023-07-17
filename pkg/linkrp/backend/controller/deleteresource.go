@@ -27,7 +27,6 @@ import (
 	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/engine"
@@ -40,15 +39,14 @@ var _ ctrl.Controller = (*DeleteResource)(nil)
 // DeleteResource is the async operation controller to delete Applications.Link resource.
 type DeleteResource struct {
 	ctrl.BaseController
-	client processors.ResourceClient
 	engine engine.Engine
 }
 
 // # Function Explanation
 //
 // NewDeleteResource creates a new DeleteResource controller which is used to delete resources asynchronously.
-func NewDeleteResource(opts ctrl.Options, client processors.ResourceClient, engine engine.Engine) (ctrl.Controller, error) {
-	return &DeleteResource{ctrl.NewBaseAsyncController(opts), client, engine}, nil
+func NewDeleteResource(opts ctrl.Options, engine engine.Engine) (ctrl.Controller, error) {
+	return &DeleteResource{ctrl.NewBaseAsyncController(opts), engine}, nil
 }
 
 // # Function Explanation
@@ -91,7 +89,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 			ResourceID:    id.String(),
 		}
 
-		err = c.engine.Delete(ctx, deploymentDataModel.OutputResources(), c.client, recipeData)
+		err = c.engine.Delete(ctx, recipeData, deploymentDataModel.OutputResources())
 		if err != nil {
 			return ctrl.Result{}, err
 		}

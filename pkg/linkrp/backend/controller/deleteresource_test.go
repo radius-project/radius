@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -46,11 +45,10 @@ var outputResource = rpv1.OutputResource{
 
 func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 	resourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0"
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request, *engine.MockEngine) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *engine.MockEngine) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
-		client := processors.NewMockResourceClient(mctrl)
 		eng := engine.NewMockEngine(mctrl)
 
 		req := &ctrl.Request{
@@ -63,7 +61,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, msc, client, req, eng
+		}, msc, req, eng
 	}
 
 	t.Parallel()
@@ -82,7 +80,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range deleteCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, client, req, eng := setupTest(t)
+			teardownTest, msc, req, eng := setupTest(t)
 			defer teardownTest(t)
 
 			status := rpv1.ResourceStatus{
@@ -117,7 +115,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 			if tt.getErr == nil {
 				eng.EXPECT().
-					Delete(gomock.Any(), gomock.Any(), client, gomock.Any()).
+					Delete(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.clientDelErr).
 					Times(1)
 				if tt.clientDelErr == nil {
@@ -131,7 +129,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 				StorageClient: msc,
 			}
 
-			ctrl, err := NewDeleteResource(opts, client, eng)
+			ctrl, err := NewDeleteResource(opts, eng)
 			require.NoError(t, err)
 
 			_, err = ctrl.Run(context.Background(), req)
@@ -147,11 +145,10 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.T) {
 
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *processors.MockResourceClient, *ctrl.Request, *gomock.Controller) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *gomock.Controller) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
-		client := processors.NewMockResourceClient(mctrl)
 
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
@@ -163,13 +160,13 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, msc, client, req, mctrl
+		}, msc, req, mctrl
 	}
 
 	t.Parallel()
 
 	t.Run("deleting-invalid-resource", func(t *testing.T) {
-		teardownTest, msc, client, req, mctrl := setupTest(t)
+		teardownTest, msc, req, mctrl := setupTest(t)
 		defer teardownTest(t)
 
 		msc.EXPECT().
@@ -181,7 +178,7 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 		}
 
 		eng := engine.NewMockEngine(mctrl)
-		ctrl, err := NewDeleteResource(opts, client, eng)
+		ctrl, err := NewDeleteResource(opts, eng)
 		require.NoError(t, err)
 
 		_, err = ctrl.Run(context.Background(), req)

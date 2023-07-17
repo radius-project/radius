@@ -52,13 +52,14 @@ const (
 var _ Driver = (*bicepDriver)(nil)
 
 // NewBicepDriver creates the new Driver for Bicep.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient) Driver {
-	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient}
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient) Driver {
+	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient, ResourceClient: client}
 }
 
 type bicepDriver struct {
 	ArmClientOptions *arm.ClientOptions
 	DeploymentClient *clients.ResourceDeploymentsClient
+	ResourceClient   processors.ResourceClient
 }
 
 // Execute fetches the recipe contents from acr and deploys the recipe by making a call to ucp and returns the recipe result.
@@ -130,7 +131,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 }
 
 // Delete handles output resource deletion and returns an error on failure to delete.
-func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource, client processors.ResourceClient) error {
+func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
@@ -150,7 +151,7 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 			continue
 		}
 
-		err = client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+		err = d.ResourceClient.Delete(ctx, id, resourcemodel.APIVersionUnknown)
 		if err != nil {
 			return err
 		}
