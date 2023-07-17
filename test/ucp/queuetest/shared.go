@@ -33,6 +33,8 @@ const (
 	TestMessageLockTime = time.Duration(1) * time.Second
 
 	pollingInterval = time.Duration(100) * time.Millisecond
+
+	defaultTestDequeueInterval = time.Duration(5) * time.Millisecond
 )
 
 type testQueueMessage struct {
@@ -200,7 +202,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 
 	t.Run("StartDequeuer dequeues message via channel", func(t *testing.T) {
 		clear(t)
-		msgCh, err := client.StartDequeuer(ctx, cli, client.WithDequeueInterval(5))
+		msgCh, err := client.StartDequeuer(ctx, cli, client.WithDequeueInterval(defaultTestDequeueInterval))
 		require.NoError(t, err)
 
 		recvCnt := 0
