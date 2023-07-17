@@ -17,6 +17,11 @@ limitations under the License.
 @secure()
 param kubeConfig string
 
+@description('Specifies the prefix of radius namepsace to be scraped by prometheus.')
+param prefix string = 'radius'
+
+var podAnnotationNamespaceRegex = 'podannotationnamespaceregex = "${prefix}.*"'
+
 import 'kubernetes@1.0.0' with {
   namespace: 'default'
   kubeConfig: kubeConfig
@@ -33,7 +38,7 @@ resource coreConfigMap_amaMetricsSettingsConfigmap 'core/ConfigMap@v1' = {
     'default-scrape-settings-enabled': 'kubelet = true\ncoredns = false\ncadvisor = true\nkubeproxy = false\napiserver = false\nkubestate = true\nnodeexporter = true\nwindowsexporter = false\nwindowskubeproxy = false\nkappiebasic = true\nprometheuscollectorhealth = false'
     'default-targets-metrics-keep-list': 'kubelet = ""\ncoredns = ""\ncadvisor = ""\nkubeproxy = ""\napiserver = ""\nkubestate = ""\nnodeexporter = ""\nwindowsexporter = ""\nwindowskubeproxy = ""\npodannotations = ""\nkappiebasic = ""\nminimalingestionprofile = true'
     'default-targets-scrape-interval-settings': 'kubelet = "30s"\ncoredns = "30s"\ncadvisor = "30s"\nkubeproxy = "30s"\napiserver = "30s"\nkubestate = "30s"\nnodeexporter = "30s"\nwindowsexporter = "30s"\nwindowskubeproxy = "30s"\nkappiebasic = "30s"\nprometheuscollectorhealth = "30s"\npodannotations = "30s"'
-    'pod-annotation-based-scraping': 'podannotationnamespaceregex = "radius.*"'
+    'pod-annotation-based-scraping': podAnnotationNamespaceRegex
     'prometheus-collector-settings': 'cluster_alias = ""'
     'schema-version': 'v1'
   }

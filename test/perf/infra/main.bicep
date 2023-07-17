@@ -53,7 +53,7 @@ param aksClusterName string = '${prefix}-perf'
 param grafanaAdminObjectId string
 
 @description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
-param grafanaDashboardName string = '${prefix}-gboard'
+param grafanaDashboardName string = '${prefix}-dashboard'
 
 param defaultTags object = {
   'radapp.io': 'infra'
@@ -138,8 +138,9 @@ module alertManagement 'alert-management.bicep' = {
   ]
 }
 
+
 resource aks 'Microsoft.ContainerService/managedClusters@2023-05-01' existing = {
-  name: aksClusterName
+  name: aksCluster.name
 }
 
 module promConfigMap './ama-metrics-setting-configmap.bicep' = {
@@ -148,6 +149,6 @@ module promConfigMap './ama-metrics-setting-configmap.bicep' = {
     kubeConfig: aks.listClusterAdminCredential().kubeconfigs[0].value
   }
   dependsOn: [
-    aksCluster, dataCollection, alertManagement
+    aks, aksCluster, dataCollection, alertManagement
   ]
 }
