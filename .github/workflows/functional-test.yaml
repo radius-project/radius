@@ -169,7 +169,7 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/corerp/recipes/<name>:${{ env.REL_VERSION }}`
+            * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
             * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
 
@@ -270,7 +270,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,corerp,samples]
+        name: [ucp,shared,samples]
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
