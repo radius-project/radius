@@ -49,7 +49,7 @@ param azureMonitorWorkspaceLocation string = 'westus2'
 @description('Specifies the name of aks cluster. Default is {prefix}-perf.')
 param aksClusterName string = '${prefix}-perf'
 
-@description('Specifies the object id of Grafana admin identity.')
+@description('Specifies the object id to grant Grafana administrator right to. Can be the object id of user and group.')
 param grafanaAdminObjectId string
 
 @description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
