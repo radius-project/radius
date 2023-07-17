@@ -175,6 +175,46 @@ workspaces:
 	require.Equal(t, map[string]any{"kind": "kubernetes", "context": "cool-beans"}, ws.Connection)
 }
 
+func Test_GetCurrentWorkspace_NoneExists(t *testing.T) {
+	var yaml = `
+`
+
+	v, err := makeConfig(yaml)
+	require.NoError(t, err)
+
+	ws, err := GetCurrentWorkspace(v)
+	require.NoError(t, err)
+	require.Nil(t, ws)
+}
+
+func Test_GetCurrentWorkspace_ExistingDefault(t *testing.T) {
+	var yaml = `
+workspaces:
+  default: test
+  items:
+    abc:
+      connection:
+        kind: kubernetes
+        context: cool-beans1
+      scope: /a/b/c
+      environment: /a/b/c/providers/Applications.Core/environments/ice-cold
+    test:
+      connection:
+        kind: kubernetes
+        context: cool-beans
+      scope: /a/b/c
+      environment: /a/b/c/providers/Applications.Core/environments/ice-cold
+`
+
+	v, err := makeConfig(yaml)
+	require.NoError(t, err)
+
+	ws, err := GetCurrentWorkspace(v)
+	require.NoError(t, err)
+	require.NotNil(t, ws)
+	require.Equal(t, "test", ws.Name)
+}
+
 func makeConfig(yaml string) (*viper.Viper, error) {
 	v := viper.New()
 	v.SetConfigType("YAML")
