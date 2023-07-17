@@ -39,8 +39,6 @@ var (
 
 	// ErrEmptyMessage represents nil or empty Message.
 	ErrEmptyMessage = errors.New("message must not be nil or message is empty")
-
-	defaultDequeueInterval = time.Duration(200) * time.Millisecond
 )
 
 //go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/ucp/queue/client github.com/project-radius/radius/pkg/ucp/queue/client Client
