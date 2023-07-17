@@ -259,7 +259,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	}
 	defer fh.Close()
 
-	buf := make([]byte, 2000)
+	buf := make([]byte, 8192)
 
 	for {
 		numBytes, err := stream.Read(buf)
