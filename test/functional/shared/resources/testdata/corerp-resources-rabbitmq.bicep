@@ -26,7 +26,7 @@ param username string = 'guest'
 param password string 
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-rabbitmq1'
+  name: 'corerp-resources-rabbitmq-old'
   location: location
   properties: {
     environment: environment
@@ -34,7 +34,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rmq-app-ctnr1'
+  name: 'rmq-app-ctnr-old'
   location: location
   properties: {
     application: app.id
@@ -55,7 +55,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rmq-ctnr1'
+  name: 'rmq-ctnr-old'
   location: location
   properties: {
     application: app.id
@@ -72,7 +72,7 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'rmq-rte1'
+  name: 'rmq-rte-old'
   location: location
   properties: {
     application: app.id
@@ -81,7 +81,7 @@ resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource rabbitmq 'Applications.Link/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
-  name: 'rmq-rmq1'
+  name: 'rmq-rmq-old'
   location: location
   properties: {
     application: app.id

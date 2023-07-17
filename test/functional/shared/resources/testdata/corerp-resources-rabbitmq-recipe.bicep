@@ -18,13 +18,13 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-rabbitmq-recipe-env1'
+  name: 'corerp-resources-environment-rabbitmq-recipe-env-old'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-rabbitmq-recipe-env1'
+      namespace: 'corerp-resources-environment-rabbitmq-recipe-env-old'
     }
     recipes: {
       'Applications.Link/rabbitMQMessageQueues': {
@@ -41,21 +41,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-rabbitmq-recipe1'
+  name: 'corerp-resources-rabbitmq-recipe-old'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-rabbitmq-default-recipe-app1'
+        namespace: 'corerp-resources-rabbitmq-default-recipe-app-old'
       }
     ]
   }
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rmq-recipe-app-ctnr1'
+  name: 'rmq-recipe-app-ctnr-old'
   location: location
   properties: {
     application: app.id
@@ -76,7 +76,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource rabbitmq 'Applications.Link/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
-  name: 'rmq-recipe-resource1'
+  name: 'rmq-recipe-resource-old'
   location: location
   properties: {
     application: app.id

@@ -53,10 +53,10 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 1. Run:
 
     ```sh
-        .{workspace}/radius/test/executeCoreRPFunctionalTest.sh
+        .{workspace}/radius/test/executeFunctionalTest.sh
     ```
 
-When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`. The executeCoreRPFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
+When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`. The executeFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
  ```sh
     make test-functional-shared
  ```
