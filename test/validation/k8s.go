@@ -284,6 +284,13 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 			log.Printf("Error writing to %s. Error was %s", filename, err)
 			return
 		}
+
+		// Flush the file handle after writing the log messages
+		err = fh.Sync()
+		if err != nil {
+			log.Printf("Error flushing %s. Error was %s", filename, err)
+			return
+		}
 	}
 
 	log.Printf("Saved container logs to %s", filename)
