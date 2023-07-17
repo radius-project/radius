@@ -37,7 +37,9 @@ type ListSecretsRedisCache struct {
 	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
 }
 
-// NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache.
+// # Function Explanation
+//
+// NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache and returns it without an  error.
 func NewListSecretsRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRedisCache{
 		Operation: ctrl.NewOperation(opts,
@@ -48,7 +50,9 @@ func NewListSecretsRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// Run returns secrets values for the specified RedisCache resource
+// # Function Explanation
+//
+// Run retrieves the secrets associated with a RedisCache resource and returns them in the requested API version.
 func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 

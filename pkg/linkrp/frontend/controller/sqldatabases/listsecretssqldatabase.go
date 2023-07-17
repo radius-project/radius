@@ -35,6 +35,8 @@ type ListSecretsSqlDatabase struct {
 	ctrl.Operation[*datamodel.SqlDatabase, datamodel.SqlDatabase]
 }
 
+// # Function Explanation
+//
 // NewListSecretsSqlDatabase creates a new instance of ListSecretsSqlDatabase.
 func NewListSecretsSqlDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsSqlDatabase{
@@ -46,6 +48,8 @@ func NewListSecretsSqlDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
 // Run returns secrets values for the specified SqlDatabase resource
 func (ctrl *ListSecretsSqlDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
