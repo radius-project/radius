@@ -234,6 +234,11 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Pod, container corev1.Container, logPrefix string) {
 	filename := fmt.Sprintf("%s/%s.%s.log", logPrefix, pod.Name, container.Name)
 	log.Printf("Streaming Kubernetes logs to %s", filename)
+
+	// Create a new context with a timeout of 60 minutes
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{
 		Container: container.Name,
 		Follow:    true,
