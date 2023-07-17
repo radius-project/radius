@@ -215,7 +215,7 @@ func (ri ID) RootScope() string {
 
 // # Function Explanation
 //
-// # PlaneScope returns plane or subscription scope without resourceGroup
+// PlaneScope returns plane or subscription scope without resourceGroup
 //
 // Examples:
 //
@@ -266,8 +266,7 @@ func (ri ID) IsRadiusRPResource() bool {
 //
 // PlaneNamespace returns the plane part of the UCP ID, or an empty string if the ID is not UCP qualified.
 //
-// Note: This function does NOT handle invalid IDs.
-// If an invalid ID calls this function then there is
+// Note: This function does NOT handle invalid IDs. If an invalid ID calls this function then there is
 // a chance that it is going to trigger a panic.
 //
 // Examples:
@@ -286,15 +285,13 @@ func (ri ID) PlaneNamespace() string {
 	return strings.Join(keys, "/")
 }
 
-// RoutingScope returns the routing-scope (the part after 'providers').
+// # Function Explanation
+//
+// RoutingScope returns the routing-scope (the part after 'providers') - it is composed of the type and name segments of the ID instance.
 //
 // Examples:
 //
 //	/Applications.Core/applications/my-app
-//
-// # Function Explanation
-//
-// RoutingScope returns a string composed of the type and name segments of the ID instance.
 func (ri ID) RoutingScope() string {
 	segments := []string{}
 	for _, t := range ri.typeSegments {
