@@ -26,8 +26,9 @@ type (
 		// violate compatibility.
 		private()
 	}
-	// DequeueOptions applies an option to Dequeue().
+
 	DequeueOptions interface {
+		// ApplyDequeueOption applies DequeueOptions to QueueClientConfig.
 		ApplyDequeueOption(QueueClientConfig) QueueClientConfig
 		// A private method to prevent users implementing the
 		// interface and so future additions to it will not
