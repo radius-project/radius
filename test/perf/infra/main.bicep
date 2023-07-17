@@ -56,7 +56,7 @@ param grafanaAdminObjectId string
 param grafanaDashboardName string = '${prefix}-dashboard'
 
 param defaultTags object = {
-  'radapp.io': 'infra'
+  radius: 'infra'
 }
 
 module logAnalyticsWorkspace './modules/loganalytics-workspace.bicep' = {
