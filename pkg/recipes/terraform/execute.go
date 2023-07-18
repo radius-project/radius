@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-logr/logr"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -85,7 +84,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 }
 
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	workingDir := filepath.Join(tfDir, executionSubDir)
 	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
@@ -131,7 +130,7 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 
 // initAndApply runs Terraform init and apply in the provided working directory.
 func initAndApply(ctx context.Context, workingDir, execPath string) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {

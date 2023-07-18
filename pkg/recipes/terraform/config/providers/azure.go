@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -41,29 +41,32 @@ func NewAzureProvider() Provider {
 // BuildConfig generates the Terraform provider configuration for Azure provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
 func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
-	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.Azure == datamodel.ProvidersAzure{}) || envConfig.Providers.Azure.Scope == "" {
-		return nil, v1.NewClientErrInvalidRequest("Azure provider is required to be configured on the Environment to create Azure resources using Recipe")
-	}
-
-	subscriptionID, err := parseAzureScope(envConfig.Providers.Azure.Scope)
-	if err != nil {
-		return nil, err
-	}
-
 	// features block is required for Azure provider even if it is empty
 	// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#argument-reference
 	azureConfig := map[string]any{
-		"subscription_id": subscriptionID,
-		"features":        map[string]any{},
+		"features": map[string]any{},
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.Azure == datamodel.ProvidersAzure{}) || envConfig.Providers.Azure.Scope == "" {
+		logger.Info("Azure provider scope is not configured on the Environment, skipping Azure subscriptionID configuration.")
+		return azureConfig, nil
+	}
+
+	subscriptionID := parseAzureScope(ctx, envConfig.Providers.Azure.Scope)
+	if subscriptionID != "" {
+		azureConfig["subscription_id"] = subscriptionID
 	}
 
 	return azureConfig, nil
 }
 
-func parseAzureScope(scope string) (subscriptionID string, err error) {
+func parseAzureScope(ctx context.Context, scope string) (subscriptionID string) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
-		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("error parsing Azure scope %q: %s", scope, err.Error()))
+		logger.Info(fmt.Sprintf("Invalid Azure provider scope is configured on the Environment, error parsing: %s", err.Error()))
+		return ""
 	}
 
 	for _, segment := range parsedScope.ScopeSegments() {
@@ -72,5 +75,5 @@ func parseAzureScope(scope string) (subscriptionID string, err error) {
 		}
 	}
 
-	return subscriptionID, nil
+	return subscriptionID
 }

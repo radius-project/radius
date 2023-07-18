@@ -30,7 +30,6 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 		desc           string
 		envConfig      *recipes.Configuration
 		expectedConfig map[string]any
-		expectedErrMsg string
 	}{
 		{
 			desc: "valid config",
@@ -45,15 +44,15 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 				"subscription_id": "test-sub",
 				"features":        map[string]any{},
 			},
-			expectedErrMsg: "",
 		},
 		{
-			desc: "missing Azure provider config",
+			desc: "missing Azure provider",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{},
 			},
-			expectedConfig: nil,
-			expectedErrMsg: "Azure provider is required to be configured on the Environment to create Azure resources using Recipe",
+			expectedConfig: map[string]any{
+				"features": map[string]any{},
+			},
 		},
 		{
 			desc: "missing Azure provider scope",
@@ -62,8 +61,9 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 					Azure: datamodel.ProvidersAzure{},
 				},
 			},
-			expectedConfig: nil,
-			expectedErrMsg: "Azure provider is required to be configured on the Environment to create Azure resources using Recipe",
+			expectedConfig: map[string]any{
+				"features": map[string]any{},
+			},
 		},
 		{
 			desc: "invalid Azure provider scope",
@@ -74,8 +74,9 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 					},
 				},
 			},
-			expectedConfig: nil,
-			expectedErrMsg: "error parsing Azure scope \"invalid\"",
+			expectedConfig: map[string]any{
+				"features": map[string]any{},
+			},
 		},
 	}
 
@@ -83,15 +84,10 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &azureProvider{}
 			config, err := p.BuildConfig(context.Background(), tt.envConfig)
-			if tt.expectedErrMsg != "" {
-				require.Error(t, err)
-				require.ErrorContains(t, err, tt.expectedErrMsg)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, len(tt.expectedConfig), len(config))
-				require.Equal(t, tt.expectedConfig["subscription_id"], config["subscription_id"])
-				require.Equal(t, tt.expectedConfig["features"], config["features"])
-			}
+			require.NoError(t, err)
+			require.Equal(t, len(tt.expectedConfig), len(config))
+			require.Equal(t, tt.expectedConfig["features"], config["features"])
+			require.Equal(t, tt.expectedConfig["subscription_id"], config["subscription_id"])
 		})
 	}
 }

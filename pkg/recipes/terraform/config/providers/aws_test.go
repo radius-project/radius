@@ -30,7 +30,6 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 		desc           string
 		envConfig      *recipes.Configuration
 		expectedConfig map[string]any
-		expectedErrMsg string
 	}{
 		{
 			desc: "valid config",
@@ -44,7 +43,6 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 			expectedConfig: map[string]any{
 				"region": "test-region",
 			},
-			expectedErrMsg: "",
 		},
 		{
 			desc: "missing AWS provider config",
@@ -52,7 +50,6 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 				Providers: datamodel.Providers{},
 			},
 			expectedConfig: nil,
-			expectedErrMsg: "AWS provider is required to be configured on the Environment to create AWS resources using Recipe",
 		},
 		{
 			desc: "missing AWS provider scope",
@@ -62,7 +59,6 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: nil,
-			expectedErrMsg: "AWS provider is required to be configured on the Environment to create AWS resources using Recipe",
 		},
 		{
 			desc: "invalid AWS provider scope",
@@ -74,7 +70,6 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: nil,
-			expectedErrMsg: "error parsing AWS scope \"invalid\"",
 		},
 	}
 
@@ -82,14 +77,9 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &awsProvider{}
 			config, err := p.BuildConfig(context.Background(), tt.envConfig)
-			if tt.expectedErrMsg != "" {
-				require.Error(t, err)
-				require.ErrorContains(t, err, tt.expectedErrMsg)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, len(tt.expectedConfig), len(config))
-				require.Equal(t, tt.expectedConfig["region"], config["region"])
-			}
+			require.NoError(t, err)
+			require.Equal(t, len(tt.expectedConfig), len(config))
+			require.Equal(t, tt.expectedConfig["region"], config["region"])
 		})
 	}
 }

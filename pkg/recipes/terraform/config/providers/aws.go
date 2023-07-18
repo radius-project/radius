@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -41,26 +41,29 @@ func NewAWSProvider() Provider {
 // BuildConfig generates the Terraform provider configuration for AWS provider.
 // https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	awsConfig := make(map[string]any)
 	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.AWS == datamodel.ProvidersAWS{}) || envConfig.Providers.AWS.Scope == "" {
-		return nil, v1.NewClientErrInvalidRequest("AWS provider is required to be configured on the Environment to create AWS resources using Recipe")
+		logger.Info("AWS provider scope is not configured on the Environment, skipping AWS region configuration.")
+		return awsConfig, nil
 	}
 
-	region, err := parseAWSScope(envConfig.Providers.AWS.Scope)
-	if err != nil {
-		return nil, err
-	}
-
-	awsConfig := map[string]any{
-		"region": region,
+	region := parseAWSScope(ctx, envConfig.Providers.AWS.Scope)
+	if region != "" {
+		awsConfig = map[string]any{
+			"region": region,
+		}
 	}
 
 	return awsConfig, nil
 }
 
-func parseAWSScope(scope string) (region string, err error) {
+func parseAWSScope(ctx context.Context, scope string) (region string) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
-		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("error parsing AWS scope %q: %s", scope, err.Error()))
+		logger.Info(fmt.Sprintf("Invalid AWS provider scope is configured on the Environment, error parsing: %s", err.Error()))
+		return ""
 	}
 
 	for _, segment := range parsedScope.ScopeSegments() {
@@ -69,5 +72,5 @@ func parseAWSScope(scope string) (region string, err error) {
 		}
 	}
 
-	return region, nil
+	return region
 }

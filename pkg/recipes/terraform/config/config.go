@@ -94,7 +94,7 @@ func AddProviders(ctx context.Context, configFilePath string, requiredProviders 
 	}
 
 	// Add generated provider configs for required providers to the existing terraform json config file
-	if providerConfigs != nil {
+	if len(providerConfigs) > 0 {
 		configFile, err := os.Open(configFilePath)
 		if err != nil {
 			return fmt.Errorf("error opening file %q: %w", configFilePath, err)
@@ -138,7 +138,9 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 			return nil, err
 		}
 
-		providerConfigs[provider] = config
+		if len(config) > 0 {
+			providerConfigs[provider] = config
+		}
 	}
 
 	return providerConfigs, nil

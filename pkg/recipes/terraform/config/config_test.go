@@ -244,6 +244,44 @@ func TestAddProviders_Success(t *testing.T) {
 	require.Equal(t, expectedTFConfig, tfConfig)
 }
 
+func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+	// Create a temporary test directory.
+	testDir := t.TempDir()
+
+	mProvider, supportedProviders := setup(t)
+	envRecipe, resourceRecipe := getTestInputs()
+	envConfig := recipes.Configuration{}
+
+	// Expected config shouldn't contain any provider config
+	expectedTFConfig := TerraformConfig{
+		Module: map[string]any{
+			testRecipeName: map[string]any{
+				moduleSourceKey:       testTemplatePath,
+				moduleVersionKey:      testTemplateVersion,
+				"resource_group_name": envParams["resource_group_name"],
+				"redis_cache_name":    resourceParams["redis_cache_name"],
+				"sku":                 resourceParams["sku"],
+			},
+		},
+	}
+
+	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	require.NoError(t, err)
+
+	// Expect build config function call for AWS provider with empty output since envConfig has empty AWS scope
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(map[string]any{}, nil)
+
+	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName}, supportedProviders, &envConfig)
+	require.NoError(t, err)
+
+	// Validate that the config file exists and read the updated data.
+	tfConfig, err := validateConfigIsGenerated(configFilePath)
+	require.NoError(t, err)
+	// Assert that the TerraformConfig contains the expected data.
+	require.Equal(t, expectedTFConfig, tfConfig)
+}
+
 func TestAddProviders_EmptyAWSScope(t *testing.T) {
 	ctx := testcontext.New(t)
 	// Create a temporary test directory.
