@@ -32,7 +32,7 @@ func Test_PersistentVolume(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetOIDCIssur()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
