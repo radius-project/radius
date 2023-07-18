@@ -38,7 +38,7 @@ func NewKubernetesProvider() Provider {
 
 // BuildKubernetesProviderConfig generates the Terraform provider configuration for Kubernetes provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
-func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
+func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
 	// No additional config is needed if in cluster config is present.
 	// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs#in-cluster-config
 	_, err := rest.InClusterConfig()
@@ -46,8 +46,8 @@ func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes
 		// If in cluster config is not present, then use default kubeconfig file.
 		return map[string]any{
 			"config_path": clientcmd.RecommendedHomeFile,
-		}, nil
+		}
 	}
 
-	return nil, nil
+	return nil
 }

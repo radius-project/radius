@@ -88,10 +88,7 @@ func generateModuleData(ctx context.Context, moduleSource string, moduleVersion 
 // The generated config is added to the existing Terraform main config file present at the configFilePath, and writes the updated configuration data back to the file.
 // requiredProviders contains a list of provider names that are required for the module.
 func AddProviders(ctx context.Context, configFilePath string, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
-	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
-	if err != nil {
-		return err
-	}
+	providerConfigs := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
 
 	// Add generated provider configs for required providers to the existing terraform json config file
 	if len(providerConfigs) > 0 {
@@ -124,7 +121,7 @@ func AddProviders(ctx context.Context, configFilePath string, requiredProviders 
 }
 
 // getProviderConfigs generates the Terraform provider configurations for the required providers.
-func getProviderConfigs(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
+func getProviderConfigs(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) map[string]any {
 	providerConfigs := make(map[string]any)
 	for _, provider := range requiredProviders {
 		builder, ok := supportedProviders[provider]
@@ -133,15 +130,11 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 			continue
 		}
 
-		config, err := builder.BuildConfig(ctx, envConfig)
-		if err != nil {
-			return nil, err
-		}
-
+		config := builder.BuildConfig(ctx, envConfig)
 		if len(config) > 0 {
 			providerConfigs[provider] = config
 		}
 	}
 
-	return providerConfigs, nil
+	return providerConfigs
 }

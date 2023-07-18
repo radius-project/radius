@@ -30,7 +30,6 @@ func TestKubernetesProvider_BuildConfig(t *testing.T) {
 	}
 
 	p := &kubernetesProvider{}
-	config, err := p.BuildConfig(context.Background(), nil)
-	require.NoError(t, err)
+	config := p.BuildConfig(context.Background(), nil)
 	require.Equal(t, expectedConfig, config)
 }

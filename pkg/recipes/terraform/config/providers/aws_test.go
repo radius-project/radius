@@ -76,8 +76,7 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &awsProvider{}
-			config, err := p.BuildConfig(context.Background(), tt.envConfig)
-			require.NoError(t, err)
+			config := p.BuildConfig(context.Background(), tt.envConfig)
 			require.Equal(t, len(tt.expectedConfig), len(config))
 			require.Equal(t, tt.expectedConfig["region"], config["region"])
 		})

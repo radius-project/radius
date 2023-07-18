@@ -40,7 +40,7 @@ func NewAzureProvider() Provider {
 
 // BuildConfig generates the Terraform provider configuration for Azure provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
-func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
+func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
 	// features block is required for Azure provider even if it is empty
 	// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#argument-reference
 	azureConfig := map[string]any{
@@ -50,7 +50,7 @@ func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Conf
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.Azure == datamodel.ProvidersAzure{}) || envConfig.Providers.Azure.Scope == "" {
 		logger.Info("Azure provider scope is not configured on the Environment, skipping Azure subscriptionID configuration.")
-		return azureConfig, nil
+		return azureConfig
 	}
 
 	subscriptionID := parseAzureScope(ctx, envConfig.Providers.Azure.Scope)
@@ -58,7 +58,7 @@ func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Conf
 		azureConfig["subscription_id"] = subscriptionID
 	}
 
-	return azureConfig, nil
+	return azureConfig
 }
 
 func parseAzureScope(ctx context.Context, scope string) (subscriptionID string) {
