@@ -103,6 +103,47 @@ func Test_ContainerHttpRoute(t *testing.T) {
 	test.Test(t)
 }
 
+func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
+	template := "testdata/corerp-resources-container-two-containers-dns.bicep"
+	name := "corerp-resources-container-two-containers-dns"
+	appNamespace := "corerp-resources-container-two-containers-dns"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "containera",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containerb",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "containera"),
+						validation.NewK8sPodForResource(name, "containerb"),
+						validation.NewK8sServiceForResource(name, "containerb"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
