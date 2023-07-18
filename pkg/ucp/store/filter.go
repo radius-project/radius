@@ -21,6 +21,9 @@ import (
 	"strings"
 )
 
+// # Function Explanation
+// 
+// MatchesFilters checks if the object's data matches the given filters and returns a boolean and an error.
 func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
 	if len(filters) == 0 {
 		// Skip expensive work if there is nothing to filter-by.

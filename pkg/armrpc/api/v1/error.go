@@ -35,14 +35,14 @@ type ErrModelConversion struct {
 
 // # Function Explanation
 //
-// Error() returns an error string describing the property name and valid value.
+// Error returns an error string describing the property name and valid value.
 func (e *ErrModelConversion) Error() string {
 	return fmt.Sprintf("%s must be %s.", e.PropertyName, e.ValidValue)
 }
 
 // # Function Explanation
 //
-// Is() checks if the target error is of type ErrModelConversion.
+// Is checks if the target error is of type ErrModelConversion.
 func (e *ErrModelConversion) Is(target error) bool {
 	_, ok := target.(*ErrModelConversion)
 	return ok

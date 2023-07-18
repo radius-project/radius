@@ -34,7 +34,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// Create assigns the specified role name to the Identity over the specified scope
+// # Function Explanation
+//
+// Create checks if a role assignment already exists for a given managed identity, and if not, creates a new role
+// assignment. If an error is encountered, it is retried up to 100 times.
 // principalID - The principal ID assigned to the role. This maps to the ID inside the Active Directory. It can point to a user, service principal, or security group.
 // scope - fully qualified identifier of the scope of the role assignment to create. Example: '/subscriptions/{subscription-id}/',
 // '/subscriptions/{subscription-id}/resourceGroups/{resource-group-name}/providers/{resource-provider}/{resource-type}/{resource-name}'
@@ -118,7 +121,10 @@ func Create(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, p
 	return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
 }
 
-// Delete deletes the specified role name over the specified scope.
+// # Function Explanation
+//
+// Delete parses the roleID, creates a role assignments client, and deletes the role assignment with the given roleID,
+// returning an error if one occurs.
 func Delete(ctx context.Context, armConfig *armauth.ArmConfig, roleID string) error {
 	rID, err := resources.Parse(roleID)
 	if err != nil {
@@ -144,7 +150,11 @@ func Delete(ctx context.Context, armConfig *armauth.ArmConfig, roleID string) er
 	return nil
 }
 
-// Returns roleDefinitionID: fully qualified identifier of role definition, example: "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+// # Function Explanation
+//
+// GetRoleDefinitionID checks if the provided roleNameOrID is a role definition ID or a role name, and returns the
+// corresponding role definition ID.
+// roleDefinitionID: fully qualified identifier of role definition, example: "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
 func GetRoleDefinitionID(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, scope, roleNameOrID string) (roleDefinitionID string, err error) {
 	if strings.HasPrefix(roleNameOrID, "/subscriptions/") {
 		roleDefinitionID = roleNameOrID

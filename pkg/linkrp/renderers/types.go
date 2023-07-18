@@ -18,7 +18,7 @@ package renderers
 
 const (
 	ConnectionStringValue = "connectionString"
-	ConnectionURIValue    = "connectionURI"
+	ConnectionURIValue    = "url"
 	DatabaseNameValue     = "database"
 	ServerNameValue       = "server"
 	UsernameStringValue   = "username"
@@ -28,5 +28,5 @@ const (
 	VHost                 = "vHost"
 	Port                  = "port"
 	ComponentNameKey      = "componentName"
-	SSL                   = "ssl"
+	TLS                   = "tls"
 )

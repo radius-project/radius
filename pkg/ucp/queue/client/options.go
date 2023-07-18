@@ -16,6 +16,8 @@ limitations under the License.
 
 package client
 
+import "time"
+
 type (
 	// EnqueueOptions applies an option to Enqueue().
 	EnqueueOptions interface {
@@ -25,11 +27,48 @@ type (
 		private()
 	}
 
-	// DequeueOptions applies an option to Dequeue().
 	DequeueOptions interface {
+		// ApplyDequeueOption applies DequeueOptions to QueueClientConfig.
+		ApplyDequeueOption(QueueClientConfig) QueueClientConfig
 		// A private method to prevent users implementing the
 		// interface and so future additions to it will not
 		// violate compatibility.
 		private()
 	}
 )
+
+// QueueClientConfig is a configuration for queue client APIs.
+type QueueClientConfig struct {
+	// DequeueIntervalDuration is the time duration between 2 successive dequeue attempts on the queue
+	DequeueIntervalDuration time.Duration
+}
+
+type dequeueOptions struct {
+	fn func(QueueClientConfig) QueueClientConfig
+}
+
+// ApplyDequeueOption applies the configuration to the queue client.
+func (q *dequeueOptions) ApplyDequeueOption(cfg QueueClientConfig) QueueClientConfig {
+	return q.fn(cfg)
+}
+
+// WithDequeueInterval sets dequeueing interval.
+func WithDequeueInterval(t time.Duration) DequeueOptions {
+	return &dequeueOptions{
+		fn: func(cfg QueueClientConfig) QueueClientConfig {
+			cfg.DequeueIntervalDuration = t
+			return cfg
+		},
+	}
+}
+
+func (q dequeueOptions) private() {}
+
+// NewDequeueConfig returns new queue config for StartDequeuer().
+func NewDequeueConfig(opts ...DequeueOptions) QueueClientConfig {
+	cfg := QueueClientConfig{}
+	for _, opt := range opts {
+		cfg = opt.ApplyDequeueOption(cfg)
+	}
+	return cfg
+}

@@ -23,6 +23,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+// # Function Explanation
+//
 // DecodeMap decodes map[string]interface{} structure to the type of out.
 func DecodeMap(in any, out any) error {
 	cfg := &mapstructure.DecoderConfig{

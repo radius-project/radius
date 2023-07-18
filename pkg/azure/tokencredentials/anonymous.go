@@ -33,17 +33,25 @@ type AnonymousCredential struct {
 // Use this type when implementing a stateless policy as a first-class function.
 type PolicyFunc func(*policy.Request) (*http.Response, error)
 
+// # Function Explanation
+//
 // Do implements the Policy interface on PolicyFunc.
 func (pf PolicyFunc) Do(req *policy.Request) (*http.Response, error) {
 	return pf(req)
 }
 
+// # Function Explanation
+//
+// NewAuthenticationPolicy creates a new authentication policy based on the given options.
 func (*AnonymousCredential) NewAuthenticationPolicy(options policy.BearerTokenOptions) policy.Policy {
 	return PolicyFunc(func(req *policy.Request) (*http.Response, error) {
 		return req.Next()
 	})
 }
 
+// # Function Explanation
+//
+// GetToken returns an AccessToken and an error if the request fails.
 func (a *AnonymousCredential) GetToken(ctx context.Context, options policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	return azcore.AccessToken{}, nil
 }

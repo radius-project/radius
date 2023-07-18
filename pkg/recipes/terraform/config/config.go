@@ -30,7 +30,7 @@ import (
 // and apply Terraform modules. See https://www.terraform.io/docs/language/syntax/json.html
 // for more information on the JSON syntax for Terraform configuration.
 func GenerateMainConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir string) error {
-	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.Parameters, resourceRecipe.Parameters)
+	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	tfConfig := TerraformConfig{
 		Module: map[string]any{
@@ -62,9 +62,10 @@ func GenerateMainConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentD
 	return nil
 }
 
-func generateModuleData(ctx context.Context, moduleSource string, envParams, resourceParams map[string]any) map[string]any {
+func generateModuleData(ctx context.Context, moduleSource string, moduleVersion string, envParams, resourceParams map[string]any) map[string]any {
 	moduleConfig := map[string]any{
-		moduleSourceKey: moduleSource,
+		moduleSourceKey:  moduleSource,
+		moduleVersionKey: moduleVersion,
 	}
 
 	// Populate recipe parameters

@@ -44,10 +44,15 @@ type ObjectQueryResult struct {
 	Items []Object
 }
 
+// # Function Explanation
+//
+// As decodes the Data field of the Object instance into the out parameter.
 func (o *Object) As(out any) error {
 	return DecodeMap(o.Data, out)
 }
 
+// # Function Explanation
+//
 // GetResource gets the resource data from StorageClient for id.
 func GetResource[T any](ctx context.Context, client StorageClient, id string) (*T, error) {
 	var out T

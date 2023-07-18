@@ -65,8 +65,6 @@ var operationMethodToHTTPMethod = map[OperationMethod]string{
 	OperationProxy: "",
 }
 
-// HTTPMethod converts OperationMethod to HTTP Method.
-//
 // # Function Explanation
 //
 // HTTPMethod returns HTTP method corresponding to the given OperationMethod, or POST if

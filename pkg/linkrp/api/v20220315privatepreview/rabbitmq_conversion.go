@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel
+// and returns an error if the inputs are invalid.
 func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQMessageQueue{
 		BaseResource: v1.BaseResource{
@@ -76,7 +79,10 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQMessageQueue resource.
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQMessageQueue resource,
+// and returns an error if the source is not a valid datamodel.RabbitMQMessageQueue.
 func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	rabbitmq, ok := src.(*datamodel.RabbitMQMessageQueue)
 	if !ok {
@@ -110,7 +116,10 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 	return nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitmqSecrets instance.
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitmqSecrets instance
+// and returns an error if the conversion fails.
 func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	rabbitMQSecrets, ok := src.(*datamodel.RabbitMQSecrets)
 	if !ok {
@@ -122,6 +131,8 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
+// # Function Explanation
+//
 // ConvertTo converts from the versioned RabbitMQSecrets instance to version-agnostic datamodel.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{

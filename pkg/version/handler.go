@@ -21,7 +21,10 @@ import (
 	"net/http"
 )
 
-// ReportVersionHandler is the http server handler to report the radius version.
+// # Function Explanation
+//
+// ReportVersionHandler is the http server handler to report the radius version. It returns a JSON representation
+// of the version info of the application when called. It returns a 500 status code if an error occurs.
 func ReportVersionHandler(w http.ResponseWriter, req *http.Request) {
 	info := NewVersionInfo()
 

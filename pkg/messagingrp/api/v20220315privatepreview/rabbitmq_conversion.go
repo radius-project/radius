@@ -54,7 +54,9 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 		return nil, err
 	}
 
-	converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	}
 	converted.Properties.Queue = to.String(properties.Queue)
 	err = converted.VerifyInputs()
 	if err != nil {
