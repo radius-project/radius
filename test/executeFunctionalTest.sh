@@ -40,3 +40,4 @@ export AZURE_REDIS_RESOURCE_ID=$( jq -r '.properties.outputs.redisCacheId.value'
 export AZURE_TABLESTORAGE_RESOURCE_ID=$( jq -r '.properties.outputs.tableStorageAccId.value' <<< "${resp}" )
 export AZURE_COSMOS_MONGODB_ACCOUNT_ID=$( jq -r '.properties.outputs.cosmosMongoAccountID.value' <<< "${resp}" )
 make test-functional-shared
+make test-functional-msgrp
