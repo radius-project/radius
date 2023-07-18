@@ -26,6 +26,8 @@ param metricLabelsAllowlist string
 @description('Specifies comma-separated list of Kubernetes annotation keys that will be used in the resource\'s labels metric (Example: \'namespaces=[kubernetes.io/team,...],pods=[kubernetes.io/team],...\') By default the metric contains only resource name and namespace labels.')
 param metricAnnotationsAllowList string
 
+// This enables the Azure Monitor for Containers addon on the AKS cluster by patching the existing cluster
+// after deploying datacollection endpoint/rules and datacollection assocation on cluster resource.
 resource enableMonitorAddon 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
   name: clusterName
   location: clusterLocation

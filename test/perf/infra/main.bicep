@@ -49,7 +49,7 @@ param azureMonitorWorkspaceLocation string = 'westus2'
 @description('Specifies the name of aks cluster. Default is {prefix}-perf.')
 param aksClusterName string = '${prefix}-perf'
 
-@description('Specifies the object id to grant Grafana administrator right to. Can be the object id of user and group.')
+@description('Specifies the object id to assign Grafana administrator role. Can be the object id of AzureAD user or group.')
 param grafanaAdminObjectId string
 
 @description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
@@ -59,6 +59,7 @@ param defaultTags object = {
   radius: 'infra'
 }
 
+// Deploy Log Analytics Workspace for log.
 module logAnalyticsWorkspace './modules/loganalytics-workspace.bicep' = {
   name: logAnalyticsWorkspaceName
   params: {
@@ -70,12 +71,14 @@ module logAnalyticsWorkspace './modules/loganalytics-workspace.bicep' = {
   }
 }
 
+// Deploy Azure Monitor Workspace for metrics.
 resource azureMonitorWorkspace 'microsoft.monitor/accounts@2023-04-03' = {
   name: azureMonitorWorkspaceName
   location: azureMonitorWorkspaceLocation
   properties: {}
 }
 
+// Deploy AKS cluster with OIDC Issuer profile and Dapr.
 module aksCluster './modules/akscluster.bicep' = {
   name: aksClusterName
   params:{
@@ -98,6 +101,7 @@ module aksCluster './modules/akscluster.bicep' = {
   }
 }
 
+// Deploy Grafana dashboard.
 module grafanaDashboard './modules/grafana.bicep' = {
   name: grafanaDashboardName
   params:{
@@ -111,6 +115,7 @@ module grafanaDashboard './modules/grafana.bicep' = {
   }
 }
 
+// Deploy data collection for metrics.
 module dataCollection './modules/datacollection.bicep' = {
   name: 'dataCollection'
   params:{
@@ -125,6 +130,7 @@ module dataCollection './modules/datacollection.bicep' = {
   ]
 }
 
+// Deploy alert rules using prometheus metrics.
 module alertManagement './modules/alert-management.bicep' = {
   name: 'alertManagement'
   params:{
@@ -138,11 +144,12 @@ module alertManagement './modules/alert-management.bicep' = {
   ]
 }
 
-
+// This is a workaround to get the AKS cluster resource created by aksCluster module
 resource aks 'Microsoft.ContainerService/managedClusters@2023-05-01' existing = {
   name: aksCluster.name
 }
 
+// Deploy configmap for prometheus metrics.
 module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
   name: 'metrics-configmap'
   params: {
@@ -150,5 +157,22 @@ module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
   }
   dependsOn: [
     aks, aksCluster, dataCollection, alertManagement
+  ]
+}
+
+// Run deployment script to bootstrap the cluster.
+module deploymentScript './modules/deployment-script.bicep' = {
+  name: 'deploymentScript'
+  params: {
+    name: 'radiusBootStrap'
+    clusterName: aksCluster.outputs.name
+    resourceGroupName: resourceGroup().name
+    subscriptionId: subscription().subscriptionId
+    tenantId: subscription().tenantId
+    location: location
+    tags: defaultTags
+  }
+  dependsOn: [
+    aksCluster
   ]
 }
