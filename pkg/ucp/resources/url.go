@@ -22,6 +22,10 @@ import (
 	"strings"
 )
 
+// # Function Explanation
+// 
+// ExtractPlanesPrefixFromURLPath splits a URL path into segments and checks if the first two segments are valid, returning
+//  the first two segments and the remainder of the URL path if valid, or an error if not.
 func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error) {
 	// Remove the /planes/foo/bar/ prefix from the URL with the minimum amount of
 	// garbage allocated during parsing.
