@@ -50,6 +50,9 @@ env:
   # The AWS account ID
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
+  AKS_CLUSTER_NAME: 'radiustest00-aks'
+  AKS_RESOURCE_GROUP: 'radius-test-00'
+
 jobs:
   build:
     name: Build Radius for test
@@ -280,7 +283,7 @@ jobs:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Get kubeconf credential for AKS cluster
         run: |
-          az aks get-credentials --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} --resource-group radius-test-00 --name radiustest00-aks --admin
+          az aks get-credentials --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} --resource-group ${{ env.AKS_RESOURCE_GROUP }} --name ${{ env.AKS_CLUSTER_NAME }} --admin
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Download Bicep
@@ -329,6 +332,9 @@ jobs:
         if: failure()
         run: |
           echo ":x: Failed to install Radius for ${{ matrix.name }} functional test." >> $GITHUB_STEP_SUMMARY
+      - name: Get OIDC Issuer from AKS cluster
+        run: |
+          echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
@@ -360,6 +366,7 @@ jobs:
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.RECIPE_TAG_VERSION }}
+          FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
       - name: Log radius e2e test status (success)
         if: success()
         run: |
