@@ -12,7 +12,7 @@ This includes the bicep template to deploy the following resources on Azure for 
 
 ## Prerequisite
 
-1. Azure CLI
+1. [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
 
 ## Steps
 
@@ -21,12 +21,14 @@ This includes the bicep template to deploy the following resources on Azure for 
     az login
     az account set -s [Subscription Id]
     ```
+
 1. Create resource group:
     ```bash
     az group create --location [Location Name] --resource-group [Resource Group Name]
     ```
     - **[Location Name]**: Specify the location of the resource group. This location will be used as the default location for the resources in the template.
     - **[Resource Group Name]**: Provide a name for the resource group where the template will be deployed.
+
 1. Deploy main.bicep:
     ```bash
     az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters prefix='[Resource Prefix]' grafanaAdminObjectId='[Admin Object Id]'
