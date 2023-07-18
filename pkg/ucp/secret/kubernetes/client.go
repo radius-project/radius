@@ -39,7 +39,10 @@ type Client struct {
 	K8sClient controller_runtime.Client
 }
 
-// Save saves the secret as a k8s secret resource.
+// # Function Explanation
+//
+// Save saves the secret as a k8s secret resource. It checks if the given name and value are valid, checks if the secret already exists,
+// and creates or updates the secret accordingly, returning an error if one occurs.
 func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	if name == "" {
 		return &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
@@ -80,7 +83,10 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	return c.K8sClient.Update(ctx, secret)
 }
 
-// Delete deletes the secret resource with id.
+// # Function Explanation
+//
+// Delete validates the name argument and deletes the secret object from the Kubernetes cluster, returning an error if the
+// secret object is not found or if any other error occurs.
 func (c *Client) Delete(ctx context.Context, name string) error {
 	if name == "" {
 		return &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
@@ -106,7 +112,10 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 	return nil
 }
 
-// Get returns the id if secret exists otherwise error.
+// # Function Explanation
+//
+// Get checks if the provided name is valid and if it exists in the RadiusNamespace, and returns the data associated with
+// the secret if found, otherwise it returns an error.
 func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {
 	if name == "" {
 		return nil, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}

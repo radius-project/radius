@@ -56,6 +56,9 @@ const (
 
 	// deduplicationDuration is the default duration for the deduplication detection.
 	defaultDeduplicationDuration = time.Duration(30) * time.Second
+
+	// defaultDequeueInterval is the default duration for the dequeue interval.
+	defaultDequeueInterval = time.Duration(200) * time.Millisecond
 )
 
 // Options configures AsyncRequestProcessorWorker
@@ -74,6 +77,9 @@ type Options struct {
 
 	// DeduplicationDuration is the duration for the deduplication detection.
 	DeduplicationDuration time.Duration
+
+	// DequeueIntervalDuration is the duration for the dequeue interval.
+	DequeueIntervalDuration time.Duration
 }
 
 // AsyncRequestProcessWorker is the worker to process async requests.
@@ -107,6 +113,9 @@ func New(
 	if options.DeduplicationDuration == time.Duration(0) {
 		options.DeduplicationDuration = defaultDeduplicationDuration
 	}
+	if options.DequeueIntervalDuration == time.Duration(0) {
+		options.DequeueIntervalDuration = defaultDequeueInterval
+	}
 
 	return &AsyncRequestProcessWorker{
 		options:      options,
@@ -123,8 +132,7 @@ func New(
 // resource and operation status, and running the operation. It returns an error if it fails to start the dequeuer.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-
-	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
+	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue, queue.WithDequeueInterval(w.options.DequeueIntervalDuration))
 	if err != nil {
 		return err
 	}

@@ -133,7 +133,7 @@ func TestClient(t *testing.T) {
 
 		err = client1.Enqueue(ctx, client.NewMessage("{}"))
 		require.NoError(t, err)
-		msg, err := client2.Dequeue(ctx)
+		msg, err := client2.Dequeue(ctx, client.QueueClientConfig{})
 		require.NoError(t, err)
 
 		// Increase DequeueCount to mimic the situation when client1 updates message by the clock skew.
