@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-@description('Specifies the prefix of deploying resource name. Default is radius.')
-param prefix string = 'radius'
+@description('Specifies the prefix of deploying resource name.')
+param prefix string
 
 @description('Specifies the location of AKS cluster related resources. Default is the resource group location.')
 param location string = resourceGroup().location
@@ -46,8 +46,8 @@ param azureMonitorWorkspaceName string = '${prefix}-azm-workspace'
 @description('Specifies the location of azure monitor workspace. Default is westus2')
 param azureMonitorWorkspaceLocation string = 'westus2'
 
-@description('Specifies the name of aks cluster. Default is {prefix}-perf.')
-param aksClusterName string = '${prefix}-perf'
+@description('Specifies the name of aks cluster. Default is {prefix}-aks.')
+param aksClusterName string = '${prefix}-aks'
 
 @description('Specifies the object id to assign Grafana administrator role. Can be the object id of AzureAD user or group.')
 param grafanaAdminObjectId string

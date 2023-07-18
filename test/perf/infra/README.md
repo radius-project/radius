@@ -1,7 +1,6 @@
 ## Build Radius infrastructure to Azure
 
-This includes the bicep template to build the infrastructure on Azure by deploying the following resources:
-
+This includes the bicep template to deploy the following resources on Azure for running Radius:
 * Log Analytics Workspace for log
 * Azure Monitor Workspace for metric 
 * AKS Cluster
@@ -17,20 +16,23 @@ This includes the bicep template to build the infrastructure on Azure by deployi
 
 ## Steps
 
-1. Ensure that you logged in Azure and select your subscription
+1. Log in to Azure and select your subscription:
     ```bash
     az login
     az account set -s [Subscription Id]
     ```
-1. Create resource group
+1. Create resource group:
     ```bash
-    az group create --location [Region Name] --resource-group [Resource Group Name]
+    az group create --location [Location Name] --resource-group [Resource Group Name]
     ```
-1. Deploy main.bicep
+    - **[Location Name]**: Specify the location of the resource group. This location will be used as the default location for the resources in the template.
+    - **[Resource Group Name]**: Provide a name for the resource group where the template will be deployed.
+1. Deploy main.bicep:
     ```bash
-    az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaAdminObjectId='[Admin Object Id]'
+    az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters prefix='[Resource Prefix]' grafanaAdminObjectId='[Admin Object Id]'
     ```
-    > **How to find [Admin Object Id]**: You can use Azure AD user or group name as a Grafana Admin. To find the object id, search admin user or group name on [AAD Portal Overview search box](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id.
+    - **[Resource Prefix]**: Set the name prefix for the resources created by the Bicep template. For example, if you set **prefix** to `yourname`, an AKS cluster named `yourname-aks` will be created.
+    - **[Admin Object Id]**: Set the object ID of the Grafana Admin user or group. To find the object id, search for the admin user or group name on [AAD Portal Overview search box](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id.
 
 ## References
 
