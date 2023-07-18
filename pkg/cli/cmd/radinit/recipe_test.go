@@ -29,7 +29,7 @@ import (
 
 func Test_getResourceTypeFromPath(t *testing.T) {
 	t.Run("Successfully returns metadata", func(t *testing.T) {
-		resourceType := getResourceTypeFromPath("recipes/dev/rediscaches")
+		resourceType := getResourceTypeFromPath("recipes/local-dev/rediscaches")
 		require.Equal(t, "rediscaches", resourceType)
 	})
 
@@ -45,22 +45,22 @@ func Test_getResourceTypeFromPath(t *testing.T) {
 		},
 		{
 			"Valid Path",
-			"recipes/dev/rediscaches",
+			"recipes/local-dev/rediscaches",
 			"rediscaches",
 		},
 		{
 			"Invalid Path #1",
-			"recipes////dev/rediscaches",
+			"recipes////local-dev/rediscaches",
 			"",
 		},
 		{
 			"Invalid Path #2",
-			"recipes/dev////rediscaches",
+			"recipes/local-dev////rediscaches",
 			"",
 		},
 		{
 			"Path With Extra Path Argument",
-			"recipes/dev/rediscaches/testing",
+			"recipes/local-dev/rediscaches/testing",
 			"",
 		},
 	}
@@ -139,14 +139,14 @@ func Test_processRepositories(t *testing.T) {
 		{
 			"Valid Repository with Redis Cache",
 			[]string{
-				"recipes/dev/rediscaches",
+				"recipes/local-dev/rediscaches",
 			},
 			"0.20",
 			map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:0.20", DevRecipesRegistry)),
+						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
 					},
 				},
 			},
@@ -154,21 +154,21 @@ func Test_processRepositories(t *testing.T) {
 		{
 			"Valid Repository with Redis Cache and Mongo Database",
 			[]string{
-				"recipes/dev/rediscaches",
-				"recipes/dev/mongodatabases",
+				"recipes/local-dev/rediscaches",
+				"recipes/local-dev/mongodatabases",
 			},
 			"0.20",
 			map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:0.20", DevRecipesRegistry)),
+						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
 					},
 				},
 				"Applications.Link/mongoDatabases": {
 					"default": {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/mongodatabases:0.20", DevRecipesRegistry)),
+						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:0.20", DevRecipesRegistry)),
 					},
 				},
 			},
@@ -176,22 +176,24 @@ func Test_processRepositories(t *testing.T) {
 		{
 			"Valid Repository with Redis Cache, Mongo Database, and an unsupported type",
 			[]string{
-				"recipes/dev/rediscaches",
-				"recipes/dev/mongodatabases",
-				"recipes/dev/unsupported",
+				"recipes/local-dev/rediscaches",
+				"recipes/local-dev/mongodatabases",
+				"recipes/local-dev/unsupported",
+				"recipes/unsupported/rediscaches",
+				"recipes/unsupported/unsupported",
 			},
 			"latest",
 			map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/rediscaches:latest", DevRecipesRegistry)),
+						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:latest", DevRecipesRegistry)),
 					},
 				},
 				"Applications.Link/mongoDatabases": {
 					"default": {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/dev/mongodatabases:latest", DevRecipesRegistry)),
+						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:latest", DevRecipesRegistry)),
 					},
 				},
 			},
