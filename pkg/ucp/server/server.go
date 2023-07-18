@@ -72,6 +72,9 @@ type Options struct {
 
 const UCPProviderName = "ucp"
 
+// # Function Explanation
+//
+// NewServerOptionsFromEnvironment creates a new Options struct from environment variables and returns it along with any errors.
 func NewServerOptionsFromEnvironment() (Options, error) {
 	basePath, ok := os.LookupEnv("BASE_PATH")
 	if ok && len(basePath) > 0 && (!strings.HasPrefix(basePath, "/") || strings.HasSuffix(basePath, "/")) {
@@ -147,6 +150,10 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
+// NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
+// enabled) based on the given Options.
 func NewServer(options *Options) (*hosting.Host, error) {
 	var enableAsyncWorker bool
 	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")

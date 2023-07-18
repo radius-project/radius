@@ -21,7 +21,10 @@ import (
 	"unicode"
 )
 
-// NormalizeStringToLower converts string to safe string by removing non digit and non letter and replace '/' with '-'
+// # Function Explanation
+//
+// NormalizeStringToLower takes in a string and returns a normalized version of the string with all non-alphanumeric
+// characters replaced with hyphens and all letters converted to lowercase.
 func NormalizeStringToLower(s string) string {
 	if s == "" {
 		return s

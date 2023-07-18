@@ -72,7 +72,10 @@ type CosmosDBStorageClient struct {
 	options *ConnectionOptions
 }
 
-// NewCosmosDBStorageClient creates a new CosmosDBStorageClient.
+// # Function Explanation
+//
+// NewCosmosDBStorageClient creates a new CosmosDBStorageClient instance using the provided ConnectionOptions and returns
+// it, or an error if the ConnectionOptions are invalid.
 func NewCosmosDBStorageClient(options *ConnectionOptions) (*CosmosDBStorageClient, error) {
 	if err := options.load(); err != nil {
 		return nil, err
@@ -91,7 +94,10 @@ func NewCosmosDBStorageClient(options *ConnectionOptions) (*CosmosDBStorageClien
 	}, nil
 }
 
-// Init initializes the database and collection.
+// # Function Explanation
+//
+// Init checks if the database and collection exist, and if not, creates them. It returns an error if
+// either of the checks or creations fail.
 func (c *CosmosDBStorageClient) Init(ctx context.Context) error {
 	if err := c.createDatabaseIfNotExists(ctx); err != nil {
 		return err
@@ -227,7 +233,9 @@ func constructCosmosDBQuery(query store.Query) (*cosmosapi.Query, error) {
 	return &cosmosapi.Query{Query: queryString + whereParam, Params: queryParams}, nil
 }
 
-// Query queries the data resource
+// # Function Explanation
+//
+// Query builds and executes a CosmosDB query based on the provided store.Query and returns the results.
 func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, opts ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
@@ -302,7 +310,10 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 	}, nil
 }
 
-// Get gets the resource data using id.
+// # Function Explanation
+//
+// Get retrieves an object using CosmosDBStorageClient using the provided ID and optional GetOptions. It returns an error
+// if the object is not found or if an error occurs while retrieving the object.
 func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...store.GetOptions) (*store.Object, error) {
 	parsedID, err := resources.Parse(id)
 	if err != nil {
@@ -341,7 +352,10 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 	return obj, err
 }
 
-// Delete deletes the resource using id.
+// # Function Explanation
+//
+// Delete parses the given ID, gets the partition key, generates the CosmosDB key, and deletes the document from the
+// CosmosDB collection. It returns an error if the document is not found.
 func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...store.DeleteOptions) error {
 	parsedID, err := resources.Parse(id)
 	if err != nil {
@@ -370,7 +384,10 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 	return err
 }
 
-// Save upserts the resource.
+// # Function Explanation
+//
+// Save saves an object to the CosmosDB storage, returning an error if one occurs. If an ETag is provided, an error is
+// returned if the ETag does not match the existing ETag.
 func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
@@ -438,7 +455,10 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 	return nil
 }
 
-// GetPartitionKey function returns the partition key for a resource
+// # Function Explanation
+//
+// GetPartitionKey returns a partition key based on the given ID, normalizing the subscription ID and normalizing the
+// plane namespace if the ID is UCP-qualified.
 // Examples:
 // /planes/radius/local/... - Partition Key: radius/local
 // subscriptions/{guid}/... - Partition Key: {guid}
