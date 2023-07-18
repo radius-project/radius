@@ -98,8 +98,7 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &azureProvider{}
-			config, err := p.BuildConfig(context.Background(), tt.envConfig)
-			require.NoError(t, err)
+			config := p.BuildConfig(context.Background(), tt.envConfig)
 			require.Equal(t, len(tt.expectedConfig), len(config))
 			require.Equal(t, tt.expectedConfig["features"], config["features"])
 			require.Equal(t, tt.expectedConfig["subscription_id"], config["subscription_id"])

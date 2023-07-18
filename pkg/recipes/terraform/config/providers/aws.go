@@ -40,26 +40,22 @@ func NewAWSProvider() Provider {
 
 // BuildConfig generates the Terraform provider configuration for AWS provider.
 // https://registry.terraform.io/providers/hashicorp/aws/latest/docs
-func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
+func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	awsConfig := make(map[string]any)
 	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.AWS == datamodel.ProvidersAWS{}) || envConfig.Providers.AWS.Scope == "" {
-		logger.Info("AWS provider/scope is not configured on the Environment, skipping AWS region configuration.")
-		return nil, nil
+		logger.Info("AWS provider scope is not configured on the Environment, skipping AWS region configuration.")
+		return awsConfig
 	}
 
-	region, err := parseAWSScope(envConfig.Providers.AWS.Scope)
-	if err != nil {
-		return nil, err
-	}
-	if region == "" {
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid AWS provider scope %q is configured on the Environment, region is required in the scope", envConfig.Providers.AWS.Scope))
-	}
-
-	config := map[string]any{
-		"region": region,
+	region, _ := parseAWSScope(envConfig.Providers.AWS.Scope)
+	if region != "" {
+		awsConfig = map[string]any{
+			"region": region,
+		}
 	}
 
-	return config, nil
+	return awsConfig
 }
 
 // parseAWSScope parses an AWS provider scope and returns the associated region

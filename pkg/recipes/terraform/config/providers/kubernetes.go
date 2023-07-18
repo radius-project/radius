@@ -18,7 +18,6 @@ package providers
 
 import (
 	"context"
-	"errors"
 
 	"github.com/project-radius/radius/pkg/recipes"
 	"k8s.io/client-go/rest"
@@ -38,20 +37,16 @@ func NewKubernetesProvider() Provider {
 
 // BuildKubernetesProviderConfig generates the Terraform provider configuration for Kubernetes provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
-func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
+func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
+	// No additional config is needed if in cluster config is present.
+	// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs#in-cluster-config
 	_, err := rest.InClusterConfig()
 	if err != nil {
 		// If in cluster config is not present, then use default kubeconfig file.
-		if errors.Is(err, rest.ErrNotInCluster) {
-			return map[string]any{
-				"config_path": clientcmd.RecommendedHomeFile,
-			}, nil
+		return map[string]any{
+			"config_path": clientcmd.RecommendedHomeFile,
 		}
-
-		return nil, err
 	}
 
-	// No additional config is needed if in cluster config is present.
-	// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs#in-cluster-config
-	return nil, nil
+	return nil
 }

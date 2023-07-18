@@ -29,7 +29,7 @@ type Provider interface {
 	// BuildConfig generates the Terraform provider configuration for the provider.
 	// Returns a map of Terraform provider name to values representing the provider configuration.
 	// Returns an error if the provider configuration cannot be generated.
-	BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error)
+	BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any
 }
 
 // GetSupportedTerraformProviders returns a map of Terraform provider names to provider config builder.
