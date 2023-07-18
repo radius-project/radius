@@ -1,6 +1,6 @@
-## Infrastructure for Radius test
+## Infrastructure for Radius tests
 
-This directory includes the infrastructure code to build test environment for Radius.
+This directory includes the infrastructure templates to deploy test environments for Radius.
 
 * [azure](./azure/): includes the bicep template for Radius test infrastructure on Azure.
 

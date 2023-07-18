@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-@description('Specifies the prefix of deploying resource name.')
-param prefix string
+@description('Specifies the prefix for resource names deployed in this template.')
+param prefix string = uniqueString(resourceGroup().id)
 
-@description('Specifies the location of AKS cluster related resources. Default is the resource group location.')
+@description('Specifies the location where to deploy the resources. Default is the resource group location.')
 param location string = resourceGroup().location
 
 @description('Specifies the name of log anlaytics workspace. Default is {prefix}-workspace.')

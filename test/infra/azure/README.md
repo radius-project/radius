@@ -1,10 +1,11 @@
 ## Build Radius infrastructure to Azure
 
-This includes the bicep template to deploy the following resources on Azure for running Radius:
+This directory includes the Bicep templates to deploy the following resources on Azure for running Radius:
+
 * Log Analytics Workspace for log
 * Azure Monitor Workspace for metric 
 * AKS Cluster
-  * Installed extensions : Azure Keyvault CSI driver, Dapr
+  * Installed extensions: Azure Keyvault CSI driver, Dapr
 * Grafana dashboard
 * Installed tools
   - cert-manager v1.20.0
@@ -13,6 +14,7 @@ This includes the bicep template to deploy the following resources on Azure for 
 ## Prerequisite
 
 1. [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
+2. [Azure subscription](https://azure.com) to which you have a Owner/Contributor role
 
 ## Steps
 
@@ -34,7 +36,7 @@ This includes the bicep template to deploy the following resources on Azure for 
     az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters prefix='[Resource Prefix]' grafanaAdminObjectId='[Admin Object Id]'
     ```
     - **[Resource Prefix]**: Set the name prefix for the resources created by the Bicep template. For example, if you set **prefix** to `yourname`, an AKS cluster named `yourname-aks` will be created.
-    - **[Admin Object Id]**: Set the object ID of the Grafana Admin user or group. To find the object id, search for the admin user or group name on [AAD Portal Overview search box](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id.
+    - **[Admin Object Id]**: Set the object ID of the Grafana Admin user or group. To find the object id, search for the admin user or group name on [AAD Portal Overview search box](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id or run `az ad signed-in-user show` to get your own user object id.
 
 ## References
 
