@@ -26,9 +26,9 @@ import (
 )
 
 func Test_RabbitMQ_Manual(t *testing.T) {
-	template := "testdata/corerp-resources-rabbitmq.bicep"
-	name := "corerp-resources-rabbitmq-old"
-	appNamespace := "default-corerp-resources-rabbitmq-old"
+	template := "testdata/msgrp-resources-rabbitmq.bicep"
+	name := "msgrp-resources-rabbitmq"
+	appNamespace := "default-msgrp-resources-rabbitmq"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -40,23 +40,23 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rmq-app-ctnr-old",
+						Name: "rmq-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rmq-ctnr-old",
+						Name: "rmq-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rmq-rte-old",
+						Name: "rmq-rte",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "rmq-rmq-old",
-						Type: validation.O_RabbitMQMessageQueuesResource,
+						Name: "msg-rmq-rmq",
+						Type: validation.RabbitMQQueuesResource,
 						App:  name,
 					},
 				},
@@ -64,9 +64,9 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rmq-app-ctnr-old"),
-						validation.NewK8sPodForResource(name, "rmq-ctnr-old"),
-						validation.NewK8sServiceForResource(name, "rmq-rte-old"),
+						validation.NewK8sPodForResource(name, "rmq-app-ctnr"),
+						validation.NewK8sPodForResource(name, "rmq-ctnr"),
+						validation.NewK8sServiceForResource(name, "rmq-rte"),
 					},
 				},
 			},
@@ -77,9 +77,9 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 }
 
 func Test_RabbitMQ_Recipe(t *testing.T) {
-	template := "testdata/corerp-resources-rabbitmq-recipe.bicep"
-	name := "corerp-resources-rabbitmq-recipe-old"
-	appNamespace := "default-corerp-resources-rabbitmq-recipe-old"
+	template := "testdata/msgrp-resources-rabbitmq-recipe.bicep"
+	name := "msgrp-resources-rabbitmq-recipe"
+	appNamespace := "default-msgrp-resources-rabbitmq-recipe"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -87,7 +87,7 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-environment-rabbitmq-recipe-env-old",
+						Name: "msgrp-resources-environment-rabbitmq-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -95,7 +95,7 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rmq-recipe-app-ctnr-old",
+						Name: "rmq-recipe-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -104,8 +104,8 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rmq-recipe-app-ctnr-old").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "rmq-recipe-resource-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "rmq-recipe-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "rmq-recipe-resource").ValidateLabels(false),
 					},
 				},
 			},

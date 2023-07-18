@@ -42,14 +42,17 @@ const (
 	VolumesResource      = "applications.core/volumes"
 	SecretStoresResource = "applications.core/secretStores"
 
-	MongoDatabasesResource        = "applications.link/mongoDatabases"
-	RabbitMQMessageQueuesResource = "applications.link/rabbitMQMessageQueues"
-	RedisCachesResource           = "applications.link/redisCaches"
-	SQLDatabasesResource          = "applications.link/sqlDatabases"
-	DaprPubSubBrokersResource     = "applications.link/daprPubSubBrokers"
-	DaprSecretStoresResource      = "applications.link/daprSecretStores"
-	DaprStateStoresResource       = "applications.link/daprStateStores"
-	ExtendersResource             = "applications.link/extenders"
+	MongoDatabasesResource          = "applications.link/mongoDatabases"
+	O_RabbitMQMessageQueuesResource = "applications.link/rabbitMQMessageQueues"
+	RedisCachesResource             = "applications.link/redisCaches"
+	SQLDatabasesResource            = "applications.link/sqlDatabases"
+	DaprPubSubBrokersResource       = "applications.link/daprPubSubBrokers"
+	DaprSecretStoresResource        = "applications.link/daprSecretStores"
+	DaprStateStoresResource         = "applications.link/daprStateStores"
+	ExtendersResource               = "applications.link/extenders"
+
+	// New resources after splitting LinkRP namespace
+	RabbitMQQueuesResource = "applications.messaging/rabbitMQQueues"
 )
 
 type RPResource struct {

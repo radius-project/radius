@@ -166,6 +166,8 @@ func getLinkType(resourceType string) string {
 		return linkrp.RedisCachesResourceType
 	case "sqldatabases":
 		return linkrp.SqlDatabasesResourceType
+	case "rabbitmqqueues":
+		return linkrp.N_RabbitMQQueuesResourceType
 	default:
 		return ""
 	}

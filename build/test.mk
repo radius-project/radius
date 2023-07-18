@@ -60,6 +60,9 @@ test-functional-kubernetes: ## Runs Kubernetes functional tests
 test-functional-shared: ## Runs shared functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
+test-functional-msgrp: ## Runs Messaging RP functional tests
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/messagingrp/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
+
 test-functional-samples: ## Runs Samples functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
