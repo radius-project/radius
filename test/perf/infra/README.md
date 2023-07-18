@@ -8,8 +8,8 @@ This includes the bicep template to build the infrastructure on Azure by deployi
   * Installed extensions : Azure Keyvault CSI driver, Dapr
 * Grafana dashboard
 * Installed tools
-  - cert-manager
-  - Azure workload identity webhook handler
+  - cert-manager v1.20.0
+  - Azure workload identity mutating admission webhook controller v1.1.0
 
 ## Prerequisite
 
@@ -30,7 +30,7 @@ This includes the bicep template to build the infrastructure on Azure by deployi
     ```bash
     az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaAdminObjectId='[Admin Object Id]'
     ```
-    > **How to find [Admin Object Id]**: You can use user or group id as a Grafana Admin. To find the object id, search admin user or group on [AAD Overview search](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id.
+    > **How to find [Admin Object Id]**: You can use Azure AD user or group name as a Grafana Admin. To find the object id, search admin user or group name on [AAD Portal Overview search box](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id.
 
 ## References
 

@@ -160,7 +160,7 @@ module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
   ]
 }
 
-// Run deployment script to bootstrap the cluster.
+// Run deployment script to bootstrap the cluster for Radius.
 module deploymentScript './modules/deployment-script.bicep' = {
   name: 'deploymentScript'
   params: {
