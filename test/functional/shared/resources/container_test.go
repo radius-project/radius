@@ -229,13 +229,13 @@ func Test_Container_FailDueToNonExistentImage(t *testing.T) {
 	cliError := "Internal"
 	innerError := []string{"ErrImagePull", "ImagePullBackOff"}
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor:                               step.NewDeployErrorExecutor(template, cliError, innerError, "magpieimage=non-existent-image"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{},
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
@@ -257,13 +257,13 @@ func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 	cliError := "Internal"
 	innerError := []string{"CrashLoopBackOff"}
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor:                               step.NewDeployErrorExecutor(template, cliError, innerError, functional.GetMagpieImage()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{},
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{

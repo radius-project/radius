@@ -356,7 +356,15 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 
 func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	informers := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
+
+	informers := informers.NewSharedInformerFactoryWithOptions(
+		handler.clientSet,
+		handler.cacheResyncInterval,
+		informers.WithNamespace(item.GetNamespace()),
+		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.LabelSelector = kubernetes.LabelManagedBy + "=" + kubernetes.LabelManagedByRadiusRP
+		}),
+	)
 
 	podInformer := handler.addPodInformer(ctx, informers, item, doneCh)
 	deploymentInformer := handler.addDeploymentInformer(ctx, informers, item, doneCh)
