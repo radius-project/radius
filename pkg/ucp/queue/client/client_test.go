@@ -25,6 +25,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	// defaultTestDequeueInterval is the default duration for the dequeue interval for inmemory test queue
+	defaultTestDequeueInterval = time.Duration(5) * time.Millisecond
+)
+
 func TestStartDequeuer(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
@@ -47,13 +52,13 @@ func TestStartDequeuer(t *testing.T) {
 
 	secondCall := mockCli.EXPECT().Dequeue(gomock.Any(), gomock.Any()).Return(nil, ErrInvalidMessage).After(firstCall)
 	mockCli.EXPECT().Dequeue(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, opts ...DequeueOptions) (*Message, error) {
+		DoAndReturn(func(ctx context.Context, cfg QueueClientConfig) (*Message, error) {
 			close(lastDequeueCh)
 			return nil, ErrInvalidMessage
 		}).AnyTimes().After(secondCall)
 
 	ctx, cancel := context.WithCancel(context.TODO())
-	msgCh, err := StartDequeuer(ctx, mockCli)
+	msgCh, err := StartDequeuer(ctx, mockCli, WithDequeueInterval(defaultTestDequeueInterval))
 	require.NoError(t, err)
 
 	recvCnt := 0

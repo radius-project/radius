@@ -18,6 +18,9 @@ package resources
 
 import "strings"
 
+// # Function Explanation
+// 
+// ToAWSResourceType takes an ID and returns a string representing the AWS resource type.
 func ToAWSResourceType(id ID) string {
 	parts := []string{}
 	// AWS ARNs use :: as separator.
