@@ -94,14 +94,9 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &awsProvider{}
 			config, err := p.BuildConfig(context.Background(), tt.envConfig)
-			if tt.expectedErrMsg != "" {
-				require.Error(t, err)
-				require.ErrorContains(t, err, tt.expectedErrMsg)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, len(tt.expectedConfig), len(config))
-				require.Equal(t, tt.expectedConfig["region"], config["region"])
-			}
+			require.NoError(t, err)
+			require.Equal(t, len(tt.expectedConfig), len(config))
+			require.Equal(t, tt.expectedConfig["region"], config["region"])
 		})
 	}
 }

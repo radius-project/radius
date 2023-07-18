@@ -51,7 +51,6 @@ func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Config
 	if err != nil {
 		return nil, err
 	}
-
 	if region == "" {
 		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid AWS provider scope %q is configured on the Environment, region is required in the scope", envConfig.Providers.AWS.Scope))
 	}
