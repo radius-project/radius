@@ -10,21 +10,21 @@ param magpieimage string
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-httproute'
+  name: 'corerp-resources-container-single_DNS_request'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-httproute-app'
+          namespace: 'corerp-resources-container-single_DNS_request'
       }
     ]
   }
 }
 
-resource containerxx 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerxx'
+resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containera'
   location: location
   properties: {
     application: app.id
@@ -32,8 +32,8 @@ resource containerxx 'Applications.Core/containers@2022-03-15-privatepreview' = 
       image: magpieimage
     }
     connections: {
-      containeryy: {
-        source: 'http://containeryy:3000'
+      containerb: {
+        source: 'http://containerb:3000'
       }
     }
   }

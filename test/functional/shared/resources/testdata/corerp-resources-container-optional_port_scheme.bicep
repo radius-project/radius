@@ -6,29 +6,26 @@ param location string = 'global'
 @description('Specifies the image of the container resource.')
 param magpieimage string
 
-@description('Specifies the port of the container resource.')
-param port int = 3000
-
 @description('Specifies the environment for resources.')
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-httproute'
+  name: 'corerp-resources-container-optional_port_scheme'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-httproute-app'
+          namespace: 'corerp-resources-container-optional_port_scheme'
       }
     ]
   }
 }
 
 // the container resource should use the optional port, protocol, and scheme variables if specified.
-resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerc'
+resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containera'
   location: location
   properties: {
     application: app.id
@@ -48,8 +45,8 @@ resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 // the container resource should use the optional port, protocol, and scheme variables if specified.
-resource containerd 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerd'
+resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerb'
   location: location
   properties: {
     application: app.id
@@ -69,8 +66,8 @@ resource containerd 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 // the container resource should still expose a port on the containerPort if the optional variables are not specified.
-resource containere 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containere'
+resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerc'
   location: location
   properties: {
     application: app.id
