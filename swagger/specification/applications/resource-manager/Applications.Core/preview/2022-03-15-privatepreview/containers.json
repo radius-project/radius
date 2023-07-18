@@ -387,11 +387,11 @@
           "type": "string"
         },
         "scheme": {
-          "description": "optional. used to build URLs, defaults to http or https based on port",
+          "description": "Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value.",
           "type": "string"
         },
         "port": {
-          "description": "optional. only needs to be set when a value different from containerPort is desired",
+          "description": "Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired.",
           "type": "integer"
         }
       }

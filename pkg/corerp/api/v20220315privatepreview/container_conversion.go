@@ -68,13 +68,21 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 
 	ports := make(map[string]datamodel.ContainerPort)
 	for key, val := range src.Properties.Container.Ports {
-		ports[key] = datamodel.ContainerPort{
+		port := datamodel.ContainerPort{
 			ContainerPort: to.Int32(val.ContainerPort),
-			Port:          to.Int32(val.Port),
-			Scheme:        to.String(val.Scheme),
 			Protocol:      toProtocolDataModel(val.Protocol),
 			Provides:      to.String(val.Provides),
 		}
+	
+		if val.Port != nil {
+			port.Port = to.Int32(val.Port)
+		}
+	
+		if val.Scheme != nil {
+			port.Scheme = to.String(val.Scheme)
+		}
+	
+		ports[key] = port
 	}
 
 	var volumes map[string]datamodel.VolumeProperties
@@ -184,10 +192,16 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	for key, val := range c.Properties.Container.Ports {
 		ports[key] = &ContainerPort{
 			ContainerPort: to.Ptr(val.ContainerPort),
-			Port:          to.Ptr(val.Port),
-			Scheme:        to.Ptr(val.Scheme),
 			Protocol:      fromProtocolDataModel(val.Protocol),
 			Provides:      to.Ptr(val.Provides),
+		}
+
+		if val.Port != 0 {
+			ports[key].Port = to.Ptr(val.Port)
+		}
+
+		if val.Scheme != "" {
+			ports[key].Scheme = to.Ptr(val.Scheme)
 		}
 	}
 
