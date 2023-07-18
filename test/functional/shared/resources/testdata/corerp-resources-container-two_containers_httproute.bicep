@@ -13,21 +13,21 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-httproute'
+  name: 'corerp-resources-container-two_containers_httproute'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-httproute-app'
+          namespace: 'corerp-resources-container-two_containers_httproute'
       }
     ]
   }
 }
 
-resource containergg 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containergg'
+resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containera'
   location: location
   properties: {
     application: app.id
@@ -35,16 +35,15 @@ resource containergg 'Applications.Core/containers@2022-03-15-privatepreview' = 
       image: magpieimage
     }
     connections: {
-      containernn: {
-        source: containernnhttproute.id
-        // source: 'http://containervb:3000'
+      containerb: {
+        source: containerbhttproute.id
       }
     }
   }
 }
 
-resource containernn 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containernn'
+resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerb'
   location: location
   properties: {
     application: app.id
@@ -53,16 +52,15 @@ resource containernn 'Applications.Core/containers@2022-03-15-privatepreview' = 
       ports: {
         web: {
           containerPort: port
-          // adds label to container that links it to the httproute
-          // provides: containerhttproute.id
+          provides: containerbhttproute.id
         }
       }
     }
   }
 }
 
-resource containernnhttproute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'containernnhttproute'
+resource containerbhttproute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'containerbhttproute'
   location: location
   properties: {
     application: app.id

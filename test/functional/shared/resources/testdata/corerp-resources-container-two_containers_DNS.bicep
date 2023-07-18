@@ -13,21 +13,21 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-httproute'
+  name: 'corerp-resources-container-two_containers_DNS'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-httproute-app'
+          namespace: 'corerp-resources-container-two_containers_DNS'
       }
     ]
   }
 }
 
-resource containerer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerer'
+resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containera'
   location: location
   properties: {
     application: app.id
@@ -35,16 +35,15 @@ resource containerer 'Applications.Core/containers@2022-03-15-privatepreview' = 
       image: magpieimage
     }
     connections: {
-      containervb: {
-        // source: containerhttproute.id
-        source: 'http://containervb:3000'
+      containerb: {
+        source: 'http://containerb:3000'
       }
     }
   }
 }
 
-resource containervb 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containervb'
+resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerb'
   location: location
   properties: {
     application: app.id
@@ -53,8 +52,6 @@ resource containervb 'Applications.Core/containers@2022-03-15-privatepreview' = 
       ports: {
         web: {
           containerPort: port
-          // adds label to container that links it to the httproute
-          // provides: containerhttproute.id
         }
       }
     }

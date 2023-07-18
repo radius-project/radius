@@ -13,21 +13,21 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-httproute'
+  name: 'corerp-resources-container-single_DNS_service_creation'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-httproute-app'
+          namespace: 'corerp-resources-container-single_DNS_service_creation'
       }
     ]
   }
 }
 
-resource containerll 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerll'
+resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containera'
   location: location
   properties: {
     application: app.id
