@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -71,6 +72,9 @@ func TestPut(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-deployment",
 			Namespace: "test-namespace",
+			Labels: map[string]string{
+				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+			},
 		},
 		Spec: v1.DeploymentSpec{
 			Replicas: int32Ptr(1),
@@ -323,6 +327,9 @@ func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-deployment",
 			Namespace: "test-namespace",
+			Labels: map[string]string{
+				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+			},
 		},
 		Spec: v1.DeploymentSpec{
 			Replicas: int32Ptr(1),
