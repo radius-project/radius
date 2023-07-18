@@ -39,6 +39,9 @@ planes:
       resourceProviders:
         Applications.Core: "http://localhost:8080"
         Applications.Link: "http://localhost:8081"
+        Applications.Messaging: "http://localhost:8081"
+        Applications.Dapr: "http://localhost:8081"
+        Applications.Datastores: "http://localhost:8081"
       kind: "UCPNative"
   - id: "/planes/deployments/local"
     properties:
