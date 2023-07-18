@@ -76,7 +76,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
-	ws, err := cli.GetCurrentWorkspace(r.ConfigHolder.Config)
+	ws, err := cli.GetWorkspace(r.ConfigHolder.Config, "")
 	if err != nil {
 		return nil, nil, err
 	}

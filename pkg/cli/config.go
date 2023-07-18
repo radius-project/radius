@@ -171,23 +171,6 @@ func GetWorkspace(v *viper.Viper, name string) (*workspaces.Workspace, error) {
 	return section.GetWorkspace(name)
 }
 
-// # Function Explanation
-// GetCurrentWorkspace reads the workspace section of the config and returns the current workspace.
-func GetCurrentWorkspace(v *viper.Viper) (*workspaces.Workspace, error) {
-	section, err := ReadWorkspaceSection(v)
-	if err != nil {
-		return nil, err
-	}
-
-	// Do not specify a name which will return the default workspace
-	ws, err := section.GetWorkspace("")
-	if err != nil {
-		return nil, err
-	}
-
-	return ws, nil
-}
-
 func getConfig(configFilePath string) (*viper.Viper, error) {
 	config := viper.New()
 
