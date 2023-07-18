@@ -35,8 +35,6 @@ env:
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUM_VER: 1.10.0
 
-  # Dapr version
-  DAPR_VER: '1.10.0'
   # ACR for storing test images
   CACHE_REGISTRY: radiusdev.azurecr.io
   # The radius functional test timeout
@@ -219,7 +217,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,shared,samples]
+        name: [shared]
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -282,7 +280,7 @@ jobs:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Get kubeconf credential for AKS cluster
         run: |
-          az aks get-credentials --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} --resource-group radius-test-00 --name radiustest00 --admin
+          az aks get-credentials --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} --resource-group radius-test-00 --name radiustest00-aks --admin
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Download Bicep
