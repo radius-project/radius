@@ -47,7 +47,7 @@ const (
 	// Deployment duration should not reach to this timeout since async operation worker will time out context before MaxDeploymentTimeout.
 	MaxDeploymentTimeout = time.Minute * time.Duration(10)
 	// DefaultCacheResyncInterval is the interval for resyncing informer.
-	DefaultCacheResyncInterval = time.Second * time.Duration(5)
+	DefaultCacheResyncInterval = time.Second * time.Duration(30)
 )
 
 // NewKubernetesHandler creates Kubernetes Resource handler instance.
@@ -60,12 +60,19 @@ func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) Resourc
 	}
 }
 
+type sharedInformers struct {
+	deploymentInformer cache.SharedIndexInformer
+	podInformer        cache.SharedIndexInformer
+	replicaSetInformer cache.SharedIndexInformer
+}
+
 type kubernetesHandler struct {
 	client    client.Client
 	clientSet k8s.Interface
 
 	deploymentTimeOut   time.Duration
 	cacheResyncInterval time.Duration
+	informers           sharedInformers
 }
 
 // Put creates or updates a Kubernetes resource described in PutOptions.
@@ -116,10 +123,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	case "deployment":
 		// Monitor the deployment until it is ready.
 		err = handler.waitUntilDeploymentIsReady(ctx, &item)
-		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", item.GetName(), item.GetNamespace()))
 		if err != nil {
 			return nil, err
 		}
+		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	default:
 		// We do not monitor the other resource types.
@@ -219,6 +226,11 @@ func (handler *kubernetesHandler) addDeploymentInformer(ctx context.Context, inf
 	return deploymentInformer
 }
 
+func (handler *kubernetesHandler) addReplicaSetInformer(ctx context.Context, informers informers.SharedInformerFactory, item client.Object, doneCh chan<- error) cache.SharedIndexInformer {
+	replicaSetInformer := informers.Apps().V1().ReplicaSets().Informer()
+	return replicaSetInformer
+}
+
 func (handler *kubernetesHandler) deploymentEventHandler(ctx context.Context, item client.Object, obj any, doneCh chan<- error) {
 	o := obj.(*v1.Deployment)
 	// There might be parallel deployments in progress, we need to make sure we are watching the right one
@@ -241,10 +253,12 @@ func (handler *kubernetesHandler) getNewestReplicaSetForDeployment(ctx context.C
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Get all ReplicaSets in the namespace
-	replicaSets, err := handler.clientSet.AppsV1().ReplicaSets(item.GetNamespace()).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return "", fmt.Errorf("Unable to get replicasets in namespace %s: %s", item.GetNamespace(), err.Error())
+	replicaSets := &v1.ReplicaSetList{}
+	rl := handler.informers.replicaSetInformer.GetStore().List()
+	for _, rs := range rl {
+		replicaSets.Items = append(replicaSets.Items, *(rs.(*v1.ReplicaSet)))
 	}
+
 	if replicaSets == nil || len(replicaSets.Items) == 0 {
 		logger.Info(fmt.Sprintf("Unable to get replicasets in namespace %s", item.GetNamespace()))
 		return "", nil
@@ -356,23 +370,24 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 
 func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-
-	informers := informers.NewSharedInformerFactoryWithOptions(
-		handler.clientSet,
-		handler.cacheResyncInterval,
-		informers.WithNamespace(item.GetNamespace()),
-		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
-			options.LabelSelector = kubernetes.LabelManagedBy + "=" + kubernetes.LabelManagedByRadiusRP
-		}),
-	)
+	informers := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 
 	podInformer := handler.addPodInformer(ctx, informers, item, doneCh)
 	deploymentInformer := handler.addDeploymentInformer(ctx, informers, item, doneCh)
+	replicaSetInformer := handler.addReplicaSetInformer(ctx, informers, item, doneCh)
 
+	// Save the informers on the handler object
+	handler.informers = sharedInformers{
+		podInformer:        podInformer,
+		deploymentInformer: deploymentInformer,
+		replicaSetInformer: replicaSetInformer,
+	}
+
+	// Start the informers
 	informers.Start(ctx.Done())
 
 	// Wait for the deployment and pod informer's cache to be synced.
-	if !cache.WaitForCacheSync(ctx.Done(), deploymentInformer.HasSynced, podInformer.HasSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(), deploymentInformer.HasSynced, podInformer.HasSynced, replicaSetInformer.HasSynced) {
 		err := fmt.Errorf("cache sync is failed for deployment informer: name: %s, namespace %s", item.GetName(), item.GetNamespace())
 		return err
 	}

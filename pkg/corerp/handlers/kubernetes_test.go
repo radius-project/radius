@@ -34,7 +34,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 )
 
 func int32Ptr(i int32) *int32 { return &i }
@@ -61,6 +63,18 @@ func addReplicaSetToDeployment(t *testing.T, ctx context.Context, clientset *fak
 
 	_, err = clientset.AppsV1().Deployments(deployment.Namespace).Update(ctx, deployment, metav1.UpdateOptions{})
 	require.NoError(t, err)
+}
+
+func startInformers(ctx context.Context, clientSet *fake.Clientset, handler *kubernetesHandler) {
+	// Create a fake replicaset informer and start
+	informers := informers.NewSharedInformerFactory(clientSet, 0)
+	handler.informers = sharedInformers{
+		deploymentInformer: informers.Apps().V1().Deployments().Informer(),
+		replicaSetInformer: informers.Apps().V1().ReplicaSets().Informer(),
+		podInformer:        informers.Core().V1().Pods().Informer(),
+	}
+	informers.Start(context.Background().Done())
+	cache.WaitForCacheSync(ctx.Done(), handler.informers.deploymentInformer.HasSynced, handler.informers.replicaSetInformer.HasSynced, handler.informers.podInformer.HasSynced)
 }
 
 func TestPut(t *testing.T) {
@@ -153,8 +167,8 @@ func TestPut(t *testing.T) {
 			handler := kubernetesHandler{
 				client:              k8sutil.NewFakeKubeClient(nil),
 				clientSet:           nil,
-				deploymentTimeOut:   time.Duration(5) * time.Second,
-				cacheResyncInterval: time.Duration(10) * time.Second,
+				deploymentTimeOut:   time.Duration(50) * time.Second,
+				cacheResyncInterval: time.Duration(1) * time.Second,
 			}
 
 			clientSet := fake.NewSimpleClientset(tc.in.Resource.Resource.(runtime.Object))
@@ -191,7 +205,7 @@ func TestDelete(t *testing.T) {
 	handler := kubernetesHandler{
 		client:              k8sutil.NewFakeKubeClient(nil),
 		deploymentTimeOut:   time.Duration(1) * time.Second,
-		cacheResyncInterval: time.Duration(30) * time.Second,
+		cacheResyncInterval: time.Duration(10) * time.Second,
 	}
 
 	err := handler.client.Create(ctx, deployment)
@@ -470,9 +484,9 @@ func TestGetPodsInDeployment(t *testing.T) {
 	}
 
 	// Create a Pod object
-	pod := &corev1.Pod{
+	pod1 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
+			Name:      "test-pod1",
 			Namespace: "test-namespace",
 			Labels: map[string]string{
 				"app": "test-app",
@@ -487,8 +501,30 @@ func TestGetPodsInDeployment(t *testing.T) {
 		},
 	}
 
+	// Create a Pod object
+	pod2 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod2",
+			Namespace: "test-namespace",
+			Labels: map[string]string{
+				"app": "doesnotmatch",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       "xyz",
+					Controller: to.Ptr(true),
+				},
+			},
+		},
+	}
+
 	// Add the Pod object to the fake Kubernetes clientset
-	_, err := fakeClient.CoreV1().Pods(pod.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	_, err := fakeClient.CoreV1().Pods(pod1.Namespace).Create(context.Background(), pod1, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create Pod: %v", err)
+	}
+	_, err = fakeClient.CoreV1().Pods(pod2.Namespace).Create(context.Background(), pod2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create Pod: %v", err)
 	}
@@ -498,11 +534,14 @@ func TestGetPodsInDeployment(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
+	ctx := context.Background()
+	startInformers(ctx, fakeClient, handler)
+
 	// Call the getPodsInDeployment function
-	pods, err := handler.getPodsInDeployment(context.Background(), deployment, replicaset.Name)
+	pods, err := handler.getPodsInDeployment(ctx, deployment, replicaset.Name)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(pods))
-	require.Equal(t, pod.Name, pods[0].Name)
+	require.Equal(t, pod1.Name, pods[0].Name)
 }
 
 func TestGetReplicaSetName(t *testing.T) {
@@ -581,8 +620,11 @@ func TestGetNewestReplicaSetForDeployment(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
+	ctx := context.Background()
+	startInformers(ctx, fakeClient, handler)
+
 	// Call the getNewestReplicaSetForDeployment function
-	replicaSetName, err := handler.getNewestReplicaSetForDeployment(context.Background(), deployment)
+	replicaSetName, err := handler.getNewestReplicaSetForDeployment(ctx, deployment)
 	require.NoError(t, err)
 	require.Equal(t, replicaSet1.Name, replicaSetName)
 }
@@ -798,9 +840,12 @@ func TestPodEventHandler(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
+	ctx := context.Background()
+	startInformers(ctx, fakeClient, handler)
+
 	// Call the pod event handler with the mock objects
 	doneCh := make(chan error)
-	go handler.podEventHandler(context.Background(), deployment, pod, doneCh)
+	go handler.podEventHandler(ctx, deployment, pod, doneCh)
 
 	// Wait for the handler to finish
 	err = <-doneCh
@@ -851,9 +896,12 @@ func TestDeploymentEventHandler(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
+	ctx := context.Background()
+	startInformers(ctx, fakeClient, handler)
+
 	// Call the deployment event handler with the mock objects
 	doneCh := make(chan error)
-	go handler.deploymentEventHandler(context.Background(), deployment, deployment, doneCh)
+	go handler.deploymentEventHandler(ctx, deployment, deployment, doneCh)
 
 	// Wait for the handler to finish
 	err = <-doneCh
