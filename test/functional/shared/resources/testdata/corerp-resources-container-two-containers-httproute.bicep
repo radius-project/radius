@@ -13,21 +13,21 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-two_containers_httproute'
+  name: 'corerp-resources-container-two-containers-httproute'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-two_containers_httproute'
+          namespace: 'corerp-resources-container-two-containers-httproute'
       }
     ]
   }
 }
 
-resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containera'
+resource containerag 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerag'
   location: location
   properties: {
     application: app.id
@@ -35,15 +35,15 @@ resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
       image: magpieimage
     }
     connections: {
-      containerb: {
-        source: containerbhttproute.id
+      containerah: {
+        source: containerahhttproute.id
       }
     }
   }
 }
 
-resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerb'
+resource containerah 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerah'
   location: location
   properties: {
     application: app.id
@@ -52,15 +52,15 @@ resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
       ports: {
         web: {
           containerPort: port
-          provides: containerbhttproute.id
+          provides: containerahhttproute.id
         }
       }
     }
   }
 }
 
-resource containerbhttproute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'containerbhttproute'
+resource containerahhttproute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'containerahhttproute'
   location: location
   properties: {
     application: app.id

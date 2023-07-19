@@ -13,21 +13,37 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-single_DNS_service_creation'
+  name: 'corerp-resources-container-two-containers-DNS'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-single_DNS_service_creation'
+          namespace: 'corerp-resources-container-two-containers-DNS'
       }
     ]
   }
 }
 
-resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containera'
+resource containerad 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerad'
+  location: location
+  properties: {
+    application: app.id
+    container: {
+      image: magpieimage
+    }
+    connections: {
+      containeraf: {
+        source: 'http://containeraf:3000'
+      }
+    }
+  }
+}
+
+resource containeraf 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containeraf'
   location: location
   properties: {
     application: app.id
