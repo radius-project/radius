@@ -146,13 +146,9 @@ jobs:
           <summary> Click here to see the list of tools in the current test run</summary>
 
           * gotestsum ${{ env.GOTESTSUM_VER }}
-          * KinD: ${{ env.KIND_VER }}
-          * Dapr: ${{ env.DAPR_VER }}
-          * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
-          * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-          * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
-          * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
-          * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
+          * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
 
           </details>
           
@@ -276,7 +272,10 @@ jobs:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Get kubeconf credential for AKS cluster
         run: |
-          az aks get-credentials --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} --resource-group ${{ env.AKS_RESOURCE_GROUP }} --name ${{ env.AKS_CLUSTER_NAME }} --admin
+          az aks get-credentials \
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER_NAME }} --admin
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Download Bicep
@@ -379,4 +378,6 @@ jobs:
       - name: delete namespaces
         if: always()
         run: |
+          kubectl delete resources.ucp.dev -n radius-system --all
+          kubectl delete queuemessages.ucp.dev -n radius-system --all
           kubectl delete namespace $(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^msc823.*|^mse0af.*' | awk '{print $1}')
