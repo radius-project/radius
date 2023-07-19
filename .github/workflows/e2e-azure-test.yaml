@@ -50,7 +50,7 @@ env:
   # The AWS account ID
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
-  AKS_CLUSTER_NAME: 'radiuse2e00'
+  AKS_CLUSTER_NAME: 'radiuse2e00-aks'
   AKS_RESOURCE_GROUP: 'radiuse2e00'
 
 jobs:
