@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -96,6 +97,16 @@ func Test_Run(t *testing.T) {
 							TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
 							TemplateVersion: to.Ptr("1.1.0"),
 						},
+						"cosmosDB-terraform1": {
+							TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
+							TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
+							TemplateVersion: to.Ptr("1.1.0"),
+						},
+						"cosmosDB-terraform2": {
+							TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
+							TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
+							TemplateVersion: to.Ptr("1.1.0"),
+						},
 					},
 				},
 			},
@@ -109,6 +120,20 @@ func Test_Run(t *testing.T) {
 			},
 			{
 				Name:            "cosmosDB-terraform",
+				LinkType:        linkrp.MongoDatabasesResourceType,
+				TemplateKind:    recipes.TemplateKindTerraform,
+				TemplatePath:    "Azure/cosmosdb/azurerm",
+				TemplateVersion: "1.1.0",
+			},
+			{
+				Name:            "cosmosDB-terraform1",
+				LinkType:        linkrp.MongoDatabasesResourceType,
+				TemplateKind:    recipes.TemplateKindTerraform,
+				TemplatePath:    "Azure/cosmosdb/azurerm",
+				TemplateVersion: "1.1.0",
+			},
+			{
+				Name:            "cosmosDB-terraform2",
 				LinkType:        linkrp.MongoDatabasesResourceType,
 				TemplateKind:    recipes.TemplateKindTerraform,
 				TemplatePath:    "Azure/cosmosdb/azurerm",
@@ -140,6 +165,15 @@ func Test_Run(t *testing.T) {
 				Options: objectformats.GetEnvironmentRecipesTableFormat(),
 			},
 		}
-		require.Equal(t, expected, outputSink.Writes)
+		exp := expected[0].(output.FormattedOutput).Obj.([]types.EnvironmentRecipe)
+		act := outputSink.Writes[0].(output.FormattedOutput).Obj.([]types.EnvironmentRecipe)
+
+		sort.Slice(exp, func(i, j int) bool {
+			return exp[i].Name < exp[j].Name
+		})
+		sort.Slice(act, func(i, j int) bool {
+			return act[i].Name < act[j].Name
+		})
+		require.Equal(t, exp, act)
 	})
 }
