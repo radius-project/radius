@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -121,7 +122,7 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 	}
 
 	// Add the required providers to the terraform configuration
-	if err := config.AddProviders(ctx, configFilePath, requiredProviders, options.Providers, options.EnvConfig); err != nil {
+	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
 		return err
 	}
 

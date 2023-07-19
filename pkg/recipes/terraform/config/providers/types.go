@@ -32,9 +32,9 @@ type Provider interface {
 	BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any
 }
 
-// GetSupportedTerraformProviders returns a map of supported Terraform provider names to provider config builder.
+// GetSupportedTerraformProviders returns a map of Terraform provider names to provider config builder.
 // Providers represent Terraform providers for which Radius generates custom provider configurations.
-// For example, the Azure subscription id is included in Azure provider config using Environment's scope.
+// For example, the Azure subscription id is added to Azure provider config using Radius Environment's Azure provider scope.
 func GetSupportedTerraformProviders() map[string]Provider {
 	return map[string]Provider{
 		AWSProviderName:        NewAWSProvider(),
