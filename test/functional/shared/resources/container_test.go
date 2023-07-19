@@ -108,22 +108,22 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 	name := "corerp-resources-container-two-containers-dns"
 	appNamespace := "corerp-resources-container-two-containers-dns"
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
 					{
 						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "containera",
+						Name: "containerad",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "containerb",
+						Name: "containeraf",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -132,9 +132,9 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "containera"),
-						validation.NewK8sPodForResource(name, "containerb"),
-						validation.NewK8sServiceForResource(name, "containerb"),
+						validation.NewK8sPodForResource(name, "containerad"),
+						validation.NewK8sPodForResource(name, "containeraf"),
+						validation.NewK8sServiceForResource(name, "containeraf"),
 					},
 				},
 			},
