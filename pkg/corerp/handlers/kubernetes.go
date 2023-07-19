@@ -182,10 +182,10 @@ func (handler *kubernetesHandler) addPodInformer(ctx context.Context, informers 
 	// Add event handlers to the pod informer
 	podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			handler.podEventHandler(ctx, item, obj, doneCh)
+			handler.checkDeploymentStatus(ctx, item, obj, doneCh)
 		},
 		UpdateFunc: func(_, newObj any) {
-			handler.podEventHandler(ctx, item, newObj, doneCh)
+			handler.checkDeploymentStatus(ctx, item, newObj, doneCh)
 		},
 	})
 
@@ -215,10 +215,10 @@ func (handler *kubernetesHandler) addDeploymentInformer(ctx context.Context, inf
 	deploymentInformer := informers.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			handler.deploymentEventHandler(ctx, item, obj, doneCh)
+			handler.checkDeploymentStatus(ctx, item, obj, doneCh)
 		},
 		UpdateFunc: func(_, obj any) {
-			handler.deploymentEventHandler(ctx, item, obj, doneCh)
+			handler.checkDeploymentStatus(ctx, item, obj, doneCh)
 		},
 	}
 
@@ -228,16 +228,50 @@ func (handler *kubernetesHandler) addDeploymentInformer(ctx context.Context, inf
 
 func (handler *kubernetesHandler) addReplicaSetInformer(ctx context.Context, informers informers.SharedInformerFactory, item client.Object, doneCh chan<- error) cache.SharedIndexInformer {
 	replicaSetInformer := informers.Apps().V1().ReplicaSets().Informer()
+	handlers := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj any) {
+			handler.checkDeploymentStatus(ctx, item, obj, doneCh)
+		},
+		UpdateFunc: func(_, obj any) {
+			handler.checkDeploymentStatus(ctx, item, obj, doneCh)
+		},
+	}
+
+	replicaSetInformer.AddEventHandler(handlers)
 	return replicaSetInformer
 }
 
-func (handler *kubernetesHandler) deploymentEventHandler(ctx context.Context, item client.Object, obj any, doneCh chan<- error) {
-	o := obj.(*v1.Deployment)
-	// There might be parallel deployments in progress, we need to make sure we are watching the right one
-	if o.Name != item.GetName() {
-		return
+func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, item client.Object, obj any, doneCh chan<- error) {
+	if pod, ok := obj.(*corev1.Pod); ok {
+		fmt.Println("@@@ checking pod status")
+		// Check pod status
+		podReplicaSet := handler.getReplicaSetName(pod)
+		deploymentReplicaSet, err := handler.getNewestReplicaSetForDeployment(ctx, item)
+		if err != nil {
+			// Have seen this fail due to the client rate limiter issues. Will fail and investigate if this happens again
+			doneCh <- err
+			return
+		}
+
+		if podReplicaSet != deploymentReplicaSet {
+			return
+		}
+		_, err = handler.checkPodStatus(ctx, pod)
+		if err != nil {
+			doneCh <- err
+		}
+		handler.checkPodStatus(ctx, pod)
+	} else if deployment, ok := obj.(*v1.Deployment); ok {
+		fmt.Println("@@@ checking deployment status")
+		// Check deployment status
+		// There might be parallel deployments in progress, we need to make sure we are watching the right one
+		if deployment.Name != item.GetName() {
+			return
+		}
+		handler.checkDeploymentReadiness(ctx, deployment, doneCh)
+	} else if _, ok := obj.(*v1.ReplicaSet); ok {
+		fmt.Println("@@@@@ checking replicaset event")
 	}
-	handler.checkDeploymentStatus(ctx, o, doneCh)
 }
 
 func (handler *kubernetesHandler) getReplicaSetName(pod *corev1.Pod) string {
@@ -444,7 +478,7 @@ func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, obj *v1
 	return allReady
 }
 
-func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, obj *v1.Deployment, doneCh chan<- error) {
+func (handler *kubernetesHandler) checkDeploymentReadiness(ctx context.Context, obj *v1.Deployment, doneCh chan<- error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	deploymentReplicaSet, err := handler.getNewestReplicaSetForDeployment(ctx, obj)
 	if err != nil {

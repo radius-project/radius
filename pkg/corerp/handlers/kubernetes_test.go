@@ -901,7 +901,7 @@ func TestDeploymentEventHandler(t *testing.T) {
 
 	// Call the deployment event handler with the mock objects
 	doneCh := make(chan error)
-	go handler.deploymentEventHandler(ctx, deployment, deployment, doneCh)
+	go handler.checkDeploymentStatus(ctx, deployment, deployment, doneCh)
 
 	// Wait for the handler to finish
 	err = <-doneCh
