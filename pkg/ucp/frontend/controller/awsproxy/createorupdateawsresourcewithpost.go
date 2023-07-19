@@ -61,7 +61,6 @@ func NewCreateOrUpdateAWSResourceWithPost(opts armrpc_controller.Options, awsCli
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	logger.Info("Trying to create or update resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", serviceCtx.ResourceID)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
 	if errResponse != nil {
 		return errResponse, nil

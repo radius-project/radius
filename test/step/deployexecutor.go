@@ -83,6 +83,6 @@ func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
-	require.NoError(t, err)
+	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
