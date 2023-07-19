@@ -13,21 +13,21 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-multiple_ports'
+  name: 'corerp-resources-container-single-DNS-service-creation'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-multiple_ports'
+          namespace: 'corerp-resources-container-single-DNS-service-creation'
       }
     ]
   }
 }
 
-resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containera'
+resource containeras 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containeras'
   location: location
   properties: {
     application: app.id
@@ -36,12 +36,6 @@ resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
       ports: {
         web: {
           containerPort: port
-        }
-        wonderland: {
-          containerPort: 42
-        }
-        vegas: {
-          containerPort: 777
         }
       }
     }

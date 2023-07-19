@@ -10,22 +10,22 @@ param magpieimage string
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-optional_port_scheme'
+  name: 'corerp-resources-container-optional-port-scheme'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-optional_port_scheme'
+          namespace: 'corerp-resources-container-optional-port-scheme'
       }
     ]
   }
 }
 
 // the container resource should use the optional port, protocol, and scheme variables if specified.
-resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containera'
+resource containerqy 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerqy'
   location: location
   properties: {
     application: app.id
@@ -45,8 +45,8 @@ resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 // the container resource should use the optional port, protocol, and scheme variables if specified.
-resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerb'
+resource containerqu 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerqu'
   location: location
   properties: {
     application: app.id
@@ -66,8 +66,8 @@ resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 // the container resource should still expose a port on the containerPort if the optional variables are not specified.
-resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerc'
+resource containerqi 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerqi'
   location: location
   properties: {
     application: app.id

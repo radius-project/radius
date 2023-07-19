@@ -13,21 +13,21 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-multiple_containers_multiple_ports_DNS'
+  name: 'corerp-resources-container-multiple-containers-multiple-ports-DNS'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-multiple_containers_multiple_ports_DNS'
+          namespace: 'corerp-resources-container-multiple-containers-multiple-ports-DNS'
       }
     ]
   }
 }
 
-resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containera'
+resource containerqw 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerqw'
   location: location
   properties: {
     application: app.id
@@ -35,19 +35,19 @@ resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
       image: magpieimage
     }
     connections: {
-      containerb: {
-        source: 'http://containerb:42'
+      containerqe: {
+        source: 'http://containerqe:42'
       }
-      containerc: {
-        source: 'http://containerc:934'
+      containerqr: {
+        source: 'http://containerqr:934'
       }
     }
   }
 }
 
 // canonically accurate ports :)
-resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerb'
+resource containerqe 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerqe'
   location: location
   properties: {
     application: app.id
@@ -68,8 +68,8 @@ resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerc'
+resource containerqr 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerqr'
   location: location
   properties: {
     application: app.id
