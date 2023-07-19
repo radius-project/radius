@@ -50,8 +50,8 @@ env:
   # The AWS account ID
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
-  AKS_CLUSTER_NAME: 'radiustest00-aks'
-  AKS_RESOURCE_GROUP: 'radius-test-00'
+  AKS_CLUSTER_NAME: 'radiuse2e00'
+  AKS_RESOURCE_GROUP: 'radiuse2e00'
 
 jobs:
   build:
@@ -379,12 +379,4 @@ jobs:
       - name: delete namespaces
         if: always()
         run: |
-          kubectl delete namespace $(kubectl get namespace | grep corerp | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep default- | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep radiusfunctionaltestbucket | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep kubernetes-cli | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep dpsb- | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep azstorage-workload-app | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep dapr-serviceinvocation | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep msc823 | awk '{print $1}')
-          kubectl delete namespace $(kubectl get namespace | grep mse0af | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^msc823.*|^mse0af.*' | awk '{print $1}')
