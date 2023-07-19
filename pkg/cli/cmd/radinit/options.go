@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/project-radius/radius/pkg/cli"
 	cli_aws "github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -75,8 +76,13 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
+	ws, err := cli.GetWorkspace(r.ConfigHolder.Config, "")
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Set up a connection so we can list environments.
-	workspace := workspaces.Workspace{
+	workspace := &workspaces.Workspace{
 		Connection: map[string]any{
 			"context": options.Cluster.Context,
 			"kind":    workspaces.KindKubernetes,
@@ -88,7 +94,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		Scope: "/planes/radius/local",
 	}
 
-	err = r.enterEnvironmentOptions(ctx, &workspace, &options)
+	err = r.enterEnvironmentOptions(ctx, workspace, &options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -105,10 +111,16 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 
 	options.Recipes.DevRecipes = r.Dev
 
-	// Update the workspace with the information we captured about the environment.
-	workspace.Name = options.Environment.Name
-	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name)
-	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
+	if ws == nil {
+		// Update the workspace with the information we captured about the environment.
+		workspace.Name = options.Environment.Name
+		workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name)
+		workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
+		return &options, workspace, nil
+	}
 
-	return &options, &workspace, nil
+	ws.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name)
+	ws.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
+
+	return &options, ws, nil
 }
