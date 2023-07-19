@@ -18,12 +18,17 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -31,11 +36,14 @@ const (
 	AWSProviderName = "aws"
 )
 
-type awsProvider struct{}
+type awsProvider struct {
+	ucpConn               *sdk.Connection
+	secretProviderOptions ucp_provider.SecretProviderOptions
+}
 
 // NewAWSProvider creates a new AWSProvider instance.
-func NewAWSProvider() Provider {
-	return &awsProvider{}
+func NewAWSProvider(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) Provider {
+	return &awsProvider{ucpConn: ucpConn, secretProviderOptions: secretProviderOptions}
 }
 
 // BuildConfig generates the Terraform provider configuration for AWS provider.
@@ -67,4 +75,22 @@ func parseAWSScope(scope string) (string, error) {
 	}
 
 	return parsedScope.FindScope(resources.RegionsSegment), nil
+}
+
+func fetchAWSCredentials(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) (*credentials.AWSCredential, error) {
+	awsCredentialProvider, err := credentials.NewAWSCredentialProvider(ucp_provider.NewSecretProvider(secretProviderOptions), *ucpConn, &tokencredentials.AnonymousCredential{})
+	if err != nil {
+		return nil, fmt.Errorf("error creating AWS credential provider: %w", err)
+	}
+
+	credentials, err := awsCredentialProvider.Fetch(context.Background(), credentials.AWSPublic, "default")
+	if err != nil {
+		return nil, fmt.Errorf("error fetching AWS credentials: %w", err)
+	}
+
+	if credentials.AccessKeyID == "" || credentials.SecretAccessKey == "" {
+		return nil, errors.New("credentials are required to create AWS resources through Recipe. Use `rad credential register aws` to register AWS credentials")
+	}
+
+	return credentials, nil
 }

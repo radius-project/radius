@@ -27,9 +27,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
-	tf_providers "github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
+	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
 )
@@ -37,8 +37,8 @@ import (
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions) Driver {
-	return &terraformDriver{terraformExecutor: terraform.NewExecutor(&ucpConn), options: options}
+func NewTerraformDriver(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions, options TerraformOptions) Driver {
+	return &terraformDriver{terraformExecutor: terraform.NewExecutor(&ucpConn, secretProviderOptions), options: options}
 }
 
 // Options represents the options required for execution of Terraform driver.
@@ -93,7 +93,6 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		EnvConfig:      &configuration,
 		ResourceRecipe: &recipe,
 		EnvRecipe:      &definition,
-		Providers:      tf_providers.GetSupportedTerraformProviders(),
 	})
 	if err != nil {
 		return nil, err

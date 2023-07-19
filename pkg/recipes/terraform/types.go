@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 )
 
 //go:generate mockgen -destination=./mock_executor.go -package=terraform -self_package github.com/project-radius/radius/pkg/recipes/terraform github.com/project-radius/radius/pkg/recipes/terraform TerraformExecutor
@@ -43,8 +42,4 @@ type Options struct {
 
 	// ResourceRecipe is recipe metadata associated with the Radius resource deploying the Terraform recipe.
 	ResourceRecipe *recipes.ResourceMetadata
-
-	// Providers represent Terraform providers for which Radius generates custom provider configurations.
-	// For example, the Azure subscription id is included in Azure provider config using Environment's scope.
-	Providers map[string]providers.Provider
 }
