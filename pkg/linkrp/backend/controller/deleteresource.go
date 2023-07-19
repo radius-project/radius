@@ -74,7 +74,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	deploymentDataModel, ok := dataModel.(rpv1.RadiusResourceModel)
+	resourceDataModel, ok := dataModel.(rpv1.RadiusResourceModel)
 	if !ok {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
@@ -83,13 +83,13 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	if supportsRecipes && recipeDataModel.Recipe() != nil {
 		recipeData := recipes.ResourceMetadata{
 			Name:          recipeDataModel.Recipe().Name,
-			EnvironmentID: deploymentDataModel.ResourceMetadata().Environment,
-			ApplicationID: deploymentDataModel.ResourceMetadata().Application,
+			EnvironmentID: resourceDataModel.ResourceMetadata().Environment,
+			ApplicationID: resourceDataModel.ResourceMetadata().Application,
 			Parameters:    recipeDataModel.Recipe().Parameters,
 			ResourceID:    id.String(),
 		}
 
-		err = c.engine.Delete(ctx, recipeData, deploymentDataModel.OutputResources())
+		err = c.engine.Delete(ctx, recipeData, resourceDataModel.OutputResources())
 		if err != nil {
 			return ctrl.Result{}, err
 		}

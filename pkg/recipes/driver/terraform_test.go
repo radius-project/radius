@@ -181,4 +181,5 @@ func TestTerraformDriver_Delete_Success(t *testing.T) {
 
 	err := driver.Delete(ctx, []rpv1.OutputResource{})
 	require.Error(t, err)
+	require.Equal(t, "terraform delete support is not implemented yet", err.Error())
 }
