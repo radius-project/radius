@@ -10,14 +10,14 @@ param magpieimage string
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-single-DNS-request'
+  name: 'corerp-resources-container-single-dns-request'
   location: location
   properties: {
     environment: environment
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-single-DNS-request'
+          namespace: 'corerp-resources-container-single-dns-request'
       }
     ]
   }
