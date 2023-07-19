@@ -18,7 +18,6 @@ package list
 
 import (
 	"context"
-	"sort"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -141,15 +140,6 @@ func Test_Run(t *testing.T) {
 				Options: objectformats.GetEnvironmentRecipesTableFormat(),
 			},
 		}
-		exp := expected[0].(output.FormattedOutput).Obj.([]types.EnvironmentRecipe)
-		act := outputSink.Writes[0].(output.FormattedOutput).Obj.([]types.EnvironmentRecipe)
-
-		sort.Slice(exp, func(i, j int) bool {
-			return exp[i].Name < exp[j].Name
-		})
-		sort.Slice(act, func(i, j int) bool {
-			return act[i].Name < act[j].Name
-		})
-		require.Equal(t, exp, act)
+		require.Equal(t, expected, outputSink.Writes)
 	})
 }
