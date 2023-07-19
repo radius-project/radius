@@ -132,7 +132,7 @@ jobs:
       - name: Log the summary of test build.
         continue-on-error: true
         run: |
-          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          cat <<EOF > summary.md
           ## Radius functional test overview
 
           | Name | Value |
@@ -158,6 +158,7 @@ jobs:
           
           ## Test Status
           EOF
+          cat summary.md >> $GITHUB_STEP_SUMMARY
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
@@ -375,3 +376,15 @@ jobs:
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes --verbose
+      - name: delete namespaces
+        if: always()
+        run: |
+          kubectl delete namespace $(kubectl get namespace | grep corerp | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep default- | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep radiusfunctionaltestbucket | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep kubernetes-cli | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep dpsb- | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep azstorage-workload-app | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep dapr-serviceinvocation | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep msc823 | awk '{print $1}')
+          kubectl delete namespace $(kubectl get namespace | grep mse0af | awk '{print $1}')
