@@ -175,6 +175,18 @@ workspaces:
 	require.Equal(t, map[string]any{"kind": "kubernetes", "context": "cool-beans"}, ws.Connection)
 }
 
+func Test_GetWorkspace_NoneExists(t *testing.T) {
+	var yaml = `
+`
+
+	v, err := makeConfig(yaml)
+	require.NoError(t, err)
+
+	ws, err := GetWorkspace(v, "")
+	require.NoError(t, err)
+	require.Nil(t, ws)
+}
+
 func makeConfig(yaml string) (*viper.Viper, error) {
 	v := viper.New()
 	v.SetConfigType("YAML")
