@@ -160,8 +160,8 @@ workspaces:
 				"context": "cool-beans",
 				"kind":    workspaces.KindKubernetes,
 			},
-			Environment: "/a/b/c/providers/Applications.Core/environments/ice-cold",
-			Scope:       "/a/b/c",
+			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
+			Scope:       "/planes/radius/local/resourceGroups/test-env",
 			Source:      "userconfig",
 		}
 		require.Equal(t, expectedWorkspace, *workspace)
