@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -36,10 +37,16 @@ import (
 
 var outputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/mongoDatabases"
 var outputResource = rpv1.OutputResource{
-	Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
-		Type:     "Microsoft.DocumentDB/databaseAccounts/mongoDatabases",
-		Provider: resourcemodel.ProviderAzure,
-	}, outputResourceResourceID, "2022-01-01"),
+	Identity: resourcemodel.ResourceIdentity{
+		ResourceType: &resourcemodel.ResourceType{
+			Type:     "Microsoft.DocumentDB/databaseAccounts/mongoDatabases",
+			Provider: resourcemodel.ProviderAzure,
+		},
+		Data: map[string]any{
+			"id":         outputResourceResourceID,
+			"apiVersion": "2022-01-01",
+		},
+	},
 	RadiusManaged: to.Ptr(true),
 }
 
@@ -67,14 +74,14 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 	t.Parallel()
 
 	deleteCases := []struct {
-		desc         string
-		getErr       error
-		clientDelErr error
-		scDelErr     error
+		desc      string
+		getErr    error
+		engDelErr error
+		scDelErr  error
 	}{
 		{"delete-existing-resource", nil, nil, nil},
 		{"delete-non-existing-resource", &store.ErrNotFound{ID: resourceID}, nil, nil},
-		{"delete-resource-client-delete-error", nil, errors.New("resource client delete error"), nil},
+		{"delete-resource-engine-delete-error", nil, errors.New("engine delete error"), nil},
 		{"delete-resource-delete-from-db-error", nil, nil, errors.New("delete from db error")},
 	}
 
@@ -108,6 +115,14 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 				},
 			}
 
+			recipeData := recipes.ResourceMetadata{
+				Name:          "",
+				EnvironmentID: TestEnvironmentID,
+				ApplicationID: TestApplicationID,
+				Parameters:    nil,
+				ResourceID:    resourceID,
+			}
+
 			msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{Data: data}, tt.getErr).
@@ -115,10 +130,10 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 			if tt.getErr == nil {
 				eng.EXPECT().
-					Delete(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(tt.clientDelErr).
+					Delete(gomock.Any(), recipeData, status.OutputResources).
+					Return(tt.engDelErr).
 					Times(1)
-				if tt.clientDelErr == nil {
+				if tt.engDelErr == nil {
 					msc.EXPECT().
 						Delete(gomock.Any(), gomock.Any()).
 						Return(tt.scDelErr).
@@ -134,7 +149,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 			_, err = ctrl.Run(context.Background(), req)
 
-			if tt.getErr != nil || tt.clientDelErr != nil || tt.scDelErr != nil {
+			if tt.getErr != nil || tt.engDelErr != nil || tt.scDelErr != nil {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)

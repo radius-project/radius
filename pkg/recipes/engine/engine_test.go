@@ -164,7 +164,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 }
 
 func Test_Engine_Delete_Success(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteSetup()
+	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
 
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
@@ -177,7 +177,7 @@ func Test_Engine_Delete_Success(t *testing.T) {
 }
 
 func Test_Engine_Delete_Error(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteSetup()
+	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
 
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
@@ -189,7 +189,30 @@ func Test_Engine_Delete_Error(t *testing.T) {
 	require.Error(t, err)
 }
 
-func getDeleteSetup() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
+func Test_Delete_InvalidDriver(t *testing.T) {
+	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeDefinition.Driver = "invalid"
+
+	ctx := testcontext.New(t)
+	engine, configLoader, _ := setup(t)
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
+	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "could not find driver invalid")
+}
+
+func Test_Delete_Lookup_Error(t *testing.T) {
+	ctx := testcontext.New(t)
+	engine, configLoader, _ := setup(t)
+	recipeMetadata, _, outputResources := getDeleteInputs()
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
+	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	require.Error(t, err)
+}
+
+func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
@@ -200,7 +223,7 @@ func getDeleteSetup() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, 
 		},
 	}
 
-	recipeDefinition := &recipes.EnvironmentDefinition{
+	recipeDefinition := recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Link/mongoDatabases",
@@ -217,5 +240,5 @@ func getDeleteSetup() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, 
 			},
 		},
 	}
-	return recipeMetadata, *recipeDefinition, outputResources
+	return recipeMetadata, recipeDefinition, outputResources
 }

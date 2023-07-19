@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -171,4 +172,13 @@ func TestTerraformDriver_Execute_InvalidContextPanics(t *testing.T) {
 	require.Panics(t, func() {
 		_, _ = driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	})
+}
+
+func TestTerraformDriver_Delete_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+
+	_, driver := setup(t)
+
+	err := driver.Delete(ctx, []rpv1.OutputResource{})
+	require.Error(t, err)
 }
