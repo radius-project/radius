@@ -74,27 +74,44 @@ func (f *TableFormatter) Format(obj any, writer io.Writer, options FormatterOpti
 		return err
 	}
 
+	renderedRows := [][]string{}
 	for _, row := range rows {
-
-		// For each row evaluate the path and write to output using tab as separator
+		// For each row evaluate the text and split across lines if necessary.
+		currentRows := [][]string{}
 		for i, p := range parsers {
 			transformer := transformers[i]
-			if transformer != nil {
-				buf := bytes.Buffer{}
-				err := p.Execute(&buf, row)
-				if err != nil {
-					return err
-				}
-				_, err = tabs.Write([]byte(transformer(buf.String())))
-				if err != nil {
-					return err
-				}
-			} else {
-				err := p.Execute(tabs, row)
-				if err != nil {
-					return err
-				}
+			buf := bytes.Buffer{}
+			err := p.Execute(&buf, row)
+			if err != nil {
+				return err
 			}
+
+			text := buf.String()
+			if transformer != nil {
+				text = transformer(text)
+			}
+
+			lines := strings.Split(text, "\n")
+			for j, line := range lines {
+				if len(currentRows) == j {
+					currentRows = append(currentRows, make([]string, len(parsers)))
+				}
+
+				currentRows[j][i] = line
+			}
+		}
+
+		renderedRows = append(renderedRows, currentRows...)
+	}
+
+	// Now write the table
+	for _, renderedRow := range renderedRows {
+		for i, cell := range renderedRow {
+			_, err = tabs.Write([]byte(cell))
+			if err != nil {
+				return err
+			}
+
 			if i < len(parsers)-1 {
 				_, err = tabs.Write([]byte("\t"))
 				if err != nil {
