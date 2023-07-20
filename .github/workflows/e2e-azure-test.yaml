@@ -360,6 +360,7 @@ jobs:
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
       - name: Install Radius
         run: |
+          set -x
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
 
@@ -369,6 +370,8 @@ jobs:
             --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
       - name: Configure Radius test workspace
         run: |
+          set -x
+
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
 
