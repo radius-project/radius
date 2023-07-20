@@ -115,6 +115,11 @@ jobs:
         run: |
           if [ -z "${{ steps.skip-build.outputs.SKIP_BUILD }}" ]; then
             cat ./dist/cache/.buildenv >> $GITHUB_ENV
+            echo "## Radius functional test environment varibles" >> $GITHUB_STEP_SUMMARY
+            echo "Use the previously built binaries for the current test run:" >> $GITHUB_STEP_SUMMARY
+            echo "```bash" >> $GITHUB_STEP_SUMMARY
+            cat ./dist/cache/.buildenv >> $GITHUB_STEP_SUMMARY
+            echo "```" >> $GITHUB_STEP_SUMMARY
           else
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
@@ -238,7 +243,7 @@ jobs:
           echo "UNIQUE_ID=${{ steps.gen-id.outputs.UNIQUE_ID }}" >> ./dist/cache/.buildenv
           echo "REL_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
           echo "CHECKOUT_REPO=${{ steps.gen-id.outputs.CHECKOUT_REPO }}" >> ./dist/cache/.buildenv
-          echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> ./dist/cache/.buildenv
+          echo "CHECKOUT_REF=$(git rev-parse --short HEAD)" >> ./dist/cache/.buildenv
           echo "PR_NUMBER=${{ steps.gen-id.outputs.PR_NUMBER }}" >> ./dist/cache/.buildenv
           echo "RECIPE_TAG_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
       - name: Store the latest binaries into cache
@@ -356,6 +361,7 @@ jobs:
         run: |
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
       - name: Install Radius
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -364,7 +370,8 @@ jobs:
           rad install kubernetes --reinstall \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
             --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
-
+      - name: Configure Radius test workspace
+        run: |
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
           rad group create radius-e2e
