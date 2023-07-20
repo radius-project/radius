@@ -375,22 +375,22 @@ jobs:
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
-          rad group create radius-e2e
-          rad group switch radius-e2e
+          rad group create radiuse2e00-aks-admin
+          rad group switch radiuse2e00-aks-admin
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create radius-e2e --namespace default
-          rad env switch radius-e2e
+          rad env create radiuse2e00-aks-admin --namespace default
+          rad env switch radiuse2e00-aks-admin
 
           echo "*** Configuring Azure provider ***"
-          rad env update radius-e2e --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          rad env update radiuse2e00-aks-admin --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
             --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
             --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
 
           echo "*** Configuring AWS provider ***"
-          rad env update radius-e2e --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad env update radiuse2e00-aks-admin --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
