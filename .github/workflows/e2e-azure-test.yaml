@@ -377,12 +377,14 @@ jobs:
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
+          rad workspace list
           rad group create radius-e2e
           rad group switch radius-e2e
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create radius-e2e --namespace default
           rad env switch radius-e2e
+          rad workspace list
 
           echo "*** Configuring Azure provider ***"
           rad env update radius-e2e --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
