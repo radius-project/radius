@@ -114,13 +114,6 @@ jobs:
         id: gen-id
         run: |
           if [ -z "${{ steps.skip-build.outputs.SKIP_BUILD }}" ]; then
-            cat ./dist/cache/.buildenv >> $GITHUB_ENV
-            echo "## Radius functional test environment varibles" >> $GITHUB_STEP_SUMMARY
-            echo "Use the previously built binaries for the current test run:" >> $GITHUB_STEP_SUMMARY
-            echo "```bash" >> $GITHUB_STEP_SUMMARY
-            cat ./dist/cache/.buildenv >> $GITHUB_STEP_SUMMARY
-            echo "```" >> $GITHUB_STEP_SUMMARY
-          else
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
@@ -133,6 +126,13 @@ jobs:
             echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
             echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
             echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          else
+            cat ./dist/cache/.buildenv >> $GITHUB_ENV
+            echo "## Radius functional test environment varibles" >> $GITHUB_STEP_SUMMARY
+            echo "Use the previously built binaries for the current test run:" >> $GITHUB_STEP_SUMMARY
+            echo "```bash" >> $GITHUB_STEP_SUMMARY
+            cat ./dist/cache/.buildenv >> $GITHUB_STEP_SUMMARY
+            echo "```" >> $GITHUB_STEP_SUMMARY
           fi
       - name: Check out code
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
