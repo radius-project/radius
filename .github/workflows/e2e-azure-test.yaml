@@ -304,7 +304,9 @@ jobs:
           mv ./dist/cache/rad ./bin/
           chmod +x ./bin/rad
       - name: clean up cluster
-        run: ./.github/scripts/cleanup-cluster.sh
+        run: |
+          ls -R
+          ./.github/scripts/cleanup-cluster.sh
       - name: Login to Azure
         uses: azure/login@v1
         with:
@@ -437,4 +439,4 @@ jobs:
             --yes --verbose
       - name: clean up cluster
         if: always()
-        run: .github/scripts/cleanup-cluster.sh
+        run: ./.github/scripts/cleanup-cluster.sh
