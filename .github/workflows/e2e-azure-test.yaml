@@ -14,7 +14,6 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-
 name: E2E test on Azure
 on:
   schedule:
@@ -457,5 +456,4 @@ jobs:
             --yes --verbose
       - name: delete namespaces
         if: always()
-        run: |
-          bash ./.github/scripts/cleanup-cluster.sh
+        run: .github/scripts/cleanup-cluster.sh
