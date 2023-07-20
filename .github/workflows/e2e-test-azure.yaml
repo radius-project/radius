@@ -70,7 +70,12 @@ env:
   # The AWS account ID
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
+  # The valid radius build time window in seconds to rebuild radius. 12 hours
+  VALID_RADIUS_BUILD_WINDOW: 12*60*60
+
+  # The AKS cluster name
   AKS_CLUSTER_NAME: 'radiuse2e00-aks'
+  # The resource group for AKS_CLUSTER_NAME resource.
   AKS_RESOURCE_GROUP: 'radiuse2e00'
 
 jobs:
@@ -99,7 +104,7 @@ jobs:
           if [ -f ./dist/cache/.lastbuildtime ]; then
             lastbuild=$(cat ./dist/cache/.lastbuildtime)
             current_time=$(date +%s)
-            if [ $((current_time-lastbuild)) -lt 43200 ]; then
+            if [ $((current_time-lastbuild)) -lt ${{ env.VALID_RADIUS_BUILD_WINDOW }} ]; then
               echo "Skipping build as the last build is still valid."
               echo "SKIP_BUILD=true" >> $GITHUB_OUTPUT
             fi
