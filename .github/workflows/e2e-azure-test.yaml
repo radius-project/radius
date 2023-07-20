@@ -458,6 +458,4 @@ jobs:
       - name: delete namespaces
         if: always()
         run: |
-          kubectl delete resources.ucp.dev -n radius-system --all
-          kubectl delete queuemessages.ucp.dev -n radius-system --all
-          kubectl delete namespace $(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^msc823.*|^mse0af.*' | awk '{print $1}')
+          bash ./.github/scripts/cleanup-cluster.sh
