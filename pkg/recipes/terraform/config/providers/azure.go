@@ -19,7 +19,6 @@ package providers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -61,7 +60,9 @@ func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Conf
 	return azureConfig
 }
 
-func parseAzureScope(ctx context.Context, scope string) (subscriptionID string) {
+// parseAzureScope parses an Azure provider scope and returns the associated subscription id
+// Example scope: /subscriptions/test-sub/resourceGroups/test-rg
+func parseAzureScope(ctx context.Context, scope string) string {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
@@ -69,11 +70,5 @@ func parseAzureScope(ctx context.Context, scope string) (subscriptionID string) 
 		return ""
 	}
 
-	for _, segment := range parsedScope.ScopeSegments() {
-		if strings.EqualFold(segment.Type, resources.SubscriptionsSegment) {
-			subscriptionID = segment.Name
-		}
-	}
-
-	return subscriptionID
+	return parsedScope.FindScope(resources.SubscriptionsSegment)
 }

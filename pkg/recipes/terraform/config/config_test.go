@@ -79,12 +79,6 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 }
 
 func validateConfigIsGenerated(configFilePath string) (TerraformConfig, error) {
-	// Validate that the config file was created.
-	_, err := os.Stat(configFilePath)
-	if err != nil {
-		return TerraformConfig{}, err
-	}
-
 	// Read the JSON data from the main.tf.json file.
 	jsonData, err := os.ReadFile(configFilePath)
 	if err != nil {

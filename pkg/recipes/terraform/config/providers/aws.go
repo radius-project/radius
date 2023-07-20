@@ -19,7 +19,6 @@ package providers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -50,15 +49,15 @@ func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Config
 
 	region := parseAWSScope(ctx, envConfig.Providers.AWS.Scope)
 	if region != "" {
-		awsConfig = map[string]any{
-			"region": region,
-		}
+		awsConfig["region"] = region
 	}
 
 	return awsConfig
 }
 
-func parseAWSScope(ctx context.Context, scope string) (region string) {
+// parseAWSScope parses an AWS provider scope and returns the associated region
+// Example scope: /planes/aws/aws/accounts/123456789/regions/us-east-1
+func parseAWSScope(ctx context.Context, scope string) string {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
@@ -66,11 +65,5 @@ func parseAWSScope(ctx context.Context, scope string) (region string) {
 		return ""
 	}
 
-	for _, segment := range parsedScope.ScopeSegments() {
-		if strings.EqualFold(segment.Type, resources.RegionsSegment) {
-			region = segment.Name
-		}
-	}
-
-	return region
+	return parsedScope.FindScope(resources.RegionsSegment)
 }
