@@ -303,6 +303,8 @@ jobs:
           mkdir -p ./bin
           mv ./dist/cache/rad ./bin/
           chmod +x ./bin/rad
+      - name: clean up cluster
+        run: ./.github/scripts/cleanup-cluster.sh
       - name: Login to Azure
         uses: azure/login@v1
         with:
@@ -433,6 +435,6 @@ jobs:
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes --verbose
-      - name: delete namespaces
+      - name: clean up cluster
         if: always()
         run: .github/scripts/cleanup-cluster.sh
