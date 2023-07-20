@@ -361,7 +361,7 @@ jobs:
         run: |
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
       - name: Install Radius
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
+        if: env.SKIP_BUILD != 'true'
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
