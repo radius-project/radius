@@ -37,6 +37,9 @@ done
 namespaces=$(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^ms.+' | awk '{print $1}')
 for ns in $namespaces
 do
+    if [ -z "$ns" ]; then
+        break
+    fi
     echo "deleting namespaces: $ns"
     kubectl delete namespace $ns
 done
