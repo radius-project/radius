@@ -83,6 +83,7 @@ jobs:
     if: needs.checkvalid.outputs.SKIP_BUILD != 'true'
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     outputs:
+      SKIP_BUILD: ${{ steps.skip-build.outputs.SKIP_BUILD }}
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
       PR_NUMBER: ${{ steps.gen-id.outputs.PR_NUMBER }}
@@ -90,19 +91,36 @@ jobs:
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
+      - name: Restore the latest cached binaries
+        uses: actions/cache/restore@v3
+        with:
+          path: ./dist/cache
+          key: radius-test-latest-
+      - name: Skip build if build is still valid
+        id: skip-build
+        run: |
+          # check if the last build time to see if we need to build again
+          if [ -f ./dist/cache/.lastbuildtime ]; then
+            lastbuild=$(cat ./dist/cache/.lastbuildtime)
+            current_time=$(date +%s)
+            if [ $((current_time-lastbuild)) -lt 43200 ]; then
+              echo "Skipping build as the last build is still valid."
+              echo "SKIP_BUILD=true" >> $GITHUB_OUTPUT
+            fi
+          fi
       - name: Set up checkout target (scheduled)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'schedule'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
       - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'pull_request'
         run: |
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Set up checkout target (repository_dispatch)
-        if: github.event_name == 'repository_dispatch'
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'repository_dispatch'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -117,21 +135,44 @@ jobs:
                 `PR_NUMBER=${testPayload.issue.number}`
               );
             }
+      - name: Generate ID for release
+        id: gen-id
+        run: |
+          if [ -z "${{ steps.skip-build.outputs.SKIP_BUILD }}" ]; then
+            cat ./dist/cache/.buildenv >> $GITHUB_ENV
+          else
+            BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+            UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
+            echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
+            
+            # Set output variables to be used in the other jobs
+            echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+            echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
+            echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
+            echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+            echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+            echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
+            echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          fi
       - name: Check out code
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         uses: actions/checkout@v3
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GOVER }}
       - name: Get Go Cache path
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         id: go-cache-paths
         run: |
           echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
       - uses: actions/cache@v3
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -139,22 +180,8 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Generate ID for release
-        id: gen-id
-        run: |
-          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-          UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
-          
-          # Set output variables to be used in the other jobs
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
-          echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
-          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
-          echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
-          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
       - name: Log the summary of test build.
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         continue-on-error: true
         run: |
           cat <<EOF > summary.md
@@ -181,46 +208,54 @@ jobs:
           EOF
           cat summary.md >> $GITHUB_STEP_SUMMARY
       - name: Setup Azure CLI
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - name: Login ACR - ${{ env.CACHE_REGISTRY }}
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         run: |
           az acr login -n ${{ env.CACHE_REGISTRY }}
       - name: Build and Push container images
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         run: |
           make build && make docker-build && make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
       - name: Upload CLI binary
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
       - name: Log the result (success)
-        if: success()
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         continue-on-error: true
         run: |
           echo ":white_check_mark: Container images build succeeded" >> $GITHUB_STEP_SUMMARY
       - name: Log the result (success)
-        if: failure()
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && failure()
         continue-on-error: true
         run: |
           echo ":x: Container images build failed" >> $GITHUB_STEP_SUMMARY
       - name: Log recipe publish status
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         continue-on-error: true
         run: |
           echo ":hourglass: Publishing Bicep Recipes for functional tests..." >> $GITHUB_STEP_SUMMARY
       - name: Download rad-bicep
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
           mkdir -p dist
           ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/edge/linux-x64/rad-bicep --output dist/rad-bicep
           chmod +x dist/rad-bicep
       - name: Move the latest binaries to cache
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
           mkdir -p ./dist/cache
           mv ./dist/linux_amd64/release/rad ./dist/cache
@@ -233,11 +268,12 @@ jobs:
           echo "RECIPE_TAG_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
       - name: Store the latest binaries into cache
         uses: actions/cache/save@v3
-        if: success()
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         with:
           path: ./dist/cache
           key: radius-test-latest-${{ github.sha }}-${{ github.run_number }}
       - name: Publish Bicep Test Recipes
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
           make publish-test-recipes
         env:
@@ -245,23 +281,23 @@ jobs:
           RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
       - name: Log recipe publish status (success)
-        if: success()
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         run: |
           echo ":white_check_mark: Recipe publishing succeeded" >> $GITHUB_STEP_SUMMARY
       - name: Log recipe publish status (failure)
-        if: failure()
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && failure()
         run: |
           echo ":x: Test recipe publishing failed" >> $GITHUB_STEP_SUMMARY
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: [ build,checkvalid ]
+    needs: build
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     strategy:
       fail-fast: true
       matrix:
         name: [shared]
     env:
-      SKIP_BUILD: ${{ needs.checkvalid.outputs.SKIP_BUILD }}
+      SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
@@ -283,7 +319,6 @@ jobs:
           mkdir -p ./bin
           mv ./dist/cache/rad ./bin/
           chmod +x ./bin/rad
-          cat ./dist/cache/.buildenv >> $GITHUB_ENV
       - name: Print envs
         if: env.SKIP_BUILD == 'true'
         run: |
@@ -316,7 +351,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Download rad CLI
-        if: env.SKIP_BUILD != 'true'
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/download-artifact@v3
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
