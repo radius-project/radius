@@ -39,7 +39,7 @@ type Provider interface {
 // For example, the Azure subscription id is added to Azure provider config using Radius Environment's Azure provider scope.
 func GetSupportedTerraformProviders(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) map[string]Provider {
 	return map[string]Provider{
-		AWSProviderName:        NewAWSProvider(ucpConn, secretProviderOptions),
+		AWSProviderName:        NewAWSProvider(*ucpConn, secretProviderOptions),
 		AzureProviderName:      NewAzureProvider(),
 		KubernetesProviderName: NewKubernetesProvider(),
 	}

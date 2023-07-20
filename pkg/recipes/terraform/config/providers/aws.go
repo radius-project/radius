@@ -18,7 +18,6 @@ package providers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -32,17 +31,22 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
+// Provider's config parameter need to match the values expected by Terraform
+// https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 const (
-	AWSProviderName = "aws"
+	AWSProviderName   = "aws"
+	AWSRegionParam    = "region"
+	AWSAccessKeyParam = "access_key"
+	AWSSecretKeyParam = "secret_key"
 )
 
 type awsProvider struct {
-	ucpConn               *sdk.Connection
+	ucpConn               sdk.Connection
 	secretProviderOptions ucp_provider.SecretProviderOptions
 }
 
 // NewAWSProvider creates a new AWSProvider instance.
-func NewAWSProvider(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) Provider {
+func NewAWSProvider(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) Provider {
 	return &awsProvider{ucpConn: ucpConn, secretProviderOptions: secretProviderOptions}
 }
 
@@ -50,25 +54,37 @@ func NewAWSProvider(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.
 // https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	awsConfig := make(map[string]any)
 	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.AWS == datamodel.ProvidersAWS{}) || envConfig.Providers.AWS.Scope == "" {
 		logger.Info("AWS provider scope is not configured on the Environment, skipping AWS region configuration.")
-		return awsConfig
+		return nil
 	}
 
-	region, _ := parseAWSScope(envConfig.Providers.AWS.Scope)
-	if region != "" {
-		awsConfig = map[string]any{
-			"region": region,
-		}
-	}
+	region, _ := p.parseScope(ctx, envConfig.Providers.AWS.Scope)
+	credentials := fetchAWSCredentials(ctx, p.getCredentialsProvider(ctx))
 
-	return awsConfig
+	return p.generateProviderConfigMap(ctx, credentials, region)
 }
 
-// parseAWSScope parses an AWS provider scope and returns the associated region
-// Example scope: /planes/aws/aws/accounts/123456789/regions/us-east-1
-func parseAWSScope(scope string) (string, error) {
+func (p *awsProvider) generateProviderConfigMap(ctx context.Context, credentials *credentials.AWSCredential, region string) map[string]any {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	config := make(map[string]any)
+
+	if region != "" {
+		config[AWSRegionParam] = region
+	}
+
+	if credentials != nil && credentials.AccessKeyID != "" && credentials.SecretAccessKey != "" {
+		config[AWSAccessKeyParam] = credentials.AccessKeyID
+		config[AWSSecretKeyParam] = credentials.SecretAccessKey
+	} else {
+		logger.Info("AWS credentials provider is not configured on the Environment, skipping credentials configuration.")
+	}
+
+	return config
+}
+
+func (p *awsProvider) parseScope(ctx context.Context, scope string) (region string, err error) {
+	// logger := ucplog.FromContextOrDiscard(ctx)
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
 		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid AWS provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error()))
@@ -77,20 +93,25 @@ func parseAWSScope(scope string) (string, error) {
 	return parsedScope.FindScope(resources.RegionsSegment), nil
 }
 
-func fetchAWSCredentials(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) (*credentials.AWSCredential, error) {
-	awsCredentialProvider, err := credentials.NewAWSCredentialProvider(ucp_provider.NewSecretProvider(secretProviderOptions), *ucpConn, &tokencredentials.AnonymousCredential{})
+func (p *awsProvider) getCredentialsProvider(ctx context.Context) *credentials.AWSCredentialProvider {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	awsCredentialProvider, err := credentials.NewAWSCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
 	if err != nil {
-		return nil, fmt.Errorf("error creating AWS credential provider: %w", err)
+		logger.Info(fmt.Sprintf("Error creating AWS credential provider, skipping credentials configuration. Err: %s ", err.Error()))
+		return nil
 	}
 
-	credentials, err := awsCredentialProvider.Fetch(context.Background(), credentials.AWSPublic, "default")
+	return awsCredentialProvider
+}
+
+// fetchAWSCredentials Fetches AWS credentials from UCP. Returns nil if an error is received or the credentials are empty.
+func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials.CredentialProvider[credentials.AWSCredential]) *credentials.AWSCredential {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	credentials, err := awsCredentialsProvider.Fetch(context.Background(), credentials.AWSPublic, "default")
 	if err != nil {
-		return nil, fmt.Errorf("error fetching AWS credentials: %w", err)
+		logger.Info(fmt.Sprintf("Error fetching AWS credentials, skipping credentials configuration. Err: %s", err.Error()))
+		return nil
 	}
 
-	if credentials.AccessKeyID == "" || credentials.SecretAccessKey == "" {
-		return nil, errors.New("credentials are required to create AWS resources through Recipe. Use `rad credential register aws` to register AWS credentials")
-	}
-
-	return credentials, nil
+	return credentials
 }
