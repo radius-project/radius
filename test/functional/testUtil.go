@@ -51,8 +51,8 @@ func GetMagpieTag() string {
 	return magpietag
 }
 
-// GetOIDCIssur gets OIDC Issuer URI from FUNCTEST_OIDC_ISSUER environmant variable.
-func GetOIDCIssur() string {
+// GetOIDCIssuer gets OIDC Issuer URI from FUNCTEST_OIDC_ISSUER environment variable.
+func GetOIDCIssuer() string {
 	oidcIssuer := os.Getenv("FUNCTEST_OIDC_ISSUER")
 	if oidcIssuer == "" {
 		return "oidcIssuer=https://radiusoidc.blob.core.windows.net/kubeoidc/"

@@ -33,7 +33,7 @@ func Test_Storage(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetOIDCIssur()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetOIDCIssuer()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
