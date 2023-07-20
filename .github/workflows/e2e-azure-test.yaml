@@ -127,7 +127,6 @@ jobs:
             echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
             echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           else
-            cat ./dist/cache/.buildenv
             cat ./dist/cache/.buildenv >> $GITHUB_OUTPUT
             echo "## Radius functional test environment varibles" >> $GITHUB_STEP_SUMMARY
             echo "Use the previously built binaries for the current test run:" >> $GITHUB_STEP_SUMMARY
@@ -268,7 +267,6 @@ jobs:
         run: |
           echo ":x: Test recipe publishing failed" >> $GITHUB_STEP_SUMMARY
   tests:
-    if: false
     name: Run ${{ matrix.name }} functional tests
     needs: build
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
