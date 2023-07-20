@@ -359,6 +359,7 @@ jobs:
         run: |
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
       - name: Install Radius
+        if: env.SKIP_BUILD != 'true'
         run: |
           set -x
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
