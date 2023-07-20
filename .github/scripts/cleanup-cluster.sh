@@ -16,8 +16,10 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# Delete all test resources in queuemessages
 kubectl delete queuemessages.ucp.dev -n radius-system --all
 
+# Delete all test resources in resources without proxy resource.
 resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name")
 for r in $resources
 do
@@ -29,4 +31,10 @@ do
     fi
 done
 
-kubectl delete namespace $(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^ms.+' | awk '{print $1}')
+# Delete all test namespaces.
+namespaces=$(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^ms.+' | awk '{print $1}')
+for ns in $namespaces
+do
+    echo "deleting namespaces: $ns"
+    kubectl delete namespace $ns
+done
