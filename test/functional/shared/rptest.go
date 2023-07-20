@@ -329,9 +329,12 @@ func (ct RPTest) Test(t *testing.T) {
 
 						// Use AWS CloudControl.Get method to validate that the resource is deleted
 						notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
-						t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
 
 						if notFound {
+							t.Logf("AWS resource %s to be deleted was not found", resource.Identifier)
+							break
+						} else if err != nil {
+							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
 							break
 						} else {
 							// Wait for 10 seconds
