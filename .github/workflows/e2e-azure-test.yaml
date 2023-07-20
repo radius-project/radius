@@ -287,10 +287,12 @@ jobs:
       - name: Print envs
         if: env.SKIP_BUILD == 'true'
         run: |
+          echo "AZURE_TEST_RESOURCE_GROUP=radtest-$UNIQUE_ID-${{ matrix.name }}" >> $GITHUB_ENV
           echo $REL_VERSION
           exit 1
         env:
           REL_VERSION: ${{ env.REL_VERSION }}
+          UNIQUE_ID: ${{ env.UNIQUE_ID }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
