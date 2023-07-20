@@ -23,7 +23,7 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/e2e-azure-test.yml'
+      - '.github/workflows/e2e-test-azure.yaml'
 
 env:
   # Go version
