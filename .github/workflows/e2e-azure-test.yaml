@@ -372,6 +372,9 @@ jobs:
             --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
       - name: Configure Radius test workspace
         run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
           rad group create radius-e2e
