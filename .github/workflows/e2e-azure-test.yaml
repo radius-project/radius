@@ -224,7 +224,7 @@ jobs:
         run: |
           mkdir -p ./dist/cache
           mv ./dist/linux_amd64/release/rad ./dist/cache
-          echo $(data +%s) > ./dist/cache/.lastbuildtime
+          echo $(date +%s) > ./dist/cache/.lastbuildtime
           echo "UNIQUE_ID=${{ steps.gen-id.outputs.UNIQUE_ID }}" >> ./dist/cache/.buildenv
           echo "REL_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
           echo "CHECKOUT_REPO=${{ steps.gen-id.outputs.CHECKOUT_REPO }}" >> ./dist/cache/.buildenv
