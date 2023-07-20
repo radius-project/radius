@@ -54,33 +54,8 @@ env:
   AKS_RESOURCE_GROUP: 'radiuse2e00'
 
 jobs:
-  checkvalid:
-    name: Check if the last build is valid
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
-    outputs:
-      SKIP_BUILD: ${{ steps.skip-build.outputs.SKIP_BUILD }}
-    steps:
-      - name: Restore the latest cached binaries
-        uses: actions/cache/restore@v3
-        with:
-          path: ./dist/cache
-          key: radius-test-latest-
-      - name: Skip build if build is still valid
-        id: skip-build
-        run: |
-          # check if the last build time to see if we need to build again
-          if [ -f ./dist/cache/.lastbuildtime ]; then
-            lastbuild=$(cat ./dist/cache/.lastbuildtime)
-            current_time=$(date +%s)
-            if [ $((current_time-lastbuild)) -lt 43200 ]; then
-              echo "Skipping build as the last build is still valid."
-              echo "SKIP_BUILD=true" >> $GITHUB_OUTPUT
-            fi
-          fi
   build:
     name: Build Radius for test
-    needs: checkvalid
-    if: needs.checkvalid.outputs.SKIP_BUILD != 'true'
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     outputs:
       SKIP_BUILD: ${{ steps.skip-build.outputs.SKIP_BUILD }}
