@@ -17,14 +17,11 @@
 name: E2E test on Azure
 on:
   schedule:
-    # Run every 4 hours on weekdays.
-    - cron: "30 0,4,8,12,16,20 * * 0-6"
+    # Run every 1.5 hours
+    - cron: "30 0/1 * * *"
   pull_request:
     branches:
       - main
-  # Dispatch on external events
-  repository_dispatch:
-    types: [e2e-tests]
 
 env:
   # Go version
@@ -93,22 +90,6 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-      - name: Set up checkout target (repository_dispatch)
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'repository_dispatch'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          script: |
-            const testPayload = context.payload.client_payload;
-            if (testPayload && testPayload.command === `ok-to-test`) {
-              var fs = require('fs');
-              // Set environment variables
-              fs.appendFileSync(process.env.GITHUB_ENV,
-                `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
-                `CHECKOUT_REF=${testPayload.pull_head_ref}\n`+
-                `PR_NUMBER=${testPayload.issue.number}`
-              );
-            }
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -127,9 +108,11 @@ jobs:
             echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           else
             cat ./dist/cache/.buildenv >> $GITHUB_OUTPUT
-            echo "## Radius functional test environment varibles" >> $GITHUB_STEP_SUMMARY
+            echo "## Radius functional test environment variables" >> $GITHUB_STEP_SUMMARY
             echo "Use the previously built binaries for the current test run:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
             cat ./dist/cache/.buildenv >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
       - name: Check out code
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
@@ -266,13 +249,9 @@ jobs:
         run: |
           echo ":x: Test recipe publishing failed" >> $GITHUB_STEP_SUMMARY
   tests:
-    name: Run ${{ matrix.name }} functional tests
+    name: Run functional tests
     needs: build
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
-    strategy:
-      fail-fast: true
-      matrix:
-        name: [shared]
     env:
       SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
@@ -280,7 +259,7 @@ jobs:
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-e2e-all
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
@@ -402,7 +381,7 @@ jobs:
       - name: Log radius installation status (failure)
         if: failure()
         run: |
-          echo ":x: Failed to install Radius for ${{ matrix.name }} functional test." >> $GITHUB_STEP_SUMMARY
+          echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
       - name: Get OIDC Issuer from AKS cluster
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV
@@ -425,7 +404,7 @@ jobs:
           # AZURE_MSSQL_PASSWORD
           eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          make test-functional-${{ matrix.name }}
+          make test-functional-all
         env:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -441,11 +420,11 @@ jobs:
       - name: Log radius e2e test status (success)
         if: success()
         run: |
-          echo ":white_check_mark: ${{ matrix.name }} functional tests succeeded" >> $GITHUB_STEP_SUMMARY
+          echo ":white_check_mark: functional tests succeeded" >> $GITHUB_STEP_SUMMARY
       - name: Log radius e2e test status (failure)
         if: failure()
         run: |
-          echo ":x: ${{ matrix.name }} functional test failed." >> $GITHUB_STEP_SUMMARY
+          echo ":x: functional test failed." >> $GITHUB_STEP_SUMMARY
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         run: |
