@@ -54,8 +54,33 @@ env:
   AKS_RESOURCE_GROUP: 'radiuse2e00'
 
 jobs:
+  checkvalid:
+    name: Check if the last build is valid
+    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    outputs:
+      SKIP_BUILD: ${{ steps.skip-build.outputs.SKIP_BUILD }}
+    steps:
+      - name: Restore the latest cached binaries
+        uses: actions/cache/restore@v3
+        with:
+          path: ./dist/cache
+          key: radius-test-latest-
+      - name: Skip build if build is still valid
+        id: skip-build
+        run: |
+          # check if the last build time to see if we need to build again
+          if [ -f ./dist/cache/.lastbuildtime ]; then
+            lastbuild=$(cat ./dist/cache/.lastbuildtime)
+            current_time=$(date +%s)
+            if [ $((current_time-lastbuild)) -lt 43200 ]; then
+              echo "Skipping build as the last build is still valid."
+              echo "SKIP_BUILD=true" >> $GITHUB_OUTPUT
+            fi
+          fi
   build:
     name: Build Radius for test
+    needs: checkvalid
+    if: needs.checkvalid.outputs.SKIP_BUILD != 'true'
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
@@ -66,7 +91,7 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
       - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule'
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'schedule'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
@@ -195,6 +220,23 @@ jobs:
           mkdir -p dist
           ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/edge/linux-x64/rad-bicep --output dist/rad-bicep
           chmod +x dist/rad-bicep
+      - name: Move the latest binaries to cache
+        run: |
+          mkdir -p ./dist/cache
+          mv ./dist/linux_amd64/release/rad ./dist/cache
+          echo $(data +%s) > ./dist/cache/.lastbuildtime
+          echo "UNIQUE_ID=${{ steps.gen-id.outputs.UNIQUE_ID }}" >> ./dist/cache/.buildenv
+          echo "REL_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
+          echo "CHECKOUT_REPO=${{ steps.gen-id.outputs.CHECKOUT_REPO }}" >> ./dist/cache/.buildenv
+          echo "CHECKOUT_REF=${{ steps.gen-id.outputs.CHECKOUT_REF }}" >> ./dist/cache/.buildenv
+          echo "PR_NUMBER=${{ steps.gen-id.outputs.PR_NUMBER }}" >> ./dist/cache/.buildenv
+          echo "RECIPE_TAG_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
+      - name: Store the latest binaries into cache
+        uses: actions/cache/save@v3
+        if: success()
+        with:
+          path: ./dist/cache
+          key: radius-test-latest-${{ github.sha }}-${{ github.run_number }}
       - name: Publish Bicep Test Recipes
         run: |
           make publish-test-recipes
@@ -212,13 +254,14 @@ jobs:
           echo ":x: Test recipe publishing failed" >> $GITHUB_STEP_SUMMARY
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: build
+    needs: [ build,checkvalid ]
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     strategy:
       fail-fast: true
       matrix:
         name: [shared]
     env:
+      SKIP_BUILD: ${{ needs.checkvalid.outputs.SKIP_BUILD }}
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
@@ -228,6 +271,26 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
+      - name: Restore the latest cached binaries
+        if: env.SKIP_BUILD == 'true'
+        uses: actions/cache/restore@v3
+        with:
+          path: ./dist/cache
+          key: radius-test-latest-
+      - name: Install rad CLI in bin
+        if: env.SKIP_BUILD == 'true'
+        run: |
+          mkdir -p ./bin
+          mv ./dist/cache/rad ./bin/
+          chmod +x ./bin/rad
+          cat ./dist/cache/.buildenv >> $GITHUB_ENV
+      - name: Print envs
+        if: env.SKIP_BUILD == 'true'
+        run: |
+          echo $REL_VERSION
+          exit 1
+        env:
+          REL_VERSION: ${{ env.REL_VERSION }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -251,10 +314,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Download rad CLI
+        if: env.SKIP_BUILD != 'true'
         uses: actions/download-artifact@v3
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
+      - name: Restore the latest cached binaries
+        uses: actions/cache/restore@v3
+        with:
+          path: ./dist/cache
+          key: radius-test-latest-
       - name: Login to Azure
         uses: azure/login@v1
         with:
