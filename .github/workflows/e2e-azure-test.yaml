@@ -128,7 +128,7 @@ jobs:
             echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           else
             cat ./dist/cache/.buildenv
-            cat ./dist/cache/.buildenv >> $GITHUB_ENV
+            cat ./dist/cache/.buildenv >> $GITHUB_OUTPUT
             echo "## Radius functional test environment varibles" >> $GITHUB_STEP_SUMMARY
             echo "Use the previously built binaries for the current test run:" >> $GITHUB_STEP_SUMMARY
             cat ./dist/cache/.buildenv >> $GITHUB_STEP_SUMMARY
@@ -242,7 +242,7 @@ jobs:
           echo "UNIQUE_ID=${{ steps.gen-id.outputs.UNIQUE_ID }}" >> ./dist/cache/.buildenv
           echo "REL_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
           echo "CHECKOUT_REPO=${{ steps.gen-id.outputs.CHECKOUT_REPO }}" >> ./dist/cache/.buildenv
-          echo "CHECKOUT_REF=$(git rev-parse --short HEAD)" >> ./dist/cache/.buildenv
+          echo "CHECKOUT_REF=$(git rev-parse HEAD)" >> ./dist/cache/.buildenv
           echo "PR_NUMBER=${{ steps.gen-id.outputs.PR_NUMBER }}" >> ./dist/cache/.buildenv
           echo "RECIPE_TAG_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
       - name: Store the latest binaries into cache
