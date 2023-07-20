@@ -4,7 +4,7 @@
     "description": "stable is the release that we want to be the default version for users"
   },
   "latest": {
-    "version": "v0.22.0-rc2",
+    "version": "v0.23.0-rc1",
     "description": "latest is the most recent release, which may be a pre-release"
   }
 }
