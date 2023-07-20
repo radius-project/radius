@@ -16,6 +16,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+set -e
+
 # Delete all test resources in queuemessages
 kubectl delete queuemessages.ucp.dev -n radius-system --all
 
@@ -23,7 +25,7 @@ kubectl delete queuemessages.ucp.dev -n radius-system --all
 resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name")
 for r in $resources
 do
-    if [[ $r == scope.local.* || $r == scope.aws.* ]]; then
+    if [[ $r == scope.local.* || $r == scope.aws.* || -z "$r" ]]; then
         echo "skip deletion: $r"
     else
         echo "delete resource: $r"
