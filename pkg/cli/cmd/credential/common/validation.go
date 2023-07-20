@@ -44,5 +44,5 @@ func ValidateCloudProviderName(name string) error {
 		}
 	}
 
-	return clierrors.Message("The cloud provider type %q is not supported. Supported providers: %s.", name, strings.Join(supportedProviders, " "))
+	return clierrors.Message("The cloud provider type %q is not supported. Supported providers:\n%s", name, strings.Join(supportedProviders, "\n"))
 }

@@ -177,8 +177,8 @@ func (cpm *AzureCredentialManagementClient) Delete(ctx context.Context, name str
 
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
-		// return true if not found.
-		return true, nil
+		// return false if not found.
+		return false, nil
 	} else if err != nil {
 		return false, err
 	}

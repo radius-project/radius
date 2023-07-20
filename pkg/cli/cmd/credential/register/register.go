@@ -37,7 +37,7 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 		Long:  "Register (Add or update) cloud provider configuration for a Radius installation." + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication
-rad credential register azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>		
+rad credential register azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> 		
 `,
 	}
 
