@@ -22,6 +22,8 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - '.github/workflows/e2e-test-azure.yml'
 
 env:
   # Go version
@@ -76,7 +78,7 @@ jobs:
             current_time=$(date +%s)
             if [ $((current_time-lastbuild)) -lt 43200 ]; then
               echo "Skipping build as the last build is still valid."
-              # echo "SKIP_BUILD=true" >> $GITHUB_OUTPUT
+              echo "SKIP_BUILD=true" >> $GITHUB_OUTPUT
             fi
           fi
       - name: Set up checkout target (scheduled)
@@ -303,8 +305,6 @@ jobs:
           mkdir -p ./bin
           mv ./dist/cache/rad ./bin/
           chmod +x ./bin/rad
-      - name: clean up cluster
-        run: ./.github/scripts/cleanup-cluster.sh
       - name: Login to Azure
         uses: azure/login@v1
         with:
@@ -328,6 +328,8 @@ jobs:
             --name ${{ env.AKS_CLUSTER_NAME }} --admin
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+      - name: clean up cluster
+        run: ./.github/scripts/cleanup-cluster.sh
       - name: Download Bicep
         run: |
           chmod +x ./bin/rad
