@@ -40,7 +40,7 @@ type Provider interface {
 func GetSupportedTerraformProviders(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) map[string]Provider {
 	return map[string]Provider{
 		AWSProviderName:        NewAWSProvider(*ucpConn, secretProviderOptions),
-		AzureProviderName:      NewAzureProvider(),
+		AzureProviderName:      NewAzureProvider(*ucpConn, secretProviderOptions),
 		KubernetesProviderName: NewKubernetesProvider(),
 	}
 }
