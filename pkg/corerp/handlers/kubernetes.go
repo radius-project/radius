@@ -226,7 +226,7 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, inf
 		return
 	}
 
-	deploymentReplicaSet := handler.getNewestReplicaSetForDeployment(ctx, informerFactory, deployment)
+	deploymentReplicaSet := handler.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
 	if deploymentReplicaSet == "" {
 		logger.Info(fmt.Sprintf("Unable to find replica set for deployment %s in namespace %s", item.GetName(), item.GetNamespace()))
 		return
@@ -264,7 +264,7 @@ func (handler *kubernetesHandler) getReplicaSetName(pod *corev1.Pod) string {
 	return ""
 }
 
-func (handler *kubernetesHandler) getNewestReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object) string {
+func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object) string {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// List all replicasets for this deployment
@@ -451,6 +451,7 @@ func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, informe
 	for _, pod := range podsInDeployment {
 		status, err := handler.checkPodStatus(ctx, &pod)
 		if err != nil {
+			// Terminate the deployment and return the error encountered
 			doneCh <- err
 		}
 		if !status {

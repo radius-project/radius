@@ -630,7 +630,7 @@ func TestGetNewestReplicaSetForDeployment(t *testing.T) {
 	informerFactory := startInformers(ctx, fakeClient, handler)
 
 	// Call the getNewestReplicaSetForDeployment function
-	replicaSetName := handler.getNewestReplicaSetForDeployment(ctx, informerFactory, deployment)
+	replicaSetName := handler.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
 	require.Equal(t, replicaSet1.Name, replicaSetName)
 }
 
@@ -817,7 +817,6 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 	handler := &kubernetesHandler{
 		clientSet: fakeClient,
 	}
-	startInformers(ctx, fakeClient, handler)
 
 	go handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
 
@@ -909,7 +908,6 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	handler := &kubernetesHandler{
 		clientSet: fakeClient,
 	}
-	startInformers(ctx, fakeClient, handler)
 
 	go handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
 	err = <-doneCh
@@ -1001,7 +999,6 @@ func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
 	handler := &kubernetesHandler{
 		clientSet: fakeClient,
 	}
-	startInformers(ctx, fakeClient, handler)
 
 	handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
 
