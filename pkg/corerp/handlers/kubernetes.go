@@ -227,13 +227,32 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, inf
 	}
 
 	deploymentReplicaSet := handler.getNewestReplicaSetForDeployment(ctx, informerFactory, deployment)
+	if deploymentReplicaSet == "" {
+		logger.Info(fmt.Sprintf("Unable to find replica set for deployment %s in namespace %s", item.GetName(), item.GetNamespace()))
+		return
+	}
+
 	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh)
 	if !allReady {
 		logger.Info("All pods are not ready yet for deployment %s in namespace %s", item.GetName(), item.GetNamespace())
+		return
 	}
 
 	// Check if the deployment is ready
-	handler.checkDeploymentReadiness(ctx, informerFactory, deployment, doneCh)
+	for _, c := range deployment.Status.Conditions {
+		// check for complete deployment condition
+		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
+		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
+			logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s, Deployment replicaset: %s", deployment.GetName(), deployment.GetNamespace(), c.Type, c.Status, c.Reason, deploymentReplicaSet))
+
+			// ObservedGeneration should be updated to latest generation to avoid stale replicas
+			if deployment.Status.ObservedGeneration >= deployment.Generation {
+				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", deployment.Name, deployment.GetNamespace(), deployment.Status.ObservedGeneration, deployment.Generation))
+				doneCh <- nil
+				return
+			}
+		}
+	}
 }
 
 func (handler *kubernetesHandler) getReplicaSetName(pod *corev1.Pod) string {
@@ -248,7 +267,6 @@ func (handler *kubernetesHandler) getReplicaSetName(pod *corev1.Pod) string {
 func (handler *kubernetesHandler) getNewestReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object) string {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Get all ReplicaSets in the namespace
 	// List all replicasets for this deployment
 	rl, err := informerFactory.Apps().V1().ReplicaSets().Lister().ReplicaSets(item.GetNamespace()).List(labels.Everything())
 	if err != nil {
@@ -442,32 +460,6 @@ func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, informe
 
 	logger.Info(fmt.Sprintf("All %d pods in the deployment are ready", len(podsInDeployment)))
 	return allReady
-}
-
-func (handler *kubernetesHandler) checkDeploymentReadiness(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, doneCh chan<- error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	deploymentReplicaSet := handler.getNewestReplicaSetForDeployment(ctx, informerFactory, obj)
-
-	for _, c := range obj.Status.Conditions {
-		// check for complete deployment condition
-		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
-		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
-			logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s, Deployment replicaset: %s", obj.Name, obj.Namespace, c.Type, c.Status, c.Reason, deploymentReplicaSet))
-
-			// ObservedGeneration should be updated to latest generation to avoid stale replicas
-			if obj.Status.ObservedGeneration >= obj.Generation {
-				// Sometimes, this check can kick in before the pod informer. Therefore, check all pods in the deployment are ready here too.
-				// allReady := handler.checkAllPodsReady(ctx, informerFactory, obj, deploymentReplicaSet, doneCh)
-
-				if deploymentReplicaSet != "" {
-					// if allReady && deploymentReplicaSet != "" {
-					logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
-					doneCh <- nil
-					return
-				}
-			}
-		}
-	}
 }
 
 // Delete deletes a Kubernetes resource.

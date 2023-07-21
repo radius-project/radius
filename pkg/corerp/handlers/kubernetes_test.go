@@ -36,12 +36,49 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/tools/cache"
 )
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func addReplicaSetToDeployment(t *testing.T, ctx context.Context, clientset *fake.Clientset, deployment *v1.Deployment) {
+type workqueueItem struct {
+	key  string
+	obj  interface{}
+	meta *metav1.ObjectMeta
+}
+
+var testDeployment = &v1.Deployment{
+	TypeMeta: metav1.TypeMeta{
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-deployment",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+		},
+	},
+	Spec: v1.DeploymentSpec{
+		Replicas: int32Ptr(1),
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app": "test",
+			},
+		},
+	},
+	Status: v1.DeploymentStatus{
+		Conditions: []v1.DeploymentCondition{
+			{
+				Type:    v1.DeploymentProgressing,
+				Status:  corev1.ConditionTrue,
+				Reason:  "NewReplicaSetAvailable",
+				Message: "Deployment has minimum availability",
+			},
+		},
+	},
+}
+
+func addReplicaSetToDeployment(t *testing.T, ctx context.Context, clientset *fake.Clientset, deployment *v1.Deployment) *v1.ReplicaSet {
 	replicaSet := &v1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test-replicaset-1",
@@ -63,53 +100,25 @@ func addReplicaSetToDeployment(t *testing.T, ctx context.Context, clientset *fak
 
 	_, err = clientset.AppsV1().Deployments(deployment.Namespace).Update(ctx, deployment, metav1.UpdateOptions{})
 	require.NoError(t, err)
+
+	return replicaSet
 }
 
-func startInformers(ctx context.Context, clientSet *fake.Clientset, handler *kubernetesHandler) {
+func startInformers(ctx context.Context, clientSet *fake.Clientset, handler *kubernetesHandler) informers.SharedInformerFactory {
 	// Create a fake replicaset informer and start
-	informers := informers.NewSharedInformerFactory(clientSet, 0)
-	handler.informers = sharedInformers{
-		deploymentInformer: informers.Apps().V1().Deployments().Informer(),
-		replicaSetInformer: informers.Apps().V1().ReplicaSets().Informer(),
-		podInformer:        informers.Core().V1().Pods().Informer(),
-	}
-	informers.Start(context.Background().Done())
-	cache.WaitForCacheSync(ctx.Done(), handler.informers.deploymentInformer.HasSynced, handler.informers.replicaSetInformer.HasSynced, handler.informers.podInformer.HasSynced)
+	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
+
+	// Add informers
+	informerFactory.Apps().V1().Deployments().Informer()
+	informerFactory.Apps().V1().ReplicaSets().Informer()
+	informerFactory.Core().V1().Pods().Informer()
+
+	informerFactory.Start(context.Background().Done())
+	informerFactory.WaitForCacheSync(ctx.Done())
+	return informerFactory
 }
 
 func TestPut(t *testing.T) {
-	deployment := &v1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-			},
-		},
-		Spec: v1.DeploymentSpec{
-			Replicas: int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "test",
-				},
-			},
-		},
-		Status: v1.DeploymentStatus{
-			Conditions: []v1.DeploymentCondition{
-				{
-					Type:    v1.DeploymentProgressing,
-					Status:  corev1.ConditionTrue,
-					Reason:  "NewReplicaSetAvailable",
-					Message: "Deployment has minimum availability",
-				},
-			},
-		},
-	}
-
 	putTests := []struct {
 		name string
 		in   *PutOptions
@@ -148,7 +157,7 @@ func TestPut(t *testing.T) {
 					ResourceType: resourcemodel.ResourceType{
 						Provider: resourcemodel.ProviderKubernetes,
 					},
-					Resource: deployment,
+					Resource: testDeployment,
 				},
 			},
 			out: map[string]string{
@@ -177,7 +186,7 @@ func TestPut(t *testing.T) {
 			// If the resource is a deployment, we need to add a replica set to it
 			if tc.in.Resource.Resource.(runtime.Object).GetObjectKind().GroupVersionKind().Kind == "Deployment" {
 				// The deployment is not marked as ready till we find a replica set. Therefore, we need to create one.
-				addReplicaSetToDeployment(t, ctx, clientSet, deployment)
+				addReplicaSetToDeployment(t, ctx, clientSet, testDeployment)
 			}
 
 			props, err := handler.Put(ctx, tc.in)
@@ -521,13 +530,10 @@ func TestGetPodsInDeployment(t *testing.T) {
 
 	// Add the Pod object to the fake Kubernetes clientset
 	_, err := fakeClient.CoreV1().Pods(pod1.Namespace).Create(context.Background(), pod1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create Pod: %v", err)
-	}
+	require.NoError(t, err, "Failed to create Pod: %v", err)
+
 	_, err = fakeClient.CoreV1().Pods(pod2.Namespace).Create(context.Background(), pod2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create Pod: %v", err)
-	}
+	require.NoError(t, err, "Failed to create Pod: %v", err)
 
 	// Create a KubernetesHandler object with the fake clientset
 	handler := &kubernetesHandler{
@@ -535,10 +541,10 @@ func TestGetPodsInDeployment(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	startInformers(ctx, fakeClient, handler)
+	informerFactory := startInformers(ctx, fakeClient, handler)
 
 	// Call the getPodsInDeployment function
-	pods, err := handler.getPodsInDeployment(ctx, deployment, replicaset.Name)
+	pods, err := handler.getPodsInDeployment(ctx, informerFactory, deployment, replicaset.Name)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(pods))
 	require.Equal(t, pod1.Name, pods[0].Name)
@@ -621,11 +627,10 @@ func TestGetNewestReplicaSetForDeployment(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	startInformers(ctx, fakeClient, handler)
+	informerFactory := startInformers(ctx, fakeClient, handler)
 
 	// Call the getNewestReplicaSetForDeployment function
-	replicaSetName, err := handler.getNewestReplicaSetForDeployment(ctx, deployment)
-	require.NoError(t, err)
+	replicaSetName := handler.getNewestReplicaSetForDeployment(ctx, informerFactory, deployment)
 	require.Equal(t, replicaSet1.Name, replicaSetName)
 }
 
@@ -733,177 +738,183 @@ func TestCheckPodStatus(t *testing.T) {
 	}
 }
 
-func TestPodEventHandler(t *testing.T) {
-	// Create a new mock client
+func TestCheckDeploymentStatus_AllReady(t *testing.T) {
+	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewSimpleClientset()
 
-	// Create a new deployment with a replica set
-	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "default",
-		},
-		Spec: v1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "test",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "test",
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "test-container",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	_, err := fakeClient.AppsV1().Deployments("default").Create(context.Background(), deployment, metav1.CreateOptions{})
-	require.NoError(t, err, "Failed to create deployment")
+	ctx := context.Background()
+	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
+	require.NoError(t, err)
+	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
 
-	// Create a new replica set for the deployment
-	replicaSet := &v1.ReplicaSet{
+	// Create a Pod object
+	pod1 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-replicaset",
-			Namespace: "default",
+			Name:      "test-pod1",
+			Namespace: "test-namespace",
 			Labels: map[string]string{
 				"app": "test",
 			},
-		},
-		Spec: v1.ReplicaSetSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "test",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "test",
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "test-container",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	_, err = fakeClient.AppsV1().ReplicaSets("default").Create(context.Background(), replicaSet, metav1.CreateOptions{})
-	require.NoError(t, err, "Failed to create replica set")
-
-	// Create a new pod for the deployment
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-			Labels: map[string]string{
-				"app": "test",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
+			OwnerReferences: []metav1.OwnerReference{
 				{
-					Name:  "test-container",
-					Image: "nginx",
+					Kind:       "ReplicaSet",
+					Name:       replicaSet.Name,
+					Controller: to.Ptr(true),
 				},
 			},
 		},
 		Status: corev1.PodStatus{
 			Conditions: []corev1.PodCondition{
 				{
-					Type:    corev1.PodScheduled,
-					Status:  corev1.ConditionFalse,
-					Reason:  "Unschedulable",
-					Message: "0/1 nodes are available: 1 Insufficient cpu.",
+					Type:   corev1.PodScheduled,
+					Status: corev1.ConditionTrue,
+				},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "test-container",
+					Ready: true,
+					State: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
 				},
 			},
 		},
 	}
-	_, err = fakeClient.CoreV1().Pods("default").Create(context.Background(), pod, metav1.CreateOptions{})
-	require.NoError(t, err, "Failed to create pod")
 
-	// Create a new handler with the mock client
+	// Add the Pod object to the fake Kubernetes clientset
+	_, err = fakeClient.CoreV1().Pods(pod1.Namespace).Create(ctx, pod1, metav1.CreateOptions{})
+	require.NoError(t, err, "Failed to create Pod: %v", err)
+
+	// Create an informer factory and add the deployment to the cache
+	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
+	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
+	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
+	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod1)
+
+	// Create a fake item and object
+	item := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name":      "test-deployment",
+				"namespace": "test-namespace",
+			},
+		},
+	}
+	obj := &workqueueItem{
+		key: item.GetName(),
+		obj: testDeployment,
+		meta: &metav1.ObjectMeta{
+			Name:      item.GetName(),
+			Namespace: item.GetNamespace(),
+		},
+	}
+
+	// Create a done channel
+	doneCh := make(chan error, 1)
+
+	// Call the checkDeploymentStatus function
 	handler := &kubernetesHandler{
 		clientSet: fakeClient,
 	}
-
-	ctx := context.Background()
 	startInformers(ctx, fakeClient, handler)
 
-	// Call the pod event handler with the mock objects
-	doneCh := make(chan error)
-	go handler.podEventHandler(ctx, deployment, pod, doneCh)
+	go handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
 
-	// Wait for the handler to finish
 	err = <-doneCh
-	require.Error(t, err, "Pod event handler should have returned an error")
+
+	// Check that the deployment readiness was checked
+	require.NoError(t, err)
 }
 
-func TestDeploymentEventHandler(t *testing.T) {
-	// Create a new mock fakeClient
+func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
+	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewSimpleClientset()
 
-	// Create a new deployment
-	deployment := &v1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
+	ctx := context.Background()
+	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
+	require.NoError(t, err)
+	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
+
+	// Create a Pod object
+	pod1 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
+			Name:      "test-pod1",
 			Namespace: "test-namespace",
-		},
-		Spec: v1.DeploymentSpec{
-			Replicas: int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "test",
+			Labels: map[string]string{
+				"app": "test",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       replicaSet.Name,
+					Controller: to.Ptr(true),
 				},
 			},
 		},
-		Status: v1.DeploymentStatus{
-			Conditions: []v1.DeploymentCondition{
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
 				{
-					Type:    v1.DeploymentProgressing,
-					Status:  corev1.ConditionTrue,
-					Reason:  "NewReplicaSetAvailable",
-					Message: "Deployment has minimum availability",
+					Type:   corev1.PodScheduled,
+					Status: corev1.ConditionTrue,
+				},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "test-container",
+					Ready: true,
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Reason:  "Error",
+							Message: "Container terminated due to an error",
+						},
+					},
 				},
 			},
 		},
 	}
 
-	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(context.Background(), deployment, metav1.CreateOptions{})
-	require.NoError(t, err, "Error creating deployment")
+	// Add the Pod object to the fake Kubernetes clientset
+	_, err = fakeClient.CoreV1().Pods(pod1.Namespace).Create(ctx, pod1, metav1.CreateOptions{})
+	require.NoError(t, err, "Failed to create Pod: %v", err)
 
-	addReplicaSetToDeployment(t, context.Background(), fakeClient, deployment)
+	// Create an informer factory and add the deployment to the cache
+	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
+	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
+	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
+	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod1)
 
-	// Create a new handler with the mock client
+	// Create a fake item and object
+	item := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name":      "test-deployment",
+				"namespace": "test-namespace",
+			},
+		},
+	}
+	obj := &workqueueItem{
+		key: item.GetName(),
+		obj: testDeployment,
+		meta: &metav1.ObjectMeta{
+			Name:      item.GetName(),
+			Namespace: item.GetNamespace(),
+		},
+	}
+
+	// Create a done channel
+	doneCh := make(chan error, 1)
+
+	// Call the checkDeploymentStatus function
 	handler := &kubernetesHandler{
 		clientSet: fakeClient,
 	}
-
-	ctx := context.Background()
 	startInformers(ctx, fakeClient, handler)
 
-	// Call the deployment event handler with the mock objects
-	doneCh := make(chan error)
-	go handler.checkDeploymentStatus(ctx, deployment, deployment, doneCh)
-
-	// Wait for the handler to finish
+	go handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
 	err = <-doneCh
-	require.NoError(t, err, "Error handling deployment event")
+
+	// Check that the deployment readiness was checked
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "Container state is 'Terminated' Reason: Error, Message: Container terminated due to an error")
 }
