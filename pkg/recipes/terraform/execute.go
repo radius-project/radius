@@ -22,11 +22,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-logr/logr"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -70,8 +70,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
-	// Generate Terraform json config in the working directory
-	err = config.GenerateMainConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir)
+	err = generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 }
 
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	workingDir := filepath.Join(tfDir, executionSubDir)
 	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
@@ -97,9 +96,42 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	return workingDir, nil
 }
 
-// Runs Terraform init and apply in the provided working directory.
+// generateConfig generates Terraform configuration with required inputs for the module to be initialized and applied.
+func generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
+	// Generate Terraform json config in the working directory
+	// Use recipe name as a local reference to the module.
+	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the configuration is used as subdirectory name under .terraform/modules directory.
+	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
+	localModuleName := options.EnvRecipe.Name
+	if localModuleName == "" {
+		return fmt.Errorf("recipe name cannot be empty")
+	}
+
+	configFilePath, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
+	if err != nil {
+		return err
+	}
+
+	// Get the required providers from the module
+	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+		return err
+	}
+	requiredProviders, err := getRequiredProviders(workingDir, localModuleName)
+	if err != nil {
+		return err
+	}
+
+	// Add the required providers to the terraform configuration
+	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// initAndApply runs Terraform init and apply in the provided working directory.
 func initAndApply(ctx context.Context, workingDir, execPath string) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {
