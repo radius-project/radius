@@ -144,10 +144,10 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_ContainerDNSSD_SingleServiceGenerationDNS(t *testing.T) {
-	template := "testdata/corerp-resources-container-single-dns-service-creation.bicep"
-	name := "corerp-resources-container-single-dns-service-creation"
-	appNamespace := "corerp-resources-container-single-dns-service-creation"
+func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
+	template := "testdata/corerp-resources-container-optional-port-scheme.bicep"
+	name := "corerp-resources-container-optional-port-scheme"
+	appNamespace := "corerp-resources-container-optional-port-scheme"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -159,7 +159,17 @@ func Test_ContainerDNSSD_SingleServiceGenerationDNS(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "containeras",
+						Name: "containerqy",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containerqu",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containerqi",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -168,8 +178,12 @@ func Test_ContainerDNSSD_SingleServiceGenerationDNS(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "containeras"),
-						validation.NewK8sServiceForResource(name, "containeras"),
+						validation.NewK8sPodForResource(name, "containerqy"),
+						validation.NewK8sPodForResource(name, "containerqu"),
+						validation.NewK8sPodForResource(name, "containerqi"),
+						validation.NewK8sServiceForResource(name, "containerqy"),
+						validation.NewK8sServiceForResource(name, "containerqu"),
+						validation.NewK8sServiceForResource(name, "containerqi"),
 					},
 				},
 			},
