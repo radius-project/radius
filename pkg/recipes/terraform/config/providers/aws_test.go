@@ -30,6 +30,7 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 		desc           string
 		envConfig      *recipes.Configuration
 		expectedConfig map[string]any
+		expectedErrMsg string
 	}{
 		{
 			desc: "valid config",
@@ -43,25 +44,28 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 			expectedConfig: map[string]any{
 				"region": "test-region",
 			},
+			expectedErrMsg: "",
 		},
 		{
-			desc: "missing AWS provider config",
+			desc: "missing AWS provider config - no error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{},
 			},
 			expectedConfig: nil,
+			expectedErrMsg: "",
 		},
 		{
-			desc: "missing AWS provider scope",
+			desc: "missing AWS provider scope - no error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{
 					AWS: datamodel.ProvidersAWS{},
 				},
 			},
 			expectedConfig: nil,
+			expectedErrMsg: "",
 		},
 		{
-			desc: "invalid AWS provider scope",
+			desc: "invalid AWS provider scope - error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{
 					AWS: datamodel.ProvidersAWS{
@@ -70,15 +74,34 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: nil,
+			expectedErrMsg: "code BadRequest: err Invalid AWS provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
+		},
+		{
+			desc: "missing region from scope - error",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/0000/test-region",
+					},
+				},
+			},
+			expectedConfig: nil,
+			expectedErrMsg: "code BadRequest: err Invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &awsProvider{}
-			config := p.BuildConfig(context.Background(), tt.envConfig)
-			require.Equal(t, len(tt.expectedConfig), len(config))
-			require.Equal(t, tt.expectedConfig["region"], config["region"])
+			config, err := p.BuildConfig(context.Background(), tt.envConfig)
+			if tt.expectedErrMsg != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, len(tt.expectedConfig), len(config))
+				require.Equal(t, tt.expectedConfig["region"], config["region"])
+			}
 		})
 	}
 }

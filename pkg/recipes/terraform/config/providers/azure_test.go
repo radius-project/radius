@@ -30,6 +30,7 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 		desc           string
 		envConfig      *recipes.Configuration
 		expectedConfig map[string]any
+		expectedErrMsg string
 	}{
 		{
 			desc: "valid config",
@@ -44,18 +45,20 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 				"subscription_id": "test-sub",
 				"features":        map[string]any{},
 			},
+			expectedErrMsg: "",
 		},
 		{
-			desc: "missing Azure provider",
+			desc: "missing Azure provider - no error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{},
 			},
 			expectedConfig: map[string]any{
 				"features": map[string]any{},
 			},
+			expectedErrMsg: "",
 		},
 		{
-			desc: "missing Azure provider scope",
+			desc: "missing Azure provider scope - no error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{
 					Azure: datamodel.ProvidersAzure{},
@@ -64,9 +67,10 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 			expectedConfig: map[string]any{
 				"features": map[string]any{},
 			},
+			expectedErrMsg: "",
 		},
 		{
-			desc: "invalid Azure provider scope",
+			desc: "invalid Azure provider scope - error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{
 					Azure: datamodel.ProvidersAzure{
@@ -74,19 +78,36 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 					},
 				},
 			},
-			expectedConfig: map[string]any{
-				"features": map[string]any{},
+			expectedConfig: nil,
+			expectedErrMsg: "code BadRequest: err Invalid Azure provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
+		},
+		{
+			desc: "missing subscription id from scope - error",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/test-sub/resourceGroups/test-rg",
+					},
+				},
 			},
+			expectedConfig: nil,
+			expectedErrMsg: "code BadRequest: err Invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscriptionID is required in the scope",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &azureProvider{}
-			config := p.BuildConfig(context.Background(), tt.envConfig)
-			require.Equal(t, len(tt.expectedConfig), len(config))
-			require.Equal(t, tt.expectedConfig["features"], config["features"])
-			require.Equal(t, tt.expectedConfig["subscription_id"], config["subscription_id"])
+			config, err := p.BuildConfig(context.Background(), tt.envConfig)
+			if tt.expectedErrMsg != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, len(tt.expectedConfig), len(config))
+				require.Equal(t, tt.expectedConfig["subscription_id"], config["subscription_id"])
+				require.Equal(t, tt.expectedConfig["features"], config["features"])
+			}
 		})
 	}
 }

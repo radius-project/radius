@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -39,31 +40,35 @@ func NewAWSProvider() Provider {
 
 // BuildConfig generates the Terraform provider configuration for AWS provider.
 // https://registry.terraform.io/providers/hashicorp/aws/latest/docs
-func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
+func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	awsConfig := make(map[string]any)
 	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.AWS == datamodel.ProvidersAWS{}) || envConfig.Providers.AWS.Scope == "" {
-		logger.Info("AWS provider scope is not configured on the Environment, skipping AWS region configuration.")
-		return awsConfig
+		logger.Info("AWS provider/scope is not configured on the Environment, skipping AWS region configuration.")
+		return nil, nil
 	}
 
-	region := parseAWSScope(ctx, envConfig.Providers.AWS.Scope)
-	if region != "" {
-		awsConfig["region"] = region
+	region, err := parseAWSScope(envConfig.Providers.AWS.Scope)
+	if err != nil {
+		return nil, err
+	}
+	if region == "" {
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid AWS provider scope %q is configured on the Environment, region is required in the scope", envConfig.Providers.AWS.Scope))
 	}
 
-	return awsConfig
+	config := map[string]any{
+		"region": region,
+	}
+
+	return config, nil
 }
 
 // parseAWSScope parses an AWS provider scope and returns the associated region
 // Example scope: /planes/aws/aws/accounts/123456789/regions/us-east-1
-func parseAWSScope(ctx context.Context, scope string) string {
-	logger := ucplog.FromContextOrDiscard(ctx)
+func parseAWSScope(scope string) (string, error) {
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Invalid AWS provider scope is configured on the Environment, error parsing: %s", err.Error()))
-		return ""
+		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid AWS provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error()))
 	}
 
-	return parsedScope.FindScope(resources.RegionsSegment)
+	return parsedScope.FindScope(resources.RegionsSegment), nil
 }

@@ -18,6 +18,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -223,9 +224,9 @@ func TestAddProviders_Success(t *testing.T) {
 	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(awsProviderConfig)
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig)
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(kubernetesProviderConfig)
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(awsProviderConfig, nil)
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(kubernetesProviderConfig, nil)
 
 	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName, providers.AzureProviderName, providers.KubernetesProviderName, "sql"}, supportedProviders, &envConfig)
 	require.NoError(t, err)
@@ -234,6 +235,46 @@ func TestAddProviders_Success(t *testing.T) {
 	tfConfig, err := validateConfigIsGenerated(configFilePath)
 	require.NoError(t, err)
 	// Assert that the TerraformConfig contains the expected data.
+	require.Equal(t, expectedTFConfig, tfConfig)
+}
+
+func TestAddProviders_InvalidScope_Error(t *testing.T) {
+	ctx := testcontext.New(t)
+	// Create a temporary test directory.
+	testDir := t.TempDir()
+	mProvider, supportedProviders := setup(t)
+	envRecipe, resourceRecipe := getTestInputs()
+	envConfig := recipes.Configuration{
+		Providers: datamodel.Providers{
+			AWS: datamodel.ProvidersAWS{
+				Scope: "invalid",
+			},
+		},
+	}
+
+	expectedTFConfig := TerraformConfig{
+		Module: map[string]any{
+			testRecipeName: map[string]any{
+				moduleSourceKey:       testTemplatePath,
+				moduleVersionKey:      testTemplateVersion,
+				"resource_group_name": envParams["resource_group_name"],
+				"redis_cache_name":    resourceParams["redis_cache_name"],
+				"sku":                 resourceParams["sku"],
+			},
+		},
+	}
+
+	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	require.NoError(t, err)
+
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, errors.New("Invalid AWS provider scope"))
+
+	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName}, supportedProviders, &envConfig)
+	require.Error(t, err)
+
+	// Validate that the config file still exists and was not updated.
+	tfConfig, err := validateConfigIsGenerated(configFilePath)
+	require.NoError(t, err)
 	require.Equal(t, expectedTFConfig, tfConfig)
 }
 
@@ -263,7 +304,7 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect build config function call for AWS provider with empty output since envConfig has empty AWS scope
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(map[string]any{})
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(map[string]any{}, nil)
 
 	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName}, supportedProviders, &envConfig)
 	require.NoError(t, err)
@@ -309,7 +350,7 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil)
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, nil)
 
 	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName}, supportedProviders, &envConfig)
 	require.NoError(t, err)
@@ -330,8 +371,14 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 	envRecipe, resourceRecipe := getTestInputs()
 	envConfig := recipes.Configuration{}
 
+	azureProviderConfig := map[string]any{
+		"features": map[string]any{},
+	}
 	// Expected config shouldn't contain Azure subscription id in the provider config
 	expectedTFConfig := TerraformConfig{
+		Provider: map[string]any{
+			providers.AzureProviderName: azureProviderConfig,
+		},
 		Module: map[string]any{
 			testRecipeName: map[string]any{
 				moduleSourceKey:       testTemplatePath,
@@ -346,7 +393,7 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil)
+	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)
 
 	err = AddProviders(ctx, configFilePath, []string{providers.AzureProviderName}, supportedProviders, &envConfig)
 	require.NoError(t, err)
@@ -359,14 +406,14 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 	require.Equal(t, expectedTFConfig, tfConfig)
 }
 
-func TestAddProviders_OpenFileError(t *testing.T) {
+func TestAddProviders_OpenConfigFileError(t *testing.T) {
 	ctx := testcontext.New(t)
 	mProvider, supportedProviders := setup(t)
 	kubernetesProviderConfig := map[string]any{
 		"config_path": clientcmd.RecommendedHomeFile,
 	}
 
-	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig)
+	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig, nil)
 
 	// Call AddProviders with a non-existent file path.
 	err := AddProviders(ctx, "/path/to/non-existent/file.json", []string{providers.KubernetesProviderName}, supportedProviders, nil)
@@ -389,7 +436,7 @@ func TestAddProviders_DecodeError(t *testing.T) {
 	kubernetesProviderConfig := map[string]any{
 		"config_path": clientcmd.RecommendedHomeFile,
 	}
-	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig)
+	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig, nil)
 
 	// Call AddProviders with the test configuration file and required providers.
 	err = AddProviders(ctx, configFile, []string{providers.KubernetesProviderName}, supportedProviders, nil)
@@ -399,7 +446,7 @@ func TestAddProviders_DecodeError(t *testing.T) {
 	require.Contains(t, err.Error(), "invalid character")
 }
 
-func TestAddProviders_WriteFileError(t *testing.T) {
+func TestAddProviders_WriteConfigFileError(t *testing.T) {
 	ctx := testcontext.New(t)
 	mProvider, supportedProviders := setup(t)
 	// Create a temporary test directory.
@@ -416,7 +463,7 @@ func TestAddProviders_WriteFileError(t *testing.T) {
 	kubernetesProviderConfig := map[string]any{
 		"config_path": clientcmd.RecommendedHomeFile,
 	}
-	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig)
+	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig, nil)
 
 	// Call AddProviders with the test configuration file and required providers.
 	err = AddProviders(ctx, configFile, []string{providers.KubernetesProviderName}, supportedProviders, nil)
