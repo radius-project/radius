@@ -142,7 +142,7 @@ If sample validation passes, we can start the process of creating the final rele
    
    1. Create a new branch named `v0.21` from `edge`, substituting the new version number
    1. Within `docs/config.toml`:
-      - Change `baseURL` to `https://radapp.dev/` instead of `https://edge.radapp.dev/`
+      - Change `baseURL` to `https://docs.radapp.dev/` instead of `https://edge.radapp.dev/`
       - Change `version` to `v0.21` instead of `edge`, substituting the new version number
       - Change `chart_version` (Helm chart) to `0.21.0`, substituting the new version number
    1. Within `docs/layouts/partials/hooks/body-end.html`:
