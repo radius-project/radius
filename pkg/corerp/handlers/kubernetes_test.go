@@ -918,3 +918,93 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "Container state is 'Terminated' Reason: Error, Message: Container terminated due to an error")
 }
+
+func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
+	// Modify testDeployment to have a different generation than the observed generation
+	testDeployment.Generation = 2
+
+	// Create a fake Kubernetes fakeClient
+	fakeClient := fake.NewSimpleClientset()
+
+	ctx := context.Background()
+	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
+	require.NoError(t, err)
+	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
+
+	// Create a Pod object
+	pod1 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod1",
+			Namespace: "test-namespace",
+			Labels: map[string]string{
+				"app": "test",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       replicaSet.Name,
+					Controller: to.Ptr(true),
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
+				{
+					Type:   corev1.PodScheduled,
+					Status: corev1.ConditionTrue,
+				},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "test-container",
+					Ready: true,
+					State: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+				},
+			},
+		},
+	}
+
+	// Add the Pod object to the fake Kubernetes clientset
+	_, err = fakeClient.CoreV1().Pods(pod1.Namespace).Create(ctx, pod1, metav1.CreateOptions{})
+	require.NoError(t, err, "Failed to create Pod: %v", err)
+
+	// Create an informer factory and add the deployment to the cache
+	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
+	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
+	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
+	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod1)
+
+	// Create a fake item and object
+	item := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name":      "test-deployment",
+				"namespace": "test-namespace",
+			},
+		},
+	}
+	obj := &workqueueItem{
+		key: item.GetName(),
+		obj: testDeployment,
+		meta: &metav1.ObjectMeta{
+			Name:      item.GetName(),
+			Namespace: item.GetNamespace(),
+		},
+	}
+
+	// Create a done channel
+	doneCh := make(chan error, 1)
+
+	// Call the checkDeploymentStatus function
+	handler := &kubernetesHandler{
+		clientSet: fakeClient,
+	}
+	startInformers(ctx, fakeClient, handler)
+
+	handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
+
+	// Check that the deployment readiness was checked
+	require.Zero(t, len(doneCh))
+}
