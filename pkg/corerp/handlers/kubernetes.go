@@ -226,6 +226,12 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, inf
 		return
 	}
 
+	deploymentReplicaSet := handler.getNewestReplicaSetForDeployment(ctx, informerFactory, deployment)
+	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh)
+	if !allReady {
+		logger.Info("All pods are not ready yet for deployment %s in namespace %s", item.GetName(), item.GetNamespace())
+	}
+
 	// Check if the deployment is ready
 	handler.checkDeploymentReadiness(ctx, informerFactory, deployment, doneCh)
 }
@@ -451,9 +457,10 @@ func (handler *kubernetesHandler) checkDeploymentReadiness(ctx context.Context, 
 			// ObservedGeneration should be updated to latest generation to avoid stale replicas
 			if obj.Status.ObservedGeneration >= obj.Generation {
 				// Sometimes, this check can kick in before the pod informer. Therefore, check all pods in the deployment are ready here too.
-				allReady := handler.checkAllPodsReady(ctx, informerFactory, obj, deploymentReplicaSet, doneCh)
+				// allReady := handler.checkAllPodsReady(ctx, informerFactory, obj, deploymentReplicaSet, doneCh)
 
-				if allReady && deploymentReplicaSet != "" {
+				if deploymentReplicaSet != "" {
+					// if allReady && deploymentReplicaSet != "" {
 					logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", obj.Name, obj.Namespace, obj.Status.ObservedGeneration, obj.Generation))
 					doneCh <- nil
 					return
