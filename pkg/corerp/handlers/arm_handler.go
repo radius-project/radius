@@ -29,7 +29,9 @@ import (
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// NewARMHandler creates a ResourceHandler for 'generic' ARM resources.
+// # Function Explanation
+//
+// NewARMHandler creates a new ARMHandler instance with the given ARM configuration, for 'generic' ARM resources.
 func NewARMHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &armHandler{arm: arm}
 }
@@ -38,6 +40,10 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
+// # Function Explanation
+//
+// Put validates that the resource exists and returns the resource so renderers can use it for computed values. It
+// returns an error if the resource does not exist.
 func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	// Do a GET just to validate that the resource exists.
 	resource, err := getByID(ctx, &handler.arm.ClientOptions, options.Resource.Identity)
@@ -55,6 +61,9 @@ func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[st
 	return map[string]string{}, nil
 }
 
+// # Function Explanation
+//
+// No-op - just returns nil.
 func (handler *armHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }
